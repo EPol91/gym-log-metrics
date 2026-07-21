@@ -14,15 +14,28 @@ import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
-function beep() {
+function audioCtx(): AudioContext | null {
   try {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    const ctx = new Ctx()
-    const o = ctx.createOscillator(); const g = ctx.createGain()
-    o.frequency.value = 880; o.connect(g); g.connect(ctx.destination)
-    g.gain.setValueAtTime(0.15, ctx.currentTime)
-    o.start(); o.stop(ctx.currentTime + 0.18)
-  } catch { /* audio non disponibile */ }
+    return new Ctx()
+  } catch { return null }
+}
+function playNote(ctx: AudioContext, freq: number, start: number, dur: number, gain = 0.16) {
+  const o = ctx.createOscillator(); const g = ctx.createGain()
+  o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination)
+  g.gain.setValueAtTime(0.0001, ctx.currentTime + start)
+  g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + start + 0.01)
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur)
+  o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + 0.02)
+}
+// Tick breve durante il conto alla rovescia.
+function tick() { const ctx = audioCtx(); if (ctx) playNote(ctx, 620, 0, 0.07, 0.12) }
+// Suono "GO": tre note ascendenti da partenza gara.
+function goSound() {
+  const ctx = audioCtx(); if (!ctx) return
+  playNote(ctx, 660, 0, 0.12)
+  playNote(ctx, 830, 0.13, 0.12)
+  playNote(ctx, 1046, 0.27, 0.28, 0.2)
 }
 
 // --- Timer recupero: tap su un preset e parte quel recupero ---
@@ -42,8 +55,8 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
   }, [running, left])
 
   useEffect(() => {
-    if (warn) { navigator.vibrate?.(30); beep() }        // tick negli ultimi secondi
-    if (left === 0) navigator.vibrate?.([120, 60, 120])   // fine
+    if (warn) { navigator.vibrate?.(30); tick() }                    // tick negli ultimi 5s
+    if (left === 0) { navigator.vibrate?.([120, 60, 200]); goSound() } // fine = suono "GO"
   }, [left, warn])
 
   function pick(sec: number) { setTotal(sec); setLeft(sec); setRunning(true); onPick(sec) }
@@ -95,11 +108,11 @@ function Stepper({ label, value, set, step, min = 0 }: { label: string; value: s
   const n = value === '' ? 0 : Number(value)
   return (
     <div style={{ flex: 1 }}>
-      <label className="fl">{label}</label>
+      <label className="fl">{label} <span style={{ opacity: 0.6 }}>· passo {step}</span></label>
       <div className="row" style={{ gap: 4 }}>
-        <button onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−</button>
+        <button onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−{step}</button>
         <input inputMode="decimal" value={value} onChange={(e) => set(e.target.value)} style={{ textAlign: 'center' }} />
-        <button onClick={() => set(String(+(n + step).toFixed(2)))}>＋</button>
+        <button onClick={() => set(String(+(n + step).toFixed(2)))}>＋{step}</button>
       </div>
     </div>
   )
@@ -235,7 +248,10 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
       </div>
       <div style={{ marginTop: 8 }}><RirPicker value={rir} set={setRir} /></div>
       <div className="row spread" style={{ marginTop: 8 }}>
-        <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
+        <span className="row" style={{ alignItems: 'center' }}>
+          <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
+          <Info text="Le serie di riscaldamento NON contano nelle metriche (volume, tonnellaggio, e1RM, PR, Score) e NON fanno partire il timer di recupero. Servono solo a tracciare l'avvicinamento ai carichi di lavoro." />
+        </span>
         <button className="primary" style={{ flex: 1, marginLeft: 8 }} disabled={!canAdd} onClick={add}>Aggiungi set</button>
       </div>
     </div>
