@@ -45,6 +45,11 @@ export async function computePerformanceFromDB(): Promise<ScoreResult> {
     dailyTon.push({ t: ms(s.date), ton: tonnage(sessionSets) })
   }
 
+  // Nessun dato di allenamento nella finestra → non calcolabile (evita 74 fantasma post-onboarding).
+  if (perEx.size === 0) {
+    return { value: null, reliability: 'insufficiente', note: 'Nessun allenamento registrato: registra qualche seduta.' }
+  }
+
   // Trend forza: variazione % (primo→ultimo) per esercizio con ≥2 punti a ≥10 giorni di distanza.
   const changes: number[] = []
   for (const pts of perEx.values()) {

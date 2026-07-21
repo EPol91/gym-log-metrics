@@ -5,12 +5,11 @@ import { ScoreRing, Info } from './anim'
 import type { ScoreResult } from '../scores/types'
 
 const SCORE_TIPS: Record<string, string> = {
-  Readiness: 'Quanto sei pronto oggi. Calcolato dal check pre-workout (sonno 40% · stanchezza 35% · energia 25%) e aggiustato sul carico recente.',
+  Readiness: 'Quanto sei pronto oggi. Dal check pre-workout (sonno 40% · stanchezza 35% · energia 25%) e dal carico recente. Affidabilità: alta/media/inferenziale/insufficiente.',
   Workout: 'Qualità della seduta appena fatta rispetto ai TUOI standard: volume vs baseline, intensità (RIR/e1RM), PR battuti.',
   Performance: 'Stai progredendo nel tempo? Trend di forza (e1RM) e volume su ~6 settimane, tarato sulla fase (in cut mantenere la forza vale tanto).',
   Consistency: 'Quanto sei costante: sedute fatte vs obiettivo settimanale + regolarità + streak, su 4 settimane.',
 }
-const RELIABILITY_TIP = 'Affidabilità del dato: ALTA = dati solidi · MEDIA = parziali · INFERENZIALE = pochi dati, è una stima · INSUFFICIENTE = non calcolabile.'
 
 const TYPE_LABEL: Record<string, string> = {
   push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
@@ -19,12 +18,15 @@ const TYPE_LABEL: Record<string, string> = {
 
 function ScoreTile({ name, s }: { name: string; s: ScoreResult }) {
   return (
-    <div className="card" style={{ margin: 0 }}>
+    <div className="card" style={{ margin: 0, minWidth: 0 }}>
       <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-        <ScoreRing value={s.value} />
-        <div>
-          <div className="muted small">{name}<Info text={SCORE_TIPS[name] ?? ''} /></div>
-          <span className="tag">{s.reliability}<Info text={RELIABILITY_TIP} /></span>
+        <ScoreRing value={s.value} size={56} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+            <Info text={SCORE_TIPS[name] ?? ''} />
+          </div>
+          <span className="tag" style={{ display: 'inline-block', marginTop: 4 }}>{s.reliability}</span>
         </div>
       </div>
     </div>
@@ -37,9 +39,13 @@ export function HomeScreen({ onStartWorkout, onOpenAnalytics }: { onStartWorkout
   return (
     <div className="col">
       <div>
-        <h1>EP - GYM LOG <span className="brand">&amp; METRICS</span></h1>
+        <h1>GYM LOG <span className="brand">&amp; METRICS</span></h1>
         <p className="muted small">La tua dashboard</p>
       </div>
+
+      <button className="primary" style={{ width: '100%', padding: '14px', fontSize: 16, fontWeight: 600 }} onClick={onStartWorkout}>
+        ＋ Inizia allenamento
+      </button>
 
       {!home ? (
         <p className="muted">Calcolo…</p>
@@ -82,8 +88,6 @@ export function HomeScreen({ onStartWorkout, onOpenAnalytics }: { onStartWorkout
           <button className="ghost" onClick={onOpenAnalytics}>📊 Analisi avanzate</button>
         </>
       )}
-
-      <button className="fab primary" style={{ bottom: 78 }} onClick={onStartWorkout}>＋ Inizia allenamento</button>
     </div>
   )
 }
