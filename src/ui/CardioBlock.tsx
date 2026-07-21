@@ -60,12 +60,12 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart
 
 function NumStep({ label, value, set, step, min }: { label: string; value: number; set: (v: number) => void; step: number; min: number }) {
   return (
-    <div style={{ flex: 1, textAlign: 'center' }}>
-      <label className="fl">{label}</label>
+    <div style={{ minWidth: 0, textAlign: 'center' }}>
+      <label className="fl" style={{ display: 'block', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</label>
       <div className="row" style={{ gap: 4, justifyContent: 'center' }}>
-        <button style={{ padding: '8px 12px' }} onClick={() => set(Math.max(min, value - step))}>−</button>
-        <strong style={{ minWidth: 34, fontSize: 18 }}>{value}</strong>
-        <button style={{ padding: '8px 12px' }} onClick={() => set(value + step)}>＋</button>
+        <button style={{ padding: '8px 0', flex: 1, minWidth: 0 }} onClick={() => set(Math.max(min, value - step))}>−</button>
+        <strong style={{ minWidth: 26, fontSize: 18 }}>{value}</strong>
+        <button style={{ padding: '8px 0', flex: 1, minWidth: 0 }} onClick={() => set(value + step)}>＋</button>
       </div>
     </div>
   )
@@ -229,10 +229,10 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
                   </div>
                 </div>
               )}
-              <div className="row">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 <NumStep label="Round" value={rounds} set={setRounds} step={1} min={1} />
                 <NumStep label="Lavoro (s)" value={work} set={setWork} step={5} min={5} />
-                <NumStep label="Recupero (s)" value={rest} set={setRest} step={5} min={0} />
+                <NumStep label="Rec. (s)" value={rest} set={setRest} step={5} min={0} />
               </div>
               <p className="muted small">Totale stimato: <strong style={{ color: 'var(--gold)' }}>{fmt(intervalTotal)}</strong></p>
               <button className="ghost small" onClick={async () => { const n = prompt('Nome preset:'); if (n) await addCardioPreset(n, rounds, work, rest) }}>☆ Salva come preset</button>
