@@ -110,9 +110,9 @@ function Stepper({ label, value, set, step, min = 0 }: { label: string; value: s
     <div style={{ flex: 1 }}>
       <label className="fl">{label} <span style={{ opacity: 0.6 }}>· passo {step}</span></label>
       <div className="row" style={{ gap: 4 }}>
-        <button onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−{step}</button>
+        <button onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−</button>
         <input inputMode="decimal" value={value} onChange={(e) => set(e.target.value)} style={{ textAlign: 'center' }} />
-        <button onClick={() => set(String(+(n + step).toFixed(2)))}>＋{step}</button>
+        <button onClick={() => set(String(+(n + step).toFixed(2)))}>＋</button>
       </div>
     </div>
   )
