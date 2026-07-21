@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
+import { getOngoingSession } from '../db/repo'
 import { NutritionCard } from './NutritionCard'
 import { ScoreRing, Info } from './anim'
 import type { ScoreResult } from '../scores/types'
@@ -31,8 +32,11 @@ function ScoreTile({ name, s }: { name: string; s: ScoreResult }) {
   )
 }
 
-export function HomeScreen({ onStartWorkout, onOpenAnalytics }: { onStartWorkout: () => void; onOpenAnalytics: () => void }) {
+export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }: {
+  onStartWorkout: () => void; onResumeWorkout: (id: string) => void; onOpenAnalytics: () => void
+}) {
   const home = useLiveQuery(computeHome, [])
+  const ongoing = useLiveQuery(getOngoingSession, [])
 
   return (
     <div className="col">
@@ -41,9 +45,18 @@ export function HomeScreen({ onStartWorkout, onOpenAnalytics }: { onStartWorkout
         <p className="muted small">La tua dashboard</p>
       </div>
 
-      <button className="primary" style={{ width: '100%', padding: '14px', fontSize: 16, fontWeight: 600 }} onClick={onStartWorkout}>
-        ＋ Inizia allenamento
-      </button>
+      {ongoing ? (
+        <>
+          <button className="primary" style={{ width: '100%', padding: '14px', fontSize: 16, fontWeight: 600 }} onClick={() => onResumeWorkout(ongoing.id)}>
+            ▶ Riprendi allenamento <span style={{ opacity: 0.75, fontWeight: 400 }}>· {TYPE_LABEL[ongoing.type] ?? ongoing.type}</span>
+          </button>
+          <button className="ghost small" style={{ width: '100%' }} onClick={onStartWorkout}>＋ Inizia una nuova seduta</button>
+        </>
+      ) : (
+        <button className="primary" style={{ width: '100%', padding: '14px', fontSize: 16, fontWeight: 600 }} onClick={onStartWorkout}>
+          ＋ Inizia allenamento
+        </button>
+      )}
 
       {!home ? (
         <p className="muted">Calcolo…</p>

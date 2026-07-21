@@ -35,6 +35,13 @@ export function getSession(sessionId: string) {
   return db.sessions.get(sessionId)
 }
 
+/** Seduta attualmente aperta (finishedAt vuoto), la più recente. Per riprenderla dopo essere usciti. */
+export async function getOngoingSession(): Promise<WorkoutSession | undefined> {
+  const open = await db.sessions.where('userId').equals(U).filter((s) => s.finishedAt === null).toArray()
+  open.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  return open[0]
+}
+
 export async function updateSessionNotes(sessionId: string, notes: string): Promise<void> {
   await db.sessions.update(sessionId, { notes, updatedAt: nowISO() })
 }

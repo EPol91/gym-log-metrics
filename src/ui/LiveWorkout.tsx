@@ -274,7 +274,7 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   )
 }
 
-export function LiveWorkout({ sessionId, onFinish }: { sessionId: string; onFinish: () => void }) {
+export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string; onFinish: () => void; onHome?: () => void }) {
   const entries = useLiveQuery(() => entriesOf(sessionId), [sessionId]) ?? []
   const exercises = useLiveQuery(allExercises, []) ?? []
   const session = useLiveQuery(() => getSession(sessionId), [sessionId])
@@ -296,7 +296,10 @@ export function LiveWorkout({ sessionId, onFinish }: { sessionId: string; onFini
   return (
     <div className="col">
       <div className="row spread">
-        <h2>Workout live</h2>
+        <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {onHome && <button className="ghost small" onClick={onHome}>‹ Home</button>}
+          <h2 style={{ margin: 0 }}>Workout live</h2>
+        </span>
         {session && <WorkoutClock startedAt={session.startedAt} />}
       </div>
 

@@ -9,11 +9,12 @@ import type { WorkoutType, ReadinessCheck } from '../db/schema'
 type Step = 'start' | 'readiness' | 'live' | 'finish'
 type Source = { kind: 'type'; type: WorkoutType } | { kind: 'template'; templateId: string }
 
-/** Flusso completo di un allenamento, dall'inizio al riepilogo. onExit torna alla Home. */
-export function WorkoutFlow({ onExit }: { onExit: () => void }) {
-  const [step, setStep] = useState<Step>('start')
+/** Flusso completo di un allenamento, dall'inizio al riepilogo. onExit torna alla Home.
+ *  resumeSessionId: se presente, riprende una seduta già aperta (salta a 'live'). */
+export function WorkoutFlow({ onExit, resumeSessionId }: { onExit: () => void; resumeSessionId?: string | null }) {
+  const [step, setStep] = useState<Step>(resumeSessionId ? 'live' : 'start')
   const [source, setSource] = useState<Source>({ kind: 'type', type: 'push' })
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null)
 
   async function begin(r: ReadinessCheck | null) {
     const id = source.kind === 'template'
@@ -37,7 +38,7 @@ export function WorkoutFlow({ onExit }: { onExit: () => void }) {
         />
       )}
       {step === 'readiness' && <ReadinessScreen onStart={begin} />}
-      {step === 'live' && sessionId && <LiveWorkout sessionId={sessionId} onFinish={finish} />}
+      {step === 'live' && sessionId && <LiveWorkout sessionId={sessionId} onFinish={finish} onHome={onExit} />}
       {step === 'finish' && sessionId && <FinishScreen sessionId={sessionId} onHome={onExit} />}
     </>
   )

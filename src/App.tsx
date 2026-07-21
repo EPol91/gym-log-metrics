@@ -17,6 +17,7 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const [tab, setTab] = useState<Tab>('home')
   const [workingOut, setWorkingOut] = useState(false)
+  const [resumeId, setResumeId] = useState<string | null>(null)
   const [analytics, setAnalytics] = useState(false)
   const [editTemplate, setEditTemplate] = useState<string | 'new' | null>(null)
   const user = useLiveQuery(getUser, [])
@@ -34,7 +35,7 @@ export default function App() {
   if (workingOut) {
     return (
       <div className="app slide-up">
-        <WorkoutFlow onExit={() => { setWorkingOut(false); setTab('home') }} />
+        <WorkoutFlow resumeSessionId={resumeId} onExit={() => { setWorkingOut(false); setResumeId(null); setTab('home') }} />
       </div>
     )
   }
@@ -48,7 +49,13 @@ export default function App() {
   return (
     <div className="app">
       <div className="screen" key={tab}>
-        {tab === 'home' && <HomeScreen onStartWorkout={() => setWorkingOut(true)} onOpenAnalytics={() => setAnalytics(true)} />}
+        {tab === 'home' && (
+          <HomeScreen
+            onStartWorkout={() => { setResumeId(null); setWorkingOut(true) }}
+            onResumeWorkout={(id) => { setResumeId(id); setWorkingOut(true) }}
+            onOpenAnalytics={() => setAnalytics(true)}
+          />
+        )}
         {tab === 'exercises' && <ExercisesScreen />}
         {tab === 'body' && <BodyScreen />}
         {tab === 'history' && <HistoryScreen />}
