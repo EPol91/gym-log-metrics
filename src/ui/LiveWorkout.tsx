@@ -107,12 +107,13 @@ function WorkoutClock({ startedAt }: { startedAt: string }) {
 function Stepper({ label, value, set, step, min = 0 }: { label: string; value: string; set: (v: string) => void; step: number; min?: number }) {
   const n = value === '' ? 0 : Number(value)
   return (
-    <div style={{ flex: 1 }}>
-      <label className="fl">{label} <span style={{ opacity: 0.6 }}>· passo {step}</span></label>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <label className="fl">{label}</label>
       <div className="row" style={{ gap: 4 }}>
-        <button onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−</button>
-        <input inputMode="decimal" value={value} onChange={(e) => set(e.target.value)} style={{ textAlign: 'center' }} />
-        <button onClick={() => set(String(+(n + step).toFixed(2)))}>＋</button>
+        <button style={{ padding: '11px 12px', flex: '0 0 auto' }} onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−</button>
+        <input inputMode="decimal" value={value} onChange={(e) => set(e.target.value)}
+          style={{ textAlign: 'center', padding: '11px 2px', flex: 1, minWidth: 0 }} />
+        <button style={{ padding: '11px 12px', flex: '0 0 auto' }} onClick={() => set(String(+(n + step).toFixed(2)))}>＋</button>
       </div>
     </div>
   )
