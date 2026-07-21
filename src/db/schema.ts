@@ -143,6 +143,14 @@ export interface CardioSession extends BaseRecord {
   cardioType?: CardioType
 }
 
+/** Protocollo a intervalli personalizzato (HIIT/Tabata custom). */
+export interface CardioPreset extends BaseRecord {
+  name: string
+  rounds: number
+  workSec: number
+  restSec: number
+}
+
 export type Phase = 'cut' | 'bulk' | 'recomp' | 'maintenance'
 
 /** Fase di allenamento. Impostata una volta, resta fino al cambio.

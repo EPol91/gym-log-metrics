@@ -8,35 +8,12 @@ import {
 import { normalizeName } from '../db/catalog'
 import { e1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
+import { tick, goSound } from '../util/sound'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
 import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
-
-function audioCtx(): AudioContext | null {
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    return new Ctx()
-  } catch { return null }
-}
-function playNote(ctx: AudioContext, freq: number, start: number, dur: number, gain = 0.16) {
-  const o = ctx.createOscillator(); const g = ctx.createGain()
-  o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination)
-  g.gain.setValueAtTime(0.0001, ctx.currentTime + start)
-  g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + start + 0.01)
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur)
-  o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + 0.02)
-}
-// Tick breve durante il conto alla rovescia.
-function tick() { const ctx = audioCtx(); if (ctx) playNote(ctx, 620, 0, 0.07, 0.12) }
-// Suono "GO": tre note ascendenti da partenza gara.
-function goSound() {
-  const ctx = audioCtx(); if (!ctx) return
-  playNote(ctx, 660, 0, 0.12)
-  playNote(ctx, 830, 0.13, 0.12)
-  playNote(ctx, 1046, 0.27, 0.28, 0.2)
-}
 
 // --- Timer recupero: tap su un preset e parte quel recupero ---
 function RestTimer({ defaultSec, presets, onPick, onClose }: {

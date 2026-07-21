@@ -184,6 +184,18 @@ export async function deleteCardio(id: string): Promise<void> {
   await db.cardio.delete(id)
 }
 
+// --- Preset cardio a intervalli (custom) ---
+export function listCardioPresets() {
+  return db.cardioPresets.where('userId').equals(U).toArray()
+}
+export async function addCardioPreset(name: string, rounds: number, workSec: number, restSec: number): Promise<void> {
+  const ts = nowISO()
+  await db.cardioPresets.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: name.trim() || 'Preset', rounds, workSec, restSec })
+}
+export async function deleteCardioPreset(id: string): Promise<void> {
+  await db.cardioPresets.delete(id)
+}
+
 // --- Body Metrics ---
 export interface MeasurementInput {
   weight: number; bodyFat?: number; waist?: number; arm?: number; thigh?: number; chest?: number; note?: string

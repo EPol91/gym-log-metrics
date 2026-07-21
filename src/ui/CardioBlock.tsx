@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { addCardio, cardioOf, deleteCardio, updateCardio, getUser } from '../db/repo'
+import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioPreset, deleteCardioPreset } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
 import { CardioViz } from './CardioViz'
+import { CardioRunner } from './CardioRunner'
 import { Info } from './anim'
 import type { CardioMethod, CardioType, CardioSession } from '../db/schema'
 
@@ -13,23 +14,43 @@ const TYPE_LABEL: Record<CardioType, string> = {
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
 const TYPES = Object.keys(TYPE_LABEL) as CardioType[]
+const INTERVAL_TYPES: CardioType[] = ['hiit', 'tabata', 'intervalli']
+const isInterval = (t: CardioType) => INTERVAL_TYPES.includes(t)
+const DEFAULTS: Record<string, { rounds: number; work: number; rest: number }> = {
+  tabata: { rounds: 8, work: 20, rest: 10 },
+  hiit: { rounds: 10, work: 30, rest: 30 },
+  intervalli: { rounds: 8, work: 30, rest: 30 },
+}
+const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+
+function NumStep({ label, value, set, step, min }: { label: string; value: number; set: (v: number) => void; step: number; min: number }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center' }}>
+      <label className="fl">{label}</label>
+      <div className="row" style={{ gap: 4, justifyContent: 'center' }}>
+        <button style={{ padding: '8px 12px' }} onClick={() => set(Math.max(min, value - step))}>−</button>
+        <strong style={{ minWidth: 34, fontSize: 18 }}>{value}</strong>
+        <button style={{ padding: '8px 12px' }} onClick={() => set(value + step)}>＋</button>
+      </div>
+    </div>
+  )
+}
 
 function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number; restingHr?: number; maxHr?: number }) {
   const [edit, setEdit] = useState(false)
   const [dur, setDur] = useState(String(c.durationMin))
   const [bpm, setBpm] = useState(c.avgBpm != null ? String(c.avgBpm) : '')
   const z = c.avgBpm && (age || maxHr) ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr, method: c.method ?? 'standard', maxHr }) : null
-
   if (edit) {
     return (
       <div className="card" style={{ background: 'var(--surface-2)', margin: '6px 0' }}>
         <div className="row">
-          <div style={{ flex: 1 }}><label className="fl">Durata</label><input inputMode="numeric" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
+          <div style={{ flex: 1 }}><label className="fl">Durata</label><input inputMode="decimal" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
           <div style={{ flex: 1 }}><label className="fl">BPM</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <button className="ghost" style={{ flex: 1 }} onClick={() => setEdit(false)}>Annulla</button>
-          <button className="primary" style={{ flex: 2 }} onClick={async () => { const dn = parseNum(dur, { min: 1, max: 600 }); if (dn == null) return; await updateCardio(c.id, { durationMin: dn, avgBpm: bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined) }); setEdit(false) }}>Salva</button>
+          <button className="primary" style={{ flex: 2 }} onClick={async () => { const dn = parseNum(dur, { min: 0.1, max: 600 }); if (dn == null) return; await updateCardio(c.id, { durationMin: dn, avgBpm: bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined) }); setEdit(false) }}>Salva</button>
         </div>
       </div>
     )
@@ -51,33 +72,33 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
 export function CardioBlock({ sessionId }: { sessionId: string }) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
   const user = useLiveQuery(getUser, [])
+  const presets = useLiveQuery(listCardioPresets, []) ?? []
+  const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
+
+  const [phase, setPhase] = useState<'idle' | 'setup' | 'running'>('idle')
   const [open, setOpen] = useState(false)
   const [dur, setDur] = useState('')
   const [bpm, setBpm] = useState('')
   const [method, setMethod] = useState<CardioMethod>('standard')
   const [ctype, setCtype] = useState<CardioType>('corsa')
-  const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
 
-  // Cronometro live
-  const [running, setRunning] = useState(false)
-  const [startTs, setStartTs] = useState(0)
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [running])
-  const elapsedSec = running ? Math.max(0, Math.floor((now - startTs) / 1000)) : 0
+  // setup timer
+  const [rounds, setRounds] = useState(8)
+  const [work, setWork] = useState(20)
+  const [rest, setRest] = useState(10)
+  const [steadyMode, setSteadyMode] = useState<'chrono' | 'countdown'>('chrono')
+  const [targetMin, setTargetMin] = useState(20)
 
-  // Medie (7 / 30 giorni)
   const [period, setPeriod] = useState(7)
   const avg = useLiveQuery(() => computeCardioAverages(period), [period])
 
-  function startLive() { setStartTs(Date.now()); setNow(Date.now()); setRunning(true); setOpen(false) }
-  function stopLive() {
-    const min = Math.max(0.1, +((Date.now() - startTs) / 60000).toFixed(1))
-    setDur(String(min)); setRunning(false); setOpen(true)
+  function chooseType(t: CardioType) {
+    setCtype(t)
+    if (isInterval(t) && DEFAULTS[t]) { setRounds(DEFAULTS[t].rounds); setWork(DEFAULTS[t].work); setRest(DEFAULTS[t].rest) }
   }
+  const intervalTotal = rounds * work + Math.max(0, rounds - 1) * rest + 3
+
+  function onRunnerComplete(min: number) { setDur(String(min)); setPhase('idle'); setOpen(true) }
 
   const durN = parseNum(dur, { min: 0.1, max: 600 })
   async function add() {
@@ -90,16 +111,15 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
     <div className="card">
       <div className="row spread">
         <strong>Cardio</strong>
-        {!open && !running && (
+        {phase === 'idle' && !open && (
           <span className="row" style={{ gap: 6 }}>
-            <button className="ghost small" onClick={startLive}>▶ Avvia</button>
+            <button className="ghost small" onClick={() => setPhase('setup')}>▶ Avvia</button>
             <button className="ghost small" onClick={() => setOpen(true)}>＋ Manuale</button>
           </span>
         )}
       </div>
 
-      {/* Medie storiche */}
-      {avg && avg.count > 0 && (
+      {avg && avg.count > 0 && phase === 'idle' && !open && (
         <div className="row spread" style={{ marginTop: 6 }}>
           <span className="muted small">
             Media {period === 7 ? 'settimana' : 'mese'}: <strong style={{ color: 'var(--gold)' }}>{avg.avgDurationMin} min</strong>
@@ -112,14 +132,70 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
         </div>
       )}
 
-      {/* Cronometro live in corso */}
-      {running && (
+      {/* Setup timer */}
+      {phase === 'setup' && (
         <div className="col" style={{ marginTop: 10 }}>
-          <div className="timer" style={{ color: 'var(--gold)' }}>
-            {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
+          <div>
+            <label className="fl">Tipo</label>
+            <select value={ctype} onChange={(e) => chooseType(e.target.value as CardioType)}>
+              {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+            </select>
           </div>
-          <button className="primary" style={{ width: '100%' }} onClick={stopLive}>⏹ Stop e salva durata</button>
+
+          {isInterval(ctype) ? (
+            <>
+              {presets.length > 0 && (
+                <div>
+                  <label className="fl">I tuoi preset</label>
+                  <div className="col">
+                    {presets.map((p) => (
+                      <div className="row spread" key={p.id}>
+                        <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => { setRounds(p.rounds); setWork(p.workSec); setRest(p.restSec) }}>
+                          {p.name} <span className="muted small">· {p.rounds}× {p.workSec}/{p.restSec}s</span>
+                        </button>
+                        <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="row">
+                <NumStep label="Round" value={rounds} set={setRounds} step={1} min={1} />
+                <NumStep label="Lavoro (s)" value={work} set={setWork} step={5} min={5} />
+                <NumStep label="Recupero (s)" value={rest} set={setRest} step={5} min={0} />
+              </div>
+              <p className="muted small">Totale stimato: <strong style={{ color: 'var(--gold)' }}>{fmt(intervalTotal)}</strong></p>
+              <button className="ghost small" onClick={async () => { const n = prompt('Nome preset:'); if (n) await addCardioPreset(n, rounds, work, rest) }}>☆ Salva come preset</button>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="fl">Modalità</label>
+                <div className="row">
+                  <button className={steadyMode === 'chrono' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('chrono')}>Cronometro</button>
+                  <button className={steadyMode === 'countdown' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('countdown')}>Countdown</button>
+                </div>
+              </div>
+              {steadyMode === 'countdown' && (
+                <div style={{ maxWidth: 160 }}><NumStep label="Durata target (min)" value={targetMin} set={setTargetMin} step={5} min={1} /></div>
+              )}
+            </>
+          )}
+
+          <div className="row">
+            <button className="ghost" style={{ flex: 1 }} onClick={() => setPhase('idle')}>Annulla</button>
+            <button className="primary" style={{ flex: 2 }} onClick={() => setPhase('running')}>▶ Avvia</button>
+          </div>
         </div>
+      )}
+
+      {/* Timer in corso */}
+      {phase === 'running' && (
+        isInterval(ctype)
+          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+          : steadyMode === 'countdown'
+            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+            : <CardioRunner mode="chrono" onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
       )}
 
       {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}
@@ -137,20 +213,16 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
             <div style={{ flex: 1 }}><label className="fl">BPM medio (opz.)</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
           </div>
           <div>
-            <label className="fl">Formula zona<Info text="Zone cardio Z1-Z5 (recupero→anaerobico). Standard = % della FC max (220−età o misurata). HRR/Karvonen = tiene conto anche della FC a riposo, più preciso ma serve quel dato." /></label>
+            <label className="fl">Formula zona<Info text="Zone cardio Z1-Z5. Standard = % FC max (220−età o misurata). HRR/Karvonen = tiene conto anche della FC a riposo, più preciso ma serve quel dato." /></label>
             <div className="row">
               <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>
-                Standard
-                <span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}{user?.hrMaxMeasured ? ' (mis.)' : ''}</span>
+                Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}{user?.hrMaxMeasured ? ' (mis.)' : ''}</span>
               </button>
               <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>
-                HRR (Karvonen)
-                <span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span>
+                HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span>
               </button>
             </div>
-            {method === 'hrr' && !user?.restingHr && (
-              <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>
-            )}
+            {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
           </div>
           {(() => {
             const live = bpm !== '' && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: Number(bpm), age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured }) : null
