@@ -93,6 +93,9 @@ button {
   transition: border-color .12s, background .12s;
 }
 button:active { transform: scale(.98); }
+/* .fab si centra con translateX(-50%): il press deve preservarla, altrimenti il bottone
+   "salta" a destra e il tap a sinistra/centro cade fuori (click annullato). */
+.fab:active { transform: translateX(-50%) scale(.98); }
 button.primary { background: var(--gold); color: #1a1400; border-color: var(--gold); font-weight: 600; }
 button.ghost { background: transparent; }
 button.sel { border-color: var(--gold); color: var(--gold); }
