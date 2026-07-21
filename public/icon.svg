@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0e0e10"/>
+  <rect x="40" y="40" width="432" height="432" rx="96" fill="#141418"/>
+  <g fill="#d4af37">
+    <rect x="92" y="191" width="42" height="130" rx="16"/>
+    <rect x="52" y="214" width="32" height="84" rx="14"/>
+    <rect x="378" y="191" width="42" height="130" rx="16"/>
+    <rect x="428" y="214" width="32" height="84" rx="14"/>
+    <rect x="134" y="243" width="244" height="26" rx="13" opacity="0.5"/>
+  </g>
+  <text x="256" y="306" font-family="Georgia, 'Times New Roman', serif" font-size="150" font-weight="700"
+        text-anchor="middle" fill="#d4af37" letter-spacing="-4">EP</text>
+</svg>
