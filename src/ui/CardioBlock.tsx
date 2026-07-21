@@ -1,13 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioPreset, deleteCardioPreset } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
+import { isHeartRateSupported, connectHeartRate, type HeartRateHandle } from '../util/heartRate'
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
 import { Info } from './anim'
 import type { CardioMethod, CardioType, CardioSession } from '../db/schema'
+
+/** Live BPM da fascia Bluetooth: connessione, valore corrente e media dei campioni. */
+function useHeartRate() {
+  const [supported] = useState(isHeartRateSupported())
+  const [connected, setConnected] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [bpm, setBpm] = useState<number | null>(null)
+  const [deviceName, setDeviceName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [avgBpm, setAvgBpm] = useState<number | null>(null)
+  const handleRef = useRef<HeartRateHandle | null>(null)
+  const acc = useRef({ sum: 0, count: 0 })
+
+  async function connect() {
+    if (connecting || connected) return
+    setError(null); setConnecting(true)
+    try {
+      const h = await connectHeartRate(
+        (v) => { setBpm(v); acc.current.sum += v; acc.current.count++; setAvgBpm(Math.round(acc.current.sum / acc.current.count)) },
+        () => { setConnected(false); setBpm(null); handleRef.current = null },
+      )
+      handleRef.current = h; setDeviceName(h.deviceName); setConnected(true)
+    } catch (e) {
+      const msg = (e as Error)?.message ?? ''
+      if (!/cancel/i.test(msg)) setError('Connessione fascia fallita.')
+    } finally { setConnecting(false) }
+  }
+  function disconnect() { handleRef.current?.disconnect(); handleRef.current = null; setConnected(false); setBpm(null) }
+  function resetAvg() { acc.current = { sum: 0, count: 0 }; setAvgBpm(null) }
+
+  useEffect(() => () => handleRef.current?.disconnect(), [])
+
+  return { supported, connected, connecting, bpm, deviceName, error, avgBpm, connect, disconnect, resetAvg }
+}
 
 const TYPE_LABEL: Record<CardioType, string> = {
   corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore',
@@ -74,6 +109,10 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
   const user = useLiveQuery(getUser, [])
   const presets = useLiveQuery(listCardioPresets, []) ?? []
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
+  const hr = useHeartRate()
+  const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
+    ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: user?.restingHr, method: 'standard', maxHr: user?.hrMaxMeasured })
+    : null
 
   const [phase, setPhase] = useState<'idle' | 'setup' | 'running'>('idle')
   const [open, setOpen] = useState(false)
@@ -98,7 +137,12 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
   }
   const intervalTotal = rounds * work + Math.max(0, rounds - 1) * rest + 3
 
-  function onRunnerComplete(min: number) { setDur(String(min)); setPhase('idle'); setOpen(true) }
+  function onRunnerComplete(min: number) {
+    setDur(String(min))
+    if (hr.avgBpm != null) setBpm(String(hr.avgBpm)) // prefill BPM medio dalla fascia
+    setPhase('idle'); setOpen(true)
+  }
+  function startRun() { hr.resetAvg(); setPhase('running') } // azzera la media per la nuova sessione
 
   const durN = parseNum(dur, { min: 0.1, max: 600 })
   async function add() {
@@ -118,6 +162,32 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
           </span>
         )}
       </div>
+
+      {/* Live BPM da fascia Bluetooth (solo browser che lo supportano; iOS nascosto) */}
+      {hr.supported && (
+        <>
+          <div className="row spread" style={{ marginTop: 8 }}>
+            {hr.connected ? (
+              <>
+                <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
+                  <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
+                  <span className="muted small">bpm{liveZone ? ` · ${liveZone.label}` : ''}</span>
+                </span>
+                <span className="row" style={{ gap: 6, alignItems: 'center' }}>
+                  <span className="muted small" style={{ maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hr.deviceName}</span>
+                  <button className="ghost small" onClick={hr.disconnect}>Disconnetti</button>
+                </span>
+              </>
+            ) : (
+              <button className="ghost small" onClick={hr.connect} disabled={hr.connecting}>
+                {hr.connecting ? 'Connessione…' : '❤️ Connetti fascia'}
+              </button>
+            )}
+          </div>
+          {hr.error && <p className="small" style={{ color: '#e57373', marginTop: 4 }}>{hr.error}</p>}
+        </>
+      )}
 
       {avg && avg.count > 0 && phase === 'idle' && !open && (
         <div className="row spread" style={{ marginTop: 6 }}>
@@ -184,7 +254,7 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
 
           <div className="row">
             <button className="ghost" style={{ flex: 1 }} onClick={() => setPhase('idle')}>Annulla</button>
-            <button className="primary" style={{ flex: 2 }} onClick={() => setPhase('running')}>▶ Avvia</button>
+            <button className="primary" style={{ flex: 2 }} onClick={startRun}>▶ Avvia</button>
           </div>
         </div>
       )}
