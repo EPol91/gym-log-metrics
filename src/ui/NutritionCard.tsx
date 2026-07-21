@@ -40,14 +40,16 @@ export function NutritionCard() {
       <label className="fl">Tipo giornata</label>
       <div className="row" style={{ marginBottom: 10 }}>
         {DAY_TYPES.map((d) => (
-          <button key={d.key} className={n?.dayType === d.key ? 'sel' : ''} style={{ flex: 1 }} onClick={() => upsertNutrition(date, { dayType: d.key })}>{d.label}</button>
+          <button key={d.key} className={n?.dayType === d.key ? 'sel' : ''} style={{ flex: 1 }}
+            onClick={() => upsertNutrition(date, { dayType: n?.dayType === d.key ? null : d.key })}>{d.label}</button>
         ))}
       </div>
 
       <label className="fl">Stato</label>
       <div className="row" style={{ marginBottom: 10 }}>
         {STATUSES.map((s) => (
-          <button key={s.key} className={n?.status === s.key ? 'sel' : ''} style={{ flex: 1 }} onClick={() => upsertNutrition(date, { status: s.key })}>{s.label}</button>
+          <button key={s.key} className={n?.status === s.key ? 'sel' : ''} style={{ flex: 1 }}
+            onClick={() => upsertNutrition(date, { status: n?.status === s.key ? null : s.key })}>{s.label}</button>
         ))}
       </div>
 

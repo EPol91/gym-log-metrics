@@ -19,15 +19,13 @@ const TYPE_LABEL: Record<string, string> = {
 function ScoreTile({ name, s }: { name: string; s: ScoreResult }) {
   return (
     <div className="card" style={{ margin: 0, minWidth: 0 }}>
+      <div className="row" style={{ gap: 4, alignItems: 'center', marginBottom: 8 }}>
+        <strong className="small">{name}</strong>
+        <Info text={SCORE_TIPS[name] ?? ''} />
+      </div>
       <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-        <ScoreRing value={s.value} size={56} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
-            <Info text={SCORE_TIPS[name] ?? ''} />
-          </div>
-          <span className="tag" style={{ display: 'inline-block', marginTop: 4 }}>{s.reliability}</span>
-        </div>
+        <ScoreRing value={s.value} size={52} />
+        <span className="tag">{s.reliability}</span>
       </div>
     </div>
   )

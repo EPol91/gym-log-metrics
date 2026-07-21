@@ -123,10 +123,10 @@ export type NutritionStatus = 'seguito' | 'parziale' | 'no'
 /** SOLO contesto per l'AI. NON entra nei calcoli degli Score (decisione 2026-07-19). */
 export interface NutritionContext extends BaseRecord {
   date: ISODate
-  dayType: NutritionDayType
+  dayType?: NutritionDayType | null // null = deselezionato
   water?: number
   salt?: number
-  status: NutritionStatus
+  status?: NutritionStatus | null // null = deselezionato
 }
 
 export type CardioMethod = 'standard' | 'hrr'

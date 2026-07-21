@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getCurrentPhase, setPhase, getUser, updateUser } from '../db/repo'
+import { getCurrentPhase, setPhase, clearPhase, getUser, updateUser } from '../db/repo'
 import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { GymSettings } from './GymSettings'
@@ -38,7 +38,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
             <button
               key={p.key}
               className={phase?.phase === p.key ? 'sel' : ''}
-              onClick={() => setPhase(p.key)}
+              onClick={() => (phase?.phase === p.key ? clearPhase() : setPhase(p.key))}
             >
               {p.label} <span className="muted small">· {p.hint}</span>
             </button>

@@ -99,6 +99,12 @@ export async function setPhase(phase: Phase): Promise<void> {
   await db.phases.add(p)
 }
 
+/** Chiude la fase corrente senza aprirne una nuova (deseleziona). */
+export async function clearPhase(): Promise<void> {
+  const current = await getCurrentPhase()
+  if (current) await db.phases.update(current.id, { endDate: today(), updatedAt: nowISO() })
+}
+
 // --- Template ---
 export function listTemplates() {
   return db.templates.where('userId').equals(U).toArray()
@@ -215,8 +221,8 @@ export function getNutritionToday() {
 }
 
 export interface NutritionPatch {
-  dayType?: NutritionDayType
-  status?: NutritionStatus
+  dayType?: NutritionDayType | null
+  status?: NutritionStatus | null
   water?: number
   salt?: number
 }
@@ -226,7 +232,7 @@ export function upsertNutritionToday(patch: NutritionPatch): Promise<void> {
   return upsertNutrition(today(), patch)
 }
 
-/** Crea o aggiorna il contesto nutrizionale di una data specifica. */
+/** Crea o aggiorna il contesto nutrizionale di una data specifica. (null = deseleziona) */
 export async function upsertNutrition(date: string, patch: NutritionPatch): Promise<void> {
   const existing = await getNutrition(date)
   const ts = nowISO()
@@ -235,7 +241,9 @@ export async function upsertNutrition(date: string, patch: NutritionPatch): Prom
   } else {
     const n: NutritionContext = {
       id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-      date, dayType: patch.dayType ?? 'on', status: patch.status ?? 'no',
+      date,
+      ...(patch.dayType != null ? { dayType: patch.dayType } : {}),
+      ...(patch.status != null ? { status: patch.status } : {}),
       ...(patch.water != null ? { water: patch.water } : {}),
       ...(patch.salt != null ? { salt: patch.salt } : {}),
     }

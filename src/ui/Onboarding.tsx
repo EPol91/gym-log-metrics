@@ -66,7 +66,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="card">
         <label className="fl">Fase attuale (opz.)</label>
         <div className="grid2">
-          {PHASES.map((p) => <button key={p.key} className={phase === p.key ? 'sel' : ''} onClick={() => setPh(p.key)}>{p.label}</button>)}
+          {PHASES.map((p) => <button key={p.key} className={phase === p.key ? 'sel' : ''} onClick={() => setPh(phase === p.key ? null : p.key)}>{p.label}</button>)}
         </div>
       </div>
 
