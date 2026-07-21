@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { getCurrentPhase, setPhase, clearPhase, getUser, updateUser } from '../db/repo'
 import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
+import { CsvImport } from './CsvImport'
 import { GymSettings } from './GymSettings'
 import { TemplatesSettings } from './TemplatesSettings'
 import { parseNum } from '../util/validate'
@@ -121,6 +122,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
       <TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} />
       <GymSettings />
       <AiSettings />
+      <CsvImport />
       <BackupSettings />
     </div>
   )

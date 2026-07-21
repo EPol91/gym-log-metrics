@@ -9,6 +9,7 @@ import { normalizeName } from '../db/catalog'
 import { e1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
+import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from '../util/voice'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
 import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
@@ -112,6 +113,35 @@ function RirPicker({ value, set }: { value: number | null; set: (v: number | nul
   )
 }
 
+// Dettatura vocale della serie: "100 per 8 RIR 2" → riempie i campi (poi si conferma con "Aggiungi set").
+function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
+  const [listening, setListening] = useState(false)
+  const [heard, setHeard] = useState('')
+  const stopRef = useRef<(() => void) | null>(null)
+  if (!isVoiceSupported()) return null
+
+  function toggle() {
+    if (listening) { stopRef.current?.(); return }
+    setHeard(''); setListening(true)
+    stopRef.current = startRecognition(
+      ({ transcript, final }) => { setHeard(transcript); if (final) onFill(parseVoiceSet(transcript)) },
+      () => { setListening(false); stopRef.current = null },
+      () => { setListening(false); stopRef.current = null },
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button className={listening ? 'sel' : 'ghost'} style={{ width: '100%' }} onClick={toggle}>
+        {listening ? '● In ascolto… tocca per fermare' : '🎤 Detta la serie'}
+        <Info text="Dillo così: «100 per 8» oppure «102,5 per 6 RIR 2». Aggiungi «riscaldamento» per marcarla. La voce riempie i campi: controlli e premi Aggiungi set." />
+      </button>
+      {heard ? <p className="muted small" style={{ marginTop: 4 }}>Sentito: “{heard}”</p>
+        : listening && <p className="muted small" style={{ marginTop: 4 }}>Es: «100 per 8 RIR 2»</p>}
+    </div>
+  )
+}
+
 function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('')
   const list = useLiveQuery(allExercises, []) ?? []
@@ -194,6 +224,13 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
 
   const canAdd = parseNum(w, { min: 0 }) != null && parseNum(r, { min: 1, int: true }) != null
 
+  function fillFromVoice(f: VoiceSet) {
+    if (f.weight != null) setW(String(f.weight))
+    if (f.reps != null) setR(String(f.reps))
+    if (f.rir != null) setRir(f.rir)
+    if (f.warmup) setWarmup(true)
+  }
+
   async function add() {
     const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
     if (wn == null || rn == null) return
@@ -225,6 +262,7 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
         <Stepper label="reps" value={r} set={setR} step={1} />
       </div>
       <div style={{ marginTop: 8 }}><RirPicker value={rir} set={setRir} /></div>
+      <VoiceButton onFill={fillFromVoice} />
       <div className="row spread" style={{ marginTop: 8 }}>
         <span className="row" style={{ alignItems: 'center' }}>
           <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
