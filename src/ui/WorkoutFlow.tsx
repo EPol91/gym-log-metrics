@@ -11,7 +11,9 @@ type Source = { kind: 'type'; type: WorkoutType } | { kind: 'template'; template
 
 /** Flusso completo di un allenamento, dall'inizio al riepilogo. onExit torna alla Home.
  *  resumeSessionId: se presente, riprende una seduta già aperta (salta a 'live'). */
-export function WorkoutFlow({ onExit, resumeSessionId }: { onExit: () => void; resumeSessionId?: string | null }) {
+export function WorkoutFlow({ onExit, resumeSessionId, onSessionStarted }: {
+  onExit: () => void; resumeSessionId?: string | null; onSessionStarted?: (id: string) => void
+}) {
   const [step, setStep] = useState<Step>(resumeSessionId ? 'live' : 'start')
   const [source, setSource] = useState<Source>({ kind: 'type', type: 'push' })
   const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null)
@@ -22,6 +24,7 @@ export function WorkoutFlow({ onExit, resumeSessionId }: { onExit: () => void; r
       : await startSession(source.type, r)
     setSessionId(id)
     setStep('live')
+    onSessionStarted?.(id) // persiste l'id per sopravvivere a refresh/back
   }
   async function finish() {
     if (sessionId) await finishSession(sessionId)
