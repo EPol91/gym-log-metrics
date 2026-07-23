@@ -118,13 +118,22 @@ function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
   const [listening, setListening] = useState(false)
   const [heard, setHeard] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
+  const clearRef = useRef<number | null>(null)
+  useEffect(() => () => { if (clearRef.current) clearTimeout(clearRef.current) }, [])
   if (!isVoiceSupported()) return null
 
   function toggle() {
     if (listening) { stopRef.current?.(); return }
+    if (clearRef.current) clearTimeout(clearRef.current)
     setHeard(''); setListening(true)
     stopRef.current = startRecognition(
-      ({ transcript, final }) => { setHeard(transcript); if (final) onFill(parseVoiceSet(transcript)) },
+      ({ transcript, final }) => {
+        setHeard(transcript)
+        if (final) {
+          onFill(parseVoiceSet(transcript))
+          clearRef.current = window.setTimeout(() => setHeard(''), 4000) // il testo sparisce dopo la lettura
+        }
+      },
       () => { setListening(false); stopRef.current = null },
       () => { setListening(false); stopRef.current = null },
     )

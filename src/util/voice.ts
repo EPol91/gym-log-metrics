@@ -68,6 +68,8 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 /**
  * Interpreta una frase vocale in una serie.
  * Esempi: "100 per 8", "102,5 per 6 RIR 2", "riscaldamento 60 per 12".
+ * Se il riconoscitore non restituisce il separatore ("per"), usa i numeri in ordine:
+ * 1°=peso, 2°=reps, 3°=RIR. Così "15 8" → 15 kg × 8.
  */
 export function parseVoiceSet(raw: string): VoiceSet {
   let t = raw.toLowerCase().trim()
@@ -77,19 +79,26 @@ export function parseVoiceSet(raw: string): VoiceSet {
   const res: VoiceSet = {}
   if (/riscald|warm|scald/.test(t)) res.warmup = true
 
-  // RIR (e rimuovilo per non confondere il resto)
+  // RIR esplicito (e rimuovilo per non confondere il resto)
   const rir = t.match(/\b(?:rir|riserva|in\s*riserva)\s*(?:di\s*)?(\d+)/)
   if (rir) res.rir = clamp(+rir[1], 0, 10)
   const noRir = t.replace(/\b(?:rir|riserva|in\s*riserva)\s*(?:di\s*)?\d+/, ' ')
 
   // Reps: numero dopo un separatore ("per", "x", "×", "by", "volte")
-  const reps = noRir.match(/(?:per|x|×|by|volte)\s*(\d+)/)
-  if (reps) res.reps = clamp(+reps[1], 1, 1000)
+  const repsMatch = noRir.match(/(?:per|x|×|by|volte)\s*(\d+)/)
+  if (repsMatch) {
+    res.reps = clamp(+repsMatch[1], 1, 1000)
+    const wpart = repsMatch.index != null ? noRir.slice(0, repsMatch.index) : noRir
+    const w = wpart.match(/(\d+(?:\.\d+)?)/)
+    if (w) res.weight = clamp(+w[1], 0, 10000)
+    return res
+  }
 
-  // Peso: primo numero (eventuale decimale) prima del separatore reps
-  const wpart = reps && reps.index != null ? noRir.slice(0, reps.index) : noRir
-  const w = wpart.match(/(\d+(?:\.\d+)?)/)
-  if (w) res.weight = clamp(+w[1], 0, 10000)
+  // Nessun separatore → posizionale sui numeri rimasti.
+  const nums = (noRir.match(/\d+(?:\.\d+)?/g) ?? []).map(Number)
+  if (nums.length >= 1) res.weight = clamp(nums[0], 0, 10000)
+  if (nums.length >= 2) res.reps = clamp(Math.round(nums[1]), 1, 1000)
+  if (res.rir == null && nums.length >= 3) res.rir = clamp(Math.round(nums[2]), 0, 10)
 
   return res
 }
