@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { finishCue } from '../util/sound'
 import { db } from '../db/db'
 import { tonnage, volume } from '../metrics/metrics'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
@@ -39,6 +40,7 @@ export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome:
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const [saved, setSaved] = useState(false)
+  useEffect(() => { finishCue() }, []) // suono di fine all'apertura del riepilogo
 
   async function saveTemplate() {
     await createTemplateFromSession(sessionId, name)
@@ -48,7 +50,8 @@ export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome:
 
   return (
     <div className="col">
-      <h2>Allenamento finito 💪</h2>
+      <div style={{ textAlign: 'center', fontSize: 46, lineHeight: 1, animation: 'bump .7s cubic-bezier(.2,.8,.2,1) both' }}>🎉💪</div>
+      <h2 style={{ textAlign: 'center', animation: 'popIn .5s ease .1s both' }}>Allenamento finito</h2>
       {!stats ? (
         <p className="muted">Calcolo…</p>
       ) : (

@@ -117,6 +117,11 @@ export async function clearPhase(): Promise<void> {
   if (current) await db.phases.update(current.id, { endDate: today(), updatedAt: nowISO() })
 }
 
+/** Corregge la data d'inizio della fase corrente (se il riconoscimento è sbagliato). */
+export async function setPhaseStartDate(phaseId: string, startDate: string): Promise<void> {
+  await db.phases.update(phaseId, { startDate, updatedAt: nowISO() })
+}
+
 // --- Template ---
 export function listTemplates() {
   return db.templates.where('userId').equals(U).toArray()

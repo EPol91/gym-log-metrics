@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { READINESS_QUESTIONS } from './readinessOptions'
 import { computeReadiness } from '../scores/readiness'
+import { workoutPhrase } from '../util/phrases'
 import type { ReadinessCheck } from '../db/schema'
 
 type Answers = Partial<Record<'sleep' | 'fatigue' | 'energy', number>>
@@ -22,6 +23,7 @@ export function ReadinessScreen({
       <div>
         <h2>Come stai oggi?</h2>
         <p className="muted small">Check pre-workout · 15 secondi · alimenta il Readiness</p>
+        <p className="small" style={{ color: 'var(--gold)', marginTop: 4 }}>{workoutPhrase()}</p>
       </div>
 
       {READINESS_QUESTIONS.map((q) => (

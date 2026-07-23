@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getCurrentPhase, setPhase, clearPhase, getUser, updateUser } from '../db/repo'
+import { getCurrentPhase, setPhase, clearPhase, setPhaseStartDate, getUser, updateUser } from '../db/repo'
 import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { CsvImport } from './CsvImport'
@@ -46,9 +46,12 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
           ))}
         </div>
         {phase ? (
-          <p className="muted small" style={{ marginTop: 10 }}>
-            In <strong style={{ color: 'var(--gold)' }}>{phase.phase}</strong> dal {phase.startDate}. Alimenta il Performance Score.
-          </p>
+          <div style={{ marginTop: 10 }}>
+            <label className="fl">In <strong style={{ color: 'var(--gold)' }}>{phase.phase}</strong> dal — correggi la data se sbagliata</label>
+            <input type="date" defaultValue={phase.startDate} max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => { if (e.target.value) setPhaseStartDate(phase.id, e.target.value) }} style={{ maxWidth: 200 }} />
+            <p className="muted small" style={{ marginTop: 4 }}>Alimenta il Performance Score.</p>
+          </div>
         ) : (
           <p className="muted small" style={{ marginTop: 10 }}>Nessuna fase: il Performance resta “insufficiente”.</p>
         )}

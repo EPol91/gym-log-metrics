@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
-import { getOngoingSession } from '../db/repo'
+import { getOngoingSession, getUser } from '../db/repo'
+import { dailyPhrase } from '../util/phrases'
 import { NutritionCard } from './NutritionCard'
 import { ScoreRing, Info } from './anim'
 import type { ScoreResult } from '../scores/types'
@@ -37,12 +38,15 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
 }) {
   const home = useLiveQuery(computeHome, [])
   const ongoing = useLiveQuery(getOngoingSession, [])
+  const user = useLiveQuery(getUser, [])
+  const firstName = (user?.name ?? '').trim().split(' ')[0]
 
   return (
     <div className="col">
       <div>
-        <h1>GYM LOG <span className="brand">&amp; METRICS</span></h1>
-        <p className="muted small">La tua dashboard</p>
+        <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.04em' }}>GYM LOG &amp; METRICS</p>
+        <h1>Ciao{firstName ? ` ${firstName}` : ''} <span className="brand">👋</span></h1>
+        <p className="muted small">{dailyPhrase()}</p>
       </div>
 
       {ongoing ? (
