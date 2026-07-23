@@ -94,7 +94,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const [open, setOpen] = useState(false)
   const [dur, setDur] = useState('')
   const [bpm, setBpm] = useState('')
-  const [method, setMethod] = useState<CardioMethod>('standard')
+  const [method, setMethod] = useState<CardioMethod>('hrr') // HRR default (blueprint); fallback a Standard se manca FC riposo
   const [ctype, setCtype] = useState<CardioType>('corsa')
 
   const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
@@ -259,10 +259,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
       {/* Timer in corso */}
       {phase === 'running' && (
         isInterval(ctype)
-          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
           : steadyMode === 'countdown'
-            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
-            : <CardioRunner mode="chrono" onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+            : <CardioRunner mode="chrono" bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
       )}
 
       {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}

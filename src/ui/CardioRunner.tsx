@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
 import { useWallTick } from '../util/useWallClock'
+import { CardioViz } from './CardioViz'
 
 type Mode = 'interval' | 'countdown' | 'chrono'
 interface Phase { type: 'prep' | 'work' | 'rest'; dur: number; round: number }
@@ -9,8 +10,9 @@ const fmt = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${(Math.max(0, s)
 
 /** Timer cardio: intervalli (work/rest a round), countdown (durata target) o cronometro libero.
  *  onComplete riceve la durata in minuti. */
-export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, onComplete, onCancel }: {
+export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, zone, zonePct, onComplete, onCancel }: {
   mode: Mode; rounds?: number; workSec?: number; restSec?: number; targetSec?: number
+  bpm?: number | null; zone?: number; zonePct?: number
   onComplete: (durationMin: number) => void; onCancel: () => void
 }) {
   const [running, setRunning] = useState(true)
@@ -78,16 +80,33 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
   function stopSave() { onComplete(+Math.max(0.1, elapsed / 60).toFixed(1)) }
 
   return (
-    <div className="card" style={{ borderColor: color, transition: 'border-color .3s' }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50, background: 'var(--bg)',
+      display: 'flex', flexDirection: 'column', gap: 8,
+      padding: '18px 18px calc(18px + env(safe-area-inset-bottom))',
+    }}>
       <div className="row spread">
-        <span className="muted small" style={{ color }}>{label}{mode === 'interval' ? ` · round ${round}/${rounds}` : ''}</span>
+        <span className="small" style={{ color, fontWeight: 700, letterSpacing: '.06em' }}>
+          {label}{mode === 'interval' ? ` · round ${round}/${rounds}` : ''}
+        </span>
         <button className="ghost small" onClick={onCancel}>Annulla ✕</button>
       </div>
-      <div className="timer" style={{ color, fontSize: 56 }}>{fmt(bigLeft)}</div>
-      {mode !== 'chrono' && <div className="muted small" style={{ textAlign: 'center', marginTop: -4 }}>totale {fmt(elapsed)}</div>}
-      <div className="row" style={{ marginTop: 10 }}>
-        <button style={{ flex: 1 }} onClick={toggleRun}>{running ? '⏸ Pausa' : '▶ Riprendi'}</button>
-        <button className="primary" style={{ flex: 2 }} onClick={stopSave}>⏹ Stop e salva</button>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(64px,22vw,120px)', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(bigLeft)}
+        </div>
+        {mode !== 'chrono' && <div className="muted small">totale {fmt(elapsed)}</div>}
+        {bpm != null && (
+          <div style={{ width: 'min(420px,100%)', marginTop: 20 }}>
+            <CardioViz bpm={bpm} pct={zonePct} zone={zone} live={running} />
+          </div>
+        )}
+      </div>
+
+      <div className="row" style={{ gap: 10 }}>
+        <button style={{ flex: 1, padding: '16px' }} onClick={toggleRun}>{running ? '⏸ Pausa' : '▶ Riprendi'}</button>
+        <button className="primary" style={{ flex: 2, padding: '16px', fontSize: 16 }} onClick={stopSave}>⏹ Stop e salva</button>
       </div>
     </div>
   )
