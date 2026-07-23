@@ -33,7 +33,10 @@ async function load(sessionId: string) {
     zone: c.avgBpm && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr: user?.restingHr, method: c.method ?? 'standard', maxHr: user?.hrMaxMeasured }) : null,
   }))
   const score = await computeSessionWorkoutScore(sessionId)
-  return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets) }
+  const durationMin = session.startedAt && session.finishedAt
+    ? Math.max(0, Math.round((new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 60000))
+    : null
+  return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets), durationMin }
 }
 
 export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
@@ -55,6 +58,7 @@ export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack
       </div>
 
       <div className="card">
+        {d.durationMin != null && <div className="row spread"><span className="muted">Durata</span><strong>{d.durationMin} min</strong></div>}
         <div className="row spread"><span className="muted">Volume</span><strong>{d.vol} reps</strong></div>
         <div className="row spread"><span className="muted">Tonnellaggio</span><strong>{d.ton} kg</strong></div>
       </div>
