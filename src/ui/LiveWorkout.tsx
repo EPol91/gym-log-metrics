@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, allExercises, getOrCreateExercise,
-  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory,
+  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
 } from '../db/repo'
 import { normalizeName } from '../db/catalog'
 import { e1rm } from '../metrics/metrics'
@@ -222,8 +222,8 @@ function SetRow({ s, index, isPR, onDelete }: { s: SetEntry; index: number; isPR
   )
 }
 
-function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged }: {
-  entry: ExerciseEntry; name: string; sessionId: string; restSec: number; isFirst: boolean; isLast: boolean; onLogged: (sec: number, exerciseId: string) => void
+function EntryCard({ entry, name, settings, sessionId, restSec, isFirst, isLast, onLogged }: {
+  entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number; isFirst: boolean; isLast: boolean; onLogged: (sec: number, exerciseId: string) => void
 }) {
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [w, setW] = useState('')
@@ -233,6 +233,7 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   const [hint, setHint] = useState<SetEntry | null>(null)
   const [histBest, setHistBest] = useState(0)
   const [collapsed, setCollapsed] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
@@ -292,10 +293,16 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
       ) : (
         <>
           {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''}</div>}
-          <div className="row" style={{ gap: 8, marginTop: 4 }}>
+          <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
             {histBest > 0 && <span className="muted small">PR e1RM: <strong style={{ color: 'var(--gold)' }}>{Math.round(histBest)} kg</strong></span>}
             <button className="ghost small" onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
+            <button className="ghost small" onClick={() => setShowSettings((v) => !v)}>⚙ Regolazioni</button>
           </div>
+          {!showSettings && settings && <div className="muted small" style={{ marginTop: 2 }}>⚙ {settings}</div>}
+          {showSettings && (
+            <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto, schienale…"
+              style={{ width: '100%', marginTop: 4 }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />
+          )}
           {showHist && (
             <div className="col" style={{ gap: 3, marginTop: 4, paddingLeft: 4, borderLeft: '2px solid var(--line)' }}>
               {history.length === 0 ? <p className="muted small">Nessuna seduta precedente.</p> : history.map((h, i) => (
@@ -376,7 +383,8 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
       </div>
 
       {entries.map((e, i) => (
-        <EntryCard key={e.id} entry={e} name={nameOf(e.exerciseId)} sessionId={sessionId} restSec={restOf(e.exerciseId)}
+        <EntryCard key={e.id} entry={e} name={nameOf(e.exerciseId)} settings={exercises.find((x) => x.id === e.exerciseId)?.settings ?? ''}
+          sessionId={sessionId} restSec={restOf(e.exerciseId)}
           isFirst={i === 0} isLast={i === entries.length - 1} onLogged={startRest} />
       ))}
 

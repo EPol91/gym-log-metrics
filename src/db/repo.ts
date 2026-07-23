@@ -404,6 +404,11 @@ export async function setExerciseRest(exerciseId: string, restSec: number): Prom
   await db.exercises.update(exerciseId, { restSec, updatedAt: nowISO() })
 }
 
+/** Regolazioni macchina di un esercizio (sellino, poggiapetto…), testo libero. */
+export async function setExerciseSettings(exerciseId: string, settings: string): Promise<void> {
+  await db.exercises.update(exerciseId, { settings: settings.trim(), updatedAt: nowISO() })
+}
+
 /** Cerca un esercizio esistente per nome o alias (anti-duplicato). */
 export async function findExercise(name: string): Promise<Exercise | undefined> {
   const n = normalizeName(name)

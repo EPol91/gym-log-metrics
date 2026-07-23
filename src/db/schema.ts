@@ -63,6 +63,8 @@ export interface Exercise extends BaseRecord {
   aliases: string[]
   /** recupero predefinito per questo esercizio (secondi), ricordato tra le sedute */
   restSec?: number
+  /** regolazioni macchina (sellino, poggiapetto, schienale…), testo libero ricordato tra le sedute */
+  settings?: string
 }
 
 export type WorkoutType =

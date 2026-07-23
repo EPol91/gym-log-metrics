@@ -1,13 +1,49 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { cardioOf, deleteSession, finishSession, setSessionType } from '../db/repo'
+import { cardioOf, deleteSession, finishSession, setSessionType, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
 import { computeCardioZone } from '../metrics/cardio'
 import { LOCAL_USER_ID } from '../db/seed'
 import { volume, tonnage } from '../metrics/metrics'
+import { parseNum } from '../util/validate'
 import { CountUp } from './anim'
+import { ExercisePicker } from './ExercisePicker'
 import type { SetEntry, WorkoutType } from '../db/schema'
+
+// Riga serie modificabile in-place (dettaglio storico).
+function SetEditRow({ s }: { s: SetEntry }) {
+  const [ed, setEd] = useState(false)
+  const [w, setW] = useState(String(s.weight))
+  const [r, setR] = useState(String(s.reps))
+  if (ed) return (
+    <div className="row" style={{ gap: 6, margin: '4px 0' }}>
+      <input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ width: 64 }} />
+      <input inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ width: 52 }} />
+      <button className="primary small" onClick={async () => { const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true }); if (wn != null && rn != null) { await updateSet(s.id, { weight: wn, reps: rn }); setEd(false) } }}>✓</button>
+      <button className="ghost small" onClick={() => setEd(false)}>annulla</button>
+    </div>
+  )
+  return (
+    <div className="setline">
+      <span className="muted">{s.isWarmup ? 'W' : ''}</span>
+      <span onClick={() => setEd(true)} style={{ cursor: 'pointer' }}>{s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''} <span className="muted small">✎</span></span>
+      <button className="ghost small" onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>✕</button>
+    </div>
+  )
+}
+
+function AddSetRow({ entryId }: { entryId: string }) {
+  const [w, setW] = useState('')
+  const [r, setR] = useState('')
+  return (
+    <div className="row" style={{ gap: 6, marginTop: 6 }}>
+      <input placeholder="kg" inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ width: 64 }} />
+      <input placeholder="reps" inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ width: 56 }} />
+      <button className="ghost small" onClick={async () => { const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true }); if (wn != null && rn != null) { await addSet(entryId, { weight: wn, reps: rn }); setW(''); setR('') } }}>＋ set</button>
+    </div>
+  )
+}
 
 const TYPE_LABEL: Record<string, string> = {
   push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
@@ -25,7 +61,7 @@ async function load(sessionId: string) {
   for (const e of entries) {
     const sets = await db.sets.where({ entryId: e.id }).sortBy('order')
     allSets = allSets.concat(sets)
-    items.push({ name: exNames.get(e.exerciseId) ?? '—', sets })
+    items.push({ entryId: e.id, name: exNames.get(e.exerciseId) ?? '—', sets })
   }
   const cardioRows = await cardioOf(sessionId)
   const user = await db.users.get(LOCAL_USER_ID)
@@ -44,6 +80,8 @@ async function load(sessionId: string) {
 export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const d = useLiveQuery(() => load(sessionId), [sessionId])
   const [editType, setEditType] = useState(false)
+  const [edit, setEdit] = useState(false)
+  const [picking, setPicking] = useState(false)
   if (!d) return <div className="col"><button className="ghost small" onClick={onBack}>← Storico</button><p className="muted">Carico…</p></div>
 
   return (
@@ -75,17 +113,36 @@ export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack
         <div className="row spread"><span className="muted">Tonnellaggio</span><strong>{d.ton} kg</strong></div>
       </div>
 
-      {d.items.map((it, i) => (
-        <div className="card" key={i}>
-          <strong>{it.name}</strong>
-          {it.sets.length === 0 ? <p className="muted small">Nessun set.</p> : it.sets.map((s, j) => (
-            <div className="setline" key={s.id}>
-              <span className="muted">{s.isWarmup ? 'W' : j + 1}</span>
-              <span>{s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''}</span><span />
-            </div>
-          ))}
+      <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <button className={edit ? 'sel small' : 'ghost small'} onClick={() => { setEdit((v) => !v); setPicking(false) }}>{edit ? '✓ Fine modifica' : '✎ Modifica'}</button>
+      </div>
+
+      {d.items.map((it) => (
+        <div className="card" key={it.entryId}>
+          <div className="row spread">
+            <strong>{it.name}</strong>
+            {edit && <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${it.name}?`)) deleteExerciseEntry(it.entryId) }}>🗑</button>}
+          </div>
+          {edit ? (
+            <>
+              {it.sets.map((s) => <SetEditRow key={s.id} s={s} />)}
+              <AddSetRow entryId={it.entryId} />
+            </>
+          ) : (
+            it.sets.length === 0 ? <p className="muted small">Nessun set.</p> : it.sets.map((s, j) => (
+              <div className="setline" key={s.id}>
+                <span className="muted">{s.isWarmup ? 'W' : j + 1}</span>
+                <span>{s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` · ⏱${s.restSec}s` : ''}</span><span />
+              </div>
+            ))
+          )}
         </div>
       ))}
+
+      {edit && (picking
+        ? <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setPicking(false) }} onClose={() => setPicking(false)} />
+        : <button className="ghost" onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
+      )}
 
       {d.cardio.length > 0 && (
         <div className="card">
