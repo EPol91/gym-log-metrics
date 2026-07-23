@@ -52,32 +52,27 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
   const mm = Math.floor(Math.max(0, left) / 60)
   const ss = Math.max(0, left) % 60
 
+  const ctrl = { flex: 1, padding: '7px 0', fontSize: 13 }
   return (
-    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--line)', transition: 'border-color .2s' }}>
-      <div className="row spread">
-        <span className="muted small">Recupero — tocca un tempo per farlo partire</span>
-        <button className="ghost small" onClick={onClose}>Chiudi ✕</button>
+    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--line)', transition: 'border-color .2s', padding: '8px 12px', margin: '6px 0 0' }}>
+      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+        <span className="muted small">Rec.</span>
+        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
+          {done ? 'Vai!' : `${mm}:${ss.toString().padStart(2, '0')}`}
+        </span>
+        <div style={{ flex: 1, minWidth: 24, height: 5, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 999, width: `${Math.max(0, Math.min(100, (left / total) * 100))}%`, background: warn ? '#e5484d' : 'var(--gold)', transition: 'width 1s linear, background .2s' }} />
+        </div>
+        <button className="ghost small" onClick={onClose}>✕</button>
       </div>
-      <div className={'timer' + (warn ? ' pulse' : '')} style={{ color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
-        {done ? 'Vai! 💪' : `${mm}:${ss.toString().padStart(2, '0')}`}
-      </div>
-      <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', margin: '4px 0 8px' }}>
-        <div style={{
-          height: '100%', borderRadius: 999,
-          width: `${Math.max(0, Math.min(100, (left / total) * 100))}%`,
-          background: warn ? '#e5484d' : 'var(--gold)', transition: 'width 1s linear, background .2s',
-        }} />
-      </div>
-      <div className="opts" style={{ gridTemplateColumns: `repeat(${presets.length}, 1fr)` }}>
-        {presets.map((s) => (
-          <button key={s} className={total === s ? 'sel' : ''} onClick={() => pick(s)}>{s}s</button>
-        ))}
-      </div>
-      <div className="row" style={{ marginTop: 8 }}>
-        <button style={{ flex: 1 }} onClick={() => adjust(-15)}>−15s</button>
-        <button style={{ flex: 1 }} onClick={() => adjust(15)}>+15s</button>
-        <button style={{ flex: 1 }} onClick={toggle}>{running ? '⏸' : '▶'}</button>
-        <button style={{ flex: 1 }} onClick={reset}>Reset</button>
+      <div className="row" style={{ gap: 4, marginTop: 6, alignItems: 'center' }}>
+        <button style={ctrl} onClick={() => adjust(-15)}>−15</button>
+        <button style={ctrl} onClick={() => adjust(15)}>+15</button>
+        <button style={ctrl} onClick={toggle}>{running ? '⏸' : '▶'}</button>
+        <button style={ctrl} onClick={reset}>↺</button>
+        <select value={total} onChange={(e) => pick(Number(e.target.value))} style={{ flex: 1, padding: '6px 2px', fontSize: 13 }}>
+          {presets.map((s) => <option key={s} value={s}>{s}s</option>)}
+        </select>
       </div>
     </div>
   )
