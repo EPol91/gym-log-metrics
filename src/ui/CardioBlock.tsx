@@ -133,12 +133,34 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   }
   const intervalTotal = rounds * work + Math.max(0, rounds - 1) * rest + 3
 
+  const [runStartMs, setRunStartMs] = useState<number | null>(null)
+  function clearRun() { try { sessionStorage.removeItem('cardioRun') } catch { /* ignore */ } setRunStartMs(null) }
+
+  // Ripristina un cardio in corso dopo un refresh (il timer riparte dall'orario reale).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('cardioRun')
+      if (!raw) return
+      const r = JSON.parse(raw)
+      setCtype(r.ctype); setMethod(r.method); setSteadyMode(r.steadyMode)
+      setRounds(r.rounds); setWork(r.work); setRest(r.rest); setTargetMin(r.targetMin)
+      setRunStartMs(r.startMs); setPhase('running')
+    } catch { /* ignore */ }
+  }, [])
+
   function onRunnerComplete(min: number) {
+    clearRun()
     setDur(String(min))
     if (hr.avgBpm != null) setBpm(String(hr.avgBpm)) // prefill BPM medio dalla fascia
     setPhase('idle'); setOpen(true)
   }
-  function startRun() { hr.resetAvg(); setPhase('running') } // azzera la media per la nuova sessione
+  function startRun() {
+    hr.resetAvg()
+    const startMs = Date.now()
+    setRunStartMs(startMs)
+    try { sessionStorage.setItem('cardioRun', JSON.stringify({ ctype, method, steadyMode, rounds, work, rest, targetMin, startMs })) } catch { /* ignore */ }
+    setPhase('running')
+  }
 
   const durN = parseNum(dur, { min: 0.1, max: 600 })
   async function add() {
@@ -276,10 +298,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
       {/* Timer in corso */}
       {phase === 'running' && (
         isInterval(ctype)
-          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
           : steadyMode === 'countdown'
-            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
-            : <CardioRunner mode="chrono" bpm={hr.bpm} zone={liveZone?.zone} zonePct={liveZone?.pct} onComplete={onRunnerComplete} onCancel={() => setPhase('idle')} />
+            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+            : <CardioRunner mode="chrono" bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
       )}
 
       {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}

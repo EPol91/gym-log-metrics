@@ -2,22 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
 import { useWallTick } from '../util/useWallClock'
-import { CardioViz } from './CardioViz'
 
 type Mode = 'interval' | 'countdown' | 'chrono'
 interface Phase { type: 'prep' | 'work' | 'rest'; dur: number; round: number }
+const ZONE_COLORS = ['#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444']
 
 const fmt = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${(Math.max(0, s) % 60).toString().padStart(2, '0')}`
 
 /** Timer cardio: intervalli (work/rest a round), countdown (durata target) o cronometro libero.
  *  onComplete riceve la durata in minuti. */
-export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, zone, zonePct, onComplete, onCancel }: {
+export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, zone, startedAtMs, onComplete, onCancel }: {
   mode: Mode; rounds?: number; workSec?: number; restSec?: number; targetSec?: number
-  bpm?: number | null; zone?: number; zonePct?: number
+  bpm?: number | null; zone?: number; startedAtMs?: number
   onComplete: (durationMin: number) => void; onCancel: () => void
 }) {
   const [running, setRunning] = useState(true)
-  const startRef = useRef(Date.now()) // ms di inizio del segmento in corso
+  const startRef = useRef(startedAtMs ?? Date.now()) // ms di inizio; da storage se si riprende dopo refresh
   const baseRef = useRef(0)            // secondi accumulati prima dell'ultima pausa
   const prevPhase = useRef('')
   const doneRef = useRef(false)
@@ -74,9 +74,17 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
     }
   }, [finished]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const color = phaseType === 'work' ? '#22c55e' : phaseType === 'rest' ? '#3b82f6' : phaseType === 'prep' ? 'var(--gold)' : 'var(--gold)'
+  const color = phaseType === 'work' ? '#22c55e' : phaseType === 'rest' ? '#3b82f6' : 'var(--gold)'
   const label = phaseType === 'prep' ? 'PRONTI' : phaseType === 'work' ? 'LAVORO' : phaseType === 'rest' ? 'RECUPERO' : mode === 'countdown' ? 'IN CORSO' : 'CRONOMETRO'
   const bigLeft = mode === 'chrono' ? elapsed : secLeft
+  const zoneColor = zone ? ZONE_COLORS[zone - 1] : color
+
+  // Anello: avanzamento sul totale (interval/countdown) o sweep al minuto (cronometro)
+  let ringPct = mode === 'interval' ? (totalInterval ? elapsed / totalInterval : 0)
+    : mode === 'countdown' ? (targetSec ? elapsed / targetSec : 0)
+      : (elapsed % 60) / 60
+  ringPct = Math.max(0, Math.min(1, ringPct))
+  const R = 120, CIRC = 2 * Math.PI * R
 
   function stopSave() { onComplete(+Math.max(0.1, elapsed / 60).toFixed(1)) }
 
@@ -93,14 +101,36 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
         <button className="ghost small" onClick={onCancel}>Annulla ✕</button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(64px,22vw,120px)', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>
-          {fmt(bigLeft)}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+        {/* Anello circolare con il timer al centro */}
+        <div style={{ position: 'relative', width: 'min(300px,78vw)', aspectRatio: '1' }}>
+          <svg viewBox="0 0 280 280" style={{ width: '100%', height: '100%', display: 'block' }}>
+            <circle cx={140} cy={140} r={R} fill="none" stroke="var(--surface-2)" strokeWidth={16} />
+            <circle cx={140} cy={140} r={R} fill="none" stroke={color} strokeWidth={16} strokeLinecap="round"
+              strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - ringPct)} transform="rotate(-90 140 140)"
+              style={{ transition: 'stroke-dashoffset .5s linear, stroke .3s' }} />
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(52px,15vw,76px)', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>{fmt(bigLeft)}</div>
+            {mode !== 'chrono' && <div className="muted small" style={{ marginTop: 6 }}>totale {fmt(elapsed)}</div>}
+          </div>
         </div>
-        {mode !== 'chrono' && <div className="muted small">totale {fmt(elapsed)}</div>}
+
+        {/* Frequenza cardiaca dominante + zone (stile Whoop) */}
         {bpm != null && (
-          <div style={{ width: 'min(420px,100%)', marginTop: 20 }}>
-            <CardioViz bpm={bpm} pct={zonePct} zone={zone} live={running} />
+          <div style={{ width: 'min(440px,100%)', textAlign: 'center' }}>
+            <div className="muted small" style={{ letterSpacing: '.12em' }}>FREQUENZA CARDIACA</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 2 }}>
+              <span style={{ fontSize: 28, color: '#ef4444', animation: running ? `heartBeat ${(60 / (bpm || 60)).toFixed(2)}s ease-in-out infinite` : 'none' }}>♥</span>
+              <strong style={{ fontSize: 52, color: zoneColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{bpm}</strong>
+              <span className="muted small">bpm{zone ? ` · Z${zone}` : ''}</span>
+            </div>
+            <div style={{ display: 'flex', height: 9, borderRadius: 999, overflow: 'hidden', marginTop: 12 }}>
+              {ZONE_COLORS.map((c, i) => <div key={i} style={{ flex: 1, background: c, opacity: zone ? (i === zone - 1 ? 1 : 0.3) : 0.5 }} />)}
+            </div>
+            <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
+              {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((z, i) => <span key={z} className="muted" style={{ fontSize: 10, color: zone === i + 1 ? zoneColor : undefined }}>{z}</span>)}
+            </div>
           </div>
         )}
       </div>
