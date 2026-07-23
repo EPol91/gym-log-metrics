@@ -204,6 +204,16 @@ export async function addCardioPreset(name: string, rounds: number, workSec: num
   const ts = nowISO()
   await db.cardioPresets.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: name.trim() || 'Preset', rounds, workSec, restSec })
 }
+
+export interface CardioTemplateInput {
+  rounds: number; workSec: number; restSec: number
+  cardioType: CardioType; method: CardioMethod; mode: 'interval' | 'countdown' | 'chrono'; targetMin: number
+}
+/** Salva un template cardio completo (tipo + formula + modalità + parametri). */
+export async function addCardioTemplate(name: string, t: CardioTemplateInput): Promise<void> {
+  const ts = nowISO()
+  await db.cardioPresets.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: name.trim() || 'Template', ...t })
+}
 export async function deleteCardioPreset(id: string): Promise<void> {
   await db.cardioPresets.delete(id)
 }

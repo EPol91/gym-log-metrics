@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioPreset, deleteCardioPreset } from '../db/repo'
+import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
@@ -8,7 +8,7 @@ import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect,
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
 import { Info } from './anim'
-import type { CardioMethod, CardioType, CardioSession } from '../db/schema'
+import type { CardioMethod, CardioType, CardioSession, CardioPreset } from '../db/schema'
 
 /** Live BPM da fascia Bluetooth. La connessione vive in un singleton (heartRate.ts):
  *  resta attiva anche uscendo dal cardio/cambiando schermata. Qui ci si limita a leggerlo. */
@@ -115,6 +115,22 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
     setCtype(t)
     if (isInterval(t) && DEFAULTS[t]) { setRounds(DEFAULTS[t].rounds); setWork(DEFAULTS[t].work); setRest(DEFAULTS[t].rest) }
   }
+  function applyTemplate(p: CardioPreset) {
+    if (p.cardioType) setCtype(p.cardioType)
+    if (p.method) setMethod(p.method)
+    const m = p.mode ?? 'interval'
+    if (m === 'interval') { setRounds(p.rounds); setWork(p.workSec); setRest(p.restSec) }
+    else { setSteadyMode(m); if (p.targetMin) setTargetMin(p.targetMin) }
+  }
+  async function saveTemplate() {
+    const n = prompt('Nome template:'); if (!n) return
+    const m = isInterval(ctype) ? 'interval' as const : steadyMode
+    await addCardioTemplate(n, { rounds, workSec: work, restSec: rest, cardioType: ctype, method, mode: m, targetMin })
+  }
+  const tplDesc = (p: CardioPreset) => {
+    const m = p.mode ?? 'interval'
+    return `${TYPE_LABEL[p.cardioType ?? 'intervalli']} · ${m === 'interval' ? `${p.rounds}× ${p.workSec}/${p.restSec}s` : m === 'countdown' ? `${p.targetMin ?? 20} min` : 'crono'}`
+  }
   const intervalTotal = rounds * work + Math.max(0, rounds - 1) * rest + 3
 
   function onRunnerComplete(min: number) {
@@ -209,30 +225,30 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
             {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
           </div>
 
+          {presets.length > 0 && (
+            <div>
+              <label className="fl">I tuoi template</label>
+              <div className="col">
+                {presets.map((p) => (
+                  <div className="row spread" key={p.id}>
+                    <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => applyTemplate(p)}>
+                      {p.name} <span className="muted small">· {tplDesc(p)}</span>
+                    </button>
+                    <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {isInterval(ctype) ? (
             <>
-              {presets.length > 0 && (
-                <div>
-                  <label className="fl">I tuoi preset</label>
-                  <div className="col">
-                    {presets.map((p) => (
-                      <div className="row spread" key={p.id}>
-                        <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => { setRounds(p.rounds); setWork(p.workSec); setRest(p.restSec) }}>
-                          {p.name} <span className="muted small">· {p.rounds}× {p.workSec}/{p.restSec}s</span>
-                        </button>
-                        <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 <NumStep label="Round" value={rounds} set={setRounds} step={1} min={1} />
                 <NumStep label="Lavoro (s)" value={work} set={setWork} step={5} min={5} />
                 <NumStep label="Rec. (s)" value={rest} set={setRest} step={5} min={0} />
               </div>
               <p className="muted small">Totale stimato: <strong style={{ color: 'var(--gold)' }}>{fmt(intervalTotal)}</strong></p>
-              <button className="ghost small" onClick={async () => { const n = prompt('Nome preset:'); if (n) await addCardioPreset(n, rounds, work, rest) }}>☆ Salva come preset</button>
             </>
           ) : (
             <>
@@ -249,6 +265,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
             </>
           )}
 
+          <button className="ghost small" onClick={saveTemplate}>⭐ Salva come template</button>
           <div className="row">
             <button className="ghost" style={{ flex: 1 }} onClick={() => setPhase('idle')}>Annulla</button>
             <button className="primary" style={{ flex: 2 }} onClick={startRun}>▶ Avvia</button>

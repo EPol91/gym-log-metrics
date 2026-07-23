@@ -145,12 +145,17 @@ export interface CardioSession extends BaseRecord {
   cardioType?: CardioType
 }
 
-/** Protocollo a intervalli personalizzato (HIIT/Tabata custom). */
+/** Template cardio salvato: protocollo a intervalli o steady (countdown/cronometro), con tipo e formula zona.
+ *  I campi extra sono opzionali per compatibilità con i vecchi preset (solo intervalli). */
 export interface CardioPreset extends BaseRecord {
   name: string
   rounds: number
   workSec: number
   restSec: number
+  cardioType?: CardioType
+  method?: CardioMethod
+  mode?: 'interval' | 'countdown' | 'chrono'
+  targetMin?: number
 }
 
 export type Phase = 'cut' | 'bulk' | 'recomp' | 'maintenance'
