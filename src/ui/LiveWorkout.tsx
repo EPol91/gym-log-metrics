@@ -10,6 +10,7 @@ import { e1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
 import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from '../util/voice'
+import { useWallTick } from '../util/useWallClock'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
 import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
@@ -21,23 +22,33 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
   defaultSec: number; presets: number[]; onPick: (sec: number) => void; onClose: () => void
 }) {
   const [total, setTotal] = useState(defaultSec)
-  const [left, setLeft] = useState(defaultSec)
   const [running, setRunning] = useState(true)
+  const [pausedLeft, setPausedLeft] = useState(defaultSec)
+  const endRef = useRef(Date.now() + defaultSec * 1000) // orario reale di fine
+  const [, force] = useState(0)
+  useWallTick(running)
+  // Secondi rimasti calcolati sull'orario reale → il recupero non si ferma uscendo dall'app.
+  const left = Math.max(0, Math.ceil(running ? (endRef.current - Date.now()) / 1000 : pausedLeft))
   const done = left <= 0
   const warn = left > 0 && left <= 5 // ultimi 5 secondi
-
-  useEffect(() => {
-    if (!running || left <= 0) return
-    const t = setInterval(() => setLeft((l) => l - 1), 1000)
-    return () => clearInterval(t)
-  }, [running, left])
 
   useEffect(() => {
     if (warn) { navigator.vibrate?.(30); tick() }                    // tick negli ultimi 5s
     if (left === 0) { navigator.vibrate?.([120, 60, 200]); goSound() } // fine = suono "GO"
   }, [left, warn])
 
-  function pick(sec: number) { setTotal(sec); setLeft(sec); setRunning(true); onPick(sec) }
+  function pick(sec: number) { setTotal(sec); endRef.current = Date.now() + sec * 1000; setPausedLeft(sec); setRunning(true); onPick(sec) }
+  function toggle() {
+    setRunning((r) => {
+      if (r) { setPausedLeft(Math.max(0, Math.ceil((endRef.current - Date.now()) / 1000))); return false }
+      endRef.current = Date.now() + pausedLeft * 1000; return true
+    })
+  }
+  function adjust(delta: number) {
+    if (running) { endRef.current += delta * 1000; force((x) => x + 1) }
+    else setPausedLeft((l) => Math.max(0, l + delta))
+  }
+  function reset() { setRunning(false); setPausedLeft(total) }
   const mm = Math.floor(Math.max(0, left) / 60)
   const ss = Math.max(0, left) % 60
 
@@ -63,10 +74,10 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
         ))}
       </div>
       <div className="row" style={{ marginTop: 8 }}>
-        <button style={{ flex: 1 }} onClick={() => setLeft((l) => Math.max(0, l - 15))}>−15s</button>
-        <button style={{ flex: 1 }} onClick={() => setLeft((l) => l + 15)}>+15s</button>
-        <button style={{ flex: 1 }} onClick={() => setRunning((r) => !r)}>{running ? '⏸' : '▶'}</button>
-        <button style={{ flex: 1 }} onClick={() => { setLeft(total); setRunning(false) }}>Reset</button>
+        <button style={{ flex: 1 }} onClick={() => adjust(-15)}>−15s</button>
+        <button style={{ flex: 1 }} onClick={() => adjust(15)}>+15s</button>
+        <button style={{ flex: 1 }} onClick={toggle}>{running ? '⏸' : '▶'}</button>
+        <button style={{ flex: 1 }} onClick={reset}>Reset</button>
       </div>
     </div>
   )

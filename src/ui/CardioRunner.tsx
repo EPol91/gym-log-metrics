@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
+import { useWallTick } from '../util/useWallClock'
 
 type Mode = 'interval' | 'countdown' | 'chrono'
 interface Phase { type: 'prep' | 'work' | 'rest'; dur: number; round: number }
@@ -12,10 +13,21 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
   mode: Mode; rounds?: number; workSec?: number; restSec?: number; targetSec?: number
   onComplete: (durationMin: number) => void; onCancel: () => void
 }) {
-  const [elapsed, setElapsed] = useState(0)
   const [running, setRunning] = useState(true)
+  const startRef = useRef(Date.now()) // ms di inizio del segmento in corso
+  const baseRef = useRef(0)            // secondi accumulati prima dell'ultima pausa
   const prevPhase = useRef('')
   const doneRef = useRef(false)
+  useWallTick(running)
+  // Tempo trascorso calcolato sull'orario reale → resta corretto anche uscendo dall'app.
+  const elapsed = Math.floor(baseRef.current + (running ? (Date.now() - startRef.current) / 1000 : 0))
+
+  function toggleRun() {
+    setRunning((r) => {
+      if (r) { baseRef.current += (Date.now() - startRef.current) / 1000; return false }
+      startRef.current = Date.now(); return true
+    })
+  }
 
   const phases = useMemo<Phase[]>(() => {
     if (mode !== 'interval') return []
@@ -27,12 +39,6 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
     return ph
   }, [mode, rounds, workSec, restSec])
   const totalInterval = phases.reduce((a, p) => a + p.dur, 0)
-
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setElapsed((e) => e + 1), 1000)
-    return () => clearInterval(t)
-  }, [running])
 
   // Stato derivato
   let phaseType = '', round = 0, secLeft = 0, finished = false
@@ -80,7 +86,7 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
       <div className="timer" style={{ color, fontSize: 56 }}>{fmt(bigLeft)}</div>
       {mode !== 'chrono' && <div className="muted small" style={{ textAlign: 'center', marginTop: -4 }}>totale {fmt(elapsed)}</div>}
       <div className="row" style={{ marginTop: 10 }}>
-        <button style={{ flex: 1 }} onClick={() => setRunning((r) => !r)}>{running ? '⏸ Pausa' : '▶ Riprendi'}</button>
+        <button style={{ flex: 1 }} onClick={toggleRun}>{running ? '⏸ Pausa' : '▶ Riprendi'}</button>
         <button className="primary" style={{ flex: 2 }} onClick={stopSave}>⏹ Stop e salva</button>
       </div>
     </div>

@@ -16,6 +16,11 @@ async function sessionStats(sessionId: string) {
   for (const e of entries) sets = sets.concat(await db.sets.where({ entryId: e.id }).toArray())
   const score = await computeSessionWorkoutScore(sessionId)
 
+  const session = await db.sessions.get(sessionId)
+  const durationMin = session?.startedAt && session?.finishedAt
+    ? Math.max(0, Math.round((new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 60000))
+    : null
+
   const user = await db.users.get(LOCAL_USER_ID)
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
   const cardioRows = await db.cardio.where({ sessionId }).toArray()
@@ -26,7 +31,7 @@ async function sessionStats(sessionId: string) {
     return { durationMin: c.durationMin, avgBpm: c.avgBpm, zone: z }
   })
 
-  return { exercises: entries.length, setCount: sets.length, vol: volume(sets), ton: tonnage(sets), score, cardio }
+  return { exercises: entries.length, setCount: sets.length, vol: volume(sets), ton: tonnage(sets), score, cardio, durationMin }
 }
 
 export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome: () => void }) {
@@ -55,6 +60,7 @@ export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome:
           </div>
           {stats.score.note && <p className="muted small" style={{ marginTop: -6 }}>{stats.score.note}</p>}
           <div className="card">
+            {stats.durationMin != null && <div className="row spread"><span className="muted">Durata</span><strong>{stats.durationMin} min</strong></div>}
             <div className="row spread"><span className="muted">Esercizi</span><strong>{stats.exercises}</strong></div>
             <div className="row spread"><span className="muted">Set totali</span><strong>{stats.setCount}</strong></div>
             <div className="row spread"><span className="muted">Volume (reps)</span><strong>{stats.vol}</strong></div>
