@@ -332,22 +332,25 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
 
   return (
     <div className="col">
-      <div className="row spread">
-        <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-          {onHome && <button className="ghost small" onClick={onHome}>‹ Home</button>}
-          <h2 style={{ margin: 0 }}>Workout live</h2>
-        </span>
-        <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-          {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
-          {session && <WorkoutClock startedAt={session.startedAt} />}
-        </span>
-      </div>
+      {/* Barra fissa in alto: durata seduta + timer di recupero sempre visibili, senza scrollare. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
+        <div className="row spread">
+          <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+            {onHome && <button className="ghost small" onClick={onHome}>‹ Home</button>}
+            <h2 style={{ margin: 0 }}>Workout live</h2>
+          </span>
+          <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
+            {session && <WorkoutClock startedAt={session.startedAt} />}
+          </span>
+        </div>
 
-      {rest != null && (
-        <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
-          onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
-          onClose={() => setRest(null)} />
-      )}
+        {rest != null && (
+          <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
+            onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
+            onClose={() => setRest(null)} />
+        )}
+      </div>
 
       {entries.map((e, i) => (
         <EntryCard key={e.id} entry={e} name={nameOf(e.exerciseId)} sessionId={sessionId} restSec={restOf(e.exerciseId)}
