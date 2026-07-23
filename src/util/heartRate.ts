@@ -74,3 +74,36 @@ export async function connectHeartRate(
     },
   }
 }
+
+// --- Store singleton: la connessione vive fuori dai componenti React ---
+// così la fascia NON si scollega quando esci dal cardio o cambi schermata.
+export interface HeartRateState {
+  connected: boolean; connecting: boolean; bpm: number | null; avgBpm: number | null; deviceName: string; error: string | null
+}
+let hrState: HeartRateState = { connected: false, connecting: false, bpm: null, avgBpm: null, deviceName: '', error: null }
+let hrHandle: HeartRateHandle | null = null
+let hrAcc = { sum: 0, count: 0 }
+const hrSubs = new Set<() => void>()
+
+function hrSet(patch: Partial<HeartRateState>) { hrState = { ...hrState, ...patch }; hrSubs.forEach((f) => f()) }
+
+export function hrSubscribe(cb: () => void): () => void { hrSubs.add(cb); return () => { hrSubs.delete(cb) } }
+export function hrGetState(): HeartRateState { return hrState }
+
+export async function hrConnect(): Promise<void> {
+  if (hrState.connecting || hrState.connected) return
+  hrSet({ connecting: true, error: null })
+  try {
+    hrHandle = await connectHeartRate(
+      (v) => { hrAcc.sum += v; hrAcc.count++; hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count) }) },
+      () => { hrHandle = null; hrSet({ connected: false, bpm: null }) },
+    )
+    hrSet({ connected: true, connecting: false, deviceName: hrHandle.deviceName })
+  } catch (e) {
+    const msg = (e as Error)?.message ?? ''
+    hrSet({ connecting: false, error: /cancel/i.test(msg) ? null : 'Connessione fascia fallita.' })
+  }
+}
+
+export function hrDisconnect(): void { hrHandle?.disconnect(); hrHandle = null; hrSet({ connected: false, bpm: null }) }
+export function hrResetAvg(): void { hrAcc = { sum: 0, count: 0 }; hrSet({ avgBpm: null }) }

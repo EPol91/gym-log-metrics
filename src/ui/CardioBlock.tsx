@@ -1,47 +1,26 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioPreset, deleteCardioPreset } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
-import { isHeartRateSupported, connectHeartRate, type HeartRateHandle } from '../util/heartRate'
+import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg } from '../util/heartRate'
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
 import { Info } from './anim'
 import type { CardioMethod, CardioType, CardioSession } from '../db/schema'
 
-/** Live BPM da fascia Bluetooth: connessione, valore corrente e media dei campioni. */
+/** Live BPM da fascia Bluetooth. La connessione vive in un singleton (heartRate.ts):
+ *  resta attiva anche uscendo dal cardio/cambiando schermata. Qui ci si limita a leggerlo. */
 function useHeartRate() {
-  const [supported] = useState(isHeartRateSupported())
-  const [connected, setConnected] = useState(false)
-  const [connecting, setConnecting] = useState(false)
-  const [bpm, setBpm] = useState<number | null>(null)
-  const [deviceName, setDeviceName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [avgBpm, setAvgBpm] = useState<number | null>(null)
-  const handleRef = useRef<HeartRateHandle | null>(null)
-  const acc = useRef({ sum: 0, count: 0 })
-
-  async function connect() {
-    if (connecting || connected) return
-    setError(null); setConnecting(true)
-    try {
-      const h = await connectHeartRate(
-        (v) => { setBpm(v); acc.current.sum += v; acc.current.count++; setAvgBpm(Math.round(acc.current.sum / acc.current.count)) },
-        () => { setConnected(false); setBpm(null); handleRef.current = null },
-      )
-      handleRef.current = h; setDeviceName(h.deviceName); setConnected(true)
-    } catch (e) {
-      const msg = (e as Error)?.message ?? ''
-      if (!/cancel/i.test(msg)) setError('Connessione fascia fallita.')
-    } finally { setConnecting(false) }
+  const [, force] = useState(0)
+  useEffect(() => hrSubscribe(() => force((x) => x + 1)), [])
+  const s = hrGetState()
+  return {
+    supported: isHeartRateSupported(),
+    connected: s.connected, connecting: s.connecting, bpm: s.bpm, avgBpm: s.avgBpm, deviceName: s.deviceName, error: s.error,
+    connect: hrConnect, disconnect: hrDisconnect, resetAvg: hrResetAvg,
   }
-  function disconnect() { handleRef.current?.disconnect(); handleRef.current = null; setConnected(false); setBpm(null) }
-  function resetAvg() { acc.current = { sum: 0, count: 0 }; setAvgBpm(null) }
-
-  useEffect(() => () => handleRef.current?.disconnect(), [])
-
-  return { supported, connected, connecting, bpm, deviceName, error, avgBpm, connect, disconnect, resetAvg }
 }
 
 const TYPE_LABEL: Record<CardioType, string> = {
