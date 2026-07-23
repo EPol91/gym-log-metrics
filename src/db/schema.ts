@@ -133,7 +133,7 @@ export interface NutritionContext extends BaseRecord {
 
 export type CardioMethod = 'standard' | 'hrr'
 export type CardioType =
-  | 'corsa' | 'camminata' | 'cyclette' | 'ellittica' | 'vogatore'
+  | 'corsa' | 'camminata' | 'cyclette' | 'ellittica' | 'vogatore' | 'assaultbike'
   | 'hiit' | 'tabata' | 'liss' | 'intervalli' | 'altro'
 
 export interface CardioSession extends BaseRecord {

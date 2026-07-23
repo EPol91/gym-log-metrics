@@ -45,7 +45,7 @@ function useHeartRate() {
 }
 
 const TYPE_LABEL: Record<CardioType, string> = {
-  corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore',
+  corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
 const TYPES = Object.keys(TYPE_LABEL) as CardioType[]
@@ -110,9 +110,6 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const presets = useLiveQuery(listCardioPresets, []) ?? []
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
   const hr = useHeartRate()
-  const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
-    ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: user?.restingHr, method: 'standard', maxHr: user?.hrMaxMeasured })
-    : null
 
   const [phase, setPhase] = useState<'idle' | 'setup' | 'running'>('idle')
   const [open, setOpen] = useState(false)
@@ -120,6 +117,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const [bpm, setBpm] = useState('')
   const [method, setMethod] = useState<CardioMethod>('standard')
   const [ctype, setCtype] = useState<CardioType>('corsa')
+
+  const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
+    ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured })
+    : null
 
   // setup timer
   const [rounds, setRounds] = useState(8)
@@ -178,7 +179,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
                   <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
                   <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
                   <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    bpm{liveZone ? ` · Z${liveZone.zone}` : ''} · {hr.deviceName}
+                    bpm{liveZone ? ` · Z${liveZone.zone}` : ''}{hr.avgBpm ? ` · media ${hr.avgBpm}` : ''} · {hr.deviceName}
                   </span>
                 </span>
                 <button className="ghost small" style={{ flex: '0 0 auto' }} onClick={hr.disconnect}>Disconnetti</button>
@@ -214,6 +215,19 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
             <select value={ctype} onChange={(e) => chooseType(e.target.value as CardioType)}>
               {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
             </select>
+          </div>
+
+          <div>
+            <label className="fl">Formula zona</label>
+            <div className="row">
+              <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>
+                Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}</span>
+              </button>
+              <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>
+                HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span>
+              </button>
+            </div>
+            {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
           </div>
 
           {isInterval(ctype) ? (
