@@ -325,7 +325,7 @@ export async function moveExerciseEntry(entryId: string, dir: -1 | 1): Promise<v
 }
 
 // --- Set ---
-export interface SetInput { weight: number; reps: number; rir?: number; isWarmup?: boolean }
+export interface SetInput { weight: number; reps: number; rir?: number; isWarmup?: boolean; restSec?: number }
 
 export async function addSet(entryId: string, inp: SetInput): Promise<void> {
   const ts = nowISO()
@@ -335,8 +335,24 @@ export async function addSet(entryId: string, inp: SetInput): Promise<void> {
     entryId, order, weight: inp.weight, reps: inp.reps,
     ...(inp.rir != null ? { rir: inp.rir } : {}),
     ...(inp.isWarmup ? { isWarmup: true } : {}),
+    ...(inp.restSec != null ? { restSec: inp.restSec } : {}),
   }
   await db.sets.add(s)
+}
+
+/** Storico recente di un esercizio: ultime sedute (solo serie di lavoro) per confronto durante l'allenamento. */
+export async function exerciseHistory(exerciseId: string, exceptSessionId: string, limit = 5): Promise<{ date: string; sets: SetEntry[] }[]> {
+  const entries = await db.exerciseEntries.where({ exerciseId }).toArray()
+  const rows: { date: string; startedAt: string; sets: SetEntry[] }[] = []
+  for (const e of entries) {
+    if (e.sessionId === exceptSessionId) continue
+    const session = await db.sessions.get(e.sessionId)
+    if (!session) continue
+    const sets = (await db.sets.where({ entryId: e.id }).sortBy('order')).filter((s) => !s.isWarmup)
+    if (sets.length) rows.push({ date: session.date, startedAt: session.startedAt, sets })
+  }
+  rows.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  return rows.slice(0, limit).map(({ date, sets }) => ({ date, sets }))
 }
 
 export async function updateSet(id: string, patch: Partial<SetInput>): Promise<void> {

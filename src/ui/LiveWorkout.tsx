@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, allExercises, getOrCreateExercise,
-  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm,
+  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory,
 } from '../db/repo'
 import { normalizeName } from '../db/catalog'
 import { e1rm } from '../metrics/metrics'
@@ -214,7 +214,7 @@ function SetRow({ s, index, isPR, onDelete }: { s: SetEntry; index: number; isPR
     <div className="setline">
       <span className="muted">{s.isWarmup ? 'W' : index}</span>
       <span onClick={() => setEditing(true)} style={{ cursor: 'pointer' }}>
-        {s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''} <span className="muted small">✎</span>
+        {s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` · ⏱${s.restSec}s` : ''} <span className="muted small">✎</span>
         {isPR && <span className="pr-badge">PR</span>}
       </span>
       <button className="ghost small" onClick={onDelete}>✕</button>
@@ -233,10 +233,14 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   const [hint, setHint] = useState<SetEntry | null>(null)
   const [histBest, setHistBest] = useState(0)
   const [collapsed, setCollapsed] = useState(false)
+  const [showHist, setShowHist] = useState(false)
+  const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
+  const lastSetAtRef = useRef<number | null>(null) // per misurare il recupero reale tra le serie
   const workSets = sets.filter((s) => !s.isWarmup).length
   const lastSet = sets.length ? sets[sets.length - 1] : null
 
+  useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
   useEffect(() => {
@@ -257,7 +261,13 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   async function add() {
     const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
     if (wn == null || rn == null) return
-    await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup })
+    const now = Date.now()
+    // recupero reale = tempo dall'ultima serie di lavoro (metrica confrontabile tra sedute)
+    const restTaken = !warmup && lastSetAtRef.current != null
+      ? Math.min(3600, Math.max(0, Math.round((now - lastSetAtRef.current) / 1000)))
+      : undefined
+    await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup, restSec: restTaken })
+    if (!warmup) lastSetAtRef.current = now
     setRir(null); setWarmup(false)
     if (!warmup) onLogged(restSec, entry.exerciseId)
   }
@@ -281,7 +291,20 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
         </div>
       ) : (
         <>
-          {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''} · recupero {restSec}s</div>}
+          {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''}</div>}
+          <div className="row" style={{ gap: 8, marginTop: 4 }}>
+            {histBest > 0 && <span className="muted small">PR e1RM: <strong style={{ color: 'var(--gold)' }}>{Math.round(histBest)} kg</strong></span>}
+            <button className="ghost small" onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
+          </div>
+          {showHist && (
+            <div className="col" style={{ gap: 3, marginTop: 4, paddingLeft: 4, borderLeft: '2px solid var(--line)' }}>
+              {history.length === 0 ? <p className="muted small">Nessuna seduta precedente.</p> : history.map((h, i) => (
+                <div key={i} className="muted small">
+                  <strong>{h.date}</strong>: {h.sets.map((s) => `${s.weight}×${s.reps}${s.restSec != null ? ` (⏱${s.restSec}s)` : ''}`).join(', ')}
+                </div>
+              ))}
+            </div>
+          )}
 
           {sets.map((s, i) => (
             <SetRow key={s.id} s={s} index={sets.slice(0, i + 1).filter((x) => !x.isWarmup).length}
