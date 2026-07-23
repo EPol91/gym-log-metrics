@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
 import { useWallTick } from '../util/useWallClock'
 import { CardioViz } from './CardioViz'
@@ -79,11 +80,11 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
 
   function stopSave() { onComplete(+Math.max(0.1, elapsed / 60).toFixed(1)) }
 
-  return (
+  return createPortal(
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 50, background: 'var(--bg)',
-      display: 'flex', flexDirection: 'column', gap: 8,
-      padding: '18px 18px calc(18px + env(safe-area-inset-bottom))',
+      position: 'fixed', inset: 0, zIndex: 200, background: 'var(--bg)',
+      display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 520, margin: '0 auto',
+      padding: '20px 18px calc(20px + env(safe-area-inset-bottom))',
     }}>
       <div className="row spread">
         <span className="small" style={{ color, fontWeight: 700, letterSpacing: '.06em' }}>
@@ -108,6 +109,7 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
         <button style={{ flex: 1, padding: '16px' }} onClick={toggleRun}>{running ? '⏸ Pausa' : '▶ Riprendi'}</button>
         <button className="primary" style={{ flex: 2, padding: '16px', fontSize: 16 }} onClick={stopSave}>⏹ Stop e salva</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
