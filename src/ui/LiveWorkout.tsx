@@ -188,18 +188,28 @@ function SetRow({ s, index, isPR, onDelete }: { s: SetEntry; index: number; isPR
   const [w, setW] = useState(String(s.weight))
   const [r, setR] = useState(String(s.reps))
   const [rir, setRir] = useState<number | null>(s.rir ?? null)
+  const [rest, setRest] = useState(s.restSec != null ? String(s.restSec) : '')
 
   if (editing) {
     return (
       <div className="card" style={{ background: 'var(--surface-2)', margin: '6px 0' }}>
         <div className="row"><Stepper label="kg" value={w} set={setW} step={2.5} /><Stepper label="reps" value={r} set={setR} step={1} /></div>
         <RirPicker value={rir} set={setRir} />
+        <div style={{ marginTop: 8 }}>
+          <label className="fl">Recupero (s) — correggi se il timer ha sbagliato</label>
+          <div className="row" style={{ gap: 4 }}>
+            <button style={{ padding: '9px 12px' }} onClick={() => setRest(String(Math.max(0, (parseNum(rest, { int: true }) ?? 0) - 15)))}>−15</button>
+            <input inputMode="numeric" value={rest} placeholder="—" onChange={(e) => setRest(e.target.value)} style={{ textAlign: 'center', flex: 1, minWidth: 0 }} />
+            <button style={{ padding: '9px 12px' }} onClick={() => setRest(String((parseNum(rest, { int: true }) ?? 0) + 15))}>＋15</button>
+          </div>
+        </div>
         <div className="row" style={{ marginTop: 8 }}>
           <button className="ghost" style={{ flex: 1 }} onClick={() => setEditing(false)}>Annulla</button>
           <button className="primary" style={{ flex: 2 }} onClick={async () => {
             const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
             if (wn == null || rn == null) return
-            await updateSet(s.id, { weight: wn, reps: rn, rir: rir ?? undefined }); setEditing(false)
+            const restN = rest.trim() === '' ? undefined : (parseNum(rest, { min: 0, max: 3600, int: true }) ?? undefined)
+            await updateSet(s.id, { weight: wn, reps: rn, rir: rir ?? undefined, restSec: restN }); setEditing(false)
           }}>Salva</button>
         </div>
       </div>
