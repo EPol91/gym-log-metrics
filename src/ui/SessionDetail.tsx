@@ -1,17 +1,19 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { cardioOf, deleteSession, finishSession } from '../db/repo'
+import { cardioOf, deleteSession, finishSession, setSessionType } from '../db/repo'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
 import { computeCardioZone } from '../metrics/cardio'
 import { LOCAL_USER_ID } from '../db/seed'
 import { volume, tonnage } from '../metrics/metrics'
 import { CountUp } from './anim'
-import type { SetEntry } from '../db/schema'
+import type { SetEntry, WorkoutType } from '../db/schema'
 
 const TYPE_LABEL: Record<string, string> = {
   push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
   lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
 }
+const TYPES = Object.keys(TYPE_LABEL) as WorkoutType[]
 
 async function load(sessionId: string) {
   const session = await db.sessions.get(sessionId)
@@ -41,13 +43,23 @@ async function load(sessionId: string) {
 
 export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const d = useLiveQuery(() => load(sessionId), [sessionId])
+  const [editType, setEditType] = useState(false)
   if (!d) return <div className="col"><button className="ghost small" onClick={onBack}>← Storico</button><p className="muted">Carico…</p></div>
 
   return (
     <div className="col">
       <button className="ghost small" onClick={onBack}>← Storico</button>
       <div className="row spread">
-        <h1>{TYPE_LABEL[d.session.type] ?? d.session.type}</h1>
+        {editType ? (
+          <select value={d.session.type} style={{ fontSize: 18 }}
+            onChange={(e) => { setSessionType(sessionId, e.target.value as WorkoutType); setEditType(false) }}>
+            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+          </select>
+        ) : (
+          <h1 style={{ cursor: 'pointer' }} onClick={() => setEditType(true)}>
+            {TYPE_LABEL[d.session.type] ?? d.session.type} <span className="muted small">✎</span>
+          </h1>
+        )}
         <span className="muted small">{d.session.date}{!d.session.finishedAt ? ' · in corso' : ''}</span>
       </div>
 

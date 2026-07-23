@@ -232,7 +232,10 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   const [warmup, setWarmup] = useState(false)
   const [hint, setHint] = useState<SetEntry | null>(null)
   const [histBest, setHistBest] = useState(0)
+  const [collapsed, setCollapsed] = useState(false)
   const prefilled = useRef(false)
+  const workSets = sets.filter((s) => !s.isWarmup).length
+  const lastSet = sets.length ? sets[sets.length - 1] : null
 
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
@@ -262,34 +265,45 @@ function EntryCard({ entry, name, sessionId, restSec, isFirst, isLast, onLogged 
   return (
     <div className="card">
       <div className="row spread">
-        <strong>{name}</strong>
+        <strong style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setCollapsed((c) => !c)}>
+          <span className="muted">{collapsed ? '▸' : '▾'}</span> {name}
+        </strong>
         <span className="row" style={{ gap: 4 }}>
           <button className="ghost small" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
           <button className="ghost small" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
           <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${name} dalla seduta?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
         </span>
       </div>
-      {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''} · recupero {restSec}s</div>}
 
-      {sets.map((s, i) => (
-        <SetRow key={s.id} s={s} index={sets.slice(0, i + 1).filter((x) => !x.isWarmup).length}
-          isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest}
-          onDelete={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }} />
-      ))}
+      {collapsed ? (
+        <div className="muted small" style={{ marginTop: 4, cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
+          {workSets} set{lastSet ? ` · ultimo ${lastSet.weight} kg × ${lastSet.reps}` : ' · nessuno'} — tocca per aprire
+        </div>
+      ) : (
+        <>
+          {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''} · recupero {restSec}s</div>}
 
-      <div className="row" style={{ marginTop: 10 }}>
-        <Stepper label="kg" value={w} set={setW} step={2.5} />
-        <Stepper label="reps" value={r} set={setR} step={1} />
-      </div>
-      <div style={{ marginTop: 8 }}><RirPicker value={rir} set={setRir} /></div>
-      <VoiceButton onFill={fillFromVoice} />
-      <div className="row spread" style={{ marginTop: 8 }}>
-        <span className="row" style={{ alignItems: 'center' }}>
-          <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
-          <Info text="Le serie di riscaldamento NON contano nelle metriche (volume, tonnellaggio, e1RM, PR, Score) e NON fanno partire il timer di recupero. Servono solo a tracciare l'avvicinamento ai carichi di lavoro." />
-        </span>
-        <button className="primary" style={{ flex: 1, marginLeft: 8 }} disabled={!canAdd} onClick={add}>Aggiungi set</button>
-      </div>
+          {sets.map((s, i) => (
+            <SetRow key={s.id} s={s} index={sets.slice(0, i + 1).filter((x) => !x.isWarmup).length}
+              isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest}
+              onDelete={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }} />
+          ))}
+
+          <div className="row" style={{ marginTop: 10 }}>
+            <Stepper label="kg" value={w} set={setW} step={2.5} />
+            <Stepper label="reps" value={r} set={setR} step={1} />
+          </div>
+          <div style={{ marginTop: 8 }}><RirPicker value={rir} set={setRir} /></div>
+          <VoiceButton onFill={fillFromVoice} />
+          <div className="row spread" style={{ marginTop: 8 }}>
+            <span className="row" style={{ alignItems: 'center' }}>
+              <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
+              <Info text="Le serie di riscaldamento NON contano nelle metriche (volume, tonnellaggio, e1RM, PR, Score) e NON fanno partire il timer di recupero. Servono solo a tracciare l'avvicinamento ai carichi di lavoro." />
+            </span>
+            <button className="primary" style={{ flex: 1, marginLeft: 8 }} disabled={!canAdd} onClick={add}>Aggiungi set</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -311,7 +325,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
 
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
-  const startRest = (sec: number, exId: string) => { setRest(sec); setRestExId(exId); setRestNonce((n) => n + 1) }
+  const startRest = (sec: number, exId: string | null) => { setRest(sec); setRestExId(exId); setRestNonce((n) => n + 1) }
   const restPresets = rest != null
     ? Array.from(new Set([rest, 60, 90, 120, 150, 180])).sort((a, b) => a - b)
     : REST_PRESETS
@@ -323,7 +337,10 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
           {onHome && <button className="ghost small" onClick={onHome}>‹ Home</button>}
           <h2 style={{ margin: 0 }}>Workout live</h2>
         </span>
-        {session && <WorkoutClock startedAt={session.startedAt} />}
+        <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
+          {session && <WorkoutClock startedAt={session.startedAt} />}
+        </span>
       </div>
 
       {rest != null && (

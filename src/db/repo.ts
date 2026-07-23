@@ -46,6 +46,11 @@ export async function updateSessionNotes(sessionId: string, notes: string): Prom
   await db.sessions.update(sessionId, { notes, updatedAt: nowISO() })
 }
 
+/** Cambia il tipo di una seduta (es. correggere Push→Custom dopo la chiusura). */
+export async function setSessionType(sessionId: string, type: WorkoutType): Promise<void> {
+  await db.sessions.update(sessionId, { type, updatedAt: nowISO() })
+}
+
 /** Elimina una seduta e tutto il suo contenuto (esercizi, set, cardio). */
 export async function deleteSession(sessionId: string): Promise<void> {
   const entries = await db.exerciseEntries.where({ sessionId }).toArray()
