@@ -295,6 +295,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
 
+  const cardioFlush = useRef<(() => Promise<void>) | null>(null)
+  async function finishAll() { await cardioFlush.current?.(); onFinish() } // salva il cardio in sospeso, poi chiudi
+
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
   const startRest = (sec: number, exId: string) => { setRest(sec); setRestExId(exId); setRestNonce((n) => n + 1) }
@@ -329,7 +332,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       )}
 
-      <CardioBlock sessionId={sessionId} />
+      <CardioBlock sessionId={sessionId} flushRef={cardioFlush} />
 
       {notesOpen ? (
         <div className="card">
@@ -341,7 +344,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         <button className="ghost" onClick={() => setNotesOpen(true)}>＋ Note seduta</button>
       )}
 
-      <button className="fab primary" onClick={onFinish}>Fine allenamento</button>
+      <button className="fab primary" onClick={finishAll}>Fine allenamento</button>
     </div>
   )
 }

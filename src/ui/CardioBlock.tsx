@@ -104,7 +104,7 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
   )
 }
 
-export function CardioBlock({ sessionId }: { sessionId: string }) {
+export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushRef?: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
   const user = useLiveQuery(getUser, [])
   const presets = useLiveQuery(listCardioPresets, []) ?? []
@@ -151,6 +151,11 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
     setDur(''); setBpm(''); setOpen(false)
   }
 
+  // Salvataggio automatico del cardio ancora nel form aperto quando si chiude l'allenamento (niente dati persi).
+  useEffect(() => {
+    if (flushRef) flushRef.current = async () => { if (open && durN != null) await add() }
+  })
+
   return (
     <div className="card">
       <div className="row spread">
@@ -166,18 +171,17 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
       {/* Live BPM da fascia Bluetooth (solo browser che lo supportano; iOS nascosto) */}
       {hr.supported && (
         <>
-          <div className="row spread" style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 }}>
             {hr.connected ? (
               <>
-                <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+                <span className="row" style={{ gap: 8, alignItems: 'center', flex: '1 1 auto', minWidth: 0 }}>
                   <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
                   <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
-                  <span className="muted small">bpm{liveZone ? ` · ${liveZone.label}` : ''}</span>
+                  <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    bpm{liveZone ? ` · Z${liveZone.zone}` : ''} · {hr.deviceName}
+                  </span>
                 </span>
-                <span className="row" style={{ gap: 6, alignItems: 'center' }}>
-                  <span className="muted small" style={{ maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hr.deviceName}</span>
-                  <button className="ghost small" onClick={hr.disconnect}>Disconnetti</button>
-                </span>
+                <button className="ghost small" style={{ flex: '0 0 auto' }} onClick={hr.disconnect}>Disconnetti</button>
               </>
             ) : (
               <button className="ghost small" onClick={hr.connect} disabled={hr.connecting}>
@@ -300,8 +304,9 @@ export function CardioBlock({ sessionId }: { sessionId: string }) {
           })()}
           <div className="row">
             <button className="ghost" style={{ flex: 1 }} onClick={() => setOpen(false)}>Annulla</button>
-            <button className="primary" style={{ flex: 2 }} disabled={durN == null} onClick={add}>Aggiungi cardio</button>
+            <button className="primary" style={{ flex: 2 }} disabled={durN == null} onClick={add}>✓ Salva cardio</button>
           </div>
+          <p className="muted small" style={{ marginTop: 4, textAlign: 'center' }}>Premi Salva per registrarlo nella seduta.</p>
         </div>
       )}
     </div>

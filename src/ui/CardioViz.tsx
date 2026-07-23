@@ -1,8 +1,7 @@
 const ZONE_COLORS = ['#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444']
 
-/** Cuore pulsante (al ritmo dei bpm, o "respiro" ambient) + barra zone Z1-Z5 con indicatore live. */
-export function CardioViz({ bpm, pct, zone }: { bpm?: number; pct?: number; zone?: number }) {
-  const beating = !!bpm
+/** Barra zone Z1-Z5 con indicatore + cuore. `live` = pulsa (fascia connessa); altrimenti fermo (dato salvato). */
+export function CardioViz({ bpm, pct, zone, live }: { bpm?: number; pct?: number; zone?: number; live?: boolean }) {
   const dur = bpm ? `${(60 / bpm).toFixed(2)}s` : '3s'
   const zoneCol = zone ? ZONE_COLORS[zone - 1] : 'var(--gold)'
 
@@ -10,7 +9,7 @@ export function CardioViz({ bpm, pct, zone }: { bpm?: number; pct?: number; zone
     <div className="row" style={{ gap: 12, alignItems: 'center', marginTop: 6 }}>
       <span style={{
         fontSize: 26, lineHeight: 1, color: '#ef4444', display: 'inline-block',
-        animation: `${beating ? 'heartBeat' : 'breathe'} ${dur} ease-in-out infinite`,
+        animation: live ? `heartBeat ${dur} ease-in-out infinite` : 'none',
       }}>♥</span>
       <div style={{ flex: 1 }}>
         {bpm && <div className="small" style={{ marginBottom: 3, color: zoneCol }}>{bpm} bpm{zone ? ` · Z${zone}` : ''}</div>}
