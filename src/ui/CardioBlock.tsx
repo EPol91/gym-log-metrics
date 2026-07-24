@@ -230,7 +230,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
       {/* Modale Cardio (portal a schermo intero) */}
       {open && phase !== 'running' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'var(--bg)', overflowY: 'auto' }}>
-          <div className="col" style={{ maxWidth: 520, margin: '0 auto', padding: '18px 16px calc(28px + env(safe-area-inset-bottom))', gap: 12 }}>
+          <div className="col" style={{ maxWidth: 520, margin: '0 auto', padding: '14px 16px calc(20px + env(safe-area-inset-bottom))', gap: 9 }}>
             <div className="row spread">
               <h2 style={{ margin: 0 }}>🏃 Cardio</h2>
               <button className="ghost small" onClick={() => { setManual(false); onOpenChange(false) }}>✕</button>
@@ -261,12 +261,12 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
               </>
             ) : (
               <>
-                {/* Tipo — griglia di icone */}
+                {/* Tipo — griglia di icone compatta */}
                 <label className="fl">Tipo</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
                   {TYPES.map((t) => (
-                    <button key={t} onClick={() => chooseType(t)} style={{ padding: '10px 4px', textAlign: 'center', fontSize: 12, borderRadius: 12, border: `1px solid ${ctype === t ? 'var(--gold)' : 'var(--line)'}`, color: ctype === t ? 'var(--gold)' : 'var(--text)', background: ctype === t ? 'rgba(217,178,74,.08)' : 'var(--surface)' }}>
-                      <span style={{ fontSize: 20, display: 'block', marginBottom: 3 }}>{TYPE_ICON[t]}</span>{TYPE_LABEL[t]}
+                    <button key={t} onClick={() => chooseType(t)} style={{ padding: '5px 2px', textAlign: 'center', fontSize: 11.5, lineHeight: 1.2, borderRadius: 10, border: `1px solid ${ctype === t ? 'var(--gold)' : 'var(--line)'}`, color: ctype === t ? 'var(--gold)' : 'var(--text)', background: ctype === t ? 'rgba(217,178,74,.08)' : 'var(--surface)' }}>
+                      <span style={{ fontSize: 17, display: 'block', marginBottom: 1 }}>{TYPE_ICON[t]}</span>{TYPE_LABEL[t]}
                     </button>
                   ))}
                 </div>
