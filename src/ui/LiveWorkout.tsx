@@ -13,6 +13,7 @@ import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from
 import { useWallTick } from '../util/useWallClock'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
+import { fmtRest } from '../util/format'
 import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
@@ -74,7 +75,7 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
         <button style={ctrl} onClick={toggle}>{running ? '⏸' : '▶'}</button>
         <button style={ctrl} onClick={reset}>↺</button>
         <select value={total} onChange={(e) => pick(Number(e.target.value))} style={{ flex: 1, padding: '6px 2px', fontSize: 13 }}>
-          {presets.map((s) => <option key={s} value={s}>{s}s</option>)}
+          {presets.map((s) => <option key={s} value={s}>{fmtRest(s)}</option>)}
         </select>
       </div>
     </div>
@@ -217,7 +218,7 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
       <span className="muted small">{prev}</span>
       <span className="strong">{s.weight}</span>
       <span className="strong">{s.reps}{isPR && <span style={{ color: 'var(--gold)' }}> PR</span>}
-        <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{s.rir != null ? ` R${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` ⏱${s.restSec}` : ''}</span>
+        <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{s.rir != null ? ` R${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` ⏱${fmtRest(s.restSec)}` : ''}</span>
       </span>
       <span style={{ textAlign: 'center', color: 'var(--good)' }}>✓</span>
     </div>
@@ -227,7 +228,7 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
 function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext }: {
   entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number
   pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
-  onLogged: (sec: number, exerciseId: string) => void; onPrev?: () => void; onNext?: () => void
+  onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
 }) {
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [w, setW] = useState('')
@@ -241,7 +242,6 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
-  const lastSetAtRef = useRef<number | null>(null) // recupero reale tra le serie
 
   useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
@@ -267,12 +267,11 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
   async function add() {
     const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
     if (wn == null || rn == null) return
-    const now = Date.now()
-    const restTaken = !warmup && lastSetAtRef.current != null ? Math.min(3600, Math.max(0, Math.round((now - lastSetAtRef.current) / 1000))) : undefined
-    await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup, restSec: restTaken })
-    if (!warmup) lastSetAtRef.current = now
+    // Il recupero salvato sulla serie = il timer scelto per questo esercizio (non il tempo misurato).
+    // Se durante il recupero cambi preset, il parent aggiorna questa serie via l'id qui sotto.
+    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup, restSec: warmup ? undefined : restSec })
     setRir(null); setWarmup(false)
-    if (!warmup) onLogged(restSec, entry.exerciseId)
+    if (!warmup) onLogged(restSec, entry.exerciseId, id)
   }
 
   let wIdx = 0
@@ -359,6 +358,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [picking, setPicking] = useState(false)
   const [rest, setRest] = useState<number | null>(null)
   const [restExId, setRestExId] = useState<string | null>(null)
+  const [restSetId, setRestSetId] = useState<string | null>(null)
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
   // Esercizio corrente (vista a focus): persistito per-sessione → il refresh non ti riporta al primo.
@@ -373,7 +373,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
 
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
-  const startRest = (sec: number, exId: string | null) => { setRest(sec); setRestExId(exId); setRestNonce((n) => n + 1) }
+  const startRest = (sec: number, exId: string | null, setId?: string) => { setRest(sec); setRestExId(exId); setRestSetId(setId ?? null); setRestNonce((n) => n + 1) }
   const restPresets = rest != null
     ? Array.from(new Set([rest, 60, 90, 120, 150, 180])).sort((a, b) => a - b)
     : REST_PRESETS
@@ -405,7 +405,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
             pos={current + 1} total={entries.length}
             restNode={rest != null ? (
               <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
-                onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
+                onPick={(s) => { if (restExId) setExerciseRest(restExId, s); if (restSetId) updateSet(restSetId, { restSec: s }) }}
                 onClose={() => setRest(null)} />
             ) : null}
             isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest}

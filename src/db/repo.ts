@@ -344,7 +344,7 @@ export async function moveExerciseEntry(entryId: string, dir: -1 | 1): Promise<v
 // --- Set ---
 export interface SetInput { weight: number; reps: number; rir?: number; isWarmup?: boolean; restSec?: number }
 
-export async function addSet(entryId: string, inp: SetInput): Promise<void> {
+export async function addSet(entryId: string, inp: SetInput): Promise<string> {
   const ts = nowISO()
   const order = await db.sets.where({ entryId }).count()
   const s: SetEntry = {
@@ -355,6 +355,7 @@ export async function addSet(entryId: string, inp: SetInput): Promise<void> {
     ...(inp.restSec != null ? { restSec: inp.restSec } : {}),
   }
   await db.sets.add(s)
+  return s.id
 }
 
 /** Storico recente di un esercizio: ultime sedute (solo serie di lavoro) per confronto durante l'allenamento. */
