@@ -16,7 +16,7 @@
 
   h1{font-family:Georgia,"Times New Roman",serif;font-weight:600;font-size:clamp(28px,4vw,40px);margin:0 0 4px;letter-spacing:.2px;text-wrap:balance}
   h1 .amp{color:var(--gold);font-style:italic}
-  .lead{color:var(--muted);max-width:60ch;margin:0 0 6px}
+  .lead{color:var(--muted);max-width:62ch;margin:0 0 6px}
   .note{color:var(--muted);font-size:13px;margin:0 0 30px}
   .note b{color:var(--text)}
 
@@ -28,6 +28,7 @@
   .mock{display:flex;flex-direction:column;gap:12px}
   .phone{width:100%;max-width:330px;margin:0 auto;background:var(--screen);border:1px solid var(--line);
     border-radius:30px;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04)}
+  .phone.pick{border-color:var(--gold);box-shadow:0 20px 50px rgba(0,0,0,.5), 0 0 0 1px var(--gold-dim), 0 0 30px rgba(217,178,74,.15)}
   .notch{width:110px;height:6px;background:#26262c;border-radius:99px;margin:2px auto 10px}
   .scr{padding:4px 12px 14px;display:flex;flex-direction:column;gap:12px;min-height:560px}
 
@@ -35,74 +36,61 @@
   .cap .name{font-weight:700;font-size:15px}
   .cap .tag{display:inline-block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
     color:var(--gold);border:1px solid var(--gold-dim);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+  .cap .tag.win{background:var(--gold);color:#1a1400;border-color:var(--gold)}
   .cap p{color:var(--muted);font-size:12.5px;margin:4px 0 0}
 
-  /* app UI atoms */
   .brand{font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
   .greet{font-family:Georgia,serif;font-size:22px;margin:0}
   .greet .wave{color:var(--gold)}
   .phrase{color:var(--muted);font-size:12px;margin:2px 0 0}
-  .cta{background:var(--gold);color:#1a1400;font-weight:700;border:none;border-radius:12px;
-    padding:14px;text-align:center;font-size:14px}
+  .cta{background:var(--gold);color:#1a1400;font-weight:700;border:none;border-radius:12px;padding:14px;text-align:center;font-size:14px}
   .cta.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600;font-size:12px;padding:9px}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .card.ai{border-color:var(--gold-dim);background:linear-gradient(180deg,rgba(217,178,74,.08),transparent)}
   .row{display:flex;align-items:center}.spread{justify-content:space-between}.gap{gap:8px}
   .mut{color:var(--muted)} .sm{font-size:12px} .xs{font-size:10.5px}
   .g{color:var(--gold)} .strong{font-weight:700}
   .tabbar{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:8px;margin-top:auto;color:var(--muted);font-size:10px}
   .tabbar .on{color:var(--gold)}
-  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);
-    border-radius:99px;padding:6px 10px;font-size:11.5px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);border-radius:99px;padding:6px 10px;font-size:11.5px}
   .pill{font-size:10px;border:1px solid var(--line);border-radius:99px;padding:1px 7px;color:var(--muted)}
   .barbg{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
   .barbg>i{display:block;height:100%;background:var(--gold)}
-  .zbar{display:flex;height:8px;border-radius:99px;overflow:hidden}
-  .zbar>span{flex:1}
   .num{font-variant-numeric:tabular-nums}
-  .divider{height:1px;background:var(--line)}
-
-  /* set table */
   table.log{width:100%;border-collapse:collapse;font-size:12px}
   table.log th{color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:4px 4px}
   table.log td{padding:6px 4px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
   .tick{width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
   .tick.done{background:rgba(56,178,107,.2);color:var(--good);border:1px solid var(--good)}
   .tick.todo{border:1px solid var(--line);color:var(--muted)}
-
-  .dots{display:flex;gap:5px}
-  .dots i{width:7px;height:7px;border-radius:99px;background:var(--surface2)}
-  .dots i.on{background:var(--gold)}
-
-  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px;color:var(--muted);font-size:12px}
-  .legend b{color:var(--text)}
+  .dots{display:flex;gap:5px}.dots i{width:7px;height:7px;border-radius:99px;background:var(--surface2)}.dots i.on{background:var(--gold)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px;color:var(--muted);font-size:12px}.legend b{color:var(--text)}
   footer{margin-top:44px;color:var(--muted);font-size:12px;text-align:center}
 </style>
 
 <div class="wrap">
   <p class="brand">GYM LOG &amp; METRICS</p>
   <h1>Mockup <span class="amp">·</span> Dashboard &amp; Workout Live</h1>
-  <p class="lead">Tre direzioni per la Home e tre per il Workout Live. Stesse funzioni reali dell'app (Score, cardio, PR, timer), impaginate in modo diverso. Sono bozze visive, non ancora cliccabili.</p>
-  <p class="note">Ispirazioni: <b>Whoop</b> (anelli/leggibilità), <b>Jefit</b> (tabelle set, densità dati), <b>Hevy/Strong</b> (logging pulito), <b>HubFit</b> (feed + progressi). Guarda ognuno e dimmi quale preferisci, o mescoliamo.</p>
+  <p class="lead">Workout Live: <b style="color:var(--gold)">B scelto</b> (con barra countdown recupero sotto le card). Dashboard: tengo <b style="color:var(--gold)">A</b> e <b style="color:var(--gold)">C</b> e aggiungo due nuove (D, E) + un ibrido (F) da valutare.</p>
+  <p class="note">Ispirazioni: <b>Whoop</b> (anelli), <b>Jefit</b> (tabelle/densità), <b>Hevy/Strong</b> (logging), <b>HubFit</b> (feed), coach AI (<b>Freeletics</b>). Bozze visive, non cliccabili.</p>
 
-  <h2>Dashboard</h2>
-  <p class="sub">La schermata Home: cosa vedi appena apri l'app.</p>
-  <div class="grid" id="dash"></div>
-
-  <h2>Workout Live</h2>
-  <p class="sub">La schermata durante l'allenamento: dove logghi serie ed esercizi.</p>
+  <h2>Workout Live — scelto</h2>
+  <p class="sub">Un esercizio alla volta, con la barra recupero che appare sotto le card quando è attiva.</p>
   <div class="grid" id="work"></div>
+
+  <h2>Dashboard — da valutare</h2>
+  <p class="sub">Tenute A e C · nuove D, E · ibrido F.</p>
+  <div class="grid" id="dash"></div>
 
   <div class="legend">
     <span>🔵 <b>Score</b>: Readiness · Workout · Performance · Consistency</span>
     <span>⚪ <b>Anello</b>: valore 0–100</span>
-    <span>Tema scuro premium (coerente con l'app)</span>
+    <span>Tema scuro premium</span>
   </div>
-
   <footer>Bozze per revisione · GYM LOG &amp; METRICS · dati d'esempio</footer>
 </div>
 
 <script>
-// ---------- helpers ----------
 function ring(val, color, size, label, big){
   const r = size/2 - (big?7:5), c = 2*Math.PI*r, off = c*(1-val/100);
   return `<svg viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px">
@@ -110,122 +98,101 @@ function ring(val, color, size, label, big){
     <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${big?8:6}" stroke-linecap="round"
       stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})"/>
     <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="var(--text)"
-      style="font-size:${big?26:15}px;font-weight:700;font-variant-numeric:tabular-nums">${label??val}</text>
-  </svg>`;
+      style="font-size:${big?26:15}px;font-weight:700;font-variant-numeric:tabular-nums">${label??val}</text></svg>`;
 }
 const scoreColor = v => v>=70?'var(--good)':v>=40?'var(--gold)':'var(--red)';
-function statusbar(){return `<div class="row spread xs mut" style="padding:0 2px"><span>9:41</span><span>▮▮▮ 100%</span></div>`}
-function tabbar(active){const t=['Home','Esercizi','Corpo','Storico','Profilo'];
-  return `<div class="tabbar">${t.map(x=>`<span class="${x===active?'on':''}">${x}</span>`).join('')}</div>`}
-function card(inner,style){return `<div class="card" style="${style||''}">${inner}</div>`}
-function mock(el, name, tag, desc, screen){
+const statusbar = () => `<div class="row spread xs mut" style="padding:0 2px"><span>9:41</span><span>▮▮▮ 100%</span></div>`;
+const tabbar = a => `<div class="tabbar">${['Home','Esercizi','Corpo','Storico','Profilo'].map(x=>`<span class="${x===a?'on':''}">${x}</span>`).join('')}</div>`;
+const card = (i,s)=>`<div class="card" style="${s||''}">${i}</div>`;
+function mock(el,name,tag,desc,screen,pick){
   el.insertAdjacentHTML('beforeend', `<div class="mock">
-    <div class="phone"><div class="notch"></div><div class="scr">${screen}</div></div>
-    <div class="cap"><span class="name">${name}</span><span class="tag">${tag}</span><p>${desc}</p></div>
-  </div>`);
+    <div class="phone${pick?' pick':''}"><div class="notch"></div><div class="scr">${screen}</div></div>
+    <div class="cap"><span class="name">${name}</span><span class="tag${pick?' win':''}">${tag}</span><p>${desc}</p></div></div>`);
 }
-const zbar = active => `<div class="zbar">${['z1','z2','z3','z4','z5'].map((z,i)=>`<span style="background:var(--${z});opacity:${active===i+1?1:.32}"></span>`).join('')}</div>`;
+function bars(vals){return `<div class="row gap" style="align-items:flex-end;height:44px;gap:5px">${vals.map(h=>`<div style="flex:1;background:linear-gradient(var(--gold),var(--gold-dim));height:${h}%;border-radius:3px"></div>`).join('')}</div>`}
 
-// ---------- DASHBOARD ----------
+// ===== WORKOUT B (scelto) =====
+const work = document.getElementById('work');
+mock(work,'Workout B — Focus esercizio','SCELTO',
+ 'Un esercizio a tutto schermo, scorri tra esercizi. La barra recupero compare sotto le card kg/reps/RIR quando è attiva.',
+ `${statusbar()}
+  <div class="row spread"><span class="pill">‹ Home</span><span class="dots">${[1,1,1,0,0,0].map(o=>`<i class="${o?'on':''}"></i>`).join('')}</span><span class="mut sm">24:06</span></div>
+  <div style="text-align:center;margin-top:2px"><div class="mut xs">ESERCIZIO 3 / 6</div><h2 style="margin:2px 0;font-size:20px">Squat bilanciere</h2><div class="xs mut">Ultima: 140×5 · PR 165</div></div>
+  ${card(`<table class="log"><tr><th>Set</th><th>Prec.</th><th>Kg</th><th>Reps</th><th></th></tr>
+    <tr><td>1</td><td class="mut">140×5</td><td class="strong">140</td><td class="strong">5</td><td><span class="tick done">✓</span></td></tr>
+    <tr><td>2</td><td class="mut">140×5</td><td class="strong">140</td><td class="strong">5</td><td><span class="tick done">✓</span></td></tr>
+    <tr><td>3</td><td class="mut">140×5</td><td class="g strong">142,5</td><td class="g strong">5</td><td><span class="tick todo">○</span></td></tr></table>`)}
+  <div class="row gap" style="text-align:center"><div class="card num" style="flex:1;font-size:22px">142,5<div class="xs mut">kg</div></div><div class="card num" style="flex:1;font-size:22px">5<div class="xs mut">reps</div></div><div class="card num" style="flex:1;font-size:22px">2<div class="xs mut">RIR</div></div></div>
+  <div class="card" style="padding:8px 12px;border-color:var(--gold-dim)"><div class="row spread xs"><span class="mut">⏱ RECUPERO</span><span class="g num strong" style="font-size:14px">1:12</span></div><div class="barbg" style="margin-top:6px"><i style="width:60%"></i></div></div>
+  <div class="cta">✓ Registra serie</div>
+  <div class="row spread"><span class="cta ghost" style="flex:1;margin-right:6px">‹ Panca</span><span class="cta ghost" style="flex:1">Stacco ›</span></div>`, true);
+
+// ===== DASHBOARDS =====
 const dash = document.getElementById('dash');
 
-// A — Rings-first (Whoop / HubFit)
-mock(dash,'Dashboard A — Anelli','Whoop · HubFit',
- 'Un grande anello “Oggi” come sintesi immediata, poi i 4 Score in piccolo. Colpo d’occhio, zero rumore.',
+// A (tenuto)
+mock(dash,'Dashboard A — Anelli','tenuto',
+ 'Grande anello “Oggi” come sintesi, poi i 4 Score in piccolo. Colpo d’occhio, zero rumore.',
  `${statusbar()}
   <div><p class="brand">Gym log &amp; metrics</p><p class="greet">Ciao Emanuel <span class="wave">👋</span></p><p class="phrase">Oggi si costruisce.</p></div>
   <div class="card row spread" style="align-items:center">
     <div>${ring(78,'var(--good)',108,'78',true)}</div>
-    <div style="text-align:right"><div class="xs mut">STATO DI OGGI</div><div class="strong" style="font-size:18px;color:var(--good)">Pronto</div><div class="sm mut">carico ok · recupero buono</div></div>
-  </div>
-  <div class="row gap" style="gap:8px">
-    ${['Readiness 82','Workout 64','Perf —','Constan 71'].map(s=>{const v=parseInt(s.split(' ')[1])||0;return `<div class="card" style="flex:1;padding:8px;text-align:center">${ring(v||3,scoreColor(v||0),56,isNaN(v)?'—':v)}<div class="xs mut" style="margin-top:2px">${s.split(' ')[0]}</div></div>`}).join('')}
-  </div>
+    <div style="text-align:right"><div class="xs mut">STATO DI OGGI</div><div class="strong" style="font-size:18px;color:var(--good)">Pronto</div><div class="sm mut">carico ok · recupero buono</div></div></div>
+  <div class="row gap">${['Readiness 82','Workout 64','Perf —','Constan 71'].map(s=>{const v=parseInt(s.split(' ')[1])||0;return `<div class="card" style="flex:1;padding:8px;text-align:center">${ring(v||3,scoreColor(v||0),56,isNaN(v)?'—':v)}<div class="xs mut" style="margin-top:2px">${s.split(' ')[0]}</div></div>`}).join('')}</div>
   <div class="cta">＋ Inizia allenamento</div>
   <div class="chip">🥗 Nutrizione oggi <span class="pill">compila ▾</span></div>
   ${tabbar('Home')}`);
 
-// B — Activity feed (Jefit / HubFit)
-mock(dash,'Dashboard B — Feed','Jefit · HubFit',
- 'Denso e scorrevole: streak, ultimo workout, volume settimanale, peso. Tanti dati a colpo d’occhio in stile diario.',
- `${statusbar()}
-  <div class="row spread"><div><p class="greet">Ciao Emanuel</p><p class="phrase">La costanza batte il talento.</p></div>
-    <div class="chip">🔥 <b class="g">12</b> giorni</div></div>
-  <div class="cta">＋ Inizia allenamento</div>
-  ${card(`<div class="row spread"><span class="mut sm">Ultimo — Push</span><span class="xs mut">2 giorni fa ›</span></div>
-    <div class="row spread" style="margin-top:6px"><span class="strong">8.926 kg</span><span class="sm mut">37 set · 266 reps</span></div>
-    <div class="row gap xs mut" style="margin-top:6px"><span class="pill">Score 64</span><span class="pill">2 PR</span></div>`)}
-  ${card(`<div class="row spread sm"><span class="mut">Volume settimana</span><span class="g strong">+12%</span></div>
-    <div class="row gap" style="align-items:flex-end;height:44px;margin-top:8px;gap:5px">
-      ${[30,52,40,68,48,74,60].map(h=>`<div style="flex:1;background:linear-gradient(var(--gold),var(--gold-dim));height:${h}%;border-radius:3px"></div>`).join('')}
-    </div>`)}
-  ${card(`<div class="row spread"><span class="mut sm">Peso corporeo</span><span><b class="num">82,4</b> kg <span class="sm" style="color:var(--good)">▼0,3</span></span></div>
-    <svg viewBox="0 0 200 34" style="width:100%;height:34px;margin-top:6px"><polyline fill="none" stroke="var(--gold)" stroke-width="2" points="0,20 33,18 66,22 99,15 132,17 165,12 200,14"/></svg>`)}
-  ${tabbar('Home')}`);
-
-// C — Minimal focus
-mock(dash,'Dashboard C — Essenziale','Minimal',
- 'Poco e grande: un obiettivo in evidenza, CTA enorme, KPI in una riga toccabile. Il resto si apre a richiesta. Meno caos.',
+// C (tenuto)
+mock(dash,'Dashboard C — Essenziale','tenuto',
+ 'Poco e grande: un obiettivo in evidenza, CTA enorme, KPI in una riga. Il resto si apre a richiesta.',
  `${statusbar()}
   <div style="margin-top:6px"><p class="greet" style="font-size:26px">Ciao Emanuel</p><p class="phrase">Presentati. Il resto viene.</p></div>
   ${card(`<div class="row spread sm"><span class="mut">Questa settimana</span><span class="strong">3 / 4 sessioni</span></div>
     <div class="barbg" style="margin-top:8px"><i style="width:75%"></i></div>
     <div class="xs mut" style="margin-top:6px">Ancora 1 per centrare l'obiettivo 💪</div>`,'padding:14px')}
   <div class="cta" style="padding:18px;font-size:16px">＋ Inizia allenamento</div>
-  <div class="row spread" style="text-align:center">
-    ${[['82','Readiness'],['64','Workout'],['71','Constan.'],['—','Perf.']].map(k=>`<div style="flex:1"><div class="strong g num" style="font-size:20px">${k[0]}</div><div class="xs mut">${k[1]}</div></div>`).join('')}
-  </div>
+  <div class="row spread" style="text-align:center">${[['82','Readiness'],['64','Workout'],['71','Constan.'],['—','Perf.']].map(k=>`<div style="flex:1"><div class="strong g num" style="font-size:20px">${k[0]}</div><div class="xs mut">${k[1]}</div></div>`).join('')}</div>
   <div class="cta ghost">▾ Dettagli &amp; nutrizione</div>
   ${tabbar('Home')}`);
 
-// ---------- WORKOUT LIVE ----------
-const work = document.getElementById('work');
-
-// A — Command bar + collapsible cards (current++, Jefit)
-mock(work,'Workout A — Barra comando','Jefit · attuale+',
- 'Barra fissa in alto con durata e timer recupero. Esercizi in card collassabili. Evoluzione ordinata di quello che hai ora.',
+// D — Coach / AI-first (nuovo)
+mock(dash,'Dashboard D — Coach AI','NUOVO',
+ 'L’AI in cima: pagella settimanale + consiglio del giorno. Punta sul valore che le altre app non hanno. Poi Score e CTA.',
  `${statusbar()}
-  <div class="card row spread" style="padding:8px 10px;position:sticky">
-    <span class="row gap"><span class="pill">‹ Home</span><b>Live</b></span>
-    <span class="row gap sm"><span class="chip" style="padding:4px 8px">⏱ Rec 1:12</span><span class="mut">⏱ 24:06</span></span>
+  <div class="row spread"><p class="greet">Ciao Emanuel</p><span class="chip">📊 <b class="g">8,1</b>/10</span></div>
+  ${card(`<div class="row spread"><span class="xs g" style="letter-spacing:.1em">COACH · OGGI</span><span class="xs mut">aggiornato ora</span></div>
+    <p class="sm" style="margin:6px 0 0">Buona settimana: petto in crescita (+6% volume). Oggi sei <b style="color:var(--good)">pronto</b> — spingi sulle gambe, recupero sotto controllo.</p>
+    <div class="row gap" style="margin-top:8px"><span class="pill">Push +6%</span><span class="pill">Sonno ok</span><span class="pill">1 PR</span></div>`,'','ai')}
+  <div class="row gap">${[['82','Read.','var(--good)'],['64','Work.','var(--gold)'],['71','Cons.','var(--good)']].map(k=>`<div class="card" style="flex:1;padding:8px;text-align:center"><div class="strong num" style="font-size:20px;color:${k[2]}">${k[0]}</div><div class="xs mut">${k[1]}</div></div>`).join('')}</div>
+  <div class="cta">＋ Inizia allenamento</div>
+  <div class="chip">🥗 Nutrizione <span class="pill">ON · 2,8L</span></div>
+  ${tabbar('Home')}`);
+
+// E — Progress / grafici (nuovo)
+mock(dash,'Dashboard E — Progressi','NUOVO',
+ 'Centrato sui grafici: trend di forza in evidenza + numeri della settimana. Per chi vuole “vedere” di stare migliorando.',
+ `${statusbar()}
+  <div class="row spread"><p class="greet">Ciao Emanuel</p><span class="pill">6 settimane ▾</span></div>
+  ${card(`<div class="row spread sm"><span class="mut">Forza (e1RM medio)</span><span class="g strong">+8,5%</span></div>
+    <svg viewBox="0 0 260 70" style="width:100%;height:70px;margin-top:6px">
+      <polyline fill="none" stroke="var(--gold)" stroke-width="2.5" points="0,55 43,50 86,44 129,46 172,34 215,26 260,18"/>
+      <circle cx="260" cy="18" r="3.5" fill="var(--gold)"/></svg>`)}
+  <div class="row gap">
+    ${card(`<div class="xs mut">VOLUME SETT.</div><div class="strong num" style="font-size:18px">12,4t</div>${bars([40,60,50,80])}`,'flex:1;padding:10px')}
+    ${card(`<div class="xs mut">SEDUTE</div><div class="strong num" style="font-size:18px">3/4</div><div class="barbg" style="margin-top:14px"><i style="width:75%"></i></div>`,'flex:1;padding:10px')}
   </div>
-  ${card(`<div class="row spread"><b>▾ Panca piana bilanciere</b><span class="mut xs">↑ ↓ 🗑</span></div>
-    <div class="xs mut" style="margin-top:2px">Ultima: 100×8 · PR e1RM 128 kg</div>
-    <div class="sm num" style="margin-top:8px">1 &nbsp; 100 kg × 8 · RIR 2 <span class="pill" style="color:var(--gold);border-color:var(--gold-dim)">PR</span></div>
-    <div class="sm num" style="margin-top:4px">2 &nbsp; 100 kg × 8 · ⏱95s</div>
-    <div class="row gap" style="margin-top:8px"><div class="chip" style="flex:1;justify-content:center">kg 100</div><div class="chip" style="flex:1;justify-content:center">reps 8</div><div class="cta" style="flex:1;padding:9px">＋ set</div></div>`)}
-  ${card(`<div class="row spread"><b>▸ Croci ai cavi</b><span class="mut xs">3 set · ultimo 22×12</span></div>`,'padding:10px 12px')}
-  <div class="cta ghost">＋ Aggiungi esercizio</div>
-  <div class="cta">Fine allenamento</div>`);
+  <div class="cta">＋ Inizia allenamento</div>
+  ${tabbar('Home')}`);
 
-// B — Single-exercise focus (Hevy / Strong)
-mock(work,'Workout B — Focus esercizio','Hevy · Strong',
- 'Un esercizio alla volta, a tutto schermo, con scorrimento tra esercizi. Massima concentrazione, numeri grandi, poco da cercare.',
+// F — Ibrido (A + C + D)
+mock(dash,'Dashboard F — Ibrido','IBRIDO',
+ 'Il meglio: anello “Oggi” medio (A) + CTA grande e ordine (C) + una riga di consiglio AI (D). Sintesi + azione + coach.',
  `${statusbar()}
-  <div class="row spread"><span class="pill">‹ Home</span><span class="dots">${[1,1,1,0,0,0].map(o=>`<i class="${o?'on':''}"></i>`).join('')}</span><span class="mut sm">24:06</span></div>
-  <div style="text-align:center;margin-top:4px"><div class="mut xs">ESERCIZIO 3 / 6</div><h2 style="margin:2px 0;font-size:20px">Squat bilanciere</h2><div class="xs mut">Ultima: 140×5 · PR 165</div></div>
-  ${card(`<table class="log"><tr><th>Set</th><th>Prec.</th><th>Kg</th><th>Reps</th><th></th></tr>
-    <tr><td>1</td><td class="mut">140×5</td><td class="strong">140</td><td class="strong">5</td><td><span class="tick done">✓</span></td></tr>
-    <tr><td>2</td><td class="mut">140×5</td><td class="strong">140</td><td class="strong">5</td><td><span class="tick done">✓</span></td></tr>
-    <tr><td>3</td><td class="mut">140×5</td><td class="g strong">142,5</td><td class="g strong">5</td><td><span class="tick todo">○</span></td></tr></table>`)}
-  <div class="row gap" style="text-align:center"><div class="card num" style="flex:1;font-size:22px">142,5<div class="xs mut">kg</div></div><div class="card num" style="flex:1;font-size:22px">5<div class="xs mut">reps</div></div><div class="card num" style="flex:1;font-size:22px">2<div class="xs mut">RIR</div></div></div>
-  <div class="cta">✓ Registra serie</div>
-  <div class="row spread"><span class="cta ghost" style="flex:1;margin-right:6px">‹ Panca</span><span class="cta ghost" style="flex:1">Stacco ›</span></div>`);
-
-// C — Dense table logger (Jefit power user)
-mock(work,'Workout C — Tabella','Jefit power',
- 'Vista a tabella per chi va veloce: tutte le serie di ogni esercizio in griglia, con “precedente” accanto e spunta. Log rapidissimo.',
- `${statusbar()}
-  <div class="row spread sm"><span class="row gap"><span class="pill">‹</span><b>Push A</b></span><span class="row gap"><span class="chip" style="padding:4px 8px">⏱ 1:12</span><span class="mut">24:06</span></span></div>
-  ${card(`<div class="row spread"><b class="sm">Panca piana</b><span class="xs mut">rec 90s</span></div>
-    <table class="log"><tr><th>Set</th><th>Prec.</th><th>Kg</th><th>Reps</th><th>RIR</th><th></th></tr>
-    ${[['1','100×8','100','8','2',1],['2','100×8','100','8','2',1],['3','100×7','100','7','1',1],['4','—','100','','',0]].map(r=>
-      `<tr><td>${r[0]}</td><td class="mut">${r[1]}</td><td class="strong">${r[2]}</td><td class="strong">${r[3]}</td><td>${r[4]}</td><td><span class="tick ${r[5]?'done':'todo'}">${r[5]?'✓':'○'}</span></td></tr>`).join('')}
-    </table>`,'padding:10px 12px')}
-  ${card(`<div class="row spread"><b class="sm">Alzate laterali</b><span class="xs mut">rec 60s</span></div>
-    <table class="log"><tr><th>Set</th><th>Prec.</th><th>Kg</th><th>Reps</th><th>RIR</th><th></th></tr>
-    ${[['1','12×15','12','15','1',1],['2','12×15','12','','',0]].map(r=>
-      `<tr><td>${r[0]}</td><td class="mut">${r[1]}</td><td class="strong">${r[2]}</td><td class="strong">${r[3]}</td><td>${r[4]}</td><td><span class="tick ${r[5]?'done':'todo'}">${r[5]?'✓':'○'}</span></td></tr>`).join('')}
-    </table>`,'padding:10px 12px')}
-  <div class="cta">Fine allenamento</div>`);
+  <div class="row spread" style="align-items:flex-start"><div><p class="brand">Gym log &amp; metrics</p><p class="greet">Ciao Emanuel</p></div>${ring(78,'var(--good)',72,'78')}</div>
+  <div class="card ai" style="padding:10px 12px"><span class="xs g">💡 </span><span class="sm">Sei pronto: oggi gambe, recupero ok. <span class="mut">+6% petto in settimana.</span></span></div>
+  <div class="cta" style="padding:16px;font-size:15px">＋ Inizia allenamento</div>
+  <div class="row spread" style="text-align:center">${[['82','Read.'],['64','Work.'],['71','Cons.'],['—','Perf.']].map(k=>`<div style="flex:1"><div class="strong g num" style="font-size:19px">${k[0]}</div><div class="xs mut">${k[1]}</div></div>`).join('')}</div>
+  <div class="chip">🥗 Nutrizione oggi <span class="pill">compila ▾</span></div>
+  ${tabbar('Home')}`);
 </script>
