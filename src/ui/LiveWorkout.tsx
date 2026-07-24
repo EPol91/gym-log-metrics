@@ -354,6 +354,8 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [restExId, setRestExId] = useState<string | null>(null)
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
+  const [cur, setCur] = useState(0) // esercizio corrente (vista a focus)
+  const current = entries.length ? Math.min(cur, entries.length - 1) : 0
 
   const cardioFlush = useRef<(() => Promise<void>) | null>(null)
   async function finishAll() { await cardioFlush.current?.(); onFinish() } // salva il cardio in sospeso, poi chiudi
@@ -387,14 +389,35 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         )}
       </div>
 
-      {entries.map((e, i) => (
-        <EntryCard key={e.id} entry={e} name={nameOf(e.exerciseId)} settings={exercises.find((x) => x.id === e.exerciseId)?.settings ?? ''}
-          sessionId={sessionId} restSec={restOf(e.exerciseId)}
-          isFirst={i === 0} isLast={i === entries.length - 1} onLogged={startRest} />
-      ))}
+      {entries.length > 0 && (
+        <>
+          {/* Indicatore posizione + salto rapido */}
+          <div className="row spread" style={{ marginTop: 2 }}>
+            <span className="muted small">Esercizio {current + 1}/{entries.length}</span>
+            <span className="row" style={{ gap: 5 }}>
+              {entries.map((e, i) => (
+                <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
+              ))}
+            </span>
+          </div>
+
+          <EntryCard key={entries[current].id} entry={entries[current]} name={nameOf(entries[current].exerciseId)}
+            settings={exercises.find((x) => x.id === entries[current].exerciseId)?.settings ?? ''}
+            sessionId={sessionId} restSec={restOf(entries[current].exerciseId)}
+            isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest} />
+
+          {/* Navigazione tra esercizi */}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="ghost" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} disabled={current === 0}
+              onClick={() => setCur(current - 1)}>‹ {current > 0 ? nameOf(entries[current - 1].exerciseId) : ''}</button>
+            <button className="ghost" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} disabled={current >= entries.length - 1}
+              onClick={() => setCur(current + 1)}>{current < entries.length - 1 ? nameOf(entries[current + 1].exerciseId) : ''} ›</button>
+          </div>
+        </>
+      )}
 
       {picking ? (
-        <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setPicking(false) }} onClose={() => setPicking(false)} />
+        <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setCur(entries.length); setPicking(false) }} onClose={() => setPicking(false)} />
       ) : (
         <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       )}
