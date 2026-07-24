@@ -60,6 +60,17 @@ export function BodyScreen() {
         )}
       </div>
 
+      {/* FFMI */}
+      {latest && (
+        <div className="card">
+          <div className="muted small">FFMI {ffmi ? '(norm.)' : ''}<Info text="FFMI = indice di massa magra: peso × (1−%grasso) / altezza². Migliore del BMI per chi ha muscoli. Serve % grasso + altezza (Profilo)." /></div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
+            <span style={{ fontSize: 28, fontWeight: 700 }}>{ffmi ? ffmi.normalized : '—'}</span>
+            <span className="muted small">{ffmi ? `massa magra ${ffmi.ffmKg} kg` : 'serve % grasso + altezza'}</span>
+          </div>
+        </div>
+      )}
+
       {/* Log rapido */}
       <div className="card">
         <label className="fl">Registra misura</label>
@@ -73,17 +84,6 @@ export function BodyScreen() {
         </div>
         <button className="primary" style={{ width: '100%', marginTop: 8 }} disabled={wn == null} onClick={save}>Salva</button>
       </div>
-
-      {/* FFMI */}
-      {latest && (
-        <div className="card">
-          <div className="muted small">FFMI {ffmi ? '(norm.)' : ''}<Info text="FFMI = indice di massa magra: peso × (1−%grasso) / altezza². Migliore del BMI per chi ha muscoli. Serve % grasso + altezza (Profilo)." /></div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
-            <span style={{ fontSize: 28, fontWeight: 700 }}>{ffmi ? ffmi.normalized : '—'}</span>
-            <span className="muted small">{ffmi ? `massa magra ${ffmi.ffmKg} kg` : 'serve % grasso + altezza'}</span>
-          </div>
-        </div>
-      )}
 
       {/* Storico */}
       <div className="card">

@@ -78,7 +78,8 @@ function ringColor(v: number): string {
 
 /** Anello di progresso 0-100 con numero animato al centro. */
 export function ScoreRing({ value, size = 66 }: { value: number | null; size?: number }) {
-  const r = (size - 8) / 2
+  const sw = size < 44 ? 3.5 : 5
+  const r = (size - sw) / 2 - 1
   const c = 2 * Math.PI * r
   const v = Math.max(0, Math.min(100, value ?? 0))
   const target = c * (1 - v / 100)
@@ -94,12 +95,12 @@ export function ScoreRing({ value, size = 66 }: { value: number | null; size?: n
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="5" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth="5" strokeLinecap="round"
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth={sw} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={off}
           style={{ transition: 'stroke-dashoffset 1s ease' }} />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: "'Playfair Display', serif", fontSize: 20, color: col }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: "'Playfair Display', serif", fontSize: Math.round(size * 0.42), color: col }}>
         <CountUp value={value} />
       </div>
     </div>

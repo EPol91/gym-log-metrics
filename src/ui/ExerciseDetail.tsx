@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseDetail } from '../scores/exerciseStats'
 import { LineChart } from './LineChart'
@@ -9,8 +10,16 @@ const TYPE_LABEL: Record<string, string> = {
   lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
 }
 
+type Metric = 'e1rm' | 'volume' | 'weight'
+const METRICS: { key: Metric; chip: string; title: string; unit: string }[] = [
+  { key: 'e1rm', chip: 'e1RM', title: 'Andamento e1RM', unit: 'kg' },
+  { key: 'volume', chip: 'Volume', title: 'Andamento volume', unit: 'reps' },
+  { key: 'weight', chip: 'Peso top', title: 'Andamento peso top', unit: 'kg' },
+]
+
 export function ExerciseDetail({ exerciseId, onBack }: { exerciseId: string; onBack: () => void }) {
   const d = useLiveQuery(() => computeExerciseDetail(exerciseId), [exerciseId])
+  const [metric, setMetric] = useState<Metric>('e1rm')
 
   if (!d) return <div className="col"><p className="muted">Carico…</p></div>
 
@@ -43,9 +52,17 @@ export function ExerciseDetail({ exerciseId, onBack }: { exerciseId: string; onB
         </div>
       </div>
 
+      <div className="row" style={{ gap: 6 }}>
+        {METRICS.map((m) => (
+          <button key={m.key} className={metric === m.key ? 'sel small' : 'ghost small'} onClick={() => setMetric(m.key)}>{m.chip}</button>
+        ))}
+      </div>
       <div className="card">
-        <div className="muted small" style={{ marginBottom: 6 }}>Andamento e1RM</div>
-        <LineChart points={d.points.map((p) => ({ label: p.date, value: p.bestE1rm }))} />
+        <div className="muted small" style={{ marginBottom: 6 }}>{METRICS.find((m) => m.key === metric)!.title}</div>
+        <LineChart points={d.points.map((p) => ({
+          label: p.date,
+          value: metric === 'e1rm' ? p.bestE1rm : metric === 'volume' ? p.volume : p.topWeight,
+        }))} />
       </div>
 
       <div className="card">

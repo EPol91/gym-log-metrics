@@ -4,11 +4,15 @@ import { listTemplates, deleteTemplate, listGyms, setDefaultGym } from '../db/re
 import { TemplateEditor } from './TemplateEditor'
 import type { WorkoutType } from '../db/schema'
 
-const TYPES: { key: WorkoutType; label: string }[] = [
-  { key: 'push', label: 'Push' }, { key: 'pull', label: 'Pull' }, { key: 'legs', label: 'Legs' },
-  { key: 'upper', label: 'Upper' }, { key: 'lower', label: 'Lower' }, { key: 'fullbody', label: 'Full Body' },
-  { key: 'brosplit', label: 'Bro Split' }, { key: 'custom', label: 'Custom' },
+const TYPES: { key: WorkoutType; label: string; hint: string }[] = [
+  { key: 'push', label: 'Push', hint: 'spinta' }, { key: 'pull', label: 'Pull', hint: 'tirata' },
+  { key: 'legs', label: 'Legs', hint: 'gambe' }, { key: 'upper', label: 'Upper', hint: 'alta' },
+  { key: 'lower', label: 'Lower', hint: 'bassa' }, { key: 'fullbody', label: 'Full Body', hint: 'completo' },
+  { key: 'brosplit', label: 'Bro Split', hint: 'monogruppo' }, { key: 'custom', label: 'Custom', hint: 'libero' },
 ]
+
+// Etichetta sezione: maiuscoletto tenue.
+const SECTION: React.CSSProperties = { fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
 
 export function StartScreen({
   onNext, onTemplate, onCancel,
@@ -25,14 +29,19 @@ export function StartScreen({
 
   if (editId) return <TemplateEditor templateId={editId === 'new' ? null : editId} onBack={() => setEditId(null)} />
 
+  const selLabel = TYPES.find((t) => t.key === type)?.label
+
   return (
-    <div className="col">
-      <div className="row spread">
+    <div className="col" style={{ paddingBottom: 84 }}>
+      <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div>
-          <h1>Nuovo allenamento</h1>
-          <p className="muted small">Da un template o scegli il tipo</p>
+          <h1 style={{ marginBottom: 2 }}>Nuovo allenamento</h1>
+          <p className="muted small" style={{ margin: 0 }}>Da un template o scegli il tipo</p>
         </div>
-        {onCancel && <button className="ghost small" onClick={onCancel}>✕</button>}
+        {onCancel && (
+          <button className="ghost" onClick={onCancel}
+            style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}>✕</button>
+        )}
       </div>
 
       {gyms.length > 1 && (
@@ -44,41 +53,55 @@ export function StartScreen({
         </div>
       )}
 
-      <div className="card">
-        <div className="row spread">
-          <label className="fl">I tuoi template</label>
-          <button className="ghost small" onClick={() => setEditId('new')}>＋ Nuovo</button>
-        </div>
-        {templates.length === 0 ? (
-          <p className="muted small">Nessun template. Creane uno o salvane uno a fine allenamento.</p>
-        ) : (
-          <div className="col">
-            {templates.map((t) => (
-              <div className="row spread" key={t.id}>
-                <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => onTemplate(t.id)}>
-                  ▶ {t.name} <span className="muted small">· {t.items.length} esercizi</span>
-                </button>
-                <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
-                <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteTemplate(t.id) }}>✕</button>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="row spread" style={{ marginTop: 8 }}>
+        <span style={SECTION}>I tuoi template</span>
+        <button className="ghost small" style={{ color: 'var(--gold)' }} onClick={() => setEditId('new')}>＋ Nuovo</button>
       </div>
-
-      <div className="card">
-        <label className="fl">Nuova seduta vuota</label>
-        <div className="grid2">
-          {TYPES.map((t) => (
-            <button key={t.key} className={type === t.key ? 'sel' : ''} onClick={() => setType(t.key)}>
-              {t.label}
-            </button>
+      {templates.length === 0 ? (
+        <p className="muted small" style={{ marginTop: 4 }}>Nessun template. Creane uno o salvane uno a fine allenamento.</p>
+      ) : (
+        <div className="col" style={{ gap: 8 }}>
+          {templates.map((t) => (
+            <div key={t.id}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px' }}>
+              <button className="ghost" onClick={() => onTemplate(t.id)}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
+                <span style={{ width: 30, height: 30, borderRadius: 8, background: '#20200f', color: 'var(--gold)', display: 'grid', placeItems: 'center', flex: 'none' }}>▶</span>
+                <span>
+                  <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
+                  <span className="muted small">{t.items.length} esercizi</span>
+                </span>
+              </button>
+              <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
+              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteTemplate(t.id) }}>✕</button>
+            </div>
           ))}
         </div>
+      )}
+
+      <span style={{ ...SECTION, marginTop: 12 }}>Nuova seduta vuota</span>
+      <div className="grid2" style={{ gap: 8 }}>
+        {TYPES.map((t) => {
+          const on = type === t.key
+          return (
+            <button key={t.key} onClick={() => setType(t.key)}
+              style={{
+                textAlign: 'left', borderRadius: 12, padding: '12px 12px',
+                background: on ? '#20200f' : 'var(--surface)',
+                border: `1.5px solid ${on ? 'var(--gold)' : 'var(--line)'}`,
+              }}>
+              <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: on ? 'var(--gold)' : 'var(--text)' }}>{t.label}</span>
+                {on && <span style={{ color: 'var(--gold)', fontSize: 13 }}>↗</span>}
+              </span>
+              <span style={{ display: 'block', fontSize: 10, marginTop: 3, color: on ? 'var(--gold-dim)' : 'var(--muted)' }}>{t.hint}</span>
+            </button>
+          )
+        })}
       </div>
 
       <button className="fab primary" disabled={!type} onClick={() => type && onNext(type)}>
-        Continua
+        Continua{selLabel ? ` · ${selLabel}` : ''}
       </button>
     </div>
   )

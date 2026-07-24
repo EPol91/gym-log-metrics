@@ -43,15 +43,22 @@ export function HistoryScreen() {
               <strong>{TYPE_LABEL[s.type] ?? s.type}</strong>
               <span className="muted small">{s.date}{!s.finished ? ' · in corso' : ''} ›</span>
             </div>
-            <div className="row spread" style={{ marginTop: 6, alignItems: 'center' }}>
-              <span className="muted small">{s.exercises} esercizi · {s.sets} set · {s.volume} reps · {s.tonnage} kg</span>
-              {s.score != null && <ScoreRing value={s.score} size={34} />}
-            </div>
-            {s.cardio.map((c, i) => (
-              <div className="muted small" key={i} style={{ marginTop: 4 }}>
-                🏃 {c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.zoneLabel ? ` · ${c.zoneLabel} (${c.zonePct}%)` : ''}
+            <div className="row spread" style={{ marginTop: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div className="muted small">{s.exercises} eserc · {s.sets} set · {s.volume} reps</div>
+                <div className="muted small" style={{ marginTop: 2 }}>{s.tonnage} kg totali</div>
               </div>
-            ))}
+              {s.score != null && <ScoreRing value={s.score} size={44} />}
+            </div>
+            {s.cardio.length > 0 && (
+              <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 8 }}>
+                {s.cardio.map((c, i) => (
+                  <div className="muted small" key={i} style={{ marginTop: i ? 3 : 0 }}>
+                    🏃 {c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.zoneLabel ? ` · ${c.zoneLabel} (${c.zonePct}%)` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
           </button>
         ))
       )}
