@@ -77,6 +77,8 @@ export interface HomeData {
   lastSession: { date: string; type: string; tonnage: number; volume: number } | null
   bodyWeight: { weight: number; delta: number | null } | null
   weekGoal: { done: number; target: number; streak: number }
+  /** Readiness SOLO se il check è di oggi; altrimenti null (niente dato stantìo). */
+  todayReady: number | null
 }
 
 /** Contesto carico (ACWR) dai tonnellaggi giornalieri. */
@@ -149,5 +151,7 @@ export async function computeHome(): Promise<HomeData> {
   if (!activeDays.includes(cursor)) cursor = dayBefore(cursor)
   while (activeDays.includes(cursor)) { streak++; cursor = dayBefore(cursor) }
 
-  return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: weeklyTarget, streak } }
+  const todayReady = lastWithCheck && lastWithCheck.date === todayISO() ? readiness.value : null
+
+  return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: weeklyTarget, streak }, todayReady }
 }

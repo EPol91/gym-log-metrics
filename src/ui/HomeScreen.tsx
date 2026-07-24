@@ -19,7 +19,7 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 function todayStatus(v: number | null): { label: string; color: string } {
-  if (v == null) return { label: 'fai il check', color: 'var(--muted)' }
+  if (v == null) return { label: 'fai il check ›', color: 'var(--muted)' }
   if (v >= 70) return { label: 'PRONTO', color: 'var(--good)' }
   if (v >= 40) return { label: 'CAUTO', color: '#e0a030' }
   return { label: 'SCARICO', color: '#e5484d' }
@@ -57,7 +57,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
   const [savedW, setSavedW] = useState(false)
   const [nutOpen, setNutOpen] = useState(false)
 
-  const today = todayStatus(home?.readiness.value ?? null)
+  const today = todayStatus(home?.todayReady ?? null)
 
   async function saveWeight() {
     const n = parseNum(w, { min: 20, max: 400 })
@@ -67,7 +67,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
   }
 
   return (
-    <div className="col">
+    <div className="col" style={{ gap: 14 }}>
       {/* Saluto + anello "Oggi" in alto a destra */}
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div>
@@ -76,7 +76,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
           <p className="muted small">{dailyPhrase()}</p>
         </div>
         <div style={{ textAlign: 'center', flex: '0 0 auto' }}>
-          <ScoreRing value={home?.readiness.value ?? null} size={82} />
+          <ScoreRing value={home?.todayReady ?? null} size={82} />
           <div className="small" style={{ marginTop: 1, color: today.color, letterSpacing: '.04em' }}>Oggi · {today.label}</div>
         </div>
       </div>
