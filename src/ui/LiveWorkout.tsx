@@ -362,6 +362,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
   const [cur, setCur] = useState(0) // esercizio corrente (vista a focus)
+  const [cardioOpen, setCardioOpen] = useState(false)
   const current = entries.length ? Math.min(cur, entries.length - 1) : 0
 
   const cardioFlush = useRef<(() => Promise<void>) | null>(null)
@@ -386,7 +387,8 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
             ))}
           </span>
           <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
+            <button className="ghost small" onClick={() => setCardioOpen(true)} aria-label="Cardio">🏃</button>
+            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱</button>}
             {session && <WorkoutClock startedAt={session.startedAt} />}
           </span>
         </div>
@@ -415,7 +417,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       )}
 
-      <CardioBlock sessionId={sessionId} flushRef={cardioFlush} />
+      <CardioBlock sessionId={sessionId} flushRef={cardioFlush} open={cardioOpen} onOpenChange={setCardioOpen} />
 
       {notesOpen ? (
         <div className="card">

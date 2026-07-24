@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
@@ -8,7 +9,6 @@ import { parseNum } from '../util/validate'
 import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg } from '../util/heartRate'
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
-import { Info } from './anim'
 import type { CardioMethod, CardioType, CardioSession, CardioPreset } from '../db/schema'
 
 /** Live BPM da fascia Bluetooth. La connessione vive in un singleton (heartRate.ts):
@@ -29,6 +29,10 @@ const TYPE_LABEL: Record<CardioType, string> = {
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
 const TYPES = Object.keys(TYPE_LABEL) as CardioType[]
+const TYPE_ICON: Record<CardioType, string> = {
+  corsa: '🏃', camminata: '🚶', cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
+  hiit: '🔥', tabata: '⚡', liss: '🌊', intervalli: '⏱', altro: '•',
+}
 const INTERVAL_TYPES: CardioType[] = ['hiit', 'tabata', 'intervalli']
 const isInterval = (t: CardioType) => INTERVAL_TYPES.includes(t)
 const DEFAULTS: Record<string, { rounds: number; work: number; rest: number }> = {
@@ -84,7 +88,10 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
   )
 }
 
-export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushRef?: React.MutableRefObject<(() => Promise<void>) | null> }) {
+export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
+  sessionId: string; flushRef?: React.MutableRefObject<(() => Promise<void>) | null>
+  open: boolean; onOpenChange: (b: boolean) => void
+}) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
   const user = useLiveQuery(getUser, [])
   const presets = useLiveQuery(listCardioPresets, []) ?? []
@@ -94,7 +101,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const hr = useHeartRate()
 
   const [phase, setPhase] = useState<'idle' | 'setup' | 'running'>('idle')
-  const [open, setOpen] = useState(false)
+  const [manual, setManual] = useState(false)
   const [dur, setDur] = useState('')
   const [bpm, setBpm] = useState('')
   const [method, setMethod] = useState<CardioMethod>('hrr') // HRR default (blueprint); fallback a Standard se manca FC riposo
@@ -157,7 +164,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
     setDur(String(min))
     if (hr.avgBpm != null) setBpm(String(hr.avgBpm)) // prefill BPM medio dalla fascia
     setPendingMax(hr.maxBpm) // FC max da salvare
-    setPhase('idle'); setOpen(true)
+    setPhase('idle'); setManual(true); onOpenChange(true)
   }
   function startRun() {
     hr.resetAvg()
@@ -173,136 +180,45 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
     const avgN = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
     const cal = estimateCalories({ avgHr: avgN, weightKg, age, sex: user?.sex, durationMin: durN }) ?? undefined
     await addCardio(sessionId, { durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: cal, method, cardioType: ctype })
-    setDur(''); setBpm(''); setOpen(false); setPendingMax(null)
+    setDur(''); setBpm(''); setManual(false); setPendingMax(null)
   }
 
   // Salvataggio automatico del cardio ancora nel form aperto quando si chiude l'allenamento (niente dati persi).
   useEffect(() => {
-    if (flushRef) flushRef.current = async () => { if (open && durN != null) await add() }
+    if (flushRef) flushRef.current = async () => { if (manual && durN != null) await add() }
   })
 
-  return (
-    <div className="card">
-      <div className="row spread">
-        <strong>Cardio</strong>
-        {phase === 'idle' && !open && (
-          <span className="row" style={{ gap: 6 }}>
-            <button className="ghost small" onClick={() => setPhase('setup')}>▶ Avvia</button>
-            <button className="ghost small" onClick={() => setOpen(true)}>＋ Manuale</button>
-          </span>
-        )}
-      </div>
-
-      {/* Live BPM da fascia Bluetooth (solo browser che lo supportano; iOS nascosto) */}
-      {hr.supported && (
+  const FasciaBar = hr.supported ? (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+      {hr.connected ? (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 }}>
-            {hr.connected ? (
-              <>
-                <span className="row" style={{ gap: 8, alignItems: 'center', flex: '1 1 auto', minWidth: 0 }}>
-                  <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
-                  <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
-                  <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    bpm{liveZone ? ` · Z${liveZone.zone}` : ''}{hr.avgBpm ? ` · media ${hr.avgBpm}` : ''} · {hr.deviceName}
-                  </span>
-                </span>
-                <button className="ghost small" style={{ flex: '0 0 auto' }} onClick={hr.disconnect}>Disconnetti</button>
-              </>
-            ) : (
-              <button className="ghost small" onClick={hr.connect} disabled={hr.connecting}>
-                {hr.connecting ? 'Connessione…' : '❤️ Connetti fascia'}
-              </button>
-            )}
-          </div>
-          {hr.error && <p className="small" style={{ color: '#e57373', marginTop: 4 }}>{hr.error}</p>}
+          <span className="row" style={{ gap: 8, alignItems: 'center', flex: '1 1 auto', minWidth: 0 }}>
+            <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
+            <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
+            <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>bpm{liveZone ? ` · Z${liveZone.zone}` : ''}{hr.avgBpm ? ` · media ${hr.avgBpm}` : ''} · {hr.deviceName}</span>
+          </span>
+          <button className="ghost small" onClick={hr.disconnect}>Disconnetti</button>
         </>
+      ) : (
+        <button className="chip" style={{ borderColor: '#7a2a2a' }} onClick={hr.connect} disabled={hr.connecting}>{hr.connecting ? 'Connessione…' : '❤️ Connetti fascia'}</button>
       )}
+    </div>
+  ) : null
 
-      {avg && avg.count > 0 && phase === 'idle' && !open && (
-        <div className="row spread" style={{ marginTop: 6 }}>
-          <span className="muted small">
-            Media {period === 7 ? 'settimana' : 'mese'}: <strong style={{ color: 'var(--gold)' }}>{avg.avgDurationMin} min</strong>
-            {avg.avgBpm != null ? <> · <strong style={{ color: 'var(--gold)' }}>{avg.avgBpm} bpm</strong></> : ''} <span className="muted">({avg.count})</span>
-          </span>
-          <span className="row" style={{ gap: 4 }}>
-            <button className={period === 7 ? 'sel small' : 'ghost small'} onClick={() => setPeriod(7)}>7g</button>
-            <button className={period === 30 ? 'sel small' : 'ghost small'} onClick={() => setPeriod(30)}>30g</button>
-          </span>
-        </div>
-      )}
+  const FormulaToggle = (
+    <div>
+      <label className="fl">Formula zona</label>
+      <div className="row">
+        <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}</span></button>
+        <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span></button>
+      </div>
+      {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
+    </div>
+  )
 
-      {/* Setup timer */}
-      {phase === 'setup' && (
-        <div className="col" style={{ marginTop: 10 }}>
-          <div>
-            <label className="fl">Tipo</label>
-            <select value={ctype} onChange={(e) => chooseType(e.target.value as CardioType)}>
-              {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="fl">Formula zona</label>
-            <div className="row">
-              <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>
-                Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}</span>
-              </button>
-              <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>
-                HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span>
-              </button>
-            </div>
-            {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
-          </div>
-
-          {presets.length > 0 && (
-            <div>
-              <label className="fl">I tuoi template</label>
-              <div className="col">
-                {presets.map((p) => (
-                  <div className="row spread" key={p.id}>
-                    <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => applyTemplate(p)}>
-                      {p.name} <span className="muted small">· {tplDesc(p)}</span>
-                    </button>
-                    <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isInterval(ctype) ? (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                <NumStep label="Round" value={rounds} set={setRounds} step={1} min={1} />
-                <NumStep label="Lavoro (s)" value={work} set={setWork} step={5} min={5} />
-                <NumStep label="Rec. (s)" value={rest} set={setRest} step={5} min={0} />
-              </div>
-              <p className="muted small">Totale stimato: <strong style={{ color: 'var(--gold)' }}>{fmt(intervalTotal)}</strong></p>
-            </>
-          ) : (
-            <>
-              <div>
-                <label className="fl">Modalità</label>
-                <div className="row">
-                  <button className={steadyMode === 'chrono' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('chrono')}>Cronometro</button>
-                  <button className={steadyMode === 'countdown' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('countdown')}>Countdown</button>
-                </div>
-              </div>
-              {steadyMode === 'countdown' && (
-                <div style={{ maxWidth: 160 }}><NumStep label="Durata target (min)" value={targetMin} set={setTargetMin} step={5} min={1} /></div>
-              )}
-            </>
-          )}
-
-          <button className="ghost small" onClick={saveTemplate}>⭐ Salva come template</button>
-          <div className="row">
-            <button className="ghost" style={{ flex: 1 }} onClick={() => setPhase('idle')}>Annulla</button>
-            <button className="primary" style={{ flex: 2 }} onClick={startRun}>▶ Avvia</button>
-          </div>
-        </div>
-      )}
-
-      {/* Timer in corso */}
+  return (
+    <>
+      {/* Cardio in corso: schermo intero (portal), sopra tutto */}
       {phase === 'running' && (
         isInterval(ctype)
           ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} avgBpm={hr.avgBpm} maxBpm={hr.maxBpm} zone={liveZone?.zone} pct={liveZone?.pct} weightKg={weightKg} age={age} sex={user?.sex} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
@@ -311,43 +227,110 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
             : <CardioRunner mode="chrono" bpm={hr.bpm} avgBpm={hr.avgBpm} maxBpm={hr.maxBpm} zone={liveZone?.zone} pct={liveZone?.pct} weightKg={weightKg} age={age} sex={user?.sex} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
       )}
 
-      {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}
-
-      {open && (
-        <div className="col" style={{ marginTop: 10 }}>
-          <div>
-            <label className="fl">Tipo</label>
-            <select value={ctype} onChange={(e) => setCtype(e.target.value as CardioType)}>
-              {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-            </select>
-          </div>
-          <div className="row">
-            <div style={{ flex: 1 }}><label className="fl">Durata (min)</label><input inputMode="decimal" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
-            <div style={{ flex: 1 }}><label className="fl">BPM medio (opz.)</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
-          </div>
-          <div>
-            <label className="fl">Formula zona<Info text="Zone cardio Z1-Z5. Standard = % FC max (220−età o misurata). HRR/Karvonen = tiene conto anche della FC a riposo, più preciso ma serve quel dato." /></label>
-            <div className="row">
-              <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>
-                Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}{user?.hrMaxMeasured ? ' (mis.)' : ''}</span>
-              </button>
-              <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>
-                HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span>
-              </button>
+      {/* Modale Cardio (portal a schermo intero) */}
+      {open && phase !== 'running' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'var(--bg)', overflowY: 'auto' }}>
+          <div className="col" style={{ maxWidth: 520, margin: '0 auto', padding: '18px 16px calc(28px + env(safe-area-inset-bottom))', gap: 12 }}>
+            <div className="row spread">
+              <h2 style={{ margin: 0 }}>🏃 Cardio</h2>
+              <button className="ghost small" onClick={() => { setManual(false); onOpenChange(false) }}>✕</button>
             </div>
-            {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
+
+            {FasciaBar}
+            {hr.error && <p className="small" style={{ color: '#e57373' }}>{hr.error}</p>}
+
+            {manual ? (
+              <>
+                <div>
+                  <label className="fl">Tipo</label>
+                  <select value={ctype} onChange={(e) => setCtype(e.target.value as CardioType)}>{TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</select>
+                </div>
+                <div className="row">
+                  <div style={{ flex: 1 }}><label className="fl">Durata (min)</label><input inputMode="decimal" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
+                  <div style={{ flex: 1 }}><label className="fl">BPM medio (opz.)</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
+                </div>
+                {FormulaToggle}
+                {(() => {
+                  const live = bpm !== '' && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: Number(bpm), age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured }) : null
+                  return <CardioViz bpm={bpm === '' ? undefined : Number(bpm)} pct={live?.pct} zone={live?.zone} />
+                })()}
+                <div className="row">
+                  <button className="ghost" style={{ flex: 1 }} onClick={() => setManual(false)}>Annulla</button>
+                  <button className="primary" style={{ flex: 2 }} disabled={durN == null} onClick={add}>✓ Salva cardio</button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Tipo — griglia di icone */}
+                <label className="fl">Tipo</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {TYPES.map((t) => (
+                    <button key={t} onClick={() => chooseType(t)} style={{ padding: '10px 4px', textAlign: 'center', fontSize: 12, borderRadius: 12, border: `1px solid ${ctype === t ? 'var(--gold)' : 'var(--line)'}`, color: ctype === t ? 'var(--gold)' : 'var(--text)', background: ctype === t ? 'rgba(217,178,74,.08)' : 'var(--surface)' }}>
+                      <span style={{ fontSize: 20, display: 'block', marginBottom: 3 }}>{TYPE_ICON[t]}</span>{TYPE_LABEL[t]}
+                    </button>
+                  ))}
+                </div>
+
+                {FormulaToggle}
+
+                {presets.length > 0 && (
+                  <div>
+                    <label className="fl">I tuoi template</label>
+                    <div className="col">
+                      {presets.map((p) => (
+                        <div className="row spread" key={p.id}>
+                          <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => applyTemplate(p)}>{p.name} <span className="muted small">· {tplDesc(p)}</span></button>
+                          <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isInterval(ctype) ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      <NumStep label="Round" value={rounds} set={setRounds} step={1} min={1} />
+                      <NumStep label="Lavoro (s)" value={work} set={setWork} step={5} min={5} />
+                      <NumStep label="Rec. (s)" value={rest} set={setRest} step={5} min={0} />
+                    </div>
+                    <p className="muted small">Totale stimato: <strong style={{ color: 'var(--gold)' }}>{fmt(intervalTotal)}</strong></p>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="fl">Modalità</label>
+                      <div className="row">
+                        <button className={steadyMode === 'chrono' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('chrono')}>Cronometro</button>
+                        <button className={steadyMode === 'countdown' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => setSteadyMode('countdown')}>Countdown</button>
+                      </div>
+                    </div>
+                    {steadyMode === 'countdown' && <div style={{ maxWidth: 160 }}><NumStep label="Durata target (min)" value={targetMin} set={setTargetMin} step={5} min={1} /></div>}
+                  </>
+                )}
+
+                <button className="ghost small" onClick={saveTemplate}>⭐ Salva come template</button>
+
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="ghost" style={{ flex: 1 }} onClick={() => setManual(true)}>＋ Manuale</button>
+                  <button className="primary" style={{ flex: 2, padding: '15px' }} onClick={startRun}>▶ Avvia cardio</button>
+                </div>
+
+                {avg && avg.count > 0 && (
+                  <div className="row spread">
+                    <span className="muted small">Media {period === 7 ? 'settimana' : 'mese'}: <strong style={{ color: 'var(--gold)' }}>{avg.avgDurationMin} min</strong>{avg.avgBpm != null ? <> · <strong style={{ color: 'var(--gold)' }}>{avg.avgBpm} bpm</strong></> : ''} <span className="muted">({avg.count})</span></span>
+                    <span className="row" style={{ gap: 4 }}><button className={period === 7 ? 'sel small' : 'ghost small'} onClick={() => setPeriod(7)}>7g</button><button className={period === 30 ? 'sel small' : 'ghost small'} onClick={() => setPeriod(30)}>30g</button></span>
+                  </div>
+                )}
+
+                {list.length > 0 && <label className="fl">In questa seduta</label>}
+                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}
+              </>
+            )}
           </div>
-          {(() => {
-            const live = bpm !== '' && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: Number(bpm), age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured }) : null
-            return <CardioViz bpm={bpm === '' ? undefined : Number(bpm)} pct={live?.pct} zone={live?.zone} />
-          })()}
-          <div className="row">
-            <button className="ghost" style={{ flex: 1 }} onClick={() => setOpen(false)}>Annulla</button>
-            <button className="primary" style={{ flex: 2 }} disabled={durN == null} onClick={add}>✓ Salva cardio</button>
-          </div>
-          <p className="muted small" style={{ marginTop: 4, textAlign: 'center' }}>Premi Salva per registrarlo nella seduta.</p>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   )
 }
