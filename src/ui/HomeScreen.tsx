@@ -55,7 +55,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
 
   const [w, setW] = useState('')
   const [savedW, setSavedW] = useState(false)
-  const [nutOpen, setNutOpen] = useState(false)
+  const [panel, setPanel] = useState<'peso' | 'nutri' | null>(null)
 
   const today = todayStatus(home?.todayReady ?? null)
 
@@ -129,38 +129,30 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
             <p className="small" style={{ margin: '6px 0 0' }}>{coachMessage(home)}</p>
           </div>
 
-          {/* Peso oggi (quick log) */}
-          <div className="card" style={{ padding: '10px 12px' }}>
-            <div className="row spread">
-              <span className="muted small">⚖️ Peso oggi
-                {home.bodyWeight?.delta != null && <span className="small"> · {home.bodyWeight.delta > 0 ? '▲' : '▼'}{Math.abs(home.bodyWeight.delta)} vs prec.</span>}
-              </span>
-            </div>
-            <div className="row" style={{ gap: 6, marginTop: 6 }}>
-              <input inputMode="decimal" value={w} placeholder={home.bodyWeight ? String(home.bodyWeight.weight) : 'kg'} onChange={(e) => { setW(e.target.value); setSavedW(false) }} style={{ flex: 1, textAlign: 'center' }} />
-              <span className="muted small" style={{ alignSelf: 'center' }}>kg</span>
-              <button className="primary" style={{ padding: '9px 16px' }} disabled={parseNum(w, { min: 20, max: 400 }) == null} onClick={saveWeight}>Salva</button>
-            </div>
-            {savedW && <p className="small" style={{ marginTop: 4, color: 'var(--good)' }}>✓ Peso di oggi salvato</p>}
+          {/* Peso + Nutrizione affiancati: al tap si apre il pannello sotto (uno alla volta) */}
+          <div className="row" style={{ gap: 8 }}>
+            <button className={panel === 'peso' ? 'card sel' : 'card'} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }} onClick={() => setPanel((p) => p === 'peso' ? null : 'peso')}>
+              <div className="small">⚖️ Peso {home.bodyWeight ? <strong style={{ color: 'var(--gold)' }}>{home.bodyWeight.weight}kg</strong> : <span className="muted">—</span>}</div>
+              <div className="muted small" style={{ marginTop: 2 }}>oggi {panel === 'peso' ? '▴' : '▾'}</div>
+            </button>
+            <button className={panel === 'nutri' ? 'card sel' : 'card'} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }} onClick={() => setPanel((p) => p === 'nutri' ? null : 'nutri')}>
+              <div className="small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🥗 Nutrizione{nutri?.dayType ? <span style={{ color: 'var(--gold)' }}> {nutri.dayType.toUpperCase()}</span> : ''}</div>
+              <div className="muted small" style={{ marginTop: 2 }}>oggi {panel === 'nutri' ? '▴' : '▾'}</div>
+            </button>
           </div>
 
-          {/* Nutrizione collassabile */}
-          {nutOpen ? (
-            <div>
-              <button className="ghost small" style={{ width: '100%', marginBottom: 6 }} onClick={() => setNutOpen(false)}>🥗 Nutrizione — chiudi ▴</button>
-              <NutritionCard />
-            </div>
-          ) : (
-            <button className="card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => setNutOpen(true)}>
-              <div className="row spread">
-                <span className="small">🥗 Nutrizione oggi
-                  {nutri?.dayType ? <span style={{ color: 'var(--gold)' }}> · {nutri.dayType.toUpperCase()}</span> : ''}
-                  {nutri?.water != null ? <span className="muted"> · 💧 {nutri.water}L</span> : ''}
-                </span>
-                <span className="muted small">apri ▾</span>
+          {panel === 'peso' && (
+            <div className="card" style={{ padding: '10px 12px' }}>
+              <div className="muted small">⚖️ Peso oggi{home.bodyWeight?.delta != null && <span> · {home.bodyWeight.delta > 0 ? '▲' : '▼'}{Math.abs(home.bodyWeight.delta)} vs prec.</span>}</div>
+              <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                <input inputMode="decimal" value={w} placeholder={home.bodyWeight ? String(home.bodyWeight.weight) : 'kg'} onChange={(e) => { setW(e.target.value); setSavedW(false) }} style={{ flex: 1, textAlign: 'center' }} />
+                <span className="muted small" style={{ alignSelf: 'center' }}>kg</span>
+                <button className="primary" style={{ padding: '9px 16px' }} disabled={parseNum(w, { min: 20, max: 400 }) == null} onClick={saveWeight}>Salva</button>
               </div>
-            </button>
+              {savedW && <p className="small" style={{ marginTop: 4, color: 'var(--good)' }}>✓ Peso di oggi salvato</p>}
+            </div>
           )}
+          {panel === 'nutri' && <NutritionCard />}
 
           <button className="ghost" onClick={onOpenAnalytics}>📊 Analisi avanzate</button>
         </>
