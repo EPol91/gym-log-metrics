@@ -361,7 +361,10 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [restExId, setRestExId] = useState<string | null>(null)
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
-  const [cur, setCur] = useState(0) // esercizio corrente (vista a focus)
+  // Esercizio corrente (vista a focus): persistito per-sessione → il refresh non ti riporta al primo.
+  const curKey = `wo-cur-${sessionId}`
+  const [cur, setCur] = useState(() => { try { return Number(sessionStorage.getItem(curKey)) || 0 } catch { return 0 } })
+  useEffect(() => { try { sessionStorage.setItem(curKey, String(cur)) } catch { /* ignore */ } }, [cur, curKey])
   const [cardioOpen, setCardioOpen] = useState(false)
   const current = entries.length ? Math.min(cur, entries.length - 1) : 0
 
