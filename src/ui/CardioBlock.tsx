@@ -298,10 +298,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
       {/* Timer in corso */}
       {phase === 'running' && (
         isInterval(ctype)
-          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
           : steadyMode === 'countdown'
-            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
-            : <CardioRunner mode="chrono" bpm={hr.bpm} zone={liveZone?.zone} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+            : <CardioRunner mode="chrono" bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
       )}
 
       {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}

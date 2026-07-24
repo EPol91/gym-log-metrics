@@ -11,9 +11,9 @@ const fmt = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${(Math.max(0, s)
 
 /** Timer cardio: intervalli (work/rest a round), countdown (durata target) o cronometro libero.
  *  onComplete riceve la durata in minuti. */
-export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, zone, startedAtMs, onComplete, onCancel }: {
+export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, avgBpm, zone, pct, startedAtMs, onComplete, onCancel }: {
   mode: Mode; rounds?: number; workSec?: number; restSec?: number; targetSec?: number
-  bpm?: number | null; zone?: number; startedAtMs?: number
+  bpm?: number | null; avgBpm?: number | null; zone?: number; pct?: number; startedAtMs?: number
   onComplete: (durationMin: number) => void; onCancel: () => void
 }) {
   const [running, setRunning] = useState(true)
@@ -86,6 +86,15 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
   ringPct = Math.max(0, Math.min(1, ringPct))
   const R = 120, CIRC = 2 * Math.PI * R
 
+  // Posizione dell'indicatore sulla barra zone (dentro il segmento della zona corrente)
+  const ZLO = [0, 60, 70, 80, 90], ZHI = [60, 70, 80, 90, 100]
+  let markerLeft: number | null = null
+  if (bpm != null && zone) {
+    const i = zone - 1
+    const frac = Math.max(0, Math.min(1, ((pct ?? ZLO[i]) - ZLO[i]) / ((ZHI[i] - ZLO[i]) || 1)))
+    markerLeft = (i + frac) * 20
+  }
+
   function stopSave() { onComplete(+Math.max(0.1, elapsed / 60).toFixed(1)) }
 
   return createPortal(
@@ -125,8 +134,14 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
               <strong style={{ fontSize: 52, color: zoneColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{bpm}</strong>
               <span className="muted small">bpm{zone ? ` · Z${zone}` : ''}</span>
             </div>
-            <div style={{ display: 'flex', height: 9, borderRadius: 999, overflow: 'hidden', marginTop: 12 }}>
-              {ZONE_COLORS.map((c, i) => <div key={i} style={{ flex: 1, background: c, opacity: zone ? (i === zone - 1 ? 1 : 0.3) : 0.5 }} />)}
+            {avgBpm != null && <div className="muted small" style={{ marginTop: 2 }}>media sessione <strong style={{ color: 'var(--gold)' }}>{avgBpm}</strong> bpm</div>}
+            <div style={{ position: 'relative', marginTop: 12 }}>
+              <div style={{ display: 'flex', height: 9, borderRadius: 999, overflow: 'hidden' }}>
+                {ZONE_COLORS.map((c, i) => <div key={i} style={{ flex: 1, background: c, opacity: zone ? (i === zone - 1 ? 1 : 0.3) : 0.5 }} />)}
+              </div>
+              {markerLeft != null && (
+                <div style={{ position: 'absolute', top: -4, left: `${markerLeft}%`, width: 4, height: 17, background: '#fff', borderRadius: 2, transform: 'translateX(-50%)', boxShadow: '0 0 5px rgba(0,0,0,.7)', transition: 'left .5s ease' }} />
+              )}
             </div>
             <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
               {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((z, i) => <span key={z} className="muted" style={{ fontSize: 10, color: zone === i + 1 ? zoneColor : undefined }}>{z}</span>)}
