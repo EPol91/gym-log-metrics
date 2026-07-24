@@ -76,6 +76,7 @@ export interface HomeData {
   consistency: ScoreResult
   lastSession: { date: string; type: string; tonnage: number; volume: number } | null
   bodyWeight: { weight: number; delta: number | null } | null
+  weekGoal: { done: number; target: number; streak: number }
 }
 
 /** Contesto carico (ACWR) dai tonnellaggi giornalieri. */
@@ -139,5 +140,14 @@ export async function computeHome(): Promise<HomeData> {
     bodyWeight = { weight: lm.weight, delta: pm ? +(lm.weight - pm.weight).toFixed(1) : null }
   }
 
-  return { readiness, workout, performance, consistency, lastSession, bodyWeight }
+  // Obiettivo settimana (rolling 7 giorni) + streak di giorni consecutivi con seduta.
+  const done = sessions.filter((s) => new Date(s.date + 'T00:00:00').getTime() > nowMs - 7 * DAY).length
+  const activeDays = [...new Set(sessions.map((s) => s.date))]
+  const dayBefore = (d: string) => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10) }
+  let streak = 0
+  let cursor = todayISO()
+  if (!activeDays.includes(cursor)) cursor = dayBefore(cursor)
+  while (activeDays.includes(cursor)) { streak++; cursor = dayBefore(cursor) }
+
+  return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: weeklyTarget, streak } }
 }
