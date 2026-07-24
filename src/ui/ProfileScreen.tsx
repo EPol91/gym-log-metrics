@@ -16,12 +16,15 @@ const PHASES: { key: Phase; label: string; hint: string }[] = [
   { key: 'maintenance', label: 'Mant.', hint: 'mantenimento' },
 ]
 
+// Etichetta sezione: maiuscoletto tenue.
+const SECTION: React.CSSProperties = { fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
+
 // Sezione collassabile: riga con titolo + freccia, apre il contenuto al tap.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div>
-      <button className="card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
+      <button className="card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', margin: 0 }} onClick={() => setOpen((o) => !o)}>
         <div className="row spread"><span>{title}</span><span className="muted small">{open ? '▾' : '›'}</span></div>
       </button>
       {open && <div style={{ marginTop: 8 }}>{children}</div>}
@@ -41,7 +44,8 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
     <div className="col">
       <h1>Profilo</h1>
 
-      <div className="card">
+      <span style={SECTION}>Tu</span>
+      <div className="card" style={{ marginTop: 0 }}>
         <label className="fl">Nome</label>
         <input defaultValue={user?.name ?? ''} onBlur={(e) => updateUser({ name: e.target.value })} />
       </div>
@@ -71,62 +75,57 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         )}
       </div>
 
-      <div className="card">
-        <label className="fl">Obiettivo allenamenti / settimana</label>
-        <div className="row">
-          <button onClick={() => updateUser({ weeklyTarget: Math.max(1, target - 1) })}>−</button>
-          <strong style={{ minWidth: 40, textAlign: 'center', fontSize: 20 }}>{target}</strong>
-          <button onClick={() => updateUser({ weeklyTarget: Math.min(14, target + 1) })}>＋</button>
-          <span className="muted small">alimenta il Consistency Score</span>
+      {/* All./sett. + Recupero affiancati */}
+      <div className="row" style={{ gap: 10, alignItems: 'stretch' }}>
+        <div className="card" style={{ flex: 1, margin: 0 }}>
+          <label className="fl">All. / sett.</label>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <button onClick={() => updateUser({ weeklyTarget: Math.max(1, target - 1) })}>−</button>
+            <strong style={{ fontSize: 20 }}>{target}</strong>
+            <button onClick={() => updateUser({ weeklyTarget: Math.min(14, target + 1) })}>＋</button>
+          </div>
+          <p className="muted small" style={{ marginTop: 4 }}>alimenta il Consistency</p>
+        </div>
+        <div className="card" style={{ flex: 1, margin: 0 }}>
+          <label className="fl">Recupero</label>
+          <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+            {REST_PRESETS.map((s) => (
+              <button key={s} className={restDefault === s ? 'sel small' : 'ghost small'} onClick={() => updateUser({ restDefaultSec: s })}>{s}s</button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="card">
-        <label className="fl">Recupero predefinito</label>
-        <div className="opts" style={{ gridTemplateColumns: `repeat(${REST_PRESETS.length}, 1fr)` }}>
-          {REST_PRESETS.map((s) => (
-            <button key={s} className={restDefault === s ? 'sel' : ''} onClick={() => updateUser({ restDefaultSec: s })}>{s}s</button>
-          ))}
-        </div>
-        <p className="muted small" style={{ marginTop: 4 }}>Durata iniziale del timer di recupero (modificabile durante il workout).</p>
-      </div>
-
-      <div className="card">
-        <label className="fl">Dati cardio (per le zone)</label>
-        <div className="row">
-          <div style={{ flex: 1 }}>
+        <label className="fl">Dati cardio &amp; corpo</label>
+        <div className="grid2" style={{ gap: 8 }}>
+          <div>
             <label className="fl">Anno di nascita</label>
             <input inputMode="numeric" defaultValue={user?.birthYear ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 1920, max: 2020, int: true }); if (n != null) updateUser({ birthYear: n }) }} />
           </div>
-          <div style={{ flex: 1 }}>
-            <label className="fl">FC a riposo (per HRR)</label>
+          <div>
+            <label className="fl">FC riposo (HRR)</label>
             <input inputMode="numeric" defaultValue={user?.restingHr ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 30, max: 120, int: true }); if (n != null) updateUser({ restingHr: n }) }} />
           </div>
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
-            <label className="fl">Sesso (per le calorie)</label>
-            <div className="row">
-              <button className={user?.sex === 'm' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'm' })}>Uomo</button>
-              <button className={user?.sex === 'f' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'f' })}>Donna</button>
-            </div>
-          </div>
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
+          <div>
             <label className="fl">Altezza (cm · FFMI)</label>
             <input inputMode="numeric" defaultValue={user?.heightCm ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 120, max: 230, int: true }); if (n != null) updateUser({ heightCm: n }) }} />
           </div>
-          <div style={{ flex: 1 }}>
-            <label className="fl">FCmax misurata (opz.)</label>
+          <div>
+            <label className="fl">FCmax mis. (opz.)</label>
             <input inputMode="numeric" defaultValue={user?.hrMaxMeasured ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 120, max: 230, int: true }); if (n != null) updateUser({ hrMaxMeasured: n }) }} />
           </div>
         </div>
-        <p className="muted small" style={{ marginTop: 6 }}>FCmax misurata: se la conosci (da test reale) le zone la usano al posto di 220−età. Opzionale.</p>
+        <label className="fl" style={{ marginTop: 8 }}>Sesso (per le calorie)</label>
+        <div className="row">
+          <button className={user?.sex === 'm' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'm' })}>Uomo</button>
+          <button className={user?.sex === 'f' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'f' })}>Donna</button>
+        </div>
+        <p className="muted small" style={{ marginTop: 6 }}>FCmax misurata: se la conosci le zone la usano al posto di 220−età. Opzionale.</p>
       </div>
 
       <div className="card">
@@ -145,12 +144,14 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         </div>
       </div>
 
-      <div className="muted small" style={{ marginTop: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Avanzate</div>
-      <Section title="⭐ Template di allenamento"><TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} /></Section>
-      <Section title="🏋️ Palestra"><GymSettings /></Section>
-      <Section title="🤖 AI"><AiSettings /></Section>
-      <Section title="⬆️ Import CSV (Strong / Hevy)"><CsvImport /></Section>
-      <Section title="💾 Backup dati"><BackupSettings /></Section>
+      <span style={{ ...SECTION, marginTop: 6 }}>Avanzate</span>
+      <div className="col" style={{ gap: 7 }}>
+        <Section title="⭐ Template di allenamento"><TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} /></Section>
+        <Section title="🏋️ Palestra"><GymSettings /></Section>
+        <Section title="🤖 AI"><AiSettings /></Section>
+        <Section title="⬆️ Import CSV (Strong / Hevy)"><CsvImport /></Section>
+        <Section title="💾 Backup dati"><BackupSettings /></Section>
+      </div>
     </div>
   )
 }
