@@ -3,18 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseList } from '../scores/exerciseStats'
 import { allExercises, getOrCreateExercise } from '../db/repo'
 import { normalizeName } from '../db/catalog'
-import { ExerciseDetail } from './ExerciseDetail'
 import type { MuscleGroup } from '../db/schema'
 
-export function ExercisesScreen() {
-  const [selected, setSelected] = useState<string | null>(null)
+// onOpen instrada il dettaglio nella navigazione dell'app (App.tsx) → sopravvive a refresh e tasto Back.
+export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
   const [q, setQ] = useState('')
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
   const all = useLiveQuery(allExercises, []) ?? []
   const stats = useLiveQuery(computeExerciseList, [])
   const statsById = new Map((stats ?? []).map((s) => [s.id, s]))
-
-  if (selected) return <ExerciseDetail exerciseId={selected} onBack={() => setSelected(null)} />
 
   const nq = normalizeName(q)
   const muscles = [...new Set(all.map((e) => e.muscle))]
@@ -45,7 +42,7 @@ export function ExercisesScreen() {
       </div>
 
       {q && !exactExists && (
-        <button className="sel" onClick={async () => { const ex = await getOrCreateExercise(q); setSelected(ex.id) }}>＋ Crea “{q.trim()}”</button>
+        <button className="sel" onClick={async () => { const ex = await getOrCreateExercise(q); onOpen(ex.id) }}>＋ Crea “{q.trim()}”</button>
       )}
 
       {groups.length === 0 ? (
@@ -56,7 +53,7 @@ export function ExercisesScreen() {
           {g.items.map((e) => {
             const st = statsById.get(e.id)
             return (
-              <div key={e.id} onClick={() => setSelected(e.id)}
+              <div key={e.id} onClick={() => onOpen(e.id)}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {e.name} <span className="muted small">· {e.muscle}{e.isCustom ? ' · custom' : ''}</span>

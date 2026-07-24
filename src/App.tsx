@@ -11,11 +11,12 @@ import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
 import { TemplateEditor } from './ui/TemplateEditor'
+import { ExerciseDetail } from './ui/ExerciseDetail'
 import { Nav, type Tab } from './ui/Nav'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
-type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null }
-const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null }
+type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null }
+const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null }
 
 function loadNav(): Nav {
   try { const s = sessionStorage.getItem('nav'); if (s) return { ...DEFAULT_NAV, ...JSON.parse(s) } } catch { /* ignore */ }
@@ -92,7 +93,9 @@ export default function App() {
             onOpenAnalytics={() => push({ analytics: true })}
           />
         )}
-        {nav.tab === 'exercises' && <ExercisesScreen />}
+        {nav.tab === 'exercises' && (nav.exercise
+          ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} />
+          : <ExercisesScreen onOpen={(id) => push({ exercise: id })} />)}
         {nav.tab === 'body' && <BodyScreen />}
         {nav.tab === 'history' && <HistoryScreen />}
         {nav.tab === 'profile' && (
@@ -102,7 +105,7 @@ export default function App() {
           />
         )}
       </div>
-      <Nav tab={nav.tab} onChange={(t) => push({ tab: t })} />
+      <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null })} />
     </div>
   )
 }
