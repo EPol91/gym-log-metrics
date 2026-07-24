@@ -1,0 +1,269 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GYM LOG & METRICS — Collaudo</title>
+<style>
+  :root{
+    --bg:#0e0e10; --surface:#17171b; --surface-2:#1e1e24; --line:#2b2b33;
+    --text:#ece9e2; --muted:#8f8f98; --gold:#d9b24a; --gold-dim:#7a642a;
+    --good:#38b26b; --err:#e5595d; --todo:#5b6472;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f3f1ea; --surface:#fbfaf6; --surface-2:#f0eee6; --line:#e0dcd0;
+      --text:#20201c; --muted:#6f6c62; --gold:#9c7b1e; --gold-dim:#c9b678;
+      --good:#1f8b4c; --err:#c23a3e; --todo:#98a0ab;
+      --shadow:0 1px 0 rgba(255,255,255,.6), 0 6px 18px rgba(60,55,40,.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e0e10; --surface:#17171b; --surface-2:#1e1e24; --line:#2b2b33;
+    --text:#ece9e2; --muted:#8f8f98; --gold:#d9b24a; --gold-dim:#7a642a;
+    --good:#38b26b; --err:#e5595d; --todo:#5b6472;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f1ea; --surface:#fbfaf6; --surface-2:#f0eee6; --line:#e0dcd0;
+    --text:#20201c; --muted:#6f6c62; --gold:#9c7b1e; --gold-dim:#c9b678;
+    --good:#1f8b4c; --err:#c23a3e; --todo:#98a0ab;
+    --shadow:0 1px 0 rgba(255,255,255,.6), 0 6px 18px rgba(60,55,40,.12);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:28px 18px 80px}
+
+  h1{font-family:Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:.2px;
+    font-size:clamp(26px,4vw,34px);margin:0 0 2px;text-wrap:balance}
+  h1 .amp{color:var(--gold);font-style:italic}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 18px}
+
+  /* summary */
+  .summary{position:sticky;top:0;z-index:5;background:var(--bg);
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    padding:12px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .stat{display:flex;flex-direction:column;min-width:70px}
+  .stat b{font-size:22px;font-variant-numeric:tabular-nums;line-height:1}
+  .stat span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .stat.ok b{color:var(--good)} .stat.err b{color:var(--err)} .stat.todo b{color:var(--todo)}
+  .bar{flex:1;min-width:140px;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;border:1px solid var(--line)}
+  .bar>i{display:block;height:100%;background:var(--good);width:0;transition:width .4s ease}
+  .theme{margin-left:auto;background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+
+  .hint{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;margin:6px 0 18px}
+  .hint b{color:var(--text)}
+
+  section{margin:22px 0}
+  .sec-head{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+  .sec-head h2{font-family:Georgia,serif;font-weight:600;font-size:17px;margin:0}
+  .sec-head .tag{font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:99px}
+  .tag.done{color:var(--good);border:1px solid color-mix(in srgb,var(--good) 45%,transparent)}
+  .tag.wip{color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
+  .tag.later{color:var(--todo);border:1px solid var(--line)}
+
+  .item{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;margin:8px 0;box-shadow:var(--shadow);
+    border-left:3px solid var(--line);transition:border-color .2s}
+  .item.is-ok{border-left-color:var(--good)}
+  .item.is-err{border-left-color:var(--err)}
+  .item .top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+  .item .txt{flex:1;min-width:0}
+  .item .id{font-size:11px;font-variant-numeric:tabular-nums;color:var(--gold);
+    font-weight:700;letter-spacing:.04em;margin-right:6px}
+  .item .desc{font-size:14.5px}
+  .item .where{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+
+  .checks{display:flex;gap:6px;flex:0 0 auto}
+  .chk{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);
+    border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap;user-select:none;
+    transition:all .15s}
+  .chk:hover{border-color:var(--muted)}
+  .chk.ok.on{background:color-mix(in srgb,var(--good) 20%,transparent);border-color:var(--good);color:var(--good);font-weight:600}
+  .chk.err.on{background:color-mix(in srgb,var(--err) 20%,transparent);border-color:var(--err);color:var(--err);font-weight:600}
+
+  .note{margin-top:10px;display:none}
+  .item.is-err .note{display:block}
+  .note textarea{width:100%;background:var(--surface-2);border:1px solid var(--err);color:var(--text);
+    border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;resize:vertical;min-height:52px}
+  .note textarea::placeholder{color:var(--muted)}
+
+  .badge{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--todo);
+    border:1px solid var(--line);border-radius:99px;padding:3px 9px;flex:0 0 auto;align-self:center}
+  .item.todo{opacity:.82;border-left-color:var(--todo);box-shadow:none}
+
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+  @media (max-width:560px){
+    .item .top{flex-direction:column}
+    .checks{width:100%}.chk{flex:1;text-align:center}
+  }
+</style>
+
+<div class="wrap">
+  <h1>GYM LOG <span class="amp">&amp;</span> METRICS — Collaudo</h1>
+  <p class="sub">Test del 24 lug 2026 · spunta ciò che hai verificato sul telefono</p>
+
+  <div class="summary">
+    <div class="stat ok"><b id="s-ok">0</b><span>verificati</span></div>
+    <div class="stat err"><b id="s-err">0</b><span>errori</span></div>
+    <div class="stat"><b id="s-rest">0</b><span>da testare</span></div>
+    <div class="stat todo"><b id="s-todo">0</b><span>da fare</span></div>
+    <div class="bar"><i id="bar"></i></div>
+    <button class="theme" id="theme">tema</button>
+  </div>
+
+  <div class="hint">
+    <b>✓ Funziona</b> = testato e ok · <b>✗ Errore</b> = non va, scrivi cosa succede nella nota.
+    Le spunte si salvano nel tuo browser. Le voci <b>“da fare”</b> sono la roadmap, senza spunta.
+  </div>
+
+  <div id="app"></div>
+
+  <p class="foot">Stato salvato localmente su questo dispositivo · GYM LOG &amp; METRICS</p>
+</div>
+
+<script>
+const SECTIONS = [
+  { title:"P0 — Bug critici", tag:"done", tagLabel:"fatti", items:[
+    ["6/7","Voice: “15 8” (senza “per”) mette 15 kg × 8 · il testo “Sentito” sparisce dopo pochi secondi","Workout → Detta la serie"],
+    ["9/10","Timer non si ferma uscendo dall’app: esci 30s e rientra, il tempo è corretto","Recupero / Cardio","ok"],
+    ["33","Durata seduta mostrata (riepilogo fine + dettaglio Storico)","Fine allenamento · Storico"],
+    ["17","Cardio: tasto “Disconnetti” sempre visibile anche con zona lunga (Z5)","Workout → Cardio, fascia connessa"],
+    ["21","Cardio: il cuore pulsa solo con fascia connessa, fermo sui dati salvati","Workout → Cardio"],
+    ["24","Cardio: se compili il form e premi “Fine” senza salvare, viene salvato lo stesso","Workout → Cardio → Fine"],
+    ["26","Tasto Back del telefono torna indietro nell’app (non esce)","Ovunque"],
+    ["36","Refresh: resti dov’eri (anche in un workout in corso), non torni in Home","Ovunque"],
+  ]},
+  { title:"P1 — Workout", tag:"done", tagLabel:"fatti", items:[
+    ["1","Card esercizio collassabile (tocca il nome)","Workout live"],
+    ["3","Tasto “⏱ Recupero” apre il timer quando vuoi","Workout live (in alto)"],
+    ["4/13","Barra fissa in alto: durata + timer sempre visibili mentre scorri","Workout live"],
+    ["8","Rinomina tipo seduta dopo la chiusura (tocca il titolo)","Storico → dettaglio"],
+    ["12","“📊 Storico” + “PR e1RM” per esercizio durante il workout","Workout live"],
+    ["11/15","Recupero reale per serie mostrato (es. ⏱90s) dalla 2ª serie","Workout live"],
+    ["5","“⚙ Regolazioni” macchina per esercizio (sellino ecc.), ricordate","Workout live"],
+    ["30","Modifica seduta chiusa: edita/aggiungi serie ed esercizi","Storico → dettaglio → Modifica"],
+  ]},
+  { title:"Già online (sessioni precedenti)", tag:"done", tagLabel:"da riverificare", items:[
+    ["IMP","Import CSV universale (Strong/Hevy/altri)","Profilo → Importa CSV"],
+    ["BPM","Live BPM fascia Bluetooth (Whoop) + media salvata","Workout → Cardio"],
+    ["RES","Riprendi seduta aperta / “‹ Home” senza chiudere","Home / Workout"],
+    ["FAB","Tasti grandi cliccabili su tutta la superficie (fix salto)","Ovunque"],
+  ]},
+  { title:"Correzioni segnalate (dal collaudo)", tag:"done", tagLabel:"fatti", items:[
+    ["R1","Recupero per serie modificabile: nell’editor serie campo “Recupero (s)” con −15/+15","Workout → tocca una serie → ✎"],
+    ["R2","Cardio full-screen ora copre davvero tutto (portal) + redesign stile Whoop (anello + BPM dominante + zone)","Cardio → Avvia"],
+    ["R3","Cardio in corso sopravvive al refresh (timer riprende). NB: la fascia va riconnessa a mano (limite PWA, solo il wrap nativo lo risolve)","Cardio in corso → refresh"],
+  ]},
+  { title:"P1 — Cardio (fatti)", tag:"done", tagLabel:"fatti", items:[
+    ["20","Tipo cardio Assault Bike aggiunto","Cardio → Tipo"],
+    ["39","Standard/HRR scelto nel setup prima di avviare; zona live usa la formula scelta","Cardio → Avvia → setup"],
+    ["HRR","Formula zona default = HRR (fallback Standard se manca FC riposo)","Cardio → setup"],
+    ["18","BPM medio della fascia sempre visibile durante il cardio","Cardio, fascia connessa"],
+    ["40","Fascia resta connessa uscendo dal cardio / cambiando schermata","Connetti fascia → ‹ Home → torna"],
+    ["19","Cardio a schermo intero tipo Whoop (timer gigante, BPM+zona live)","Cardio → Avvia"],
+    ["38","Template cardio: salva/riusa setup completo (tipo+formula+modalità+parametri)","Cardio → setup → Salva template"],
+  ]},
+  { title:"P2 — Dashboard (prima i 3 concept)", tag:"later", tagLabel:"da progettare", todo:true, items:[
+    ["25/28","Meno spazio sprecato + card che si compattano una volta compilate"],
+    ["29","KPI cliccabili con dettaglio"],
+    ["14","Log peso giornaliero anche in Home"],
+  ]},
+  { title:"P2 — Altro (fatti)", tag:"done", tagLabel:"fatti", items:[
+    ["32","Home “Ciao {nome}” + frase del giorno; frase carica nel pre-workout","Home / Check pre-workout"],
+    ["34","Data inizio fase correggibile","Profilo → Fase"],
+    ["2/22","Suoni più forti/udibili; fine timer più lungo tipo allarme","Recupero / Cardio / Fine"],
+    ["23","Animazione + suono al riepilogo fine allenamento","Fine allenamento"],
+  ]},
+  { title:"P2 — Altro (da fare)", tag:"later", tagLabel:"da fare", todo:true, items:[
+    ["27","Check pre-workout: separare “stanco” e “indolenzito”"],
+    ["31","Tab Esercizi in ordine alfabetico + aggiunta con ricerca catalogo"],
+    ["37","Log corpo modificabile + log giornalieri più leggibili"],
+    ["16","Chiedere palestra a inizio seduta + GPS"],
+    ["35","Consistency Score vs cambio obiettivo settimanale nel tempo"],
+  ]},
+  { title:"Fase 2 — Future", tag:"later", tagLabel:"backlog", todo:true, items:[
+    ["F1","Nutrition: diario dieta/macros (ref app Macros)"],
+    ["F2","Macros con alternative intelligenti + AI Nutritionist"],
+    ["F3","Habits: steps + connessione Whoop"],
+    ["F4","Integrations: lettura dati Whoop completa"],
+    ["F5","Habits: recurring check-ins · Reminders & notifications"],
+    ["F6","Nutrition: book ricette"],
+    ["F7","Angle meter · Poop diary"],
+    ["F8","Ponte POL-IN-ONE ↔ GYM LOG (peso condiviso)"],
+  ]},
+];
+
+const KEY="gymlog-collaudo-v1";
+const state=JSON.parse(localStorage.getItem(KEY)||"{}");
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+
+const app=document.getElementById("app");
+let doneCount=0, todoCount=0;
+
+SECTIONS.forEach(sec=>{
+  const s=document.createElement("section");
+  const h=document.createElement("div"); h.className="sec-head";
+  h.innerHTML=`<h2>${sec.title}</h2><span class="tag ${sec.tag}">${sec.tagLabel}</span>`;
+  s.appendChild(h);
+
+  sec.items.forEach(it=>{
+    const [id,desc,where,init]=it;
+    if(sec.todo){
+      todoCount++;
+      const row=document.createElement("div"); row.className="item todo";
+      row.innerHTML=`<div class="top"><div class="txt"><span class="id">${id}</span><span class="desc">${desc}</span></div><span class="badge">da fare</span></div>`;
+      s.appendChild(row); return;
+    }
+    doneCount++;
+    const key=`${id}`;
+    const st=state[key]||{status:init||"",note:""};
+    const row=document.createElement("div"); row.className="item"; row.dataset.k=key;
+    row.innerHTML=`
+      <div class="top">
+        <div class="txt"><span class="id">${id}</span><span class="desc">${desc}</span>
+          ${where?`<span class="where">${where}</span>`:""}</div>
+        <div class="checks">
+          <button class="chk ok" data-a="ok">✓ Funziona</button>
+          <button class="chk err" data-a="err">✗ Errore</button>
+        </div>
+      </div>
+      <div class="note"><textarea placeholder="Cosa non funziona / cosa succede…"></textarea></div>`;
+    const ta=row.querySelector("textarea"); ta.value=st.note||"";
+    const apply=()=>{
+      row.classList.toggle("is-ok",st.status==="ok");
+      row.classList.toggle("is-err",st.status==="err");
+      row.querySelector('[data-a="ok"]').classList.toggle("on",st.status==="ok");
+      row.querySelector('[data-a="err"]').classList.toggle("on",st.status==="err");
+    };
+    row.querySelectorAll(".chk").forEach(b=>b.addEventListener("click",()=>{
+      const a=b.dataset.a; st.status=(st.status===a)?"":a; state[key]=st; save(); apply(); recount();
+      if(st.status==="err") ta.focus();
+    }));
+    ta.addEventListener("input",()=>{st.note=ta.value; state[key]=st; save();});
+    apply(); s.appendChild(row);
+  });
+  app.appendChild(s);
+});
+
+function recount(){
+  let ok=0,err=0;
+  Object.values(state).forEach(v=>{if(v.status==="ok")ok++;else if(v.status==="err")err++;});
+  document.getElementById("s-ok").textContent=ok;
+  document.getElementById("s-err").textContent=err;
+  document.getElementById("s-rest").textContent=doneCount-ok-err;
+  document.getElementById("s-todo").textContent=todoCount;
+  document.getElementById("bar").style.width=(doneCount?((ok+err)/doneCount*100):0)+"%";
+}
+recount();
+
+// theme toggle
+const root=document.documentElement;
+document.getElementById("theme").addEventListener("click",()=>{
+  const cur=root.getAttribute("data-theme")|| (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  root.setAttribute("data-theme",cur==="dark"?"light":"dark");
+});
+</script>
