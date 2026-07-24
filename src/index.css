@@ -1,12 +1,13 @@
 :root {
-  --bg: #0e0e10;
-  --surface: #17171b;
-  --surface-2: #1f1f25;
-  --line: #2a2a32;
-  --text: #f2f2f4;
-  --muted: #9a9aa6;
+  --bg: #0b0b0b;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --line: #262626;
+  --text: #f2f2f2;
+  --muted: #8f8f8f;
   --gold: #d4af37;
   --gold-dim: #b8952f;
+  --gold-bg: #20200f;
   --good: #4caf50;
   color-scheme: dark;
 }
@@ -100,6 +101,15 @@ button.primary { background: var(--gold); color: #1a1400; border-color: var(--go
 button.ghost { background: transparent; }
 button.sel { border-color: var(--gold); color: var(--gold); }
 button:disabled { opacity: .4; cursor: default; }
+
+/* Chip ovale piccola (toggle/filtri) — compatta, occupa poco. */
+.chip {
+  font-size: 12px; padding: 5px 13px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+  flex: 0 0 auto; width: auto;
+}
+.chip.on { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); }
+.chip:disabled { opacity: .4; }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .row { display: flex; gap: 8px; align-items: center; }

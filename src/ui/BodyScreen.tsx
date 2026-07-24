@@ -49,8 +49,8 @@ export function BodyScreen() {
             <div className="row spread" style={{ margin: '8px 0 6px' }}>
               <span className="muted small">Andamento</span>
               <span className="row" style={{ gap: 4 }}>
-                <button className={chart === 'weight' ? 'sel small' : 'ghost small'} onClick={() => setChart('weight')}>Peso</button>
-                <button className={chart === 'bf' ? 'sel small' : 'ghost small'} onClick={() => setChart('bf')} disabled={bfRows.length < 2}>% grasso</button>
+                <button className={chart === 'weight' ? 'chip on' : 'chip'} onClick={() => setChart('weight')}>Peso</button>
+                <button className={chart === 'bf' ? 'chip on' : 'chip'} onClick={() => setChart('bf')} disabled={bfRows.length < 2}>% grasso</button>
               </span>
             </div>
             {chart === 'weight'
@@ -89,10 +89,10 @@ export function BodyScreen() {
       <div className="card">
         <div className="muted small" style={{ marginBottom: 6 }}>Storico</div>
         {rows.length === 0 ? <p className="muted small">Nessuna misura.</p> : [...rows].reverse().map((m) => (
-          <div className="setline" key={m.id}>
-            <span className="muted small">{m.date}</span>
-            <span>{m.weight} kg{m.bodyFat != null ? ` · ${m.bodyFat}%` : ''}</span>
-            <button className="ghost small" onClick={() => { if (confirm('Eliminare la misura?')) deleteMeasurement(m.id) }}>✕</button>
+          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
+            <span className="muted small" style={{ flex: '0 0 84px', fontVariantNumeric: 'tabular-nums' }}>{m.date}</span>
+            <span style={{ flex: 1 }}>{m.weight} kg{m.bodyFat != null ? ` · ${m.bodyFat}%` : ''}</span>
+            <button className="ghost small" style={{ flex: 'none', padding: '4px 10px' }} onClick={() => { if (confirm('Eliminare la misura?')) deleteMeasurement(m.id) }}>✕</button>
           </div>
         ))}
       </div>

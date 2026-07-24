@@ -54,7 +54,7 @@ export function ExerciseDetail({ exerciseId, onBack }: { exerciseId: string; onB
 
       <div className="row" style={{ gap: 6 }}>
         {METRICS.map((m) => (
-          <button key={m.key} className={metric === m.key ? 'sel small' : 'ghost small'} onClick={() => setMetric(m.key)}>{m.chip}</button>
+          <button key={m.key} className={metric === m.key ? 'chip on' : 'chip'} onClick={() => setMetric(m.key)}>{m.chip}</button>
         ))}
       </div>
       <div className="card">

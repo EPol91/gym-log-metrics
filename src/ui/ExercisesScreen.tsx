@@ -35,9 +35,9 @@ export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
       <input placeholder="🔍 Cerca o crea un esercizio…" value={q} onChange={(e) => setQ(e.target.value)} />
 
       <div className="row" style={{ gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-        <button className={muscle === null ? 'sel small' : 'ghost small'} style={{ flex: '0 0 auto' }} onClick={() => setMuscle(null)}>Tutti</button>
+        <button className={muscle === null ? 'chip on' : 'chip'} onClick={() => setMuscle(null)}>Tutti</button>
         {muscles.map((m) => (
-          <button key={m} className={muscle === m ? 'sel small' : 'ghost small'} style={{ flex: '0 0 auto' }} onClick={() => setMuscle(m)}>{m}</button>
+          <button key={m} className={muscle === m ? 'chip on' : 'chip'} onClick={() => setMuscle(m)}>{m}</button>
         ))}
       </div>
 

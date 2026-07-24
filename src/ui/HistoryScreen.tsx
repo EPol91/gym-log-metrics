@@ -25,9 +25,9 @@ export function HistoryScreen() {
 
       {types.length > 1 && (
         <div className="row" style={{ gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-          <button className={filter === null ? 'sel small' : 'ghost small'} style={{ flex: '0 0 auto' }} onClick={() => setFilter(null)}>Tutte</button>
+          <button className={filter === null ? 'chip on' : 'chip'} onClick={() => setFilter(null)}>Tutte</button>
           {types.map((t) => (
-            <button key={t} className={filter === t ? 'sel small' : 'ghost small'} style={{ flex: '0 0 auto' }} onClick={() => setFilter(t)}>{TYPE_LABEL[t] ?? t}</button>
+            <button key={t} className={filter === t ? 'chip on' : 'chip'} onClick={() => setFilter(t)}>{TYPE_LABEL[t] ?? t}</button>
           ))}
         </div>
       )}

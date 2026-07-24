@@ -90,7 +90,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
           <label className="fl">Recupero</label>
           <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
             {REST_PRESETS.map((s) => (
-              <button key={s} className={restDefault === s ? 'sel small' : 'ghost small'} onClick={() => updateUser({ restDefaultSec: s })}>{s}s</button>
+              <button key={s} className={restDefault === s ? 'chip on' : 'chip'} onClick={() => updateUser({ restDefaultSec: s })}>{s}s</button>
             ))}
           </div>
         </div>
