@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getCurrentPhase, setPhase, clearPhase, setPhaseStartDate, getUser, updateUser } from '../db/repo'
 import { AiSettings } from './AiSettings'
@@ -14,6 +15,19 @@ const PHASES: { key: Phase; label: string; hint: string }[] = [
   { key: 'recomp', label: 'Recomp', hint: 'ricomposizione' },
   { key: 'maintenance', label: 'Mant.', hint: 'mantenimento' },
 ]
+
+// Sezione collassabile: riga con titolo + freccia, apre il contenuto al tap.
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button className="card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
+        <div className="row spread"><span>{title}</span><span className="muted small">{open ? '▾' : '›'}</span></div>
+      </button>
+      {open && <div style={{ marginTop: 8 }}>{children}</div>}
+    </div>
+  )
+}
 
 export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplate: (id: string) => void; onNewTemplate: () => void }) {
   const phase = useLiveQuery(getCurrentPhase, [])
@@ -131,11 +145,12 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         </div>
       </div>
 
-      <TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} />
-      <GymSettings />
-      <AiSettings />
-      <CsvImport />
-      <BackupSettings />
+      <div className="muted small" style={{ marginTop: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Avanzate</div>
+      <Section title="⭐ Template di allenamento"><TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} /></Section>
+      <Section title="🏋️ Palestra"><GymSettings /></Section>
+      <Section title="🤖 AI"><AiSettings /></Section>
+      <Section title="⬆️ Import CSV (Strong / Hevy)"><CsvImport /></Section>
+      <Section title="💾 Backup dati"><BackupSettings /></Section>
     </div>
   )
 }
