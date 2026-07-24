@@ -53,19 +53,22 @@ function RestTimer({ defaultSec, presets, onPick, onClose }: {
   const ss = Math.max(0, left) % 60
 
   const ctrl = { flex: 1, padding: '7px 0', fontSize: 13 }
+  const pct = Math.max(0, Math.min(100, (left / total) * 100))
   return (
-    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--line)', transition: 'border-color .2s', padding: '8px 12px', margin: '6px 0 0' }}>
-      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-        <span className="muted small">Rec.</span>
-        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
-          {done ? 'Vai!' : `${mm}:${ss.toString().padStart(2, '0')}`}
+    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold-dim)', transition: 'border-color .2s', padding: '9px 12px', margin: 0 }}>
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <span className="muted small" style={{ letterSpacing: '.08em' }}>⏱ RECUPERO</span>
+        <span className="row" style={{ gap: 10, alignItems: 'center' }}>
+          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
+            {done ? 'Vai! 💪' : `${mm}:${ss.toString().padStart(2, '0')}`}
+          </span>
+          <button className="ghost small" onClick={onClose}>✕</button>
         </span>
-        <div style={{ flex: 1, minWidth: 24, height: 5, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 999, width: `${Math.max(0, Math.min(100, (left / total) * 100))}%`, background: warn ? '#e5484d' : 'var(--gold)', transition: 'width 1s linear, background .2s' }} />
-        </div>
-        <button className="ghost small" onClick={onClose}>✕</button>
       </div>
-      <div className="row" style={{ gap: 4, marginTop: 6, alignItems: 'center' }}>
+      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', margin: '8px 0' }}>
+        <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: warn ? '#e5484d' : 'var(--gold)', transition: 'width 1s linear, background .2s' }} />
+      </div>
+      <div className="row" style={{ gap: 4, alignItems: 'center' }}>
         <button style={ctrl} onClick={() => adjust(-15)}>−15</button>
         <button style={ctrl} onClick={() => adjust(15)}>+15</button>
         <button style={ctrl} onClick={toggle}>{running ? '⏸' : '▶'}</button>
@@ -151,13 +154,14 @@ function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
   )
 }
 
-// Card numerica grande con − / ＋ (stile mockup Workout B).
-function StepCard({ label, value, onStep }: { label: string; value: string; onStep: (dir: number) => void }) {
+// Card numerica grande: input scrivibile a mano + tasti − / ＋.
+function StepCard({ label, value, onSet, onStep }: { label: string; value: string; onSet: (v: string) => void; onStep: (dir: number) => void }) {
   return (
-    <div className="card" style={{ flex: 1, minWidth: 0, padding: '8px 4px', textAlign: 'center' }}>
-      <div style={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>{value === '' ? '0' : value}</div>
-      <div className="muted" style={{ fontSize: 10 }}>{label}</div>
-      <div className="row" style={{ gap: 4, marginTop: 6 }}>
+    <div className="card" style={{ flex: 1, minWidth: 0, padding: '6px 6px 8px', textAlign: 'center' }}>
+      <input inputMode="decimal" value={value} placeholder="—" onChange={(e) => onSet(e.target.value)}
+        style={{ width: '100%', fontSize: 22, fontWeight: 700, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '4px 0' }} />
+      <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{label}</div>
+      <div className="row" style={{ gap: 4, marginTop: 5 }}>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(-1)}>−</button>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(1)}>＋</button>
       </div>
@@ -167,21 +171,44 @@ function StepCard({ label, value, onStep }: { label: string; value: string; onSt
 
 const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '7px 2px', borderTop: '1px solid var(--line)', fontVariantNumeric: 'tabular-nums' } as const
 
-// Riga della tabella set: tap per modificare kg/reps, ✕ per eliminare.
+// Riga della tabella set. Tap = editor completo (kg/reps/RIR/recupero). Mostra RIR e recupero salvati.
 function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: string; isPR: boolean }) {
   const [ed, setEd] = useState(false)
   const [w, setW] = useState(String(s.weight))
   const [r, setR] = useState(String(s.reps))
+  const [rir, setRir] = useState<number | null>(s.rir ?? null)
+  const [rest, setRest] = useState(s.restSec != null ? String(s.restSec) : '')
   if (ed) return (
-    <div style={{ ...SROW, gridTemplateColumns: '26px 1fr 1fr auto' }}>
-      <span className="muted small">{s.isWarmup ? 'W' : index}</span>
-      <input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ padding: '6px 4px', textAlign: 'center' }} />
-      <input inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ padding: '6px 4px', textAlign: 'center' }} />
-      <span className="row" style={{ gap: 4 }}>
-        <button className="primary" style={{ padding: '6px 9px' }} onClick={async () => { const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true }); if (wn != null && rn != null) { await updateSet(s.id, { weight: wn, reps: rn }); setEd(false) } }}>✓</button>
-        <button className="ghost small" onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>🗑</button>
-        <button className="ghost small" onClick={() => setEd(false)}>✕</button>
-      </span>
+    <div className="card" style={{ background: 'var(--surface-2)', margin: '4px 0', padding: '8px 10px' }}>
+      <div className="row" style={{ gap: 6 }}>
+        <div style={{ flex: 1 }}><label className="fl">kg</label><input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ width: '100%', textAlign: 'center' }} /></div>
+        <div style={{ flex: 1 }}><label className="fl">reps</label><input inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ width: '100%', textAlign: 'center' }} /></div>
+      </div>
+      <div style={{ marginTop: 6 }}>
+        <label className="fl">RIR</label>
+        <div className="opts" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+          <button className={rir === null ? 'sel' : ''} onClick={() => setRir(null)}>—</button>
+          {[0, 1, 2, 3, 4].map((v) => <button key={v} className={rir === v ? 'sel' : ''} onClick={() => setRir(v)}>{v}</button>)}
+        </div>
+      </div>
+      <div style={{ marginTop: 6 }}>
+        <label className="fl">Recupero (s) — correggi se il timer ha sbagliato</label>
+        <div className="row" style={{ gap: 4 }}>
+          <button style={{ padding: '8px 12px' }} onClick={() => setRest(String(Math.max(0, (parseNum(rest, { int: true }) ?? 0) - 15)))}>−15</button>
+          <input inputMode="numeric" value={rest} placeholder="—" onChange={(e) => setRest(e.target.value)} style={{ flex: 1, minWidth: 0, textAlign: 'center' }} />
+          <button style={{ padding: '8px 12px' }} onClick={() => setRest(String((parseNum(rest, { int: true }) ?? 0) + 15))}>＋15</button>
+        </div>
+      </div>
+      <div className="row" style={{ gap: 6, marginTop: 8 }}>
+        <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>🗑</button>
+        <button className="ghost" style={{ flex: 1 }} onClick={() => setEd(false)}>Annulla</button>
+        <button className="primary" style={{ flex: 2 }} onClick={async () => {
+          const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
+          if (wn == null || rn == null) return
+          const restN = rest.trim() === '' ? undefined : (parseNum(rest, { min: 0, max: 3600, int: true }) ?? undefined)
+          await updateSet(s.id, { weight: wn, reps: rn, rir: rir ?? undefined, restSec: restN }); setEd(false)
+        }}>Salva</button>
+      </div>
     </div>
   )
   return (
@@ -189,15 +216,18 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
       <span className="muted small">{s.isWarmup ? 'W' : index}</span>
       <span className="muted small">{prev}</span>
       <span className="strong">{s.weight}</span>
-      <span className="strong">{s.reps}{isPR && <span style={{ color: 'var(--gold)' }}> PR</span>}</span>
+      <span className="strong">{s.reps}{isPR && <span style={{ color: 'var(--gold)' }}> PR</span>}
+        <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{s.rir != null ? ` R${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` ⏱${s.restSec}` : ''}</span>
+      </span>
       <span style={{ textAlign: 'center', color: 'var(--good)' }}>✓</span>
     </div>
   )
 }
 
-function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged }: {
+function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext }: {
   entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number
-  pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean; onLogged: (sec: number, exerciseId: string) => void
+  pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
+  onLogged: (sec: number, exerciseId: string) => void; onPrev?: () => void; onNext?: () => void
 }) {
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [w, setW] = useState('')
@@ -248,11 +278,15 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
   let wIdx = 0
   return (
     <div className="col" style={{ gap: 10 }}>
-      {/* Header centrato */}
-      <div style={{ textAlign: 'center' }}>
-        <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
-        <h2 style={{ margin: '2px 0' }}>{name}</h2>
-        <div className="muted small">{hint ? `Ultima: ${hint.weight}×${hint.reps}` : 'Prima volta'}{histBest > 0 ? ` · PR ${Math.round(histBest)}` : ''}</div>
+      {/* Header centrato con ‹ prev / next › ai lati del titolo (sempre visibili) */}
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onPrev ? 'visible' : 'hidden' }} onClick={onPrev} aria-label="Esercizio precedente">‹</button>
+        <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
+          <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
+          <h2 style={{ margin: '2px 0' }}>{name}</h2>
+          <div className="muted small">{hint ? `Ultima: ${hint.weight}×${hint.reps}` : 'Prima volta'}{histBest > 0 ? ` · PR ${Math.round(histBest)}` : ''}</div>
+        </div>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
       </div>
 
       {/* Controlli secondari */}
@@ -293,11 +327,12 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
         </div>
       </div>
 
-      {/* Card numeriche grandi */}
+      {/* Card numeriche grandi: scrivibili + tasti */}
       <div className="row" style={{ gap: 8 }}>
-        <StepCard label="kg" value={w} onStep={stepKg} />
-        <StepCard label="reps" value={r} onStep={stepRep} />
-        <StepCard label="RIR" value={rir == null ? '—' : String(rir)} onStep={stepRir} />
+        <StepCard label="kg" value={w} onSet={setW} onStep={stepKg} />
+        <StepCard label="reps" value={r} onSet={setR} onStep={stepRep} />
+        <StepCard label="RIR" value={rir == null ? '' : String(rir)} onStep={stepRir}
+          onSet={(v) => { const n = parseNum(v, { min: 0, max: 10, int: true }); setRir(v.trim() === '' ? null : (n ?? rir)) }} />
       </div>
 
       {/* Barra recupero (sotto le card, come nel mockup) */}
@@ -351,7 +386,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
             ))}
           </span>
           <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱</button>}
+            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
             {session && <WorkoutClock startedAt={session.startedAt} />}
           </span>
         </div>
@@ -368,15 +403,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
                 onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
                 onClose={() => setRest(null)} />
             ) : null}
-            isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest} />
-
-          {/* Navigazione tra esercizi */}
-          <div className="row" style={{ gap: 8 }}>
-            <button className="ghost" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} disabled={current === 0}
-              onClick={() => setCur(current - 1)}>‹ {current > 0 ? nameOf(entries[current - 1].exerciseId) : ''}</button>
-            <button className="ghost" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} disabled={current >= entries.length - 1}
-              onClick={() => setCur(current + 1)}>{current < entries.length - 1 ? nameOf(entries[current + 1].exerciseId) : ''} ›</button>
-          </div>
+            isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest}
+            onPrev={current > 0 ? () => setCur(current - 1) : undefined}
+            onNext={current < entries.length - 1 ? () => setCur(current + 1) : undefined} />
         </>
       )}
 
