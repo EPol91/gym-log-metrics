@@ -38,6 +38,7 @@ export interface SessionSummary {
   exercises: number
   sets: number
   cardio: CardioSummary[]
+  score: number | null
 }
 
 /** Storico sedute, più recenti prima. */
@@ -61,9 +62,10 @@ export async function computeHistory(): Promise<SessionSummary[]> {
         ...(z ? { zoneLabel: z.label, zonePct: z.pct } : {}),
       }
     })
+    const score = s.finishedAt ? (await computeSessionWorkoutScore(s.id)).value : null
     out.push({
       id: s.id, date: s.date, type: s.type, finished: !!s.finishedAt,
-      tonnage: tonnage(sets), volume: volume(sets), exercises: entries, sets: sets.length, cardio,
+      tonnage: tonnage(sets), volume: volume(sets), exercises: entries, sets: sets.length, cardio, score,
     })
   }
   return out
