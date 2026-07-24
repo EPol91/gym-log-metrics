@@ -8,7 +8,7 @@ import { dailyPhrase } from '../util/phrases'
 import { parseNum } from '../util/validate'
 
 const SCORE_TIPS: Record<string, string> = {
-  Readiness: 'Quanto sei pronto oggi. Dal check pre-workout (sonno · stanchezza · energia) e dal carico recente.',
+  Readiness: 'Quanto sei pronto oggi. Dal check pre-workout (sonno · stanchezza · indolenzimento · energia) e dal carico recente.',
   Workout: 'Qualità della seduta appena fatta rispetto ai TUOI standard: volume, intensità (RIR/e1RM), PR.',
   Performance: 'Stai progredendo? Trend di forza (e1RM) e volume su ~6 settimane, tarato sulla fase.',
   Consistency: 'Quanto sei costante: sedute vs obiettivo settimanale, regolarità e streak.',

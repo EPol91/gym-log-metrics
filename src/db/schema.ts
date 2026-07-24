@@ -75,7 +75,8 @@ export type WorkoutType =
 /** Risposte del check pre-workout (scale 0-100, vedi SCORE_FORMULE.md). Dato grezzo. */
 export interface ReadinessCheck {
   sleep: number // 0-100
-  fatigue: number // 0-100 (già invertito: 100 = nessuna stanchezza)
+  fatigue: number // 0-100 (già invertito: 100 = nessuna stanchezza sistemica)
+  soreness?: number // 0-100 (già invertito: 100 = nessun indolenzimento/DOMS). Assente nelle sedute pre-2026-07.
   energy: number // 0-100
 }
 

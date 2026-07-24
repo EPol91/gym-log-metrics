@@ -1,6 +1,6 @@
 // Scale del check pre-workout (vedi SCORE_FORMULE.md). Ogni opzione mappa a 0-100.
 export interface OptScale {
-  key: 'sleep' | 'fatigue' | 'energy'
+  key: 'sleep' | 'fatigue' | 'soreness' | 'energy'
   label: string
   options: { text: string; value: number }[]
 }
@@ -14,10 +14,17 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'fatigue', label: '🥵 Quanto sei stanco/indolenzito?',
+    key: 'fatigue', label: '🥵 Quanto sei stanco? (fatica generale)',
     options: [
-      { text: 'Nessuna', value: 100 }, { text: 'Poca', value: 75 },
-      { text: 'Media', value: 50 }, { text: 'Alta', value: 25 }, { text: 'Estrema', value: 0 },
+      { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
+      { text: 'Medio', value: 50 }, { text: 'Molto', value: 25 }, { text: 'Distrutto', value: 0 },
+    ],
+  },
+  {
+    key: 'soreness', label: '💪 Quanto sei indolenzito? (DOMS muscolari)',
+    options: [
+      { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
+      { text: 'Medio', value: 50 }, { text: 'Molto', value: 25 }, { text: 'Estremo', value: 0 },
     ],
   },
   {

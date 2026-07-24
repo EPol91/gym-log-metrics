@@ -1,5 +1,6 @@
 // Readiness Score — chiesto a inizio workout. Vedi SCORE_FORMULE.md §1.
-// Base = 40% sonno + 35% stanchezza + 25% energia, poi × aggiustamento carico (ACWR).
+// Base = 35% sonno + 25% stanchezza + 20% indolenzimento + 20% energia, poi × aggiustamento carico (ACWR).
+// Sedute vecchie senza indolenzimento → vecchia formula 40/35/25 (nessun ricalcolo che sposti lo storico).
 import { clamp } from '../metrics/metrics'
 import type { ReadinessCheck } from '../db/schema'
 import type { ScoreResult } from './types'
@@ -31,7 +32,9 @@ export function computeReadiness(
   if (!check) {
     return { value: null, reliability: 'insufficiente', note: 'Check pre-workout non compilato.' }
   }
-  const base = 0.4 * check.sleep + 0.35 * check.fatigue + 0.25 * check.energy
+  const base = check.soreness == null
+    ? 0.4 * check.sleep + 0.35 * check.fatigue + 0.25 * check.energy // sedute vecchie: formula originale
+    : 0.35 * check.sleep + 0.25 * check.fatigue + 0.2 * check.soreness + 0.2 * check.energy
 
   // Aggiustamento carico solo con almeno 14 giorni di storico.
   if (load && load.historyDays >= 14) {

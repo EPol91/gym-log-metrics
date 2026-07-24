@@ -4,7 +4,7 @@ import { computeReadiness } from '../scores/readiness'
 import { workoutPhrase } from '../util/phrases'
 import type { ReadinessCheck } from '../db/schema'
 
-type Answers = Partial<Record<'sleep' | 'fatigue' | 'energy', number>>
+type Answers = Partial<Record<'sleep' | 'fatigue' | 'soreness' | 'energy', number>>
 
 export function ReadinessScreen({
   onStart,
@@ -12,11 +12,10 @@ export function ReadinessScreen({
   onStart: (r: ReadinessCheck | null) => void
 }) {
   const [a, setA] = useState<Answers>({})
-  const complete = a.sleep != null && a.fatigue != null && a.energy != null
+  const complete = a.sleep != null && a.fatigue != null && a.soreness != null && a.energy != null
+  const answer = (): ReadinessCheck => ({ sleep: a.sleep!, fatigue: a.fatigue!, soreness: a.soreness!, energy: a.energy! })
 
-  const preview = complete
-    ? computeReadiness({ sleep: a.sleep!, fatigue: a.fatigue!, energy: a.energy! }, null)
-    : null
+  const preview = complete ? computeReadiness(answer(), null) : null
 
   return (
     <div className="col">
@@ -56,7 +55,7 @@ export function ReadinessScreen({
         <button
           className="primary" style={{ flex: 2 }}
           disabled={!complete}
-          onClick={() => complete && onStart({ sleep: a.sleep!, fatigue: a.fatigue!, energy: a.energy! })}
+          onClick={() => complete && onStart(answer())}
         >
           Inizia allenamento
         </button>
