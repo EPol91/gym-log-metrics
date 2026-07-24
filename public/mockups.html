@@ -132,19 +132,21 @@ const dash = document.getElementById('dash');
 
 // G — Composizione scelta (anello Oggi grande + anelli puliti + obiettivi + coach AI + nutrizione)
 mock(dash,'Dashboard G — La tua','DA COSTRUIRE',
- 'Anello “Oggi” grande, gli altri 4 anelli puliti (senza cornice), obiettivi settimana in evidenza, riga coach AI e dettagli nutrizione.',
+ 'Anello “Oggi” in alto a destra, 4 anelli puliti, obiettivi in evidenza, coach AI ampio, peso rapido e nutrizione collassabile (si apre al tap).',
  `${statusbar()}
-  <div><p class="brand">Gym log &amp; metrics</p><p class="greet">Ciao Emanuel <span class="wave">👋</span></p><p class="phrase">Oggi si costruisce.</p></div>
-  <div style="text-align:center;margin:2px 0">${ring(78,'var(--good)',130,'78',true)}<div class="xs mut" style="letter-spacing:.12em;margin-top:2px">OGGI · <span style="color:var(--good)">PRONTO</span></div></div>
+  <div class="row spread" style="align-items:flex-start">
+    <div><p class="brand">Gym log &amp; metrics</p><p class="greet">Ciao Emanuel <span class="wave">👋</span></p><p class="phrase">Oggi si costruisce.</p></div>
+    <div style="text-align:center">${ring(78,'var(--good)',82,'78')}<div class="xs mut" style="margin-top:1px">OGGI · <span style="color:var(--good)">PRONTO</span></div></div>
+  </div>
   <div class="cta">＋ Inizia allenamento</div>
   <div class="row spread" style="text-align:center">${[['Readiness',82],['Workout',64],['Perf.',0,'—'],['Constan.',71]].map(k=>`<div style="flex:1">${ring(k[1]||3,scoreColor(k[1]||0),58,k[2]??k[1])}<div class="xs mut" style="margin-top:2px">${k[0]}</div></div>`).join('')}</div>
   ${card(`<div class="row spread sm"><span class="mut">Obiettivo settimana</span><span class="strong">3 / 4</span></div><div class="barbg" style="margin-top:8px"><i style="width:75%"></i></div><div class="xs mut" style="margin-top:6px">Ancora 1 seduta 💪 · 🔥 streak 12 giorni</div>`)}
-  <div class="card ai" style="padding:10px 12px"><span class="xs g">💡 </span><span class="sm">Sei pronto: oggi gambe, recupero ok. <span class="mut">+6% petto in settimana.</span></span></div>
-  ${card(`<div class="row spread"><span class="mut sm">⚖️ Peso oggi</span><span class="mut xs">▼0,3 vs ieri</span></div>
-    <div class="row gap" style="margin-top:6px"><div class="chip num" style="flex:1;justify-content:center;padding:9px;font-size:15px">82,4</div><span class="mut sm" style="align-self:center">kg</span><div class="cta" style="padding:9px 16px">Salva</div></div>`,'padding:10px 12px')}
-  ${card(`<div class="row spread"><span class="mut sm">Nutrizione oggi</span><span class="chip" style="padding:3px 8px">🟢 ON</span></div>
-    <div class="row spread sm" style="margin-top:8px"><span class="mut">💧 Acqua</span><span><b class="num">2,8</b>/3 L</span></div><div class="barbg" style="margin-top:5px"><i style="width:93%;background:var(--blue)"></i></div>
-    <div class="row spread sm" style="margin-top:8px"><span class="mut">🧂 Sale</span><span><b class="num">4</b>/5 g</span></div><div class="barbg" style="margin-top:5px"><i style="width:80%"></i></div>`)}
+  <div class="card ai">
+    <div class="row spread"><span class="xs g" style="letter-spacing:.1em">💡 COACH · OGGI</span><span class="xs mut">ora</span></div>
+    <p class="sm" style="margin:6px 0 0">Sei pronto: oggi <b style="color:var(--good)">gambe</b>. Petto +6% in settimana, recupero sotto controllo — punta a battere lo squat.</p>
+  </div>
+  ${card(`<div class="row spread"><span class="mut sm">⚖️ Peso oggi <span class="xs">▼0,3 vs ieri</span></span><span class="row gap"><span class="chip num" style="padding:5px 12px;font-size:15px">82,4</span><span class="mut sm" style="align-self:center">kg</span><span class="cta" style="padding:6px 14px">Salva</span></span></div>`,'padding:10px 12px')}
+  <div class="chip" style="justify-content:space-between;width:100%;padding:11px 12px"><span>🥗 Nutrizione oggi · <span class="g">🟢 ON</span> · 💧 2,8L</span><span class="pill">▾ apri</span></div>
   ${tabbar('Home')}`, true);
 
 // A (tenuto)
