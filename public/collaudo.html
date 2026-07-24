@@ -201,8 +201,9 @@ const SECTIONS = [
 ];
 
 const KEY="gymlog-collaudo-v1";
-const state=JSON.parse(localStorage.getItem(KEY)||"{}");
-const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+let state={};
+try{ state=JSON.parse(localStorage.getItem(KEY)||"{}") }catch(e){ state={} }
+const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(state)) }catch(e){} };
 
 const app=document.getElementById("app");
 let doneCount=0, todoCount=0;
