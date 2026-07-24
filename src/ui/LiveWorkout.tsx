@@ -87,39 +87,7 @@ function WorkoutClock({ startedAt }: { startedAt: string }) {
   return <span className="muted small">⏱ {mm}:{ss.toString().padStart(2, '0')}</span>
 }
 
-// Stepper numerico compatto.
-function Stepper({ label, value, set, step, min = 0 }: { label: string; value: string; set: (v: string) => void; step: number; min?: number }) {
-  const n = value === '' ? 0 : Number(value)
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <label className="fl">{label}</label>
-      <div className="row" style={{ gap: 4 }}>
-        <button style={{ padding: '11px 12px', flex: '0 0 auto' }} onClick={() => set(String(Math.max(min, +(n - step).toFixed(2))))}>−</button>
-        <input inputMode="decimal" value={value} onChange={(e) => set(e.target.value)}
-          style={{ textAlign: 'center', padding: '11px 2px', flex: 1, minWidth: 0 }} />
-        <button style={{ padding: '11px 12px', flex: '0 0 auto' }} onClick={() => set(String(+(n + step).toFixed(2)))}>＋</button>
-      </div>
-    </div>
-  )
-}
-
-// Selettore RIR guidato (0 = cedimento).
-function RirPicker({ value, set }: { value: number | null; set: (v: number | null) => void }) {
-  return (
-    <div>
-      <label className="fl">RIR — reps in riserva (opz.)<Info text="RIR = quante ripetizioni potevi ancora fare a fine serie. 0 = cedimento totale, 2 = te ne restavano 2. Misura lo sforzo, indipendente da quante reps fai." /></label>
-      <div className="opts" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-        <button className={value === null ? 'sel' : ''} onClick={() => set(null)}>—</button>
-        {[0, 1, 2, 3, 4].map((r) => (
-          <button key={r} className={value === r ? 'sel' : ''} onClick={() => set(r)}>{r}</button>
-        ))}
-      </div>
-      <p className="muted small" style={{ marginTop: 4 }}>Quante ne avevi ancora in canna. 0 = cedimento.</p>
-    </div>
-  )
-}
-
-// Dettatura vocale della serie: "100 per 8 RIR 2" → riempie i campi (poi si conferma con "Aggiungi set").
+// Dettatura vocale della serie: "100 per 8 RIR 2" → riempie i campi.
 function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
   const [listening, setListening] = useState(false)
   const [heard, setHeard] = useState('')
@@ -183,52 +151,53 @@ function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
   )
 }
 
-function SetRow({ s, index, isPR, onDelete }: { s: SetEntry; index: number; isPR: boolean; onDelete: () => void }) {
-  const [editing, setEditing] = useState(false)
-  const [w, setW] = useState(String(s.weight))
-  const [r, setR] = useState(String(s.reps))
-  const [rir, setRir] = useState<number | null>(s.rir ?? null)
-  const [rest, setRest] = useState(s.restSec != null ? String(s.restSec) : '')
-
-  if (editing) {
-    return (
-      <div className="card" style={{ background: 'var(--surface-2)', margin: '6px 0' }}>
-        <div className="row"><Stepper label="kg" value={w} set={setW} step={2.5} /><Stepper label="reps" value={r} set={setR} step={1} /></div>
-        <RirPicker value={rir} set={setRir} />
-        <div style={{ marginTop: 8 }}>
-          <label className="fl">Recupero (s) — correggi se il timer ha sbagliato</label>
-          <div className="row" style={{ gap: 4 }}>
-            <button style={{ padding: '9px 12px' }} onClick={() => setRest(String(Math.max(0, (parseNum(rest, { int: true }) ?? 0) - 15)))}>−15</button>
-            <input inputMode="numeric" value={rest} placeholder="—" onChange={(e) => setRest(e.target.value)} style={{ textAlign: 'center', flex: 1, minWidth: 0 }} />
-            <button style={{ padding: '9px 12px' }} onClick={() => setRest(String((parseNum(rest, { int: true }) ?? 0) + 15))}>＋15</button>
-          </div>
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <button className="ghost" style={{ flex: 1 }} onClick={() => setEditing(false)}>Annulla</button>
-          <button className="primary" style={{ flex: 2 }} onClick={async () => {
-            const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
-            if (wn == null || rn == null) return
-            const restN = rest.trim() === '' ? undefined : (parseNum(rest, { min: 0, max: 3600, int: true }) ?? undefined)
-            await updateSet(s.id, { weight: wn, reps: rn, rir: rir ?? undefined, restSec: restN }); setEditing(false)
-          }}>Salva</button>
-        </div>
-      </div>
-    )
-  }
+// Card numerica grande con − / ＋ (stile mockup Workout B).
+function StepCard({ label, value, onStep }: { label: string; value: string; onStep: (dir: number) => void }) {
   return (
-    <div className="setline">
-      <span className="muted">{s.isWarmup ? 'W' : index}</span>
-      <span onClick={() => setEditing(true)} style={{ cursor: 'pointer' }}>
-        {s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` · ⏱${s.restSec}s` : ''} <span className="muted small">✎</span>
-        {isPR && <span className="pr-badge">PR</span>}
-      </span>
-      <button className="ghost small" onClick={onDelete}>✕</button>
+    <div className="card" style={{ flex: 1, minWidth: 0, padding: '8px 4px', textAlign: 'center' }}>
+      <div style={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>{value === '' ? '0' : value}</div>
+      <div className="muted" style={{ fontSize: 10 }}>{label}</div>
+      <div className="row" style={{ gap: 4, marginTop: 6 }}>
+        <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(-1)}>−</button>
+        <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(1)}>＋</button>
+      </div>
     </div>
   )
 }
 
-function EntryCard({ entry, name, settings, sessionId, restSec, isFirst, isLast, onLogged }: {
-  entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number; isFirst: boolean; isLast: boolean; onLogged: (sec: number, exerciseId: string) => void
+const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '7px 2px', borderTop: '1px solid var(--line)', fontVariantNumeric: 'tabular-nums' } as const
+
+// Riga della tabella set: tap per modificare kg/reps, ✕ per eliminare.
+function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: string; isPR: boolean }) {
+  const [ed, setEd] = useState(false)
+  const [w, setW] = useState(String(s.weight))
+  const [r, setR] = useState(String(s.reps))
+  if (ed) return (
+    <div style={{ ...SROW, gridTemplateColumns: '26px 1fr 1fr auto' }}>
+      <span className="muted small">{s.isWarmup ? 'W' : index}</span>
+      <input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ padding: '6px 4px', textAlign: 'center' }} />
+      <input inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ padding: '6px 4px', textAlign: 'center' }} />
+      <span className="row" style={{ gap: 4 }}>
+        <button className="primary" style={{ padding: '6px 9px' }} onClick={async () => { const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true }); if (wn != null && rn != null) { await updateSet(s.id, { weight: wn, reps: rn }); setEd(false) } }}>✓</button>
+        <button className="ghost small" onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>🗑</button>
+        <button className="ghost small" onClick={() => setEd(false)}>✕</button>
+      </span>
+    </div>
+  )
+  return (
+    <div style={SROW} onClick={() => setEd(true)}>
+      <span className="muted small">{s.isWarmup ? 'W' : index}</span>
+      <span className="muted small">{prev}</span>
+      <span className="strong">{s.weight}</span>
+      <span className="strong">{s.reps}{isPR && <span style={{ color: 'var(--gold)' }}> PR</span>}</span>
+      <span style={{ textAlign: 'center', color: 'var(--good)' }}>✓</span>
+    </div>
+  )
+}
+
+function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged }: {
+  entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number
+  pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean; onLogged: (sec: number, exerciseId: string) => void
 }) {
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [w, setW] = useState('')
@@ -237,18 +206,17 @@ function EntryCard({ entry, name, settings, sessionId, restSec, isFirst, isLast,
   const [warmup, setWarmup] = useState(false)
   const [hint, setHint] = useState<SetEntry | null>(null)
   const [histBest, setHistBest] = useState(0)
-  const [collapsed, setCollapsed] = useState(false)
+  const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
-  const lastSetAtRef = useRef<number | null>(null) // per misurare il recupero reale tra le serie
-  const workSets = sets.filter((s) => !s.isWarmup).length
-  const lastSet = sets.length ? sets[sets.length - 1] : null
+  const lastSetAtRef = useRef<number | null>(null) // recupero reale tra le serie
 
   useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
+  useEffect(() => { exerciseHistory(entry.exerciseId, sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, sessionId])
   useEffect(() => {
     if (prefilled.current) return
     const src = sets.length ? sets[sets.length - 1] : hint
@@ -256,6 +224,9 @@ function EntryCard({ entry, name, settings, sessionId, restSec, isFirst, isLast,
   }, [hint, sets])
 
   const canAdd = parseNum(w, { min: 0 }) != null && parseNum(r, { min: 1, int: true }) != null
+  const stepKg = (d: number) => setW((v) => String(Math.max(0, +(((v === '' ? 0 : +v) + d * 2.5)).toFixed(2))))
+  const stepRep = (d: number) => setR((v) => String(Math.max(1, (v === '' ? 0 : +v) + d)))
+  const stepRir = (d: number) => setRir((v) => d > 0 ? (v == null ? 0 : Math.min(6, v + 1)) : (v == null || v <= 0 ? null : v - 1))
 
   function fillFromVoice(f: VoiceSet) {
     if (f.weight != null) setW(String(f.weight))
@@ -263,82 +234,83 @@ function EntryCard({ entry, name, settings, sessionId, restSec, isFirst, isLast,
     if (f.rir != null) setRir(f.rir)
     if (f.warmup) setWarmup(true)
   }
-
   async function add() {
     const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
     if (wn == null || rn == null) return
     const now = Date.now()
-    // recupero reale = tempo dall'ultima serie di lavoro (metrica confrontabile tra sedute)
-    const restTaken = !warmup && lastSetAtRef.current != null
-      ? Math.min(3600, Math.max(0, Math.round((now - lastSetAtRef.current) / 1000)))
-      : undefined
+    const restTaken = !warmup && lastSetAtRef.current != null ? Math.min(3600, Math.max(0, Math.round((now - lastSetAtRef.current) / 1000))) : undefined
     await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup, restSec: restTaken })
     if (!warmup) lastSetAtRef.current = now
     setRir(null); setWarmup(false)
     if (!warmup) onLogged(restSec, entry.exerciseId)
   }
 
+  let wIdx = 0
   return (
-    <div className="card">
-      <div className="row spread">
-        <strong style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setCollapsed((c) => !c)}>
-          <span className="muted">{collapsed ? '▸' : '▾'}</span> {name}
-        </strong>
-        <span className="row" style={{ gap: 4 }}>
-          <button className="ghost small" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
-          <button className="ghost small" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
-          <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${name} dalla seduta?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
-        </span>
+    <div className="col" style={{ gap: 10 }}>
+      {/* Header centrato */}
+      <div style={{ textAlign: 'center' }}>
+        <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
+        <h2 style={{ margin: '2px 0' }}>{name}</h2>
+        <div className="muted small">{hint ? `Ultima: ${hint.weight}×${hint.reps}` : 'Prima volta'}{histBest > 0 ? ` · PR ${Math.round(histBest)}` : ''}</div>
       </div>
 
-      {collapsed ? (
-        <div className="muted small" style={{ marginTop: 4, cursor: 'pointer' }} onClick={() => setCollapsed(false)}>
-          {workSets} set{lastSet ? ` · ultimo ${lastSet.weight} kg × ${lastSet.reps}` : ' · nessuno'} — tocca per aprire
-        </div>
-      ) : (
-        <>
-          {hint && <div className="muted small" style={{ marginTop: 2 }}>Ultima volta: {hint.weight} kg × {hint.reps}{hint.rir != null ? ` · RIR ${hint.rir}` : ''}</div>}
-          <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-            {histBest > 0 && <span className="muted small">PR e1RM: <strong style={{ color: 'var(--gold)' }}>{Math.round(histBest)} kg</strong></span>}
-            <button className="ghost small" onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
-            <button className="ghost small" onClick={() => setShowSettings((v) => !v)}>⚙ Regolazioni</button>
-          </div>
-          {!showSettings && settings && <div className="muted small" style={{ marginTop: 2 }}>⚙ {settings}</div>}
-          {showSettings && (
-            <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto, schienale…"
-              style={{ width: '100%', marginTop: 4 }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />
-          )}
-          {showHist && (
-            <div className="col" style={{ gap: 3, marginTop: 4, paddingLeft: 4, borderLeft: '2px solid var(--line)' }}>
-              {history.length === 0 ? <p className="muted small">Nessuna seduta precedente.</p> : history.map((h, i) => (
-                <div key={i} className="muted small">
-                  <strong>{h.date}</strong>: {h.sets.map((s) => `${s.weight}×${s.reps}${s.restSec != null ? ` (⏱${s.restSec}s)` : ''}`).join(', ')}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {sets.map((s, i) => (
-            <SetRow key={s.id} s={s} index={sets.slice(0, i + 1).filter((x) => !x.isWarmup).length}
-              isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest}
-              onDelete={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }} />
+      {/* Controlli secondari */}
+      <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="ghost small" onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
+        <button className="ghost small" onClick={() => setShowSettings((v) => !v)}>⚙ Regolazioni</button>
+        <button className="ghost small" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
+        <button className="ghost small" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
+        <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
+      </div>
+      {!showSettings && settings && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {settings}</div>}
+      {showSettings && <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />}
+      {showHist && (
+        <div className="col" style={{ gap: 3, paddingLeft: 4, borderLeft: '2px solid var(--line)' }}>
+          {history.length === 0 ? <p className="muted small">Nessuna seduta precedente.</p> : history.map((h, i) => (
+            <div key={i} className="muted small"><strong>{h.date}</strong>: {h.sets.map((s) => `${s.weight}×${s.reps}${s.restSec != null ? ` (⏱${s.restSec}s)` : ''}`).join(', ')}</div>
           ))}
-
-          <div className="row" style={{ marginTop: 10 }}>
-            <Stepper label="kg" value={w} set={setW} step={2.5} />
-            <Stepper label="reps" value={r} set={setR} step={1} />
-          </div>
-          <div style={{ marginTop: 8 }}><RirPicker value={rir} set={setRir} /></div>
-          <VoiceButton onFill={fillFromVoice} />
-          <div className="row spread" style={{ marginTop: 8 }}>
-            <span className="row" style={{ alignItems: 'center' }}>
-              <button className={warmup ? 'sel' : 'ghost'} onClick={() => setWarmup((v) => !v)}>Riscaldamento</button>
-              <Info text="Le serie di riscaldamento NON contano nelle metriche (volume, tonnellaggio, e1RM, PR, Score) e NON fanno partire il timer di recupero. Servono solo a tracciare l'avvicinamento ai carichi di lavoro." />
-            </span>
-            <button className="primary" style={{ flex: 1, marginLeft: 8 }} disabled={!canAdd} onClick={add}>Aggiungi set</button>
-          </div>
-        </>
+        </div>
       )}
+
+      {/* Tabella set */}
+      <div className="card" style={{ padding: '4px 12px 8px' }}>
+        <div style={{ ...SROW, borderTop: 'none', color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          <span>Set</span><span>Prec.</span><span>Kg</span><span>Reps</span><span />
+        </div>
+        {sets.map((s) => {
+          if (!s.isWarmup) wIdx++
+          const idx = s.isWarmup ? 0 : wIdx
+          const prev = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${prevSets[idx - 1].weight}×${prevSets[idx - 1].reps}` : '—')
+          return <SetRowT key={s.id} s={s} index={idx} prev={prev} isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest} />
+        })}
+        <div style={{ ...SROW, color: 'var(--gold)' }}>
+          <span className="muted small">{sets.filter((x) => !x.isWarmup).length + 1}</span>
+          <span className="muted small">{hint ? `${hint.weight}×${hint.reps}` : '—'}</span>
+          <span className="strong">{w === '' ? '—' : w}</span>
+          <span className="strong">{r === '' ? '—' : r}</span>
+          <span style={{ textAlign: 'center' }}>○</span>
+        </div>
+      </div>
+
+      {/* Card numeriche grandi */}
+      <div className="row" style={{ gap: 8 }}>
+        <StepCard label="kg" value={w} onStep={stepKg} />
+        <StepCard label="reps" value={r} onStep={stepRep} />
+        <StepCard label="RIR" value={rir == null ? '—' : String(rir)} onStep={stepRir} />
+      </div>
+
+      {/* Barra recupero (sotto le card, come nel mockup) */}
+      {restNode}
+
+      {/* Voce + riscaldamento */}
+      <div className="row" style={{ gap: 6, alignItems: 'flex-start' }}>
+        <button className={warmup ? 'sel' : 'ghost'} style={{ flex: '0 0 auto' }} onClick={() => setWarmup((v) => !v)}>Risc.</button>
+        <div style={{ flex: 1 }}><VoiceButton onFill={fillFromVoice} /></div>
+      </div>
+
+      {/* Registra serie */}
+      <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 15 }} disabled={!canAdd} onClick={add}>✓ Registra serie</button>
     </div>
   )
 }
@@ -369,41 +341,33 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
 
   return (
     <div className="col">
-      {/* Barra fissa in alto: durata seduta + timer di recupero sempre visibili, senza scrollare. */}
+      {/* Barra fissa in alto: Home · pallini esercizi · Recupero + durata */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
         <div className="row spread">
-          <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-            {onHome && <button className="ghost small" onClick={onHome}>‹ Home</button>}
-            <h2 style={{ margin: 0 }}>Workout live</h2>
+          {onHome ? <button className="ghost small" onClick={onHome}>‹ Home</button> : <span />}
+          <span className="row" style={{ gap: 5 }}>
+            {entries.map((e, i) => (
+              <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
+            ))}
           </span>
           <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱ Recupero</button>}
+            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱</button>}
             {session && <WorkoutClock startedAt={session.startedAt} />}
           </span>
         </div>
-
-        {rest != null && (
-          <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
-            onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
-            onClose={() => setRest(null)} />
-        )}
       </div>
 
       {entries.length > 0 && (
         <>
-          {/* Indicatore posizione + salto rapido */}
-          <div className="row spread" style={{ marginTop: 2 }}>
-            <span className="muted small">Esercizio {current + 1}/{entries.length}</span>
-            <span className="row" style={{ gap: 5 }}>
-              {entries.map((e, i) => (
-                <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
-              ))}
-            </span>
-          </div>
-
           <EntryCard key={entries[current].id} entry={entries[current]} name={nameOf(entries[current].exerciseId)}
             settings={exercises.find((x) => x.id === entries[current].exerciseId)?.settings ?? ''}
             sessionId={sessionId} restSec={restOf(entries[current].exerciseId)}
+            pos={current + 1} total={entries.length}
+            restNode={rest != null ? (
+              <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
+                onPick={(s) => { if (restExId) setExerciseRest(restExId, s) }}
+                onClose={() => setRest(null)} />
+            ) : null}
             isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest} />
 
           {/* Navigazione tra esercizi */}
