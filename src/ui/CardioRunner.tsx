@@ -2,18 +2,29 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
 import { useWallTick } from '../util/useWallClock'
+import { estimateCalories } from '../util/calories'
 
 type Mode = 'interval' | 'countdown' | 'chrono'
 interface Phase { type: 'prep' | 'work' | 'rest'; dur: number; round: number }
 const ZONE_COLORS = ['#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444']
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em' }}>{label}</div>
+    </div>
+  )
+}
+
 const fmt = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${(Math.max(0, s) % 60).toString().padStart(2, '0')}`
 
 /** Timer cardio: intervalli (work/rest a round), countdown (durata target) o cronometro libero.
  *  onComplete riceve la durata in minuti. */
-export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, avgBpm, zone, pct, startedAtMs, onComplete, onCancel }: {
+export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, targetSec = 1200, bpm, avgBpm, maxBpm, zone, pct, weightKg, age, sex, startedAtMs, onComplete, onCancel }: {
   mode: Mode; rounds?: number; workSec?: number; restSec?: number; targetSec?: number
-  bpm?: number | null; avgBpm?: number | null; zone?: number; pct?: number; startedAtMs?: number
+  bpm?: number | null; avgBpm?: number | null; maxBpm?: number | null; zone?: number; pct?: number
+  weightKg?: number | null; age?: number; sex?: 'm' | 'f'; startedAtMs?: number
   onComplete: (durationMin: number) => void; onCancel: () => void
 }) {
   const [running, setRunning] = useState(true)
@@ -94,6 +105,7 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
     const frac = Math.max(0, Math.min(1, ((pct ?? ZLO[i]) - ZLO[i]) / ((ZHI[i] - ZLO[i]) || 1)))
     markerLeft = (i + frac) * 20
   }
+  const liveCal = estimateCalories({ avgHr: avgBpm, weightKg, age, sex, durationMin: elapsed / 60 })
 
   function stopSave() { onComplete(+Math.max(0.1, elapsed / 60).toFixed(1)) }
 
@@ -134,7 +146,6 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
               <strong style={{ fontSize: 52, color: zoneColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{bpm}</strong>
               <span className="muted small">bpm{zone ? ` · Z${zone}` : ''}</span>
             </div>
-            {avgBpm != null && <div className="muted small" style={{ marginTop: 2 }}>media sessione <strong style={{ color: 'var(--gold)' }}>{avgBpm}</strong> bpm</div>}
             <div style={{ position: 'relative', marginTop: 12 }}>
               <div style={{ display: 'flex', height: 9, borderRadius: 999, overflow: 'hidden' }}>
                 {ZONE_COLORS.map((c, i) => <div key={i} style={{ flex: 1, background: c, opacity: zone ? (i === zone - 1 ? 1 : 0.3) : 0.5 }} />)}
@@ -145,6 +156,11 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
             </div>
             <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
               {['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map((z, i) => <span key={z} className="muted" style={{ fontSize: 10, color: zone === i + 1 ? zoneColor : undefined }}>{z}</span>)}
+            </div>
+            <div className="row" style={{ justifyContent: 'space-around', marginTop: 20 }}>
+              <Stat label="FC MED" value={avgBpm != null ? String(avgBpm) : '—'} />
+              <Stat label="FC MAX" value={maxBpm != null ? String(maxBpm) : '—'} />
+              <Stat label="CALORIE" value={liveCal != null ? String(liveCal) : '—'} />
             </div>
           </div>
         )}

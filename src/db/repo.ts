@@ -175,7 +175,7 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 // --- Cardio ---
-export interface CardioInput { durationMin: number; avgBpm?: number; method?: CardioMethod; cardioType?: CardioType }
+export interface CardioInput { durationMin: number; avgBpm?: number; maxBpm?: number; calories?: number; method?: CardioMethod; cardioType?: CardioType }
 
 export async function addCardio(sessionId: string | null, inp: CardioInput): Promise<void> {
   const ts = nowISO()
@@ -183,6 +183,8 @@ export async function addCardio(sessionId: string | null, inp: CardioInput): Pro
     id: newId(), userId: U, createdAt: ts, updatedAt: ts,
     sessionId, date: today(), durationMin: inp.durationMin,
     ...(inp.avgBpm != null ? { avgBpm: inp.avgBpm } : {}),
+    ...(inp.maxBpm != null ? { maxBpm: inp.maxBpm } : {}),
+    ...(inp.calories != null ? { calories: inp.calories } : {}),
     ...(inp.method != null ? { method: inp.method } : {}),
     ...(inp.cardioType != null ? { cardioType: inp.cardioType } : {}),
   }
@@ -298,7 +300,7 @@ export async function updateUser(
   patch: {
     name?: string; weeklyTarget?: number; unit?: Unit; birthYear?: number
     restingHr?: number; hrMaxMeasured?: number; heightCm?: number; restDefaultSec?: number
-    onboarded?: boolean; waterTarget?: number; saltTarget?: number
+    onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
   },
 ): Promise<void> {
   await db.users.update(U, { ...patch, updatedAt: nowISO() })

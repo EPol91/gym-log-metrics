@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset } from '../db/repo'
+import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
+import { estimateCalories } from '../util/calories'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
 import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg } from '../util/heartRate'
@@ -18,7 +19,7 @@ function useHeartRate() {
   const s = hrGetState()
   return {
     supported: isHeartRateSupported(),
-    connected: s.connected, connecting: s.connecting, bpm: s.bpm, avgBpm: s.avgBpm, deviceName: s.deviceName, error: s.error,
+    connected: s.connected, connecting: s.connecting, bpm: s.bpm, avgBpm: s.avgBpm, maxBpm: s.maxBpm, deviceName: s.deviceName, error: s.error,
     connect: hrConnect, disconnect: hrDisconnect, resetAvg: hrResetAvg,
   }
 }
@@ -74,7 +75,7 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
       <div className="setline">
         <span className="muted small">🏃</span>
         <span onClick={() => setEdit(true)} style={{ cursor: 'pointer' }}>
-          {c.cardioType ? `${TYPE_LABEL[c.cardioType]} · ` : ''}{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{z ? ` · ${z.label} · ${z.method === 'hrr' ? 'HRR' : 'Std'}` : ''} <span className="muted small">✎</span>
+          {c.cardioType ? `${TYPE_LABEL[c.cardioType]} · ` : ''}{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.maxBpm ? ` · max ${c.maxBpm}` : ''}{c.calories ? ` · ${c.calories} kcal` : ''}{z ? ` · ${z.label}` : ''} <span className="muted small">✎</span>
         </span>
         <button className="ghost small" onClick={() => { if (confirm('Eliminare il cardio?')) deleteCardio(c.id) }}>✕</button>
       </div>
@@ -88,6 +89,8 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const user = useLiveQuery(getUser, [])
   const presets = useLiveQuery(listCardioPresets, []) ?? []
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
+  const measurements = useLiveQuery(listMeasurements, []) ?? []
+  const weightKg = measurements.length ? measurements[measurements.length - 1].weight : null
   const hr = useHeartRate()
 
   const [phase, setPhase] = useState<'idle' | 'setup' | 'running'>('idle')
@@ -134,6 +137,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const intervalTotal = rounds * work + Math.max(0, rounds - 1) * rest + 3
 
   const [runStartMs, setRunStartMs] = useState<number | null>(null)
+  const [pendingMax, setPendingMax] = useState<number | null>(null)
   function clearRun() { try { sessionStorage.removeItem('cardioRun') } catch { /* ignore */ } setRunStartMs(null) }
 
   // Ripristina un cardio in corso dopo un refresh (il timer riparte dall'orario reale).
@@ -152,6 +156,7 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
     clearRun()
     setDur(String(min))
     if (hr.avgBpm != null) setBpm(String(hr.avgBpm)) // prefill BPM medio dalla fascia
+    setPendingMax(hr.maxBpm) // FC max da salvare
     setPhase('idle'); setOpen(true)
   }
   function startRun() {
@@ -165,8 +170,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
   const durN = parseNum(dur, { min: 0.1, max: 600 })
   async function add() {
     if (durN == null) return
-    await addCardio(sessionId, { durationMin: durN, avgBpm: bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined), method, cardioType: ctype })
-    setDur(''); setBpm(''); setOpen(false)
+    const avgN = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
+    const cal = estimateCalories({ avgHr: avgN, weightKg, age, sex: user?.sex, durationMin: durN }) ?? undefined
+    await addCardio(sessionId, { durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: cal, method, cardioType: ctype })
+    setDur(''); setBpm(''); setOpen(false); setPendingMax(null)
   }
 
   // Salvataggio automatico del cardio ancora nel form aperto quando si chiude l'allenamento (niente dati persi).
@@ -298,10 +305,10 @@ export function CardioBlock({ sessionId, flushRef }: { sessionId: string; flushR
       {/* Timer in corso */}
       {phase === 'running' && (
         isInterval(ctype)
-          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+          ? <CardioRunner mode="interval" rounds={rounds} workSec={work} restSec={rest} bpm={hr.bpm} avgBpm={hr.avgBpm} maxBpm={hr.maxBpm} zone={liveZone?.zone} pct={liveZone?.pct} weightKg={weightKg} age={age} sex={user?.sex} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
           : steadyMode === 'countdown'
-            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
-            : <CardioRunner mode="chrono" bpm={hr.bpm} avgBpm={hr.avgBpm} zone={liveZone?.zone} pct={liveZone?.pct} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+            ? <CardioRunner mode="countdown" targetSec={targetMin * 60} bpm={hr.bpm} avgBpm={hr.avgBpm} maxBpm={hr.maxBpm} zone={liveZone?.zone} pct={liveZone?.pct} weightKg={weightKg} age={age} sex={user?.sex} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
+            : <CardioRunner mode="chrono" bpm={hr.bpm} avgBpm={hr.avgBpm} maxBpm={hr.maxBpm} zone={liveZone?.zone} pct={liveZone?.pct} weightKg={weightKg} age={age} sex={user?.sex} startedAtMs={runStartMs ?? undefined} onComplete={onRunnerComplete} onCancel={() => { clearRun(); setPhase('idle') }} />
       )}
 
       {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}

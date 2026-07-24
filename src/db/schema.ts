@@ -34,6 +34,8 @@ export interface User extends BaseRecord {
   hrMaxMeasured?: number
   /** altezza in cm → per l'FFMI. Opzionale. */
   heightCm?: number
+  /** sesso biologico → migliora la stima calorica (formula Keytel). Opzionale. */
+  sex?: 'm' | 'f'
   /** durata predefinita del timer di recupero (secondi). */
   restDefaultSec?: number
   /** true dopo il primo avvio guidato (onboarding). */
@@ -141,6 +143,8 @@ export interface CardioSession extends BaseRecord {
   date: ISODate
   durationMin: number
   avgBpm?: number
+  maxBpm?: number
+  calories?: number // stima teorica (Keytel)
   method?: CardioMethod
   cardioType?: CardioType
 }

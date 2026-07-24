@@ -93,6 +93,15 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <div style={{ flex: 1 }}>
+            <label className="fl">Sesso (per le calorie)</label>
+            <div className="row">
+              <button className={user?.sex === 'm' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'm' })}>Uomo</button>
+              <button className={user?.sex === 'f' ? 'sel' : ''} style={{ flex: 1 }} onClick={() => updateUser({ sex: 'f' })}>Donna</button>
+            </div>
+          </div>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <div style={{ flex: 1 }}>
             <label className="fl">Altezza (cm · FFMI)</label>
             <input inputMode="numeric" defaultValue={user?.heightCm ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 120, max: 230, int: true }); if (n != null) updateUser({ heightCm: n }) }} />
