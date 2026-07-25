@@ -140,16 +140,16 @@ function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
 
 // Card numerica grande: input scrivibile a mano + tasti − / ＋.
 // `hint` chiarisce cosa vuol dire lasciare il campo vuoto (es. RIR vuoto = 0 = a esaurimento).
-function StepCard({ label, value, onSet, onStep, placeholder = '—', hint }: {
+function StepCard({ label, value, onSet, onStep, placeholder = '—', info }: {
   label: string; value: string; onSet: (v: string) => void; onStep: (dir: number) => void
-  placeholder?: string; hint?: string
+  placeholder?: string; info?: string
 }) {
   return (
     <div className="card" style={{ flex: 1, minWidth: 0, padding: '6px 6px 8px', textAlign: 'center' }}>
       <input inputMode="decimal" value={value} placeholder={placeholder} onChange={(e) => onSet(e.target.value)}
         style={{ width: '100%', fontSize: 22, fontWeight: 700, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '4px 0' }} />
-      <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{label}</div>
-      {hint && <div className="muted" style={{ fontSize: 9, marginTop: 1, lineHeight: 1.2 }}>{hint}</div>}
+      {/* La spiegazione sta in un tooltip inline: aggiungere una riga alzerebbe solo questa card. */}
+      <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{label}{info && <Info text={info} />}</div>
       <div className="row" style={{ gap: 4, marginTop: 5 }}>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(-1)}>−</button>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(1)}>＋</button>
@@ -317,11 +317,11 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       </div>
 
       {/* Card numeriche grandi: scrivibili + tasti */}
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
         <StepCard label="kg" value={w} onSet={setW} onStep={stepKg} />
         <StepCard label="reps" value={r} onSet={setR} onStep={stepRep} />
         <StepCard label="RIR" value={rir == null ? '' : String(rir)} onStep={stepRir}
-          placeholder="0" hint="vuoto = 0 · a esaurimento"
+          placeholder="0" info="RIR = ripetizioni che ti restavano nel serbatoio. Se lo lasci vuoto vale 0, cioè serie portata a esaurimento."
           onSet={(v) => { const n = parseNum(v, { min: 0, max: 10, int: true }); setRir(v.trim() === '' ? null : (n ?? rir)) }} />
       </div>
 
