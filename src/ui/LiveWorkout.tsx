@@ -5,7 +5,7 @@ import {
   deleteExerciseEntry, moveExerciseEntry, allExercises,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
 } from '../db/repo'
-import { e1rm } from '../metrics/metrics'
+import { e1rm, bestE1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
 import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from '../util/voice'
@@ -160,6 +160,76 @@ function StepCard({ label, value, onSet, onStep, placeholder = '—', info }: {
 
 const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '7px 2px', borderTop: '1px solid var(--line)', fontVariantNumeric: 'tabular-nums' } as const
 
+/** Data breve "22 lug" — nello storico la colonna deve restare stretta e su una riga. */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-')
+  const mesi = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+  return `${Number(d)} ${mesi[Number(m) - 1] ?? ''}`
+}
+
+/** Storico esercizio dentro il workout: andamento e1RM + sedute precedenti incolonnate. */
+function HistoryPanel({ history }: { history: { date: string; sets: SetEntry[] }[] }) {
+  if (history.length === 0) return <p className="muted small">Nessuna seduta precedente.</p>
+
+  // history arriva dalla più recente: per il grafico serve l'ordine cronologico.
+  const chrono = [...history].reverse().map((h) => ({ date: h.date, v: bestE1rm(h.sets) })).filter((p) => p.v > 0)
+  const first = chrono[0]?.v ?? 0
+  const last = chrono[chrono.length - 1]?.v ?? 0
+  const trend = first > 0 ? ((last - first) / first) * 100 : 0
+  const trendColor = trend > 1 ? 'var(--good)' : trend < -1 ? '#e57373' : 'var(--muted)'
+
+  const W = 300, H = 46, PAD = 6
+  const vals = chrono.map((p) => p.v)
+  const lo = Math.min(...vals), hi = Math.max(...vals)
+  const span = hi - lo || 1
+  const pt = (i: number, v: number) => {
+    const x = chrono.length === 1 ? W / 2 : PAD + (i / (chrono.length - 1)) * (W - PAD * 2)
+    const y = H - PAD - ((v - lo) / span) * (H - PAD * 2)
+    return [x, y] as const
+  }
+
+  return (
+    <div className="card" style={{ padding: '10px 12px', margin: 0 }}>
+      {chrono.length >= 2 && (
+        <>
+          <div className="row spread" style={{ alignItems: 'baseline' }}>
+            <span className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase' }}>Andamento e1RM</span>
+            <span style={{ fontSize: 11, color: trendColor }}>{trend > 0 ? '+' : ''}{trend.toFixed(1)}%</span>
+          </div>
+          <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ marginTop: 4, display: 'block' }}>
+            <polyline fill="none" stroke="var(--gold)" strokeWidth="2"
+              points={chrono.map((p, i) => pt(i, p.v).join(',')).join(' ')} />
+            {chrono.map((p, i) => {
+              const [x, y] = pt(i, p.v)
+              const isLast = i === chrono.length - 1
+              return <circle key={i} cx={x} cy={y} r={isLast ? 3.5 : 2.5} fill={isLast ? '#e9cf72' : 'var(--gold)'} />
+            })}
+          </svg>
+        </>
+      )}
+
+      <div style={{ borderTop: chrono.length >= 2 ? '1px solid var(--line)' : 'none', marginTop: chrono.length >= 2 ? 6 : 0, paddingTop: 6 }}>
+        {history.map((h, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < history.length - 1 ? '1px solid var(--line)' : 'none' }}>
+            <span className="muted" style={{ fontSize: 11, flex: '0 0 44px', fontVariantNumeric: 'tabular-nums' }}>{shortDate(h.date)}</span>
+            <span style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
+              {h.sets.map((s) => (
+                <span key={s.id} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: 'var(--surface-2)', fontVariantNumeric: 'tabular-nums' }}>
+                  {s.weight}×{s.reps}
+                </span>
+              ))}
+            </span>
+            <span style={{ fontSize: 11, flex: 'none', color: i === 0 ? 'var(--gold)' : 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(bestE1rm(h.sets))}
+            </span>
+          </div>
+        ))}
+        <div className="muted" style={{ fontSize: 10, textAlign: 'right', marginTop: 6 }}>ultima colonna = e1RM</div>
+      </div>
+    </div>
+  )
+}
+
 // Riga della tabella set. Tap = editor completo (kg/reps/RIR/recupero). Mostra RIR e recupero salvati.
 function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: string; isPR: boolean }) {
   const [ed, setEd] = useState(false)
@@ -273,28 +343,27 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
         <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
           <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
           <h2 style={{ margin: '2px 0' }}>{name}</h2>
-          <div className="muted small">{hint ? `Ultima: ${hint.weight}×${hint.reps}` : 'Prima volta'}{histBest > 0 ? ` · PR ${Math.round(histBest)}` : ''}</div>
+          <div className="row" style={{ gap: 6, justifyContent: 'center', marginTop: 4 }}>
+            <span className="chip" style={{ padding: '3px 10px', color: 'var(--text)' }}>
+              {hint ? `Ultima ${hint.weight}×${hint.reps}` : 'Prima volta'}
+            </span>
+            {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px' }}>PR {Math.round(histBest)}</span>}
+          </div>
         </div>
         <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
       </div>
 
       {/* Controlli secondari */}
       <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className="ghost small" onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
-        <button className="ghost small" onClick={() => setShowSettings((v) => !v)}>⚙ Regolazioni</button>
-        <button className="ghost small" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
-        <button className="ghost small" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
-        <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
+        <button className={showHist ? 'chip on' : 'chip'} onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
+        <button className={showSettings ? 'chip on' : 'chip'} onClick={() => setShowSettings((v) => !v)}>⚙</button>
+        <button className="chip" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
+        <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
+        <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
       </div>
       {!showSettings && settings && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {settings}</div>}
       {showSettings && <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />}
-      {showHist && (
-        <div className="col" style={{ gap: 3, paddingLeft: 4, borderLeft: '2px solid var(--line)' }}>
-          {history.length === 0 ? <p className="muted small">Nessuna seduta precedente.</p> : history.map((h, i) => (
-            <div key={i} className="muted small"><strong>{h.date}</strong>: {h.sets.map((s) => `${s.weight}×${s.reps}${s.restSec != null ? ` (⏱${s.restSec}s)` : ''}`).join(', ')}</div>
-          ))}
-        </div>
-      )}
+      {showHist && <HistoryPanel history={history} />}
 
       {/* Tabella set */}
       <div className="card" style={{ padding: '4px 12px 8px' }}>
