@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
-  deleteExerciseEntry, moveExerciseEntry, allExercises, getOrCreateExercise,
+  deleteExerciseEntry, moveExerciseEntry, allExercises,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
 } from '../db/repo'
-import { normalizeName } from '../db/catalog'
 import { e1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
@@ -13,8 +12,9 @@ import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from
 import { useWallTick } from '../util/useWallClock'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
+import { ExercisePicker } from './ExercisePicker'
 import { fmtRest } from '../util/format'
-import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
+import type { ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
@@ -134,32 +134,6 @@ function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
       </button>
       {heard ? <p className="muted small" style={{ marginTop: 4 }}>Sentito: “{heard}”</p>
         : listening && <p className="muted small" style={{ marginTop: 4 }}>Es: «100 per 8 RIR 2»</p>}
-    </div>
-  )
-}
-
-function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
-  const [q, setQ] = useState('')
-  const list = useLiveQuery(allExercises, []) ?? []
-  const nq = normalizeName(q)
-  const filtered = nq
-    ? list.filter((e) => normalizeName(e.name).includes(nq) || e.aliases.some((a) => normalizeName(a).includes(nq)))
-    : list
-  const exactExists = list.some((e) => normalizeName(e.name) === nq || e.aliases.some((a) => normalizeName(a) === nq))
-  return (
-    <div className="card">
-      <div className="row spread"><strong>Aggiungi esercizio</strong><button className="ghost small" onClick={onClose}>✕</button></div>
-      <input placeholder="Cerca o scrivi un nome…" value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: '10px 0' }} />
-      <div className="col" style={{ maxHeight: 260, overflowY: 'auto' }}>
-        {q && !exactExists && (
-          <button className="sel" onClick={async () => { const ex = await getOrCreateExercise(q); onPick(ex.id) }}>＋ Crea “{q.trim()}”</button>
-        )}
-        {filtered.map((e: Exercise) => (
-          <button key={e.id} className="ghost" style={{ textAlign: 'left' }} onClick={() => onPick(e.id)}>
-            {e.name} <span className="muted small">· {e.muscle}{e.isCustom ? ' · custom' : ''}</span>
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
@@ -436,10 +410,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         </>
       )}
 
-      {picking ? (
+      <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
+      {picking && (
         <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setCur(entries.length); setPicking(false) }} onClose={() => setPicking(false)} />
-      ) : (
-        <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       )}
 
       <CardioBlock sessionId={sessionId} flushRef={cardioFlush} open={cardioOpen} onOpenChange={setCardioOpen} />
