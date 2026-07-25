@@ -18,38 +18,47 @@ import type { Exercise, ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
+// Stato del timer tenuto FUORI dal componente: cambiando esercizio la card si rimonta,
+// ma il recupero deve continuare a scorrere (lo store vive nel parent).
+export interface RestState { endAt: number; total: number; running: boolean; pausedLeft: number; fired: boolean }
+
 // --- Timer recupero: tap su un preset e parte quel recupero ---
-function RestTimer({ defaultSec, presets, onPick, onClose }: {
-  defaultSec: number; presets: number[]; onPick: (sec: number) => void; onClose: () => void
+function RestTimer({ defaultSec, presets, store, onPick, onClose }: {
+  defaultSec: number; presets: number[]; store: { current: RestState | null }
+  onPick: (sec: number) => void; onClose: () => void
 }) {
-  const [total, setTotal] = useState(defaultSec)
-  const [running, setRunning] = useState(true)
-  const [pausedLeft, setPausedLeft] = useState(defaultSec)
-  const endRef = useRef(Date.now() + defaultSec * 1000) // orario reale di fine
+  if (!store.current) store.current = { endAt: Date.now() + defaultSec * 1000, total: defaultSec, running: true, pausedLeft: defaultSec, fired: false }
+  const st = store.current
+  const [total, setTotalState] = useState(st.total)
+  const [running, setRunningState] = useState(st.running)
+  const [pausedLeft, setPausedLeftState] = useState(st.pausedLeft)
   const [, force] = useState(0)
+  // Ogni set scrive anche nello store, così il valore sopravvive al rimontaggio.
+  const setTotal = (v: number) => { st.total = v; setTotalState(v) }
+  const setRunning = (v: boolean) => { st.running = v; setRunningState(v) }
+  const setPausedLeft = (v: number) => { st.pausedLeft = v; setPausedLeftState(v) }
+
   useWallTick(running)
   // Secondi rimasti calcolati sull'orario reale → il recupero non si ferma uscendo dall'app.
-  const left = Math.max(0, Math.ceil(running ? (endRef.current - Date.now()) / 1000 : pausedLeft))
+  const left = Math.max(0, Math.ceil(running ? (st.endAt - Date.now()) / 1000 : pausedLeft))
   const done = left <= 0
   const warn = left > 0 && left <= 5 // ultimi 5 secondi
 
   useEffect(() => {
     if (warn) { navigator.vibrate?.(30); tick() }                    // tick negli ultimi 5s
-    if (left === 0) { navigator.vibrate?.([120, 60, 200]); goSound() } // fine = suono "GO"
-  }, [left, warn])
+    if (left === 0 && !st.fired) { st.fired = true; goSound() }      // fine = suono "GO" (una volta sola)
+  }, [left, warn, st])
 
-  function pick(sec: number) { setTotal(sec); endRef.current = Date.now() + sec * 1000; setPausedLeft(sec); setRunning(true); onPick(sec) }
+  function pick(sec: number) { setTotal(sec); st.endAt = Date.now() + sec * 1000; st.fired = false; setPausedLeft(sec); setRunning(true); onPick(sec) }
   function toggle() {
-    setRunning((r) => {
-      if (r) { setPausedLeft(Math.max(0, Math.ceil((endRef.current - Date.now()) / 1000))); return false }
-      endRef.current = Date.now() + pausedLeft * 1000; return true
-    })
+    if (running) { setPausedLeft(Math.max(0, Math.ceil((st.endAt - Date.now()) / 1000))); setRunning(false) }
+    else { st.endAt = Date.now() + pausedLeft * 1000; setRunning(true) }
   }
   function adjust(delta: number) {
-    if (running) { endRef.current += delta * 1000; force((x) => x + 1) }
-    else setPausedLeft((l) => Math.max(0, l + delta))
+    if (running) { st.endAt += delta * 1000; st.fired = false; force((x) => x + 1) }
+    else setPausedLeft(Math.max(0, pausedLeft + delta))
   }
-  function reset() { setRunning(false); setPausedLeft(total) }
+  function reset() { setRunning(false); setPausedLeft(total); st.fired = false }
   const mm = Math.floor(Math.max(0, left) / 60)
   const ss = Math.max(0, left) % 60
 
@@ -156,12 +165,17 @@ function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
 }
 
 // Card numerica grande: input scrivibile a mano + tasti − / ＋.
-function StepCard({ label, value, onSet, onStep }: { label: string; value: string; onSet: (v: string) => void; onStep: (dir: number) => void }) {
+// `hint` chiarisce cosa vuol dire lasciare il campo vuoto (es. RIR vuoto = 0 = a esaurimento).
+function StepCard({ label, value, onSet, onStep, placeholder = '—', hint }: {
+  label: string; value: string; onSet: (v: string) => void; onStep: (dir: number) => void
+  placeholder?: string; hint?: string
+}) {
   return (
     <div className="card" style={{ flex: 1, minWidth: 0, padding: '6px 6px 8px', textAlign: 'center' }}>
-      <input inputMode="decimal" value={value} placeholder="—" onChange={(e) => onSet(e.target.value)}
+      <input inputMode="decimal" value={value} placeholder={placeholder} onChange={(e) => onSet(e.target.value)}
         style={{ width: '100%', fontSize: 22, fontWeight: 700, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '4px 0' }} />
       <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{label}</div>
+      {hint && <div className="muted" style={{ fontSize: 9, marginTop: 1, lineHeight: 1.2 }}>{hint}</div>}
       <div className="row" style={{ gap: 4, marginTop: 5 }}>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(-1)}>−</button>
         <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(1)}>＋</button>
@@ -269,7 +283,9 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
     if (wn == null || rn == null) return
     // Il recupero salvato sulla serie = il timer scelto per questo esercizio (non il tempo misurato).
     // Se durante il recupero cambi preset, il parent aggiorna questa serie via l'id qui sotto.
-    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rir ?? undefined, isWarmup: warmup, restSec: warmup ? undefined : restSec })
+    // RIR lasciato vuoto su una serie di lavoro = 0 (a esaurimento); sul riscaldamento resta assente.
+    const rirToSave = warmup ? (rir ?? undefined) : (rir ?? 0)
+    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rirToSave, isWarmup: warmup, restSec: warmup ? undefined : restSec })
     setRir(null); setWarmup(false)
     if (!warmup) onLogged(restSec, entry.exerciseId, id)
   }
@@ -331,6 +347,7 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
         <StepCard label="kg" value={w} onSet={setW} onStep={stepKg} />
         <StepCard label="reps" value={r} onSet={setR} onStep={stepRep} />
         <StepCard label="RIR" value={rir == null ? '' : String(rir)} onStep={stepRir}
+          placeholder="0" hint="vuoto = 0 · a esaurimento"
           onSet={(v) => { const n = parseNum(v, { min: 0, max: 10, int: true }); setRir(v.trim() === '' ? null : (n ?? rir)) }} />
       </div>
 
@@ -373,7 +390,12 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
 
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
-  const startRest = (sec: number, exId: string | null, setId?: string) => { setRest(sec); setRestExId(exId); setRestSetId(setId ?? null); setRestNonce((n) => n + 1) }
+  // Store del timer: sopravvive al cambio esercizio (la card si rimonta, il recupero no).
+  const restStore = useRef<RestState | null>(null)
+  const startRest = (sec: number, exId: string | null, setId?: string) => {
+    restStore.current = null // nuovo recupero → timer nuovo
+    setRest(sec); setRestExId(exId); setRestSetId(setId ?? null); setRestNonce((n) => n + 1)
+  }
   const restPresets = rest != null
     ? Array.from(new Set([rest, 60, 90, 120, 150, 180])).sort((a, b) => a - b)
     : REST_PRESETS
@@ -404,9 +426,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
             sessionId={sessionId} restSec={restOf(entries[current].exerciseId)}
             pos={current + 1} total={entries.length}
             restNode={rest != null ? (
-              <RestTimer key={restNonce} defaultSec={rest} presets={restPresets}
+              <RestTimer key={restNonce} defaultSec={rest} presets={restPresets} store={restStore}
                 onPick={(s) => { if (restExId) setExerciseRest(restExId, s); if (restSetId) updateSet(restSetId, { restSec: s }) }}
-                onClose={() => setRest(null)} />
+                onClose={() => { restStore.current = null; setRest(null) }} />
             ) : null}
             isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest}
             onPrev={current > 0 ? () => setCur(current - 1) : undefined}

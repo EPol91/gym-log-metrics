@@ -31,7 +31,15 @@ export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
 
   return (
     <div className="col">
-      <h1>Esercizi</h1>
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <h1>Esercizi</h1>
+        <button className="primary small" style={{ padding: '8px 14px' }} onClick={async () => {
+          const name = prompt('Nome del nuovo esercizio')?.trim()
+          if (!name) return
+          const ex = await getOrCreateExercise(name)
+          onOpen(ex.id)
+        }}>＋ Nuovo</button>
+      </div>
       <input placeholder="🔍 Cerca o crea un esercizio…" value={q} onChange={(e) => setQ(e.target.value)} />
 
       <div className="row" style={{ gap: 6, overflowX: 'auto', paddingBottom: 2 }}>

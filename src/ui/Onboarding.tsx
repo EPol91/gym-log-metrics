@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { updateUser, setPhase } from '../db/repo'
 import { parseNum } from '../util/validate'
+import { fmtRest } from '../util/format'
 import type { Phase } from '../db/schema'
 
 const PHASES: { key: Phase; label: string }[] = [
@@ -59,7 +60,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="card">
         <label className="fl">Recupero predefinito</label>
         <div className="opts" style={{ gridTemplateColumns: `repeat(${REST_PRESETS.length}, 1fr)` }}>
-          {REST_PRESETS.map((s) => <button key={s} className={rest === s ? 'sel' : ''} onClick={() => setRest(s)}>{s}s</button>)}
+          {REST_PRESETS.map((s) => <button key={s} className={rest === s ? 'sel' : ''} onClick={() => setRest(s)}>{fmtRest(s)}</button>)}
         </div>
       </div>
 

@@ -5,6 +5,43 @@ import { computeFfmi } from '../metrics/body'
 import { parseNum } from '../util/validate'
 import { LineChart } from './LineChart'
 import { Info } from './anim'
+import type { BodyMeasurement } from '../db/schema'
+
+// Riga dello storico: tap per correggere peso/% grasso della misura già salvata.
+function MeasureRow({ m }: { m: BodyMeasurement }) {
+  const [ed, setEd] = useState(false)
+  const [w, setW] = useState(String(m.weight))
+  const [bf, setBf] = useState(m.bodyFat != null ? String(m.bodyFat) : '')
+
+  if (ed) {
+    const wn = parseNum(w, { min: 20, max: 400 })
+    return (
+      <div style={{ padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
+        <div className="muted small" style={{ marginBottom: 6 }}>{m.date}</div>
+        <div className="row" style={{ gap: 8 }}>
+          <div style={{ flex: 1 }}><label className="fl">Peso (kg)</label><input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} /></div>
+          <div style={{ flex: 1 }}><label className="fl">% grasso</label><input inputMode="decimal" value={bf} onChange={(e) => setBf(e.target.value)} /></div>
+        </div>
+        <div className="row" style={{ gap: 6, marginTop: 8 }}>
+          <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la misura?')) deleteMeasurement(m.id) }}>🗑</button>
+          <button className="ghost" style={{ flex: 1 }} onClick={() => { setW(String(m.weight)); setBf(m.bodyFat != null ? String(m.bodyFat) : ''); setEd(false) }}>Annulla</button>
+          <button className="primary" style={{ flex: 2 }} disabled={wn == null} onClick={async () => {
+            if (wn == null) return
+            await upsertMeasurement(m.date, { weight: wn, bodyFat: bf.trim() === '' ? undefined : (parseNum(bf, { min: 1, max: 70 }) ?? undefined) })
+            setEd(false)
+          }}>Salva</button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div onClick={() => setEd(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
+      <span className="muted small" style={{ flex: '0 0 84px', fontVariantNumeric: 'tabular-nums' }}>{m.date}</span>
+      <span style={{ flex: 1 }}>{m.weight} kg{m.bodyFat != null ? ` · ${m.bodyFat}%` : ''}</span>
+      <span className="muted small" style={{ flex: 'none' }}>✎</span>
+    </div>
+  )
+}
 
 export function BodyScreen() {
   const rows = useLiveQuery(listMeasurements, []) ?? []
@@ -89,11 +126,7 @@ export function BodyScreen() {
       <div className="card">
         <div className="muted small" style={{ marginBottom: 6 }}>Storico</div>
         {rows.length === 0 ? <p className="muted small">Nessuna misura.</p> : [...rows].reverse().map((m) => (
-          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
-            <span className="muted small" style={{ flex: '0 0 84px', fontVariantNumeric: 'tabular-nums' }}>{m.date}</span>
-            <span style={{ flex: 1 }}>{m.weight} kg{m.bodyFat != null ? ` · ${m.bodyFat}%` : ''}</span>
-            <button className="ghost small" style={{ flex: 'none', padding: '4px 10px' }} onClick={() => { if (confirm('Eliminare la misura?')) deleteMeasurement(m.id) }}>✕</button>
-          </div>
+          <MeasureRow key={m.id} m={m} />
         ))}
       </div>
     </div>
