@@ -244,6 +244,38 @@ export async function upsertMeasurement(date: string, inp: MeasurementInput): Pr
 
 export function todayISO(): string { return today() }
 
+// --- Check del giorno (dalla Home, senza allenamento) ---
+
+/** Salva/aggiorna il check di una data. */
+export async function saveDailyReadiness(check: ReadinessCheck, date = today()): Promise<void> {
+  const ts = nowISO()
+  const existing = await db.readinessChecks.where('date').equals(date).filter((r) => r.userId === U).first()
+  if (existing) await db.readinessChecks.update(existing.id, { check, updatedAt: ts })
+  else await db.readinessChecks.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, check })
+}
+
+/** Check di una data (default: oggi), se esiste. */
+export async function getDailyReadiness(date = today()): Promise<ReadinessCheck | null> {
+  const row = await db.readinessChecks.where('date').equals(date).filter((r) => r.userId === U).first()
+  return row?.check ?? null
+}
+
+/**
+ * Check di oggi da qualunque fonte: quello fatto dalla Home o quello di una seduta odierna,
+ * il più recente dei due. Serve a precompilare le domande invece di ripartire da zero.
+ */
+export async function getTodayReadiness(): Promise<ReadinessCheck | null> {
+  const d = today()
+  const standalone = await db.readinessChecks.where('date').equals(d).filter((r) => r.userId === U).first()
+  const session = (await db.sessions.where('userId').equals(U).toArray())
+    .filter((s) => s.date === d && s.readiness)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+  if (standalone && session) {
+    return standalone.updatedAt >= session.startedAt ? standalone.check : session.readiness
+  }
+  return standalone?.check ?? session?.readiness ?? null
+}
+
 export function listMeasurements() {
   return db.bodyMeasurements.where('userId').equals(U).sortBy('date')
 }

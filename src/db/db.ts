@@ -6,6 +6,7 @@ import Dexie, { type Table } from 'dexie'
 import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
+  DailyReadiness,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -21,6 +22,7 @@ export class GymLogDB extends Dexie {
   phases!: Table<TrainingPhase, string>
   templates!: Table<WorkoutTemplate, string>
   cardioPresets!: Table<CardioPreset, string>
+  readinessChecks!: Table<DailyReadiness, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -44,6 +46,10 @@ export class GymLogDB extends Dexie {
     // v3: preset cardio a intervalli personalizzati.
     this.version(3).stores({
       cardioPresets: 'id, userId',
+    })
+    // v4: check pre-workout del giorno, slegato dalla seduta (si può fare anche a riposo).
+    this.version(4).stores({
+      readinessChecks: 'id, userId, date',
     })
   }
 }

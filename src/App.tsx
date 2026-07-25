@@ -12,12 +12,13 @@ import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
 import { TemplateEditor } from './ui/TemplateEditor'
 import { ExerciseDetail } from './ui/ExerciseDetail'
+import { ReadinessScreen } from './ui/ReadinessScreen'
 import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
-type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null }
-const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null }
+type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; check: boolean }
+const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, check: false }
 
 // Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
 // aggiornare ricarica la pagina, quindi decidi tu quando.
@@ -97,6 +98,10 @@ export default function App() {
       </div>
     )
   }
+  // Check del giorno dalla Home: si può fare anche senza allenarsi.
+  if (nav.check) {
+    return <div className="app slide-up"><ReadinessScreen mode="daily" onStart={back} onCancel={back} /></div>
+  }
   if (nav.analytics) {
     return <div className="app slide-up"><AnalyticsScreen onBack={back} /></div>
   }
@@ -112,6 +117,7 @@ export default function App() {
             onStartWorkout={() => push({ workingOut: true, resumeId: null })}
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
             onOpenAnalytics={() => push({ analytics: true })}
+            onOpenCheck={() => push({ check: true })}
           />
         )}
         {nav.tab === 'exercises' && (nav.exercise

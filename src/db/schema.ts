@@ -80,6 +80,12 @@ export interface ReadinessCheck {
   energy: number // 0-100
 }
 
+/** Check del giorno fatto dalla Home, senza allenamento. Una voce per data. */
+export interface DailyReadiness extends BaseRecord {
+  date: ISODate
+  check: ReadinessCheck
+}
+
 export interface WorkoutSession extends BaseRecord {
   gymId: ID | null
   date: ISODate

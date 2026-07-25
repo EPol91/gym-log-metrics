@@ -147,9 +147,12 @@ async function creditLine(home: HomeData, sessions: WorkoutSession[]): Promise<C
 export async function computeCoach(home: HomeData): Promise<CoachLine[]> {
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
-  const checkToday = [...sessions].reverse().find((s) => s.readiness && s.date === todayISO())
+  // Il check di oggi può venire dalla Home o da una seduta odierna.
+  const daily = await db.readinessChecks.where('date').equals(todayISO()).filter((r) => r.userId === U).first()
+  const fromSession = [...sessions].reverse().find((s) => s.readiness && s.date === todayISO())
+  const checkToday = daily?.check ?? fromSession?.readiness ?? null
 
-  const lines: CoachLine[] = [todayLine(checkToday?.readiness ?? null, home.todayReady)]
+  const lines: CoachLine[] = [todayLine(checkToday, home.todayReady)]
   const notice = await noticeLine(home, sessions)
   if (notice) lines.push(notice)
   const credit = await creditLine(home, sessions)

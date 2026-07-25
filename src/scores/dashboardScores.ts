@@ -112,10 +112,14 @@ export async function computeHome(): Promise<HomeData> {
     ? computeConsistency(sessions.map((s) => s.date), weeklyTarget, todayISO())
     : { value: null, reliability: 'insufficiente' as const, note: 'Nessun allenamento registrato.' }
 
-  // Readiness = ultimo check disponibile + contesto carico.
-  const lastWithCheck = [...sessions].reverse().find((s) => s.readiness)
-  const readiness = lastWithCheck
-    ? computeReadiness(lastWithCheck.readiness, buildLoadContext(daily, nowMs, historyDays))
+  // Readiness = ultimo check disponibile (di seduta o fatto dalla Home) + contesto carico.
+  const lastSessionCheck = [...sessions].reverse().find((s) => s.readiness)
+  const lastDaily = (await db.readinessChecks.where('userId').equals(U).sortBy('date')).pop()
+  const useDaily = !!lastDaily && (!lastSessionCheck || lastDaily.date >= lastSessionCheck.date)
+  const lastCheck = useDaily ? lastDaily!.check : (lastSessionCheck?.readiness ?? null)
+  const lastCheckDate = useDaily ? lastDaily!.date : (lastSessionCheck?.date ?? null)
+  const readiness = lastCheck
+    ? computeReadiness(lastCheck, buildLoadContext(daily, nowMs, historyDays))
     : { value: null, reliability: 'insufficiente' as const, note: 'Nessun check pre-workout registrato.' }
 
   // Workout = ultima seduta conclusa.
@@ -153,7 +157,7 @@ export async function computeHome(): Promise<HomeData> {
   if (!activeDays.includes(cursor)) cursor = dayBefore(cursor)
   while (activeDays.includes(cursor)) { streak++; cursor = dayBefore(cursor) }
 
-  const todayReady = lastWithCheck && lastWithCheck.date === todayISO() ? readiness.value : null
+  const todayReady = lastCheckDate === todayISO() ? readiness.value : null
 
   return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: weeklyTarget, streak }, todayReady }
 }

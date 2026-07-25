@@ -80,8 +80,9 @@ const SCORES = [
   { key: 'consistency', label: 'Constan.', tip: 'Consistency' },
 ] as const
 
-export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }: {
+export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, onOpenCheck }: {
   onStartWorkout: () => void; onResumeWorkout: (id: string) => void; onOpenAnalytics: () => void
+  onOpenCheck: () => void
 }) {
   const home = useLiveQuery(computeHome, [])
   const ongoing = useLiveQuery(getOngoingSession, [])
@@ -111,10 +112,12 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
           <h1>Ciao{firstName ? ` ${firstName}` : ''} <span className="brand">👋</span></h1>
           <p className="muted small">{dailyPhrase()}</p>
         </div>
-        <div style={{ textAlign: 'center', flex: '0 0 auto' }}>
+        {/* Tap sull'anello = check del giorno, anche senza allenarsi. */}
+        <button onClick={onOpenCheck} aria-label="Check del giorno"
+          style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <ScoreRing value={home?.todayReady ?? null} size={82} />
           <div className="small" style={{ marginTop: 1, color: today.color, letterSpacing: '.04em' }}>Oggi · {today.label}</div>
-        </div>
+        </button>
       </div>
 
       {/* CTA / riprendi */}
