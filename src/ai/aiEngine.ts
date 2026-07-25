@@ -23,6 +23,15 @@ export function clearApiKey(): void {
   localStorage.removeItem(KEY_STORAGE)
 }
 
+// --- Coach AI in Home: opzione, spenta di default. Senza, resta il coach euristico. ---
+const COACH_AI = 'gymlog.ai.coachHome'
+export function isCoachAiOn(): boolean {
+  try { return localStorage.getItem(COACH_AI) === '1' && !!getApiKey() } catch { return false }
+}
+export function setCoachAi(on: boolean): void {
+  try { localStorage.setItem(COACH_AI, on ? '1' : '0') } catch { /* ignore */ }
+}
+
 const API_URL = 'https://api.anthropic.com/v1/messages'
 const API_VERSION = '2023-06-01'
 

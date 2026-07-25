@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome, type HomeData } from '../scores/dashboardScores'
+import { computeCoach, coachPrompt } from '../scores/coach'
+import { isCoachAiOn, getAIProvider } from '../ai/aiEngine'
 import { getOngoingSession, getUser, upsertMeasurement, todayISO, getNutritionToday } from '../db/repo'
 import { NutritionCard } from './NutritionCard'
 import { ScoreRing, Info } from './anim'
@@ -25,16 +27,50 @@ function todayStatus(v: number | null): { label: string; color: string } {
   return { label: 'SCARICO', color: '#e5484d' }
 }
 
-function coachMessage(home: HomeData): string {
-  const r = home.readiness.value
-  const wk = home.weekGoal
-  let s = r == null
-    ? 'Fai il check pre-workout per il consiglio del giorno.'
-    : r >= 70 ? 'Sei pronto: oggi puoi spingere.'
-      : r >= 40 ? 'Vai cauto: tecnica pulita, niente massimali forzati.'
-        : 'Giornata scarica: tieni leggero o recupera.'
-  if (wk.target > 0 && wk.done < wk.target) s += ` Ancora ${wk.target - wk.done} per l'obiettivo.`
-  return s
+// Coach: il dato in chiaro, il consiglio marcato e in sordina — così si distingue
+// a colpo d'occhio ciò che è misurato da ciò che è solo un suggerimento.
+function CoachCard({ home }: { home: HomeData }) {
+  const lines = useLiveQuery(() => computeCoach(home), [home]) ?? []
+  const [aiText, setAiText] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const aiOn = isCoachAiOn()
+
+  async function askAi() {
+    setAiLoading(true); setAiError(null)
+    try { setAiText(await getAIProvider().analyze(coachPrompt(home, lines))) }
+    catch (e) { setAiError((e as Error).message) }
+    finally { setAiLoading(false) }
+  }
+
+  return (
+    <div className="card" style={{ borderColor: 'var(--gold-dim)' }}>
+      <div className="row spread"><span className="small" style={{ color: 'var(--gold)', letterSpacing: '.1em' }}>💡 COACH · OGGI</span></div>
+      {lines.map((l, i) => (
+        <div key={i} style={{ marginTop: i ? 8 : 6 }}>
+          <p className="small" style={{ margin: 0 }}>{l.fact}</p>
+          {l.advice && <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>Consiglio: {l.advice}</p>}
+        </div>
+      ))}
+      {aiOn && (
+        <>
+          {!aiText && (
+            <button className="ghost small" style={{ width: '100%', marginTop: 10 }} onClick={askAi} disabled={aiLoading}>
+              {aiLoading ? 'Analizzo…' : '🤖 Chiedi al coach AI'}
+            </button>
+          )}
+          {aiError && <p className="small" style={{ color: '#e57373', marginTop: 6 }}>Errore: {aiError}</p>}
+          {aiText && (
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 8 }}>
+              <div className="muted small" style={{ marginBottom: 4 }}>🤖 Coach AI</div>
+              <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{aiText}</p>
+              <button className="ghost small" style={{ marginTop: 6 }} onClick={() => setAiText(null)}>Chiudi</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 const SCORES = [
@@ -124,10 +160,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics }:
           </div>
 
           {/* Coach */}
-          <div className="card" style={{ border: '1px solid var(--gold-dim)', background: 'linear-gradient(180deg, rgba(217,178,74,.08), transparent)' }}>
-            <div className="row spread"><span className="small" style={{ color: 'var(--gold)', letterSpacing: '.1em' }}>💡 COACH · OGGI</span></div>
-            <p className="small" style={{ margin: '6px 0 0' }}>{coachMessage(home)}</p>
-          </div>
+          <CoachCard home={home} />
 
           {/* Peso + Nutrizione affiancati: al tap si apre il pannello sotto (uno alla volta) */}
           <div className="row" style={{ gap: 8 }}>
