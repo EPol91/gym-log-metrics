@@ -80,6 +80,16 @@ export interface ReadinessCheck {
   energy: number // 0-100
 }
 
+/**
+ * Storico dell'obiettivo settimanale: ogni cambio è registrato con la data.
+ * Serve al Consistency per giudicare ogni settimana con l'obiettivo valido ALLORA,
+ * invece di applicare retroattivamente quello di oggi.
+ */
+export interface WeeklyGoalChange extends BaseRecord {
+  date: ISODate
+  target: number
+}
+
 /** Check del giorno fatto dalla Home, senza allenamento. Una voce per data. */
 export interface DailyReadiness extends BaseRecord {
   date: ISODate

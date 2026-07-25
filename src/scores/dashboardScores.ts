@@ -107,9 +107,11 @@ export async function computeHome(): Promise<HomeData> {
     ? Math.round((nowMs - new Date(sessions[0].date + 'T00:00:00').getTime()) / DAY)
     : 0
 
-  // Consistency (reale).
+  // Consistency (reale). Lo storico obiettivi evita di giudicare il passato con l'obiettivo di oggi.
+  const goalHistory = (await db.goalHistory.where('userId').equals(U).sortBy('date'))
+    .map((g) => ({ date: g.date, target: g.target }))
   const consistency = sessions.length
-    ? computeConsistency(sessions.map((s) => s.date), weeklyTarget, todayISO())
+    ? computeConsistency(sessions.map((s) => s.date), weeklyTarget, todayISO(), 4, goalHistory)
     : { value: null, reliability: 'insufficiente' as const, note: 'Nessun allenamento registrato.' }
 
   // Readiness = ultimo check disponibile (di seduta o fatto dalla Home) + contesto carico.

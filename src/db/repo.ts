@@ -335,7 +335,42 @@ export async function updateUser(
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
   },
 ): Promise<void> {
+  // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana
+  // con l'obiettivo valido allora, non con quello di oggi.
+  if (patch.weeklyTarget != null) {
+    const current = await db.users.get(U)
+    if (current?.weeklyTarget !== patch.weeklyTarget) await recordWeeklyGoal(patch.weeklyTarget, current?.weeklyTarget)
+  }
   await db.users.update(U, { ...patch, updatedAt: nowISO() })
+}
+
+/**
+ * Registra l'obiettivo settimanale valido da oggi (un solo record per data).
+ * Al primo cambio salva anche una riga d'apertura con il valore PRECEDENTE, datata
+ * all'inizio dello storico: senza, il nuovo obiettivo verrebbe applicato all'indietro.
+ */
+async function recordWeeklyGoal(target: number, previous?: number): Promise<void> {
+  const ts = nowISO()
+  const d = today()
+  const count = await db.goalHistory.where('userId').equals(U).count()
+  if (count === 0 && previous != null && previous > 0) {
+    const firstSession = (await db.sessions.where('userId').equals(U).toArray())
+      .map((s) => s.date).sort()[0]
+    const user = await db.users.get(U)
+    const baseline = [firstSession, user?.createdAt?.slice(0, 10), d].filter(Boolean).sort()[0] as string
+    if (baseline < d) {
+      await db.goalHistory.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, date: baseline, target: previous })
+    }
+  }
+  const existing = await db.goalHistory.where('date').equals(d).filter((g) => g.userId === U).first()
+  if (existing) await db.goalHistory.update(existing.id, { target, updatedAt: ts })
+  else await db.goalHistory.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, date: d, target })
+}
+
+/** Storico obiettivi in ordine cronologico. */
+export async function listGoalHistory(): Promise<{ date: string; target: number }[]> {
+  const rows = await db.goalHistory.where('userId').equals(U).sortBy('date')
+  return rows.map((r) => ({ date: r.date, target: r.target }))
 }
 
 // --- Esercizi nella seduta ---

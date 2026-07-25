@@ -6,7 +6,7 @@ import Dexie, { type Table } from 'dexie'
 import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
-  DailyReadiness,
+  DailyReadiness, WeeklyGoalChange,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -23,6 +23,7 @@ export class GymLogDB extends Dexie {
   templates!: Table<WorkoutTemplate, string>
   cardioPresets!: Table<CardioPreset, string>
   readinessChecks!: Table<DailyReadiness, string>
+  goalHistory!: Table<WeeklyGoalChange, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -50,6 +51,10 @@ export class GymLogDB extends Dexie {
     // v4: check pre-workout del giorno, slegato dalla seduta (si può fare anche a riposo).
     this.version(4).stores({
       readinessChecks: 'id, userId, date',
+    })
+    // v5: storico dell'obiettivo settimanale (Consistency giudica ogni settimana con il suo obiettivo).
+    this.version(5).stores({
+      goalHistory: 'id, userId, date',
     })
   }
 }
