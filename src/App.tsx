@@ -13,10 +13,22 @@ import { AnalyticsScreen } from './ui/AnalyticsScreen'
 import { TemplateEditor } from './ui/TemplateEditor'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { Nav, type Tab } from './ui/Nav'
+import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
 type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null }
 const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null }
+
+// Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
+// aggiornare ricarica la pagina, quindi decidi tu quando.
+function UpdateBanner() {
+  return (
+    <button onClick={applyPwaUpdate}
+      style={{ width: '100%', marginBottom: 8, background: 'var(--gold-bg)', borderColor: 'var(--gold)', color: 'var(--gold)', fontSize: 13, padding: '9px 12px' }}>
+      Nuova versione disponibile · tocca per aggiornare
+    </button>
+  )
+}
 
 function loadNav(): Nav {
   try { const s = sessionStorage.getItem('nav'); if (s) return { ...DEFAULT_NAV, ...JSON.parse(s) } } catch { /* ignore */ }
@@ -29,8 +41,16 @@ export default function App() {
   const navRef = useRef(nav)
   navRef.current = nav
   const user = useLiveQuery(getUser, [])
+  const [updateReady, setUpdateReady] = useState(false)
 
   useEffect(() => { ensureSeed().then(() => setReady(true)) }, [])
+
+  // Nuova versione: si applica da sola (i dati stanno nel DB locale, non si perde nulla).
+  // Se sei in mezzo a un allenamento non interrompo: mostro un avviso e aggiorni tu.
+  useEffect(() => onUpdateReady(setUpdateReady), [])
+  useEffect(() => {
+    if (updateReady && !navRef.current.workingOut) applyPwaUpdate()
+  }, [updateReady])
 
   // History: ogni navigazione "in profondità" fa pushState; il Back del telefono torna indietro
   // dentro l'app invece di uscire. Refresh: ripristina l'ultimo stato salvato.
@@ -68,6 +88,7 @@ export default function App() {
   if (nav.workingOut) {
     return (
       <div className="app slide-up">
+        {updateReady && <UpdateBanner />}
         <WorkoutFlow
           resumeSessionId={nav.resumeId}
           onSessionStarted={(id) => replace({ resumeId: id })}

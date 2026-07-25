@@ -9,7 +9,10 @@ export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' + injectRegister false: la registrazione la fa src/util/pwaUpdate.ts,
+      // che controlla gli aggiornamenti e decide QUANDO ricaricare (mai a metà allenamento).
+      registerType: 'prompt',
+      injectRegister: false,
       manifest: {
         name: 'GYM LOG & METRICS',
         short_name: 'GYM LOG',
@@ -29,6 +32,7 @@ export default defineConfig(({ command }) => ({
       workbox: {
         // offline-first: cache dell'app shell
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
