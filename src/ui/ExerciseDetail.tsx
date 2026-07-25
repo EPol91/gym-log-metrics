@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseDetail } from '../scores/exerciseStats'
+import { updateExercise } from '../db/repo'
+import type { MuscleGroup } from '../db/schema'
 import { LineChart } from './LineChart'
 import { AiInsight } from './AiInsight'
 import { Info } from './anim'
@@ -17,9 +19,22 @@ const METRICS: { key: Metric; chip: string; title: string; unit: string }[] = [
   { key: 'weight', chip: 'Peso top', title: 'Andamento peso top', unit: 'kg' },
 ]
 
-export function ExerciseDetail({ exerciseId, onBack }: { exerciseId: string; onBack: () => void }) {
+const MUSCLES: MuscleGroup[] = [
+  'petto', 'schiena', 'spalle', 'bicipiti', 'tricipiti',
+  'quadricipiti', 'femorali', 'glutei', 'polpacci', 'core', 'altro',
+]
+
+export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
+  exerciseId: string; onBack: () => void; startEditing?: boolean
+}) {
   const d = useLiveQuery(() => computeExerciseDetail(exerciseId), [exerciseId])
   const [metric, setMetric] = useState<Metric>('e1rm')
+  const [editing, setEditing] = useState(startEditing)
+  const [name, setName] = useState('')
+  const [muscle, setMuscle] = useState<MuscleGroup>('altro')
+
+  // Allinea i campi quando arrivano i dati (o quando cambi esercizio).
+  useEffect(() => { if (d) { setName(d.name); setMuscle(d.muscle as MuscleGroup) } }, [d?.id, d?.name, d?.muscle]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!d) return <div className="col"><p className="muted">Carico…</p></div>
 
@@ -31,9 +46,31 @@ export function ExerciseDetail({ exerciseId, onBack }: { exerciseId: string; onB
     <div className="col">
       <div className="row spread">
         <button className="ghost small" onClick={onBack}>← Esercizi</button>
-        <span className="muted small">{d.muscle}</span>
+        <button className={editing ? 'chip on' : 'chip'} onClick={() => setEditing((v) => !v)}>✎ Modifica</button>
       </div>
-      <h1>{d.name}</h1>
+
+      {editing ? (
+        <div className="card">
+          <label className="fl">Nome</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+          <label className="fl" style={{ marginTop: 10 }}>Gruppo muscolare</label>
+          <div className="row wrap" style={{ gap: 6 }}>
+            {MUSCLES.map((m) => (
+              <button key={m} className={muscle === m ? 'chip on' : 'chip'} onClick={() => setMuscle(m)}>{m}</button>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 6, marginTop: 12 }}>
+            <button className="ghost" style={{ flex: 1 }} onClick={() => { setName(d.name); setMuscle(d.muscle as MuscleGroup); setEditing(false) }}>Annulla</button>
+            <button className="primary" style={{ flex: 2 }} disabled={!name.trim()}
+              onClick={async () => { await updateExercise(exerciseId, { name, muscle }); setEditing(false) }}>Salva</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h1 style={{ marginBottom: 2 }}>{d.name}</h1>
+          <span className="chip" style={{ alignSelf: 'flex-start' }}>{d.muscle}</span>
+        </>
+      )}
 
       <div className="grid2">
         <div className="card" style={{ margin: 0 }}>

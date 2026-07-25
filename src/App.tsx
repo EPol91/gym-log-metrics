@@ -17,8 +17,8 @@ import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
-type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; check: boolean }
-const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, check: false }
+type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean }
+const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false }
 
 // Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
 // aggiornare ricarica la pagina, quindi decidi tu quando.
@@ -121,8 +121,8 @@ export default function App() {
           />
         )}
         {nav.tab === 'exercises' && (nav.exercise
-          ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} />
-          : <ExercisesScreen onOpen={(id) => push({ exercise: id })} />)}
+          ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
+          : <ExercisesScreen onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
         {nav.tab === 'body' && <BodyScreen />}
         {nav.tab === 'history' && <HistoryScreen />}
         {nav.tab === 'profile' && (
@@ -132,7 +132,7 @@ export default function App() {
           />
         )}
       </div>
-      <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null })} />
+      <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null, exerciseNew: false })} />
     </div>
   )
 }

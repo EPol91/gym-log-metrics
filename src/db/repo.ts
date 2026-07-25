@@ -469,6 +469,14 @@ export async function findExercise(name: string): Promise<Exercise | undefined> 
 }
 
 /** Crea un esercizio custom se non esiste già (altrimenti ritorna l'esistente). */
+/** Correzione di un esercizio: nome e/o gruppo muscolare. */
+export async function updateExercise(id: string, patch: { name?: string; muscle?: MuscleGroup }): Promise<void> {
+  const clean: { name?: string; muscle?: MuscleGroup; updatedAt: string } = { updatedAt: nowISO() }
+  if (patch.name != null && patch.name.trim()) clean.name = patch.name.trim()
+  if (patch.muscle) clean.muscle = patch.muscle
+  await db.exercises.update(id, clean)
+}
+
 export async function getOrCreateExercise(name: string, muscle: MuscleGroup = 'altro'): Promise<Exercise> {
   const existing = await findExercise(name)
   if (existing) return existing

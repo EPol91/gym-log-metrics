@@ -6,7 +6,8 @@ import { normalizeName } from '../db/catalog'
 import type { MuscleGroup } from '../db/schema'
 
 // onOpen instrada il dettaglio nella navigazione dell'app (App.tsx) → sopravvive a refresh e tasto Back.
-export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
+// isNew=true apre il dettaglio già in modifica: un esercizio appena creato nasce senza gruppo muscolare.
+export function ExercisesScreen({ onOpen }: { onOpen: (id: string, isNew?: boolean) => void }) {
   const [q, setQ] = useState('')
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
   const all = useLiveQuery(allExercises, []) ?? []
@@ -37,7 +38,7 @@ export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
           const name = prompt('Nome del nuovo esercizio')?.trim()
           if (!name) return
           const ex = await getOrCreateExercise(name)
-          onOpen(ex.id)
+          onOpen(ex.id, true) // apre subito in modifica: scegli il gruppo muscolare
         }}>＋ Nuovo</button>
       </div>
       <input placeholder="🔍 Cerca o crea un esercizio…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -50,7 +51,7 @@ export function ExercisesScreen({ onOpen }: { onOpen: (id: string) => void }) {
       </div>
 
       {q && !exactExists && (
-        <button className="sel" onClick={async () => { const ex = await getOrCreateExercise(q); onOpen(ex.id) }}>＋ Crea “{q.trim()}”</button>
+        <button className="sel" onClick={async () => { const ex = await getOrCreateExercise(q); onOpen(ex.id, true) }}>＋ Crea “{q.trim()}”</button>
       )}
 
       {groups.length === 0 ? (
