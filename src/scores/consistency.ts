@@ -58,5 +58,20 @@ export function computeConsistency(
   const reliability: ScoreResult['reliability'] = inWindow.length >= 2 ? 'alta' : 'media'
   const note = inWindow.length < 2 ? 'Poche sedute nella finestra: provvisorio.' : undefined
 
-  return { value: Math.round(value), reliability, note }
+  let maxGapDays = 0
+  for (let i = 1; i < inWindow.length; i++) maxGapDays = Math.max(maxGapDays, (inWindow[i] - inWindow[i - 1]) / DAY)
+
+  return {
+    value: Math.round(value), reliability, note,
+    parts: [
+      { label: 'Aderenza', value: Math.round(adherence * 100), weight: 0.6 },
+      { label: 'Regolarità', value: Math.round(regularity * 100), weight: 0.25 },
+      { label: 'Continuità', value: Math.round(streak * 100), weight: 0.15 },
+    ],
+    facts: [
+      { label: `Sedute in ${windowWeeks} settimane`, value: `${inWindow.length} su ${weeklyTarget * windowWeeks}` },
+      { label: 'Pausa più lunga', value: inWindow.length >= 2 ? `${Math.round(maxGapDays)} giorni` : '—' },
+      { label: 'Settimane a obiettivo', value: `${streakWeeks} di fila` },
+    ],
+  }
 }

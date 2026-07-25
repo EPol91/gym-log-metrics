@@ -65,5 +65,20 @@ export function computePerformance(inp: PerformanceInput): ScoreResult {
     reliability = 'alta'
   }
 
-  return { value: Math.round(value), reliability, note }
+  // Scomposizione descrittiva: 50 = "fermo", sopra = progresso, sotto = regresso.
+  const PHASE_LABEL: Record<string, string> = { cut: 'Cut', bulk: 'Bulk', recomp: 'Recomp', maintenance: 'Mantenimento' }
+  return {
+    value: Math.round(value), reliability, note,
+    parts: [
+      { label: 'Forza (e1RM)', value: Math.round(50 + (strengthPts / 30) * 50), weight: 0.3 },
+      { label: 'Volume', value: Math.round(50 + (cal.volumeWeight ? volumePts / cal.volumeWeight : 0) * 50), weight: cal.volumeWeight / 100 },
+      { label: 'PR', value: Math.round((prPts / 5) * 100), weight: 0.05 },
+    ],
+    facts: [
+      { label: 'Fase', value: `${PHASE_LABEL[inp.phase] ?? inp.phase} · ${inp.weeksInPhase} settimane` },
+      { label: 'Forza (mediana esercizi)', value: `${inp.strengthPctChange > 0 ? '+' : ''}${inp.strengthPctChange.toFixed(1)}%` },
+      { label: 'Volume ultimi 21gg', value: `${inp.volumePctChange > 0 ? '+' : ''}${inp.volumePctChange.toFixed(1)}%` },
+      { label: 'PR nel periodo', value: String(inp.prCount) },
+    ],
+  }
 }

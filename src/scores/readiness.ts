@@ -36,14 +36,37 @@ export function computeReadiness(
     ? 0.4 * check.sleep + 0.35 * check.fatigue + 0.25 * check.energy // sedute vecchie: formula originale
     : 0.35 * check.sleep + 0.25 * check.fatigue + 0.2 * check.soreness + 0.2 * check.energy
 
+  const parts = check.soreness == null
+    ? [
+      { label: 'Sonno', value: check.sleep, weight: 0.4 },
+      { label: 'Stanchezza', value: check.fatigue, weight: 0.35 },
+      { label: 'Energia', value: check.energy, weight: 0.25 },
+    ]
+    : [
+      { label: 'Sonno', value: check.sleep, weight: 0.35 },
+      { label: 'Stanchezza', value: check.fatigue, weight: 0.25 },
+      { label: 'Indolenzimento', value: check.soreness, weight: 0.2 },
+      { label: 'Energia', value: check.energy, weight: 0.2 },
+    ]
+
   // Aggiustamento carico solo con almeno 14 giorni di storico.
   if (load && load.historyDays >= 14) {
-    const value = clamp(base * loadFactor(load.acute, load.chronic), 0, 100)
-    return { value: Math.round(value), reliability: 'alta' }
+    const f = loadFactor(load.acute, load.chronic)
+    const value = clamp(base * f, 0, 100)
+    const acwr = load.chronic > 0 ? load.acute / load.chronic : 1
+    return {
+      value: Math.round(value), reliability: 'alta', parts,
+      facts: [
+        { label: 'Base dal check', value: String(Math.round(base)) },
+        { label: 'Carico recente', value: `×${f.toFixed(2)} · ${acwr > 1.3 ? 'sopra la media' : acwr < 0.8 ? 'sotto la media' : 'in linea'}` },
+      ],
+    }
   }
   return {
     value: Math.round(clamp(base, 0, 100)),
     reliability: 'media',
     note: 'Aggiustamento carico spento: storico < 14 giorni.',
+    parts,
+    facts: [{ label: 'Base dal check', value: String(Math.round(base)) }],
   }
 }

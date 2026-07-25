@@ -5,7 +5,8 @@ import { computeCoach, coachPrompt } from '../scores/coach'
 import { isCoachAiOn, getAIProvider } from '../ai/aiEngine'
 import { getOngoingSession, getUser, upsertMeasurement, todayISO, getNutritionToday } from '../db/repo'
 import { NutritionCard } from './NutritionCard'
-import { ScoreRing, Info } from './anim'
+import { ScoreRing } from './anim'
+import { ScoreDetail } from './ScoreDetail'
 import { dailyPhrase } from '../util/phrases'
 import { parseNum } from '../util/validate'
 
@@ -79,6 +80,15 @@ const SCORES = [
   { key: 'performance', label: 'Perf.', tip: 'Performance' },
   { key: 'consistency', label: 'Constan.', tip: 'Consistency' },
 ] as const
+type ScoreKey = typeof SCORES[number]['key']
+
+// Riga di contesto in fondo al dettaglio: dice dove intervenire.
+const SCORE_FOOTER: Record<ScoreKey, string> = {
+  readiness: 'Dal check di oggi · rifallo toccando l’anello grande in Home.',
+  workout: 'Riferito all’ultima seduta conclusa · il confronto è con le TUE sedute dello stesso tipo.',
+  performance: 'Finestra ~6 settimane · la fase si imposta nel Profilo.',
+  consistency: 'Finestra 4 settimane · l’obiettivo settimanale si cambia nel Profilo.',
+}
 
 export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, onOpenCheck }: {
   onStartWorkout: () => void; onResumeWorkout: (id: string) => void; onOpenAnalytics: () => void
@@ -93,6 +103,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, o
   const [w, setW] = useState('')
   const [savedW, setSavedW] = useState(false)
   const [panel, setPanel] = useState<'peso' | 'nutri' | null>(null)
+  const [detail, setDetail] = useState<ScoreKey | null>(null)
 
   const today = todayStatus(home?.todayReady ?? null)
 
@@ -141,14 +152,24 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, o
           {/* 4 anelli puliti (senza cornice) */}
           <div className="row" style={{ textAlign: 'center' }}>
             {SCORES.map((s) => (
-              <div key={s.key} style={{ flex: 1 }}>
+              <button key={s.key} onClick={() => setDetail(s.key)} aria-label={`Dettaglio ${s.tip}`}
+                style={{ flex: 1, background: 'none', border: 'none', padding: 0 }}>
                 <ScoreRing value={home[s.key].value} size={58} />
                 <div className="muted small" style={{ marginTop: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {s.label}<Info text={SCORE_TIPS[s.tip]} />
+                  {s.label} ›
                 </div>
-              </div>
+              </button>
             ))}
           </div>
+          {detail && (
+            <ScoreDetail
+              title={SCORES.find((s) => s.key === detail)!.tip}
+              subtitle={SCORE_TIPS[SCORES.find((s) => s.key === detail)!.tip]}
+              score={home[detail]}
+              footer={SCORE_FOOTER[detail]}
+              onClose={() => setDetail(null)}
+            />
+          )}
 
           {/* Obiettivo settimana */}
           <div className="card">

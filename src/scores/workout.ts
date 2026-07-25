@@ -39,5 +39,19 @@ export function computeWorkout(inp: WorkoutInput): ScoreResult {
     note = (note ? note + ' ' : '') + 'Intensità stimata su e1RM (RIR < 50% delle serie).'
   }
 
-  return { value: Math.round(value), reliability, note }
+  // Scomposizione descrittiva: qui 50 = "in linea con i tuoi standard", non zero.
+  return {
+    value: Math.round(value), reliability, note,
+    parts: [
+      { label: 'Volume', value: Math.round(50 + 50 * volumeSignal), weight: 0.25 },
+      { label: 'Intensità', value: Math.round(50 + 50 * clamp(inp.intensitySignal, -1, 1)), weight: 0.15 },
+      { label: 'PR', value: Math.round((prPts / 10) * 100), weight: 0.1 },
+    ],
+    facts: [
+      { label: 'Tonnellaggio seduta', value: `${Math.round(inp.sessionLoad)} kg` },
+      { label: 'Tuo standard (mediana)', value: inp.baselineCount ? `${Math.round(inp.baselineLoad)} kg · ${inp.baselineCount} sedute` : 'non ancora disponibile' },
+      { label: 'Serie con RIR', value: `${Math.round(inp.rirCoverage * 100)}%` },
+      { label: 'PR battuti', value: String(inp.prCount) },
+    ],
+  }
 }
