@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTemplates, deleteTemplate, listGyms, setDefaultGym } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
+import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
 import type { WorkoutType } from '../db/schema'
 
 const TYPES: { key: WorkoutType; label: string; hint: string }[] = [
@@ -23,6 +24,8 @@ export function StartScreen({
 }) {
   const [type, setType] = useState<WorkoutType | null>(null)
   const [editId, setEditId] = useState<string | 'new' | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [geoMsg, setGeoMsg] = useState<string | null>(null)
   const templates = useLiveQuery(listTemplates, []) ?? []
   const gyms = useLiveQuery(listGyms, []) ?? []
   const defaultGym = gyms.find((g) => g.isDefault) ?? gyms[0]
@@ -46,10 +49,26 @@ export function StartScreen({
 
       {gyms.length > 1 && (
         <div className="card">
-          <label className="fl">Palestra</label>
+          <div className="row spread">
+            <label className="fl">Palestra</label>
+            {gyms.some((g) => g.lat != null) && isGeoSupported() && (
+              <button className="chip" disabled={locating} onClick={async () => {
+                setLocating(true); setGeoMsg(null)
+                try {
+                  const me = await getPosition()
+                  const withPos = gyms.filter((g) => g.lat != null && g.lng != null)
+                  const nearest = withPos
+                    .map((g) => ({ g, d: distanceMeters(me, { lat: g.lat!, lng: g.lng! }) }))
+                    .sort((a, b) => a.d - b.d)[0]
+                  if (nearest) { await setDefaultGym(nearest.g.id); setGeoMsg(`${nearest.g.name} · ${fmtDistance(nearest.d)}`) }
+                } catch (e) { setGeoMsg((e as Error).message) } finally { setLocating(false) }
+              }}>{locating ? 'Rilevo…' : '📍 Rileva'}</button>
+            )}
+          </div>
           <select value={defaultGym?.id ?? ''} onChange={(e) => setDefaultGym(e.target.value)}>
             {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
+          {geoMsg && <p className="muted small" style={{ marginTop: 6 }}>{geoMsg}</p>}
         </div>
       )}
 

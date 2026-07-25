@@ -84,6 +84,14 @@ export async function deleteGym(id: string): Promise<void> {
 export async function renameGym(id: string, name: string): Promise<void> {
   await db.gyms.update(id, { name: name.trim() || 'Palestra', updatedAt: nowISO() })
 }
+/** Memorizza (o cancella) la posizione di una palestra. */
+export async function setGymPosition(id: string, pos: { lat: number; lng: number } | null): Promise<void> {
+  await db.gyms.update(id, { lat: pos?.lat, lng: pos?.lng, updatedAt: nowISO() })
+}
+/** Cambia la palestra di una seduta già iniziata. */
+export async function setSessionGym(sessionId: string, gymId: string | null): Promise<void> {
+  await db.sessions.update(sessionId, { gymId, updatedAt: nowISO() })
+}
 
 async function currentPhaseId(): Promise<string | null> {
   const p = await db.phases.where('userId').equals(U).filter((x) => x.endDate === null).first()
