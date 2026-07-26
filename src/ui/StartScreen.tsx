@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listTemplates, deleteTemplate, listGyms, setDefaultGym } from '../db/repo'
+import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
 import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
 import type { WorkoutType } from '../db/schema'
@@ -47,7 +47,8 @@ export function StartScreen({
         )}
       </div>
 
-      {gyms.length > 1 && (
+      {/* Sempre visibile: anche con una sola palestra devi poterla vedere, rilevarla o aggiungerne altre. */}
+      {gyms.length > 0 && (
         <div className="card">
           <div className="row spread">
             <label className="fl">Palestra</label>
@@ -65,10 +66,25 @@ export function StartScreen({
               }}>{locating ? 'Rilevo…' : '📍 Rileva'}</button>
             )}
           </div>
-          <select value={defaultGym?.id ?? ''} onChange={(e) => setDefaultGym(e.target.value)}>
-            {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
+          {gyms.length > 1 ? (
+            <select value={defaultGym?.id ?? ''} onChange={(e) => setDefaultGym(e.target.value)}>
+              {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          ) : (
+            <div className="row spread" style={{ alignItems: 'center' }}>
+              <span>{defaultGym?.name}{defaultGym?.lat != null && <span className="muted small"> · 📍</span>}</span>
+              <button className="chip" onClick={async () => {
+                const n = prompt('Nome della nuova palestra')?.trim()
+                if (n) await addGym(n)
+              }}>＋ Altra palestra</button>
+            </div>
+          )}
           {geoMsg && <p className="muted small" style={{ marginTop: 6 }}>{geoMsg}</p>}
+          {gyms.length === 1 && defaultGym?.lat == null && isGeoSupported() && (
+            <p className="muted small" style={{ marginTop: 6 }}>
+              Per il rilevamento automatico salva la posizione in Profilo → 🏋️ Palestra.
+            </p>
+          )}
         </div>
       )}
 
