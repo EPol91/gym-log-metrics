@@ -92,10 +92,11 @@ function RestTimer({ defaultSec, presets, store, onPick, onClose }: {
 }
 
 // --- Cronometro seduta ---
-function WorkoutClock({ startedAt }: { startedAt: string }) {
+// pausedSec = tempo in cui la seduta è rimasta chiusa (riaperta dopo): non va contato.
+function WorkoutClock({ startedAt, pausedSec = 0 }: { startedAt: string; pausedSec?: number }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
-  const sec = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000))
+  const sec = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000) - pausedSec)
   const mm = Math.floor(sec / 60), ss = sec % 60
   return <span className="muted small">⏱ {mm}:{ss.toString().padStart(2, '0')}</span>
 }
@@ -457,7 +458,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
           <span className="row" style={{ gap: 8, alignItems: 'center' }}>
             <button className="ghost small" onClick={() => setCardioOpen(true)} aria-label="Cardio">🏃</button>
             {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱</button>}
-            {session && <WorkoutClock startedAt={session.startedAt} />}
+            {session && <WorkoutClock startedAt={session.startedAt} pausedSec={session.pausedSec} />}
           </span>
         </div>
       </div>

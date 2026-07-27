@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { cardioOf, deleteSession, finishSession, setSessionType, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
+import { cardioOf, deleteSession, finishSession, reopenSession, sessionElapsedSec, setSessionType, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
 import { computeCardioZone } from '../metrics/cardio'
 import { LOCAL_USER_ID } from '../db/seed'
@@ -72,12 +72,14 @@ async function load(sessionId: string) {
   }))
   const score = await computeSessionWorkoutScore(sessionId)
   const durationMin = session.startedAt && session.finishedAt
-    ? Math.max(0, Math.round((new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 60000))
+    ? Math.round(sessionElapsedSec(session) / 60)
     : null
   return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets), durationMin }
 }
 
-export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
+export function SessionDetail({ sessionId, onBack, onReopen }: {
+  sessionId: string; onBack: () => void; onReopen?: (id: string) => void
+}) {
   const d = useLiveQuery(() => load(sessionId), [sessionId])
   const [editType, setEditType] = useState(false)
   const [edit, setEdit] = useState(false)
@@ -155,6 +157,14 @@ export function SessionDetail({ sessionId, onBack }: { sessionId: string; onBack
       )}
 
       {d.session.notes && <div className="card"><div className="muted small">Note</div><p className="small" style={{ whiteSpace: 'pre-wrap' }}>{d.session.notes}</p></div>}
+
+      {/* Chiusa per sbaglio? La riapri e il cronometro riprende da dov'era. */}
+      {d.session.finishedAt && onReopen && (
+        <button className="primary" style={{ width: '100%' }}
+          onClick={async () => { await reopenSession(sessionId); onReopen(sessionId) }}>
+          ▶ Riapri allenamento
+        </button>
+      )}
 
       <div className="row">
         {!d.session.finishedAt && <button className="ghost" style={{ flex: 1 }} onClick={() => finishSession(sessionId)}>Chiudi seduta</button>}

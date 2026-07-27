@@ -9,12 +9,12 @@ const TYPE_LABEL: Record<string, string> = {
   lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
 }
 
-export function HistoryScreen() {
+export function HistoryScreen({ onReopen }: { onReopen?: (id: string) => void }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [filter, setFilter] = useState<string | null>(null)
   const list = useLiveQuery(computeHistory, [])
 
-  if (selected) return <SessionDetail sessionId={selected} onBack={() => setSelected(null)} />
+  if (selected) return <SessionDetail sessionId={selected} onBack={() => setSelected(null)} onReopen={onReopen} />
 
   const types = [...new Set((list ?? []).map((s) => s.type))]
   const shown = (list ?? []).filter((s) => !filter || s.type === filter)

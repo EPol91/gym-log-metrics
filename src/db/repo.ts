@@ -31,6 +31,27 @@ export async function finishSession(sessionId: string): Promise<void> {
   await db.sessions.update(sessionId, { finishedAt: nowISO(), updatedAt: nowISO() })
 }
 
+/**
+ * Riapre una seduta chiusa (anche per sbaglio) e riprende il cronometro da dov'era:
+ * il tempo passato da chiusa finisce in `pausedSec` e non viene conteggiato.
+ */
+export async function reopenSession(sessionId: string): Promise<void> {
+  const s = await db.sessions.get(sessionId)
+  if (!s || !s.finishedAt) return
+  const closedForSec = Math.max(0, Math.round((Date.now() - new Date(s.finishedAt).getTime()) / 1000))
+  await db.sessions.update(sessionId, {
+    finishedAt: null,
+    pausedSec: (s.pausedSec ?? 0) + closedForSec,
+    updatedAt: nowISO(),
+  })
+}
+
+/** Durata effettiva in secondi, al netto del tempo in cui la seduta è rimasta chiusa. */
+export function sessionElapsedSec(s: { startedAt: string; finishedAt: string | null; pausedSec?: number }, nowMs = Date.now()): number {
+  const end = s.finishedAt ? new Date(s.finishedAt).getTime() : nowMs
+  return Math.max(0, Math.round((end - new Date(s.startedAt).getTime()) / 1000) - (s.pausedSec ?? 0))
+}
+
 export function getSession(sessionId: string) {
   return db.sessions.get(sessionId)
 }

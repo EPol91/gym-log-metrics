@@ -124,7 +124,7 @@ export default function App() {
           ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
           : <ExercisesScreen onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
         {nav.tab === 'body' && <BodyScreen />}
-        {nav.tab === 'history' && <HistoryScreen />}
+        {nav.tab === 'history' && <HistoryScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
         {nav.tab === 'profile' && (
           <ProfileScreen
             onEditTemplate={(id) => push({ editTemplate: id })}

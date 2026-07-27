@@ -102,6 +102,9 @@ export interface WorkoutSession extends BaseRecord {
   type: WorkoutType
   startedAt: ISODateTime
   finishedAt: ISODateTime | null
+  /** Secondi da NON contare nella durata: tempo trascorso mentre la seduta era chiusa
+   *  (riaperta dopo). Senza, riaprendo il giorno dopo il cronometro segnerebbe ore. */
+  pausedSec?: number
   /** snapshot della fase attiva al momento della seduta (per Performance phase-aware) */
   phaseId: ID | null
   readiness: ReadinessCheck | null

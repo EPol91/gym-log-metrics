@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { finishCue } from '../util/sound'
 import { db } from '../db/db'
+import { sessionElapsedSec } from '../db/repo'
 import { tonnage, volume } from '../metrics/metrics'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
 import { computeCardioZone } from '../metrics/cardio'
@@ -18,8 +19,9 @@ async function sessionStats(sessionId: string) {
   const score = await computeSessionWorkoutScore(sessionId)
 
   const session = await db.sessions.get(sessionId)
+  // Al netto delle riaperture: il tempo da chiusa non conta.
   const durationMin = session?.startedAt && session?.finishedAt
-    ? Math.max(0, Math.round((new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 60000))
+    ? Math.round(sessionElapsedSec(session) / 60)
     : null
 
   const user = await db.users.get(LOCAL_USER_ID)
