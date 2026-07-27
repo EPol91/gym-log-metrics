@@ -150,8 +150,11 @@ export async function computeHome(): Promise<HomeData> {
     bodyWeight = { weight: lm.weight, delta: pm ? +(lm.weight - pm.weight).toFixed(1) : null }
   }
 
-  // Obiettivo settimana (rolling 7 giorni) + streak di giorni consecutivi con seduta.
-  const done = sessions.filter((s) => new Date(s.date + 'T00:00:00').getTime() > nowMs - 7 * DAY).length
+  // Obiettivo settimana: settimana di calendario, da LUNEDÌ (non 7 giorni scorrevoli:
+  // di lunedì mattina il contatore deve ripartire da zero).
+  const dow = (new Date(todayISO() + 'T00:00:00').getDay() + 6) % 7 // 0 = lunedì
+  const weekStartMs = nowMs - dow * DAY
+  const done = sessions.filter((s) => new Date(s.date + 'T00:00:00').getTime() >= weekStartMs).length
   const activeDays = [...new Set(sessions.map((s) => s.date))]
   const dayBefore = (d: string) => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10) }
   let streak = 0

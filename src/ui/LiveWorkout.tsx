@@ -98,7 +98,9 @@ function WorkoutClock({ startedAt, pausedSec = 0 }: { startedAt: string; pausedS
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   const sec = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000) - pausedSec)
   const mm = Math.floor(sec / 60), ss = sec % 60
-  return <span className="muted small">⏱ {mm}:{ss.toString().padStart(2, '0')}</span>
+  // Oltre l'ora "130:54" è largo e poco leggibile: diventa "2h10".
+  const label = mm >= 60 ? `${Math.floor(mm / 60)}h${(mm % 60).toString().padStart(2, '0')}` : `${mm}:${ss.toString().padStart(2, '0')}`
+  return <span className="muted small" style={{ flex: 'none', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>⏱ {label}</span>
 }
 
 // Dettatura vocale della serie: "100 per 8 RIR 2" → riempie i campi.
@@ -448,16 +450,17 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
     <div className="col">
       {/* Barra fissa in alto: Home · pallini esercizi · Recupero + durata */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
-        <div className="row spread">
-          {onHome ? <button className="ghost small" onClick={onHome}>‹ Home</button> : <span />}
-          <span className="row" style={{ gap: 5 }}>
+        <div className="row spread" style={{ gap: 6 }}>
+          {onHome ? <button className="ghost small" style={{ flex: 'none', padding: '8px 10px' }} onClick={onHome}>‹ Home</button> : <span />}
+          {/* I pallini cedono spazio: con molti esercizi non devono spingere fuori l'orologio. */}
+          <span className="row" style={{ gap: 5, flex: 1, minWidth: 0, justifyContent: 'center', overflow: 'hidden' }}>
             {entries.map((e, i) => (
-              <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
+              <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, flex: 'none', borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
             ))}
           </span>
-          <span className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <button className="ghost small" onClick={() => setCardioOpen(true)} aria-label="Cardio">🏃</button>
-            {rest == null && <button className="ghost small" onClick={() => startRest(restDefault, null)}>⏱</button>}
+          <span className="row" style={{ gap: 6, alignItems: 'center', flex: 'none' }}>
+            <button className="ghost small" style={{ padding: '8px 10px' }} onClick={() => setCardioOpen(true)} aria-label="Cardio">🏃</button>
+            {rest == null && <button className="ghost small" style={{ padding: '8px 10px' }} onClick={() => startRest(restDefault, null)} aria-label="Recupero">⏱</button>}
             {session && <WorkoutClock startedAt={session.startedAt} pausedSec={session.pausedSec} />}
           </span>
         </div>
