@@ -110,7 +110,7 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
                   {f.favorite ? '★ ' : ''}{f.name}
                 </span>
                 <span className="muted small">
-                  {f.brand ? `${f.brand} · ` : ''}{f.per100.kcal} kcal · C{f.per100.carbs} P{f.per100.protein} G{f.per100.fat}
+                  {f.brand ? `${f.brand} · ` : ''}{f.per100.kcal} kcal · C: {f.per100.carbs}, P: {f.per100.protein}, G: {f.per100.fat}
                   {f.edited ? ' · corretto' : ''}
                 </span>
               </span>
@@ -126,7 +126,7 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
               onClick={() => useOffFood(o)}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
-                <span className="muted small">{o.brand ? `${o.brand} · ` : ''}{o.per100.kcal} kcal · C{o.per100.carbs} P{o.per100.protein} G{o.per100.fat}</span>
+                <span className="muted small">{o.brand ? `${o.brand} · ` : ''}{o.per100.kcal} kcal · C: {o.per100.carbs}, P: {o.per100.protein}, G: {o.per100.fat}</span>
               </span>
               <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>＋</span>
             </div>

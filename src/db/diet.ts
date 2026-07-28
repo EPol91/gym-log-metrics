@@ -114,6 +114,14 @@ export async function moveMeal(id: string, dir: -1 | 1): Promise<void> {
   await db.meals.update(all[j].id, { order: i, updatedAt: nowISO() })
 }
 
+/** Riscrive l'ordine dei pasti del giorno: serve al trascinamento della card. */
+export async function reorderMeals(orderedIds: string[]): Promise<void> {
+  const ts = nowISO()
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.meals.update(orderedIds[i], { order: i, updatedAt: ts })
+  }
+}
+
 /** Duplica un pasto con tutto il contenuto (stesso giorno o su un'altra data). */
 export async function duplicateMeal(id: string, toDate?: string): Promise<string | null> {
   const meal = await db.meals.get(id)

@@ -38,7 +38,7 @@ function TargetEditor({ d, suggested }: { d: DayType; suggested: MacroTargets | 
           {!d.builtin && <span className="muted small"> · personalizzato</span>}
         </span>
         <span className="muted small">
-          {set.kcal > 0 ? `${set.kcal} kcal · C${set.carbs} P${set.protein} G${set.fat}` : 'da impostare'} {open ? '▾' : '›'}
+          {set.kcal > 0 ? `${set.kcal} kcal · C: ${set.carbs}, P: ${set.protein}, G: ${set.fat}` : 'da impostare'} {open ? '▾' : '›'}
         </span>
       </button>
 
@@ -81,7 +81,7 @@ export function DietTargets({ onBack, suggested }: { onBack: () => void; suggest
         <div className="card" style={{ borderColor: 'var(--gold-dim)' }}>
           <div className="muted small">Proposta dai tuoi dati</div>
           <div className="small" style={{ marginTop: 4 }}>
-            <strong style={{ color: 'var(--gold)' }}>{suggested.kcal} kcal</strong> · C{suggested.carbs} P{suggested.protein} G{suggested.fat}
+            <strong style={{ color: 'var(--gold)' }}>{suggested.kcal} kcal</strong> · C: {suggested.carbs}, P: {suggested.protein}, G: {suggested.fat}
           </div>
           <p className="muted small" style={{ marginTop: 6, lineHeight: 1.5 }}>
             Da peso, altezza, età, sedute a settimana e fase. È una stima di partenza:

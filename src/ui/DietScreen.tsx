@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   computeDiary, listDayTypes, todayDiet, addMeal, renameMeal, deleteMeal, moveMeal, ensureMeals,
   duplicateMeal, pasteIntoMeal, deleteFoodLogs, restoreFoodLogs, moveLogsToMeal,
-  reorderLogs, updateFoodLog, macrosFor,
+  reorderLogs, reorderMeals, updateFoodLog, macrosFor,
 } from '../db/diet'
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
@@ -43,28 +43,45 @@ function MacroTrack({ label, value, target, color }: { label: string; value: num
   )
 }
 
-/** Riga alimento: swipe verso sinistra per eliminare, tap per aprire la scheda. */
-function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHandlers }: {
+/**
+ * Elemento in movimento: `group` è la lista che stai riordinando (l'id del pasto
+ * per le righe, MEALS per le card), `ids` l'ordine di anteprima, `dy` il sollevamento.
+ */
+interface Drag { group: string; activeId: string; ids: string[]; dy: number }
+const MEALS = '#meals'
+
+/** Millisecondi di pressione prima che la riga si stacchi: sotto, resta scroll e swipe. */
+const HOLD_MS = 450
+
+/**
+ * Riga alimento: tap per aprire la scheda, swipe a sinistra per eliminare,
+ * pressione prolungata per sollevarla e spostarla dentro al pasto.
+ */
+function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress, lifted, offsetY }: {
   e: DiaryEntry
   selectMode: boolean
   selected: boolean
   onToggle: () => void
   onOpen: () => void
   onDelete: () => void
-  dragHandlers?: { onPointerDown: (ev: React.PointerEvent) => void }
+  onPress?: (ev: React.PointerEvent<HTMLDivElement>) => void
+  lifted?: boolean
+  offsetY?: number
 }) {
   const [dx, setDx] = useState(0)
   const start = useRef<number | null>(null)
   const moved = useRef(false)
 
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderTop: '1px solid var(--line)' }}>
+    <div data-drag-id={e.log.id}
+      style={{ position: 'relative', overflow: lifted ? 'visible' : 'hidden', borderTop: '1px solid var(--line)', zIndex: lifted ? 5 : undefined }}>
       {/* Sfondo rosso che si scopre scorrendo */}
       <div style={{ position: 'absolute', inset: 0, background: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 16, color: '#fff', fontSize: 18 }}>🗑</div>
       <div
-        onTouchStart={(ev) => { if (selectMode) return; start.current = ev.touches[0].clientX; moved.current = false }}
+        onPointerDown={onPress}
+        onTouchStart={(ev) => { if (selectMode || lifted) return; start.current = ev.touches[0].clientX; moved.current = false }}
         onTouchMove={(ev) => {
-          if (start.current == null) return
+          if (start.current == null || lifted) return
           const d = ev.touches[0].clientX - start.current
           if (d < 0) { setDx(Math.max(d, -120)); moved.current = true }
         }}
@@ -74,8 +91,13 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHan
         }}
         onClick={() => { if (moved.current) { moved.current = false; return } selectMode ? onToggle() : onOpen() }}
         style={{
-          position: 'relative', background: 'var(--surface)', transform: `translateX(${dx}px)`,
-          transition: dx === 0 ? 'transform .2s' : 'none',
+          position: 'relative', background: 'var(--surface)',
+          // Sollevata: bordo oro e ombra. È il segnale che la riga si può spostare.
+          transform: lifted ? `translateY(${offsetY ?? 0}px) scale(1.02)` : `translateX(${dx}px)`,
+          transition: lifted ? 'none' : dx === 0 ? 'transform .2s' : 'none',
+          border: lifted ? '1px solid var(--gold)' : '1px solid transparent',
+          borderRadius: lifted ? 10 : 0,
+          boxShadow: lifted ? '0 8px 22px rgba(0,0,0,.55)' : 'none',
           display: 'flex', alignItems: 'center', gap: 8, padding: '7px 2px', cursor: 'pointer',
         }}>
         {selectMode && (
@@ -84,10 +106,6 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHan
             background: selected ? 'var(--gold)' : 'transparent', color: '#1a1400',
             display: 'grid', placeItems: 'center', fontSize: 12,
           }}>{selected ? '✓' : ''}</span>
-        )}
-        {dragHandlers && !selectMode && (
-          <span onPointerDown={dragHandlers.onPointerDown} onClick={(ev) => ev.stopPropagation()}
-            style={{ flex: 'none', color: 'var(--muted)', cursor: 'grab', padding: '0 4px', touchAction: 'none' }}>≡</span>
         )}
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
@@ -101,9 +119,9 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHan
         <span style={{ flex: 'none', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
           <span style={{ display: 'block', color: 'var(--gold)' }}>{e.macros.kcal}</span>
           <span style={{ fontSize: 11 }}>
-            <span style={{ color: 'var(--carb)' }}>C{e.macros.carbs}</span>{' '}
-            <span style={{ color: 'var(--prot)' }}>P{e.macros.protein}</span>{' '}
-            <span style={{ color: 'var(--fat)' }}>G{e.macros.fat}</span>
+            <span style={{ color: 'var(--carb)' }}>C: {e.macros.carbs}</span>,{' '}
+            <span style={{ color: 'var(--prot)' }}>P: {e.macros.protein}</span>,{' '}
+            <span style={{ color: 'var(--fat)' }}>G: {e.macros.fat}</span>
           </span>
         </span>
       </div>
@@ -139,7 +157,9 @@ export function DietScreen() {
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [clipboard, setClipboard] = useState<{ mealId: string; name: string } | null>(null)
-  const [dragging, setDragging] = useState<{ mealId: string; ids: string[] } | null>(null)
+  const [drag, setDrag] = useState<Drag | null>(null)
+  // Dopo un trascinamento il dito che si stacca genera un click: non deve aprire la scheda.
+  const skipClick = useRef(false)
 
   // I pasti di default si creano qui (scrittura), non dentro la query reattiva.
   useEffect(() => { ensureMeals(date) }, [date])
@@ -171,6 +191,96 @@ export function DietScreen() {
   useEffect(() => { if (!selectMode) setSelected(new Set()) }, [selectMode])
 
   if (showTargets) return <DietTargets onBack={() => setShowTargets(false)} suggested={suggested} />
+
+  /**
+   * Pressione prolungata → la riga si stacca e segue il dito.
+   * Se il dito si muove prima dello scatto la presa si annulla: lo scroll della
+   * pagina e lo swipe-elimina continuano a funzionare come prima.
+   */
+  function pressToDrag(group: string, id: string, onDrop: (ids: string[]) => void) {
+    return (ev: React.PointerEvent<HTMLElement>) => {
+      if (selectMode) return
+      // Una riga dentro una card muove la riga, non la card: il gesto si ferma qui.
+      ev.stopPropagation()
+      const item = (ev.target as HTMLElement).closest('[data-drag-id]') as HTMLElement | null
+      if (!item || item.dataset.dragId !== id) return
+      const pointerId = ev.pointerId
+      const startX = ev.clientX, startY = ev.clientY
+      let active = false
+      let timer: number | undefined
+      // Posizioni reali misurate dal DOM all'attivazione: niente altezze indovinate.
+      const st = { ids: [] as string[], from: 0, tops: [] as number[], heights: [] as number[] }
+
+      // Mentre trascini la pagina non deve scorrere: serve un listener non passivo.
+      const blockScroll = (te: TouchEvent) => { if (active) te.preventDefault() }
+
+      const stop = () => {
+        window.clearTimeout(timer)
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('pointercancel', up)
+        window.removeEventListener('touchmove', blockScroll)
+      }
+
+      const move = (mv: PointerEvent) => {
+        if (!active) {
+          // Movimento prima dello scatto: non è una pressione, è uno scroll o uno swipe.
+          if (Math.abs(mv.clientY - startY) > 8 || Math.abs(mv.clientX - startX) > 8) window.clearTimeout(timer)
+          return
+        }
+        const dy = mv.clientY - startY
+        const center = st.tops[st.from] + dy + st.heights[st.from] / 2
+        // Quante caselle hanno il centro sopra al dito: quella è la posizione d'arrivo.
+        let to = 0
+        for (let i = 0; i < st.tops.length; i++) if (st.tops[i] + st.heights[i] / 2 < center) to = i
+        to = Math.max(0, Math.min(st.tops.length - 1, to))
+        const ids = [...st.ids]
+        ids.splice(to, 0, ids.splice(st.from, 1)[0])
+        last = ids
+        flushSync(() => setDrag({ group, activeId: id, ids, dy: dy - (st.tops[to] - st.tops[st.from]) }))
+      }
+      let last: string[] = []
+
+      const up = () => {
+        stop()
+        if (active && last.length) {
+          skipClick.current = true
+          onDrop(last)
+        }
+        setDrag(null)
+      }
+
+      timer = window.setTimeout(() => {
+        const container = item.parentElement
+        if (!container) return
+        const els = ([...container.children] as HTMLElement[]).filter((c) => c.dataset && c.dataset.dragId)
+        if (els.length < 2) return
+        st.ids = els.map((x) => x.dataset.dragId!)
+        st.from = st.ids.indexOf(id)
+        const rects = els.map((x) => x.getBoundingClientRect())
+        st.tops = rects.map((r) => r.top)
+        st.heights = rects.map((r) => r.height)
+        last = st.ids
+        active = true
+        try { item.setPointerCapture(pointerId) } catch { /* mouse senza capture: pazienza */ }
+        navigator.vibrate?.(20)
+        flushSync(() => setDrag({ group, activeId: id, ids: st.ids, dy: 0 }))
+      }, HOLD_MS)
+
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+      window.addEventListener('touchmove', blockScroll, { passive: false })
+    }
+  }
+
+  /** Rimette una lista nell'ordine di anteprima mentre la stai trascinando. */
+  function inDragOrder<T>(group: string, items: T[], idOf: (x: T) => string): T[] {
+    if (drag?.group !== group) return items
+    const byId = new Map(items.map((x) => [idOf(x), x]))
+    const out = drag.ids.map((id) => byId.get(id)).filter((x): x is T => x !== undefined)
+    return out.length === items.length ? out : items
+  }
 
   async function removeEntries(ids: string[]) {
     const rows = await deleteFoodLogs(ids)
@@ -255,9 +365,19 @@ export function DietScreen() {
         </div>
       )}
 
-      {/* Pasti */}
-      {diary?.meals.map((m) => (
-        <div className="card" key={m.meal.id} style={{ padding: '11px 12px', marginBottom: 0 }}>
+      {/* Pasti — anche le card si prendono con una pressione prolungata. */}
+      {inDragOrder(MEALS, diary?.meals ?? [], (m) => m.meal.id).map((m) => {
+        const cardLifted = drag?.group === MEALS && drag.activeId === m.meal.id
+        return (
+        <div className="card" key={m.meal.id} data-drag-id={m.meal.id}
+          onPointerDown={pressToDrag(MEALS, m.meal.id, (ids) => reorderMeals(ids))}
+          style={{
+            padding: '11px 12px', marginBottom: 0,
+            transform: cardLifted ? `translateY(${drag!.dy}px) scale(1.02)` : undefined,
+            borderColor: cardLifted ? 'var(--gold)' : undefined,
+            boxShadow: cardLifted ? '0 10px 28px rgba(0,0,0,.6)' : undefined,
+            position: 'relative', zIndex: cardLifted ? 6 : undefined,
+          }}>
           <div className="row spread" style={{ alignItems: 'center' }}>
             <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
               {m.entries.length > 0 && <MacroDonut m={m.totals} size={34} />}
@@ -289,44 +409,21 @@ export function DietScreen() {
             </div>
           )}
 
-          {/* Righe */}
-          {m.entries.map((e) => (
-            <EntryRow key={e.log.id} e={e}
-              selectMode={selectMode}
-              selected={selected.has(e.log.id)}
-              onToggle={() => setSelected((s) => { const n = new Set(s); n.has(e.log.id) ? n.delete(e.log.id) : n.add(e.log.id); return n })}
-              onOpen={() => setEditEntry(e)}
-              onDelete={() => removeEntries([e.log.id])}
-              dragHandlers={m.entries.length > 1 ? {
-                onPointerDown: (ev) => {
-                  ev.preventDefault()
-                  setDragging({ mealId: m.meal.id, ids: m.entries.map((x) => x.log.id) })
-                  const ids = m.entries.map((x) => x.log.id)
-                  const from = ids.indexOf(e.log.id)
-                  const startY = ev.clientY
-                  const rowH = 46
-                  const move = (mv: PointerEvent) => {
-                    const delta = Math.round((mv.clientY - startY) / rowH)
-                    const to = Math.max(0, Math.min(ids.length - 1, from + delta))
-                    if (to !== from) {
-                      const next = [...ids]
-                      next.splice(to, 0, next.splice(from, 1)[0])
-                      setDragging({ mealId: m.meal.id, ids: next })
-                    }
-                  }
-                  const up = async () => {
-                    window.removeEventListener('pointermove', move)
-                    window.removeEventListener('pointerup', up)
-                    setDragging((d) => {
-                      if (d) reorderLogs(m.meal.id, d.ids)
-                      return null
-                    })
-                  }
-                  window.addEventListener('pointermove', move)
-                  window.addEventListener('pointerup', up)
-                },
-              } : undefined} />
-          ))}
+          {/* Righe — durante il trascinamento si disegnano nell'ordine di anteprima. */}
+          {inDragOrder(m.meal.id, m.entries, (e) => e.log.id).map((e) => {
+            const lifted = drag?.group === m.meal.id && drag.activeId === e.log.id
+            return (
+              <EntryRow key={e.log.id} e={e}
+                selectMode={selectMode}
+                selected={selected.has(e.log.id)}
+                lifted={lifted}
+                offsetY={lifted ? drag!.dy : 0}
+                onPress={pressToDrag(m.meal.id, e.log.id, (ids) => reorderLogs(m.meal.id, ids))}
+                onToggle={() => setSelected((s) => { const n = new Set(s); n.has(e.log.id) ? n.delete(e.log.id) : n.add(e.log.id); return n })}
+                onOpen={() => { if (skipClick.current) { skipClick.current = false; return } setEditEntry(e) }}
+                onDelete={() => removeEntries([e.log.id])} />
+            )
+          })}
 
           {m.entries.length > 0 && <MealRecap m={m} />}
 
@@ -334,14 +431,14 @@ export function DietScreen() {
             ＋ Aggiungi cibo
           </button>
         </div>
-      ))}
+        )
+      })}
 
       <button className="ghost" onClick={async () => {
         const n = prompt('Nome del nuovo pasto', `Pasto ${(diary?.meals.length ?? 0) + 1}`)?.trim()
         if (n) await addMeal(date, n)
       }}>＋ Aggiungi pasto</button>
 
-      {dragging && <div style={{ display: 'none' }} />}
 
       {picking && (
         <FoodPicker date={date} mealId={picking.id} mealName={picking.name} onClose={() => setPicking(null)} />
