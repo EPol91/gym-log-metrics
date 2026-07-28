@@ -2,6 +2,7 @@
 import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { normalizeName } from './catalog'
+import { todayLocal } from '../util/date'
 import { bestE1rm } from '../metrics/metrics'
 import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
@@ -10,7 +11,7 @@ import type {
 } from './schema'
 
 const U = LOCAL_USER_ID
-const today = (): string => new Date().toISOString().slice(0, 10)
+const today = (): string => todayLocal()
 
 // --- Sessioni ---
 export async function startSession(type: WorkoutType, readiness: ReadinessCheck | null): Promise<string> {

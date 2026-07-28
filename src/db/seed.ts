@@ -64,5 +64,48 @@ export async function ensureSeed(): Promise<User> {
   const newFoods = baseRows.filter((f) => !existingFoods.has(f.id))
   if (newFoods.length) await db.foods.bulkPut(newFoods)
 
+  await dedupeSeeded()
+
   return user
+}
+
+/**
+ * Ripara i duplicati creati dalle versioni precedenti (inizializzazione doppia).
+ * Non elimina nulla di tuo: tra due copie tiene quella che hai corretto, e le righe
+ * di diario che puntavano alla copia scartata vengono riagganciate a quella tenuta.
+ */
+async function dedupeSeeded(): Promise<void> {
+  // --- Tipi giornata: uno per chiave (on/off/reload/…) ---
+  const types = await db.dayTypes.where('userId').equals(LOCAL_USER_ID).toArray()
+  const byKey = new Map<string, typeof types>()
+  for (const t of types) {
+    if (!byKey.has(t.key)) byKey.set(t.key, [])
+    byKey.get(t.key)!.push(t)
+  }
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue
+    // Tengo quello con obiettivi impostati, altrimenti quello con id stabile.
+    const keep = group.find((t) => t.targets.kcal > 0) ?? group.find((t) => t.id.startsWith('daytype-')) ?? group[0]
+    await db.dayTypes.bulkDelete(group.filter((t) => t.id !== keep.id).map((t) => t.id))
+  }
+
+  // --- Alimenti base: uno per nome ---
+  const foods = await db.foods.where('userId').equals(LOCAL_USER_ID).filter((f) => f.source === 'base').toArray()
+  const byName = new Map<string, typeof foods>()
+  for (const f of foods) {
+    const k = f.name.toLowerCase()
+    if (!byName.has(k)) byName.set(k, [])
+    byName.get(k)!.push(f)
+  }
+  for (const group of byName.values()) {
+    if (group.length < 2) continue
+    const keep = group.find((f) => f.edited) ?? group.find((f) => f.id.startsWith('base-')) ?? group[0]
+    const drop = group.filter((f) => f.id !== keep.id)
+    for (const d of drop) {
+      // Le righe di diario che usavano la copia scartata puntano ora a quella tenuta.
+      const logs = await db.foodLogs.where('foodId').equals(d.id).toArray()
+      for (const l of logs) await db.foodLogs.update(l.id, { foodId: keep.id })
+    }
+    await db.foods.bulkDelete(drop.map((f) => f.id))
+  }
 }

@@ -192,10 +192,20 @@ export interface Food extends BaseRecord {
 
 export type MealKey = 'colazione' | 'pranzo' | 'cena' | 'spuntino'
 
-/** Una riga del diario: alimento + quantità in un pasto di una data. */
+/**
+ * Pasto di una giornata. È un record, non una voce fissa nel codice: puoi
+ * aggiungerne, rinominarli, eliminarli e riordinarli giorno per giorno.
+ */
+export interface Meal extends BaseRecord {
+  date: ISODate
+  name: string
+  order: number
+}
+
+/** Una riga del diario: alimento + quantità dentro un pasto. */
 export interface FoodLog extends BaseRecord {
   date: ISODate
-  meal: MealKey
+  mealId: ID
   foodId: ID
   grams: number
   order: number

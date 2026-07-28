@@ -6,13 +6,14 @@
 //               verità assoluta: l'utente legge e decide da sé.
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
+import { todayLocal } from '../util/date'
 import { bestE1rm, isWorkingSet, tonnage } from '../metrics/metrics'
 import type { SetEntry, WorkoutSession } from '../db/schema'
 import type { HomeData } from './dashboardScores'
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
-const todayISO = () => new Date().toISOString().slice(0, 10)
+const todayISO = () => todayLocal()
 const dayOf = (d: string) => new Date(d + 'T00:00:00').getTime()
 
 export interface CoachLine { fact: string; advice?: string }

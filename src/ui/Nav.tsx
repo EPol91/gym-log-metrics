@@ -1,12 +1,12 @@
-export type Tab = 'home' | 'exercises' | 'diet' | 'body' | 'history' | 'profile'
+// 5 voci: Corpo, Storico e Analisi stanno dentro "Progressi" come schede.
+export type Tab = 'home' | 'exercises' | 'diet' | 'progress' | 'profile'
 
 export function Nav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const items: { key: Tab; label: string; icon: string }[] = [
     { key: 'home', label: 'Home', icon: '⌂' },
     { key: 'exercises', label: 'Esercizi', icon: '❑' },
     { key: 'diet', label: 'Dieta', icon: '🍽' },
-    { key: 'body', label: 'Corpo', icon: '⚖' },
-    { key: 'history', label: 'Storico', icon: '≡' },
+    { key: 'progress', label: 'Progressi', icon: '📈' },
     { key: 'profile', label: 'Profilo', icon: '☰' },
   ]
   return (

@@ -5,6 +5,7 @@ import { bestE1rm, tonnage } from '../metrics/metrics'
 import { computePerformance } from './performance'
 import type { ScoreResult } from './types'
 import type { SetEntry, WorkoutSession } from '../db/schema'
+import { todayLocal } from '../util/date'
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
@@ -23,7 +24,7 @@ export async function computePerformanceFromDB(): Promise<ScoreResult> {
     return { value: null, reliability: 'insufficiente', note: 'Nessuna fase impostata (cut/bulk/recomp/mant.).' }
   }
 
-  const nowMs = ms(new Date().toISOString().slice(0, 10))
+  const nowMs = ms(todayLocal())
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .filter((s: WorkoutSession) => s.finishedAt)
     .sort((a, b) => a.date.localeCompare(b.date))

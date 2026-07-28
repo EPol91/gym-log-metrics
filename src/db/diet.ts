@@ -1,19 +1,16 @@
-// Dieta: libreria alimenti, diario giornaliero, tipi giornata con obiettivi.
+// Dieta: libreria alimenti, pasti, diario giornaliero, tipi giornata con obiettivi.
 // Regola di fondo: i valori di QUALSIASI alimento sono modificabili e la correzione
 // dell'utente (`edited`) non viene mai sovrascritta da una fonte esterna.
 import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
-import type { DayType, Food, FoodLog, Macros, MealKey, SavedMeal } from './schema'
+import { todayLocal } from '../util/date'
+import type { DayType, Food, FoodLog, Macros, Meal, SavedMeal } from './schema'
 
 const U = LOCAL_USER_ID
-const today = (): string => new Date().toISOString().slice(0, 10)
+const today = (): string => todayLocal()
 
-export const MEALS: { key: MealKey; label: string }[] = [
-  { key: 'colazione', label: 'Colazione' },
-  { key: 'pranzo', label: 'Pranzo' },
-  { key: 'cena', label: 'Cena' },
-  { key: 'spuntino', label: 'Spuntini' },
-]
+/** Pasti creati per una giornata nuova. Da qui in poi li gestisci tu. */
+const DEFAULT_MEALS = ['Colazione', 'Pranzo', 'Cena', 'Spuntini']
 
 // --- Alimenti ---------------------------------------------------------------
 
@@ -62,27 +59,133 @@ export async function deleteFood(id: string): Promise<void> {
   await db.foods.delete(id)
 }
 
+// --- Pasti ------------------------------------------------------------------
+
+export function mealsOfDate(date: string) {
+  return db.meals.where('date').equals(date).filter((m) => m.userId === U).toArray()
+}
+
+/** Pasti del giorno, creandoli alla prima apertura di una data mai usata. */
+export async function ensureMeals(date: string): Promise<Meal[]> {
+  const existing = (await mealsOfDate(date)).sort((a, b) => a.order - b.order)
+  if (existing.length) return existing
+  const ts = nowISO()
+  const rows: Meal[] = DEFAULT_MEALS.map((name, i) => ({
+    id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, name, order: i,
+  }))
+  await db.meals.bulkAdd(rows)
+  return rows
+}
+
+export async function addMeal(date: string, name = 'Nuovo pasto'): Promise<string> {
+  const ts = nowISO()
+  const count = (await mealsOfDate(date)).length
+  const id = newId()
+  await db.meals.add({ id, userId: U, createdAt: ts, updatedAt: ts, date, name, order: count })
+  return id
+}
+
+export async function renameMeal(id: string, name: string): Promise<void> {
+  await db.meals.update(id, { name: name.trim() || 'Pasto', updatedAt: nowISO() })
+}
+
+/** Elimina il pasto e le sue righe. Restituisce cosa serve per annullare. */
+export async function deleteMeal(id: string): Promise<{ meal: Meal; logs: FoodLog[] } | null> {
+  const meal = await db.meals.get(id)
+  if (!meal) return null
+  const logs = await db.foodLogs.where('mealId').equals(id).toArray()
+  await db.foodLogs.bulkDelete(logs.map((l) => l.id))
+  await db.meals.delete(id)
+  return { meal, logs }
+}
+
+export async function moveMeal(id: string, dir: -1 | 1): Promise<void> {
+  const meal = await db.meals.get(id)
+  if (!meal) return
+  const all = (await mealsOfDate(meal.date)).sort((a, b) => a.order - b.order)
+  const i = all.findIndex((m) => m.id === id)
+  const j = i + dir
+  if (i < 0 || j < 0 || j >= all.length) return
+  await db.meals.update(all[i].id, { order: j, updatedAt: nowISO() })
+  await db.meals.update(all[j].id, { order: i, updatedAt: nowISO() })
+}
+
+/** Duplica un pasto con tutto il contenuto (stesso giorno o su un'altra data). */
+export async function duplicateMeal(id: string, toDate?: string): Promise<string | null> {
+  const meal = await db.meals.get(id)
+  if (!meal) return null
+  const date = toDate ?? meal.date
+  const logs = (await db.foodLogs.where('mealId').equals(id).toArray()).sort((a, b) => a.order - b.order)
+  const newMealId = await addMeal(date, toDate ? meal.name : `${meal.name} (copia)`)
+  const ts = nowISO()
+  await db.foodLogs.bulkAdd(logs.map((l, i) => ({
+    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    date, mealId: newMealId, foodId: l.foodId, grams: l.grams, order: i,
+  })))
+  return newMealId
+}
+
+/** Incolla il contenuto di un pasto dentro un altro (in coda). */
+export async function pasteIntoMeal(sourceMealId: string, targetMealId: string): Promise<string[]> {
+  const target = await db.meals.get(targetMealId)
+  if (!target) return []
+  const logs = (await db.foodLogs.where('mealId').equals(sourceMealId).toArray()).sort((a, b) => a.order - b.order)
+  const base = await db.foodLogs.where('mealId').equals(targetMealId).count()
+  const ts = nowISO()
+  const rows: FoodLog[] = logs.map((l, i) => ({
+    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    date: target.date, mealId: targetMealId, foodId: l.foodId, grams: l.grams, order: base + i,
+  }))
+  await db.foodLogs.bulkAdd(rows)
+  return rows.map((r) => r.id)
+}
+
 // --- Diario -----------------------------------------------------------------
 
 export function logsOfDate(date: string) {
   return db.foodLogs.where('date').equals(date).filter((l) => l.userId === U).toArray()
 }
 
-export async function addFoodLog(date: string, meal: MealKey, foodId: string, grams: number): Promise<string> {
+export async function addFoodLog(date: string, mealId: string, foodId: string, grams: number): Promise<string> {
   const ts = nowISO()
-  const order = await db.foodLogs.where('date').equals(date).filter((l) => l.userId === U && l.meal === meal).count()
-  const log: FoodLog = { id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, meal, foodId, grams, order }
+  const order = await db.foodLogs.where('mealId').equals(mealId).count()
+  const log: FoodLog = { id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, mealId, foodId, grams, order }
   await db.foodLogs.add(log)
   await db.foods.update(foodId, { lastUsedAt: ts }) // alimenta i "Recenti"
   return log.id
 }
 
-export async function updateFoodLog(id: string, patch: { grams?: number; meal?: MealKey }): Promise<void> {
+export async function updateFoodLog(id: string, patch: { grams?: number; mealId?: string }): Promise<void> {
   await db.foodLogs.update(id, { ...patch, updatedAt: nowISO() })
 }
 
-export async function deleteFoodLog(id: string): Promise<void> {
-  await db.foodLogs.delete(id)
+/** Elimina righe e restituisce i record originali, per poter annullare. */
+export async function deleteFoodLogs(ids: string[]): Promise<FoodLog[]> {
+  const rows = (await db.foodLogs.bulkGet(ids)).filter(Boolean) as FoodLog[]
+  await db.foodLogs.bulkDelete(ids)
+  return rows
+}
+
+export async function restoreFoodLogs(rows: FoodLog[]): Promise<void> {
+  if (rows.length) await db.foodLogs.bulkAdd(rows)
+}
+
+/** Sposta righe in un altro pasto (in coda). */
+export async function moveLogsToMeal(ids: string[], mealId: string): Promise<void> {
+  const target = await db.meals.get(mealId)
+  if (!target) return
+  let order = await db.foodLogs.where('mealId').equals(mealId).count()
+  for (const id of ids) {
+    await db.foodLogs.update(id, { mealId, date: target.date, order: order++, updatedAt: nowISO() })
+  }
+}
+
+/** Riordina le righe dentro un pasto secondo la sequenza di id passata. */
+export async function reorderLogs(mealId: string, orderedIds: string[]): Promise<void> {
+  const ts = nowISO()
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.foodLogs.update(orderedIds[i], { order: i, mealId, updatedAt: ts })
+  }
 }
 
 /** Macro di una quantità: i valori sono per 100 g. */
@@ -101,12 +204,8 @@ export function macrosFor(per100: Macros, grams: number): Macros {
 }
 
 export interface DiaryEntry { log: FoodLog; food: Food; macros: Macros }
-export interface DiaryDay {
-  entries: DiaryEntry[]
-  byMeal: Record<MealKey, DiaryEntry[]>
-  totals: Macros
-  mealTotals: Record<MealKey, Macros>
-}
+export interface DiaryMeal { meal: Meal; entries: DiaryEntry[]; totals: Macros }
+export interface DiaryDay { meals: DiaryMeal[]; totals: Macros }
 
 const ZERO = (): Macros => ({ kcal: 0, protein: 0, carbs: 0, fat: 0 })
 function add(a: Macros, b: Macros): Macros {
@@ -118,26 +217,37 @@ function add(a: Macros, b: Macros): Macros {
   }
 }
 
-/** Il diario di un giorno, già sommato per pasto e in totale. */
+/**
+ * Il diario di un giorno: pasti in ordine, con totali per pasto e del giorno.
+ * SOLO LETTURA: la creazione dei pasti di default sta in `ensureMeals`, chiamata
+ * dalla schermata. Scrivere qui dentro romperebbe la query reattiva di Dexie.
+ */
 export async function computeDiary(date: string): Promise<DiaryDay> {
+  const meals = await mealsOfDate(date)
   const logs = (await logsOfDate(date)).sort((a, b) => a.order - b.order)
   const foods = new Map((await listFoods()).map((f) => [f.id, f]))
-  const byMeal = { colazione: [], pranzo: [], cena: [], spuntino: [] } as Record<MealKey, DiaryEntry[]>
-  const mealTotals = { colazione: ZERO(), pranzo: ZERO(), cena: ZERO(), spuntino: ZERO() } as Record<MealKey, Macros>
-  const entries: DiaryEntry[] = []
-  let totals = ZERO()
 
-  for (const log of logs) {
-    const food = foods.get(log.foodId)
-    if (!food) continue // alimento eliminato: la riga sparisce
-    const macros = macrosFor(food.per100, log.grams)
-    const e = { log, food, macros }
-    entries.push(e)
-    byMeal[log.meal].push(e)
-    mealTotals[log.meal] = add(mealTotals[log.meal], macros)
-    totals = add(totals, macros)
-  }
-  return { entries, byMeal, totals, mealTotals }
+  let totals = ZERO()
+  const out: DiaryMeal[] = meals.sort((a, b) => a.order - b.order).map((meal) => {
+    const entries: DiaryEntry[] = []
+    let mt = ZERO()
+    for (const log of logs.filter((l) => l.mealId === meal.id)) {
+      const food = foods.get(log.foodId)
+      if (!food) continue // alimento eliminato: la riga sparisce
+      const macros = macrosFor(food.per100, log.grams)
+      entries.push({ log, food, macros })
+      mt = add(mt, macros)
+    }
+    totals = add(totals, mt)
+    return { meal, entries, totals: mt }
+  })
+  return { meals: out, totals }
+}
+
+/** Giorni con almeno una riga registrata, per i pallini del calendario. */
+export async function loggedDates(from: string, to: string): Promise<Set<string>> {
+  const rows = await db.foodLogs.where('date').between(from, to, true, true).filter((l) => l.userId === U).toArray()
+  return new Set(rows.map((r) => r.date))
 }
 
 // --- Tipi giornata e obiettivi ----------------------------------------------
@@ -168,26 +278,33 @@ export async function deleteDayType(id: string): Promise<void> {
   await db.dayTypes.delete(id)
 }
 
-// --- Pasti salvati ----------------------------------------------------------
+// --- Pasti salvati (modelli riutilizzabili) ---------------------------------
 
 export function listSavedMeals() {
   return db.savedMeals.where('userId').equals(U).toArray()
 }
 
-export async function addSavedMeal(name: string, items: SavedMeal['items']): Promise<void> {
+export async function saveMealAsTemplate(mealId: string, name: string): Promise<void> {
+  const logs = (await db.foodLogs.where('mealId').equals(mealId).toArray()).sort((a, b) => a.order - b.order)
   const ts = nowISO()
-  await db.savedMeals.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: name.trim(), items })
+  await db.savedMeals.add({
+    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    name: name.trim(), items: logs.map((l) => ({ foodId: l.foodId, grams: l.grams })),
+  })
 }
 
 export async function deleteSavedMeal(id: string): Promise<void> {
   await db.savedMeals.delete(id)
 }
 
-/** Aggiunge tutti gli alimenti di un pasto salvato in un colpo solo. */
-export async function applySavedMeal(mealId: string, date: string, meal: MealKey): Promise<void> {
-  const m = await db.savedMeals.get(mealId)
-  if (!m) return
-  for (const it of m.items) await addFoodLog(date, meal, it.foodId, it.grams)
+/** Aggiunge tutti gli alimenti di un modello dentro un pasto. */
+export async function applySavedMeal(savedId: string, date: string, mealId: string): Promise<string[]> {
+  const m = await db.savedMeals.get(savedId)
+  if (!m) return []
+  const ids: string[] = []
+  for (const it of m.items) ids.push(await addFoodLog(date, mealId, it.foodId, it.grams))
+  return ids
 }
 
+export type { SavedMeal }
 export { today as todayDiet }

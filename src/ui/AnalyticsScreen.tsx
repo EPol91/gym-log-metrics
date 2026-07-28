@@ -6,7 +6,8 @@ import { canUse } from '../entitlements/entitlements'
 import { BarChart } from './BarChart'
 import { LineChart } from './LineChart'
 
-export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
+// onBack assente quando è una scheda dentro Progressi: lì si esce con la barra.
+export function AnalyticsScreen({ onBack }: { onBack?: () => void }) {
   const data = useLiveQuery(() => computeAnalytics(8), [])
   const [cardioPeriod, setCardioPeriod] = useState(7)
   const cardioAvg = useLiveQuery(() => computeCardioAverages(cardioPeriod), [cardioPeriod])
@@ -16,7 +17,7 @@ export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
   if (!canUse('advanced-charts')) {
     return (
       <div className="col">
-        <button className="ghost small" onClick={onBack}>← Home</button>
+        {onBack && <button className="ghost small" onClick={onBack}>← Home</button>}
         <h1>Analytics</h1>
         <div className="card"><p className="muted small">Funzione Premium.</p></div>
       </div>
@@ -25,7 +26,7 @@ export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="col">
-      <button className="ghost small" onClick={onBack}>← Home</button>
+      {onBack && <button className="ghost small" onClick={onBack}>← Home</button>}
       <h1>Analytics</h1>
       <p className="muted small">Ultime 8 settimane</p>
 

@@ -9,6 +9,10 @@
   --gold-dim: #b8952f;
   --gold-bg: #20200f;
   --good: #4caf50;
+  /* Colori macro — gli stessi già usati in EP Coaching. */
+  --carb: #FFC63D;
+  --prot: #2ecc71;
+  --fat: #e74c3c;
   color-scheme: dark;
 }
 
@@ -161,9 +165,8 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 .tab {
   flex: 1; min-width: 0; background: transparent; border: none; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  color: var(--muted); padding: 8px 0; font-size: 10px;
+  color: var(--muted); padding: 8px 0; font-size: 11px;
 }
-/* Con 6 voci l'etichetta non deve mai andare a capo o uscire. */
 .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active { color: var(--gold); }
 .tab-icon { font-size: 20px; line-height: 1; }

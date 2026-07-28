@@ -4,6 +4,7 @@ import { LOCAL_USER_ID } from '../db/seed'
 import { tonnage } from '../metrics/metrics'
 import { computeSessionWorkoutScore } from './sessionScore'
 import type { SetEntry, WorkoutSession } from '../db/schema'
+import { todayLocal } from '../util/date'
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
@@ -32,7 +33,7 @@ function mmdd(t: number): string {
 export async function computeAnalytics(weeks = 8): Promise<AnalyticsData> {
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .sort((a, b) => a.date.localeCompare(b.date))
-  const nowMs = ms(new Date().toISOString().slice(0, 10))
+  const nowMs = ms(todayLocal())
 
   // Tonnellaggio per seduta.
   const perSession: { t: number; ton: number; finished: boolean; id: string }[] = []

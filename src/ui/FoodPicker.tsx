@@ -1,131 +1,18 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listFoodsRanked, addFood, addFoodLog, updateFood, deleteFood, macrosFor, findFoodByBarcode } from '../db/diet'
+import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode } from '../db/diet'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
 import { BarcodeScanner, isScanSupported } from './BarcodeScanner'
-import { parseNum } from '../util/validate'
-import type { Food, Macros, MealKey } from '../db/schema'
+import { FoodSheet, FoodForm } from './FoodSheet'
+import type { Food } from '../db/schema'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-/** Form valori per 100 g: usato sia per creare sia per correggere un alimento. */
-function FoodForm({ initial, title, onSave, onCancel, onDelete }: {
-  initial?: Partial<Food>
-  title: string
-  onSave: (v: { name: string; brand?: string; per100: Macros; servingG?: number }) => void
-  onCancel: () => void
-  onDelete?: () => void
-}) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [brand, setBrand] = useState(initial?.brand ?? '')
-  const [kcal, setKcal] = useState(initial?.per100 ? String(initial.per100.kcal) : '')
-  const [p, setP] = useState(initial?.per100 ? String(initial.per100.protein) : '')
-  const [c, setC] = useState(initial?.per100 ? String(initial.per100.carbs) : '')
-  const [f, setF] = useState(initial?.per100 ? String(initial.per100.fat) : '')
-  const [serving, setServing] = useState(initial?.servingG ? String(initial.servingG) : '')
-
-  const n = (v: string, max: number) => parseNum(v, { min: 0, max })
-  const pn = n(p, 100), cn = n(c, 100), fn = n(f, 100)
-  const kn = n(kcal, 1000)
-  // Se le calorie non le scrivi, le calcolo dai macro.
-  const kcalAuto = pn != null && cn != null && fn != null ? Math.round(pn * 4 + cn * 4 + fn * 9) : null
-  const ok = name.trim() !== '' && pn != null && cn != null && fn != null
-
-  return (
-    <div>
-      <div className="muted small" style={{ marginBottom: 8 }}>{title} · valori per 100 g</div>
-      <label className="fl">Nome</label>
-      <input value={name} onChange={(e) => setName(e.target.value)} autoFocus={!initial?.name} />
-      <label className="fl" style={{ marginTop: 8 }}>Marca (facoltativo)</label>
-      <input value={brand} onChange={(e) => setBrand(e.target.value)} />
-
-      <div className="row" style={{ gap: 6, marginTop: 8 }}>
-        <div style={{ flex: 1 }}><label className="fl">Proteine</label><input inputMode="decimal" value={p} onChange={(e) => setP(e.target.value)} style={{ textAlign: 'center' }} /></div>
-        <div style={{ flex: 1 }}><label className="fl">Carbo</label><input inputMode="decimal" value={c} onChange={(e) => setC(e.target.value)} style={{ textAlign: 'center' }} /></div>
-        <div style={{ flex: 1 }}><label className="fl">Grassi</label><input inputMode="decimal" value={f} onChange={(e) => setF(e.target.value)} style={{ textAlign: 'center' }} /></div>
-      </div>
-      <div className="row" style={{ gap: 6, marginTop: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label className="fl">kcal {kcalAuto != null && `(calcolate ${kcalAuto})`}</label>
-          <input inputMode="numeric" value={kcal} placeholder={kcalAuto != null ? String(kcalAuto) : ''} onChange={(e) => setKcal(e.target.value)} style={{ textAlign: 'center' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="fl">Porzione (g)</label>
-          <input inputMode="numeric" value={serving} onChange={(e) => setServing(e.target.value)} style={{ textAlign: 'center' }} />
-        </div>
-      </div>
-
-      <div className="row" style={{ gap: 6, marginTop: 12 }}>
-        {onDelete && <button className="ghost" onClick={onDelete}>🗑</button>}
-        <button className="ghost" style={{ flex: 1 }} onClick={onCancel}>Annulla</button>
-        <button className="primary" style={{ flex: 2 }} disabled={!ok}
-          onClick={() => ok && onSave({
-            name: name.trim(),
-            brand: brand.trim() || undefined,
-            per100: { kcal: kn ?? kcalAuto ?? 0, protein: pn!, carbs: cn!, fat: fn! },
-            servingG: parseNum(serving, { min: 1, max: 2000 }) ?? undefined,
-          })}>
-          Salva
-        </button>
-      </div>
-    </div>
-  )
-}
-
-/** Quanti grammi ne metto: con anteprima dei macro. */
-function AmountStep({ food, onAdd, onEdit, onBack }: {
-  food: Food; onAdd: (grams: number) => void; onEdit: () => void; onBack: () => void
-}) {
-  const [g, setG] = useState(String(food.servingG ?? 100))
-  const grams = parseNum(g, { min: 1, max: 5000 }) ?? 0
-  const m = macrosFor(food.per100, grams)
-  return (
-    <div>
-      <div className="row spread" style={{ alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15 }}>{food.name}</div>
-          <div className="muted small">
-            {food.brand ? `${food.brand} · ` : ''}per 100 g: {food.per100.kcal} kcal · P{food.per100.protein} C{food.per100.carbs} G{food.per100.fat}
-          </div>
-        </div>
-        <button className="chip" style={{ flex: 'none' }} onClick={onEdit}>✎ Correggi</button>
-      </div>
-
-      <label className="fl" style={{ marginTop: 12 }}>Quantità (g)</label>
-      <div className="row" style={{ gap: 6 }}>
-        <button onClick={() => setG(String(Math.max(1, grams - 10)))}>−10</button>
-        <input inputMode="decimal" value={g} autoFocus onChange={(e) => setG(e.target.value)} style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 700 }} />
-        <button onClick={() => setG(String(grams + 10))}>+10</button>
-      </div>
-      {food.servingG && (
-        <button className="chip" style={{ marginTop: 8 }} onClick={() => setG(String(food.servingG))}>
-          {food.servingLabel ?? 'porzione'} ({food.servingG} g)
-        </button>
-      )}
-
-      <div className="card" style={{ marginTop: 12, background: 'var(--bg)' }}>
-        <div className="row spread"><span className="muted small">Calorie</span><strong style={{ color: 'var(--gold)' }}>{m.kcal}</strong></div>
-        <div className="row spread" style={{ marginTop: 4 }}>
-          <span className="muted small">Proteine</span><span>{m.protein} g</span>
-        </div>
-        <div className="row spread" style={{ marginTop: 2 }}><span className="muted small">Carboidrati</span><span>{m.carbs} g</span></div>
-        <div className="row spread" style={{ marginTop: 2 }}><span className="muted small">Grassi</span><span>{m.fat} g</span></div>
-      </div>
-
-      <div className="row" style={{ gap: 6, marginTop: 12 }}>
-        <button className="ghost" style={{ flex: 1 }} onClick={onBack}>Indietro</button>
-        <button className="primary" style={{ flex: 2 }} disabled={grams <= 0} onClick={() => onAdd(grams)}>Aggiungi</button>
-      </div>
-    </div>
-  )
-}
-
-export function FoodPicker({ date, meal, onClose }: { date: string; meal: MealKey; onClose: () => void }) {
+export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; mealId: string; mealName: string; onClose: () => void }) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online'>('mine')
   const [chosen, setChosen] = useState<Food | null>(null)
-  const [editing, setEditing] = useState<Food | null>(null)
   const [creating, setCreating] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [online, setOnline] = useState<OffFood[]>([])
@@ -175,7 +62,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: MealKe
 
   async function add(grams: number) {
     if (!chosen) return
-    await addFoodLog(date, meal, chosen.id, grams)
+    await addFoodLog(date, mealId, chosen.id, grams)
     onClose()
   }
 
@@ -191,19 +78,8 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: MealKe
           setCreating(false); if (f) setChosen(f)
         }} />
     )
-  } else if (editing) {
-    body = (
-      <FoodForm title={`Correggi "${editing.name}"`} initial={editing}
-        onCancel={() => setEditing(null)}
-        onDelete={async () => { if (confirm(`Eliminare ${editing.name}?`)) { await deleteFood(editing.id); setEditing(null); setChosen(null) } }}
-        onSave={async (v) => {
-          await updateFood(editing.id, v)
-          const f = (await listFoodsRanked()).find((x) => x.id === editing.id)
-          setEditing(null); if (f) setChosen(f)
-        }} />
-    )
   } else if (chosen) {
-    body = <AmountStep food={chosen} onAdd={add} onEdit={() => setEditing(chosen)} onBack={() => setChosen(null)} />
+    body = <FoodSheet food={chosen} mode="add" onConfirm={add} onBack={() => setChosen(null)} />
   } else {
     body = (
       <>
@@ -275,7 +151,7 @@ export function FoodPicker({ date, meal, onClose }: { date: string; meal: MealKe
           padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
         }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 10 }}>
-          <strong>Aggiungi a {meal}</strong>
+          <strong>Aggiungi a {mealName}</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
         {body}

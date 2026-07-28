@@ -6,7 +6,7 @@ import Dexie, { type Table } from 'dexie'
 import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
-  DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType,
+  DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -28,6 +28,7 @@ export class GymLogDB extends Dexie {
   foodLogs!: Table<FoodLog, string>
   savedMeals!: Table<SavedMeal, string>
   dayTypes!: Table<DayType, string>
+  meals!: Table<Meal, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -66,6 +67,34 @@ export class GymLogDB extends Dexie {
       foodLogs: 'id, userId, date, foodId, [date+meal]',
       savedMeals: 'id, userId, name',
       dayTypes: 'id, userId, key, order',
+    })
+    // v7: i pasti diventano record modificabili (aggiungi/rinomina/elimina/riordina).
+    // Le righe di diario esistenti vengono agganciate ai pasti creati qui: nessun dato perso.
+    this.version(7).stores({
+      meals: 'id, userId, date, order',
+      foodLogs: 'id, userId, date, foodId, mealId, [date+mealId]',
+    }).upgrade(async (tx) => {
+      const NAMES: Record<string, string> = {
+        colazione: 'Colazione', pranzo: 'Pranzo', cena: 'Cena', spuntino: 'Spuntini',
+      }
+      const ORDER: Record<string, number> = { colazione: 0, pranzo: 1, cena: 2, spuntino: 3 }
+      const logs = await tx.table('foodLogs').toArray()
+      const created = new Map<string, string>() // "data|chiaveVecchia" → id nuovo pasto
+      const ts = new Date().toISOString()
+      for (const l of logs) {
+        const oldKey = (l as { meal?: string }).meal ?? 'colazione'
+        const cacheKey = `${l.date}|${oldKey}`
+        let mealId = created.get(cacheKey)
+        if (!mealId) {
+          mealId = crypto.randomUUID()
+          created.set(cacheKey, mealId)
+          await tx.table('meals').add({
+            id: mealId, userId: l.userId, createdAt: ts, updatedAt: ts,
+            date: l.date, name: NAMES[oldKey] ?? 'Pasto', order: ORDER[oldKey] ?? 0,
+          })
+        }
+        await tx.table('foodLogs').update(l.id, { mealId })
+      }
     })
   }
 }

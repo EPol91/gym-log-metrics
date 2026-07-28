@@ -1,6 +1,7 @@
 // Calcolo degli Score per la Home, a partire dai grezzi nel DB (derivati, non salvati).
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
+import { todayLocal, shiftDate } from '../util/date'
 import { tonnage, volume } from '../metrics/metrics'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeReadiness, type LoadContext } from './readiness'
@@ -12,7 +13,7 @@ import type { SetEntry, WorkoutSession } from '../db/schema'
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
-const todayISO = () => new Date().toISOString().slice(0, 10)
+const todayISO = () => todayLocal()
 
 async function setsOfSession(sessionId: string): Promise<SetEntry[]> {
   const entries = await db.exerciseEntries.where({ sessionId }).toArray()
@@ -156,7 +157,7 @@ export async function computeHome(): Promise<HomeData> {
   const weekStartMs = nowMs - dow * DAY
   const done = sessions.filter((s) => new Date(s.date + 'T00:00:00').getTime() >= weekStartMs).length
   const activeDays = [...new Set(sessions.map((s) => s.date))]
-  const dayBefore = (d: string) => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10) }
+  const dayBefore = (d: string) => shiftDate(d, -1)
   let streak = 0
   let cursor = todayISO()
   if (!activeDays.includes(cursor)) cursor = dayBefore(cursor)
