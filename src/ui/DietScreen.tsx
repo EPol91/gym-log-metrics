@@ -76,7 +76,7 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHan
         style={{
           position: 'relative', background: 'var(--surface)', transform: `translateX(${dx}px)`,
           transition: dx === 0 ? 'transform .2s' : 'none',
-          display: 'flex', alignItems: 'center', gap: 8, padding: '9px 2px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8, padding: '7px 2px', cursor: 'pointer',
         }}>
         {selectMode && (
           <span style={{
@@ -120,7 +120,7 @@ function MealRecap({ m }: { m: DiaryMeal }) {
     </div>
   )
   return (
-    <div className="row" style={{ padding: '9px 0 4px', borderTop: '1px solid var(--line)', marginTop: 6 }}>
+    <div className="row" style={{ padding: '7px 0 2px', borderTop: '1px solid var(--line)', marginTop: 5 }}>
       {cell(m.totals.carbs, 'Carbo', 'var(--carb)')}
       {cell(m.totals.protein, 'Proteine', 'var(--prot)')}
       {cell(m.totals.fat, 'Grassi', 'var(--fat)')}
@@ -187,35 +187,14 @@ export function DietScreen() {
   }
 
   return (
-    <div className="col" style={{ gap: 12 }}>
+    <div className="col" style={{ gap: 8 }}>
       {/* Giorno */}
       <div className="row spread" style={{ alignItems: 'center' }}>
-        <button className="ghost" style={{ padding: '8px 12px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
+        <button className="ghost" style={{ padding: '6px 12px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
         <button className="chip" style={{ fontSize: 15, padding: '7px 16px' }} onClick={() => setShowCal(true)}>
           📅 {labelFor(date)}
         </button>
-        <button className="ghost" style={{ padding: '8px 12px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
-      </div>
-
-      {/* Riepilogo macro */}
-      <div className="card">
-        <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-          {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai soli colori. */}
-          <MacroDonut m={totals} size={66} />
-          <div className="row" style={{ gap: 10, flex: 1, minWidth: 0 }}>
-            <MacroTrack label="Carboidrati" value={totals.carbs} target={t?.carbs ?? 0} color="var(--carb)" />
-            <MacroTrack label="Proteine" value={totals.protein} target={t?.protein ?? 0} color="var(--prot)" />
-            <MacroTrack label="Grassi" value={totals.fat} target={t?.fat ?? 0} color="var(--fat)" />
-          </div>
-        </div>
-        <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', marginTop: 12, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999, transition: 'width .3s' }} />
-        </div>
-        <div style={{ textAlign: 'center', fontSize: 13, marginTop: 6 }}>
-          <strong style={{ color: 'var(--gold)' }}>{totals.kcal}</strong>
-          <span className="muted"> / {t?.kcal ?? '—'} kcal{t ? ` · restano ${Math.max(0, t.kcal - totals.kcal)}` : ''}</span>
-        </div>
-        {!t && <p className="muted small" style={{ marginTop: 8, textAlign: 'center' }}>Imposta gli obiettivi con ⚙ qui sotto.</p>}
+        <button className="ghost" style={{ padding: '6px 12px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
       </div>
 
       {/* Tipo giornata + obiettivi */}
@@ -227,6 +206,27 @@ export function DietScreen() {
           </button>
         ))}
         <button className="chip" onClick={() => setShowTargets(true)}>⚙ Obiettivi</button>
+      </div>
+
+      {/* Riepilogo macro */}
+      <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
+        <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+          {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai soli colori. */}
+          <MacroDonut m={totals} size={66} />
+          <div className="row" style={{ gap: 10, flex: 1, minWidth: 0 }}>
+            <MacroTrack label="Carboidrati" value={totals.carbs} target={t?.carbs ?? 0} color="var(--carb)" />
+            <MacroTrack label="Proteine" value={totals.protein} target={t?.protein ?? 0} color="var(--prot)" />
+            <MacroTrack label="Grassi" value={totals.fat} target={t?.fat ?? 0} color="var(--fat)" />
+          </div>
+        </div>
+        <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', marginTop: 9, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999, transition: 'width .3s' }} />
+        </div>
+        <div style={{ textAlign: 'center', fontSize: 13, marginTop: 4 }}>
+          <strong style={{ color: 'var(--gold)' }}>{totals.kcal}</strong>
+          <span className="muted"> / {t?.kcal ?? '—'} kcal{t ? ` · restano ${Math.max(0, t.kcal - totals.kcal)}` : ''}</span>
+        </div>
+        {!t && <p className="muted small" style={{ marginTop: 8, textAlign: 'center' }}>Imposta gli obiettivi con ⚙ qui sopra.</p>}
       </div>
 
       {/* Barra selezione multipla */}
@@ -255,7 +255,7 @@ export function DietScreen() {
 
       {/* Pasti */}
       {diary?.meals.map((m) => (
-        <div className="card" key={m.meal.id}>
+        <div className="card" key={m.meal.id} style={{ padding: '11px 12px', marginBottom: 0 }}>
           <div className="row spread" style={{ alignItems: 'center' }}>
             <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
               {m.entries.length > 0 && <MacroDonut m={m.totals} size={34} />}
@@ -263,7 +263,7 @@ export function DietScreen() {
             </span>
             <div className="row" style={{ gap: 6, alignItems: 'center' }}>
               <span className="muted small">{m.totals.kcal} kcal</span>
-              <button className="ghost small" onClick={() => setMenuMeal(menuMeal === m.meal.id ? null : m.meal.id)}>⋮</button>
+              <button className="ghost small" style={{ padding: '4px 10px', flex: 'none' }} onClick={() => setMenuMeal(menuMeal === m.meal.id ? null : m.meal.id)}>⋮</button>
             </div>
           </div>
 
@@ -328,7 +328,7 @@ export function DietScreen() {
 
           {m.entries.length > 0 && <MealRecap m={m} />}
 
-          <button className="chip" style={{ marginTop: 9 }} onClick={() => setPicking({ id: m.meal.id, name: m.meal.name })}>
+          <button className="chip" style={{ marginTop: 8 }} onClick={() => setPicking({ id: m.meal.id, name: m.meal.name })}>
             ＋ Aggiungi cibo
           </button>
         </div>
