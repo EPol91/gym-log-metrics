@@ -11,7 +11,7 @@ import { computeTargets } from '../scores/nutritionTargets'
 import { pushUndo } from '../util/undo'
 import { DietTargets } from './DietTargets'
 import { FoodPicker } from './FoodPicker'
-import { FoodSheet } from './FoodSheet'
+import { FoodSheet, MacroDonut } from './FoodSheet'
 import { DayCalendar } from './DayCalendar'
 import { UndoToast } from './UndoToast'
 import { shiftDate } from '../util/date'
@@ -199,10 +199,14 @@ export function DietScreen() {
 
       {/* Riepilogo macro */}
       <div className="card">
-        <div className="row" style={{ gap: 10 }}>
-          <MacroTrack label="Carboidrati" value={totals.carbs} target={t?.carbs ?? 0} color="var(--carb)" />
-          <MacroTrack label="Proteine" value={totals.protein} target={t?.protein ?? 0} color="var(--prot)" />
-          <MacroTrack label="Grassi" value={totals.fat} target={t?.fat ?? 0} color="var(--fat)" />
+        <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+          {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai soli colori. */}
+          <MacroDonut m={totals} size={66} />
+          <div className="row" style={{ gap: 10, flex: 1, minWidth: 0 }}>
+            <MacroTrack label="Carboidrati" value={totals.carbs} target={t?.carbs ?? 0} color="var(--carb)" />
+            <MacroTrack label="Proteine" value={totals.protein} target={t?.protein ?? 0} color="var(--prot)" />
+            <MacroTrack label="Grassi" value={totals.fat} target={t?.fat ?? 0} color="var(--fat)" />
+          </div>
         </div>
         <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', marginTop: 12, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999, transition: 'width .3s' }} />
@@ -253,7 +257,10 @@ export function DietScreen() {
       {diary?.meals.map((m) => (
         <div className="card" key={m.meal.id}>
           <div className="row spread" style={{ alignItems: 'center' }}>
-            <strong style={{ fontSize: 15 }}>{m.meal.name}</strong>
+            <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
+              {m.entries.length > 0 && <MacroDonut m={m.totals} size={26} />}
+              <strong style={{ fontSize: 15 }}>{m.meal.name}</strong>
+            </span>
             <div className="row" style={{ gap: 6, alignItems: 'center' }}>
               <span className="muted small">{m.totals.kcal} kcal</span>
               <button className="ghost small" onClick={() => setMenuMeal(menuMeal === m.meal.id ? null : m.meal.id)}>⋮</button>
