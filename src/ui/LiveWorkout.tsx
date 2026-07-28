@@ -469,16 +469,26 @@ function GroupPicker({ fromEntryId, entries, nameOf, onClose }: {
 
 const GROUP_LABEL = ['A', 'B', 'C']
 
-/** Un esercizio dentro un superset: campi compatti, si compila e basta. */
-function GroupExercise({ entry, name, values, onChange, sets, prev }: {
+/**
+ * Un esercizio dentro un superset. Le serie già fatte stanno nella STESSA tabella
+ * dell'esercizio singolo: si toccano per correggere kg/reps/RIR/recupero o eliminarle.
+ */
+function GroupExercise({ entry, name, values, onChange, prev }: {
   entry: ExerciseEntry; name: string
   values: { w: string; r: string; rir: number | null }
   onChange: (v: { w: string; r: string; rir: number | null }) => void
-  sets: SetEntry[]
   prev: SetEntry | null
 }) {
   const label = GROUP_LABEL[entry.groupOrder ?? 0] ?? '?'
-  const done = sets.filter((s) => !s.isWarmup)
+  // Reattivo: correggendo o eliminando una serie la tabella si aggiorna da sola.
+  const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
+  const [prevSets, setPrevSets] = useState<SetEntry[]>([])
+  const [histBest, setHistBest] = useState(0)
+
+  useEffect(() => { exerciseHistory(entry.exerciseId, entry.sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, entry.sessionId])
+  useEffect(() => { historicalBestE1rm(entry.exerciseId, entry.sessionId).then(setHistBest) }, [entry.exerciseId, entry.sessionId])
+
+  let wIdx = 0
   return (
     <div className="card" style={{ margin: 0, padding: '10px 12px' }}>
       <div className="row spread" style={{ alignItems: 'baseline' }}>
@@ -490,9 +500,17 @@ function GroupExercise({ entry, name, values, onChange, sets, prev }: {
         </span>
       </div>
 
-      {done.length > 0 && (
-        <div className="muted" style={{ fontSize: 11, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-          {done.map((s, i) => `${i + 1}) ${s.weight}×${s.reps}`).join('  ·  ')}
+      {sets.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <div style={{ ...SROW, borderTop: 'none', color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+            <span>Set</span><span>Prec.</span><span>Kg</span><span>Reps</span><span />
+          </div>
+          {sets.map((s) => {
+            if (!s.isWarmup) wIdx++
+            const idx = s.isWarmup ? 0 : wIdx
+            const p = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${prevSets[idx - 1].weight}×${prevSets[idx - 1].reps}` : '—')
+            return <SetRowT key={s.id} s={s} index={idx} prev={p} isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest} />
+          })}
         </div>
       )}
 
@@ -537,36 +555,42 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
 }) {
   const sorted = [...entries].sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
   const [vals, setVals] = useState<Record<string, { w: string; r: string; rir: number | null }>>({})
-  const [setsByEntry, setSetsByEntry] = useState<Record<string, SetEntry[]>>({})
   const [prevByEntry, setPrevByEntry] = useState<Record<string, SetEntry | null>>({})
-  const [nonce, setNonce] = useState(0)
+  const ids = sorted.map((e) => e.id).join(',')
+  // Serie di tutti gli esercizi del gruppo, reattive: giri e precompilazione restano allineati.
+  const setsByEntry = useLiveQuery(async () => {
+    const m: Record<string, SetEntry[]> = {}
+    for (const e of sorted) m[e.id] = await setsOf(e.id)
+    return m
+  }, [ids]) ?? {}
 
-  // Serie già fatte e riferimento della volta scorsa, per ogni esercizio del gruppo.
+  // Riferimento della volta scorsa, per ogni esercizio del gruppo.
   useEffect(() => {
     let alive = true
-    Promise.all(sorted.map(async (e) => ({
-      id: e.id,
-      sets: await setsOf(e.id),
-      prev: await lastWorkingSet(e.exerciseId, e.sessionId),
-    }))).then((rows) => {
-      if (!alive) return
-      const s: Record<string, SetEntry[]> = {}
-      const p: Record<string, SetEntry | null> = {}
-      for (const r of rows) { s[r.id] = r.sets; p[r.id] = r.prev }
-      setSetsByEntry(s); setPrevByEntry(p)
-      // Precompilo con l'ultima serie fatta oggi, altrimenti con quella della volta scorsa.
-      setVals((old) => {
-        const next = { ...old }
-        for (const r of rows) {
-          if (next[r.id]) continue
-          const src = r.sets.length ? r.sets[r.sets.length - 1] : r.prev
-          next[r.id] = { w: src ? String(src.weight) : '', r: src ? String(src.reps) : '', rir: null }
-        }
-        return next
+    Promise.all(sorted.map(async (e) => ({ id: e.id, prev: await lastWorkingSet(e.exerciseId, e.sessionId) })))
+      .then((rows) => {
+        if (!alive) return
+        const p: Record<string, SetEntry | null> = {}
+        for (const r of rows) p[r.id] = r.prev
+        setPrevByEntry(p)
       })
-    })
     return () => { alive = false }
-  }, [entries.map((e) => e.id).join(','), nonce]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ids]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Precompilo con l'ultima serie fatta oggi, altrimenti con quella della volta scorsa.
+  useEffect(() => {
+    setVals((old) => {
+      const next = { ...old }
+      for (const e of sorted) {
+        if (next[e.id]) continue
+        const done = setsByEntry[e.id] ?? []
+        const src = done.length ? done[done.length - 1] : prevByEntry[e.id]
+        if (!src) continue
+        next[e.id] = { w: String(src.weight), r: String(src.reps), rir: null }
+      }
+      return next
+    })
+  }, [ids, setsByEntry, prevByEntry]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rounds = Math.min(...sorted.map((e) => (setsByEntry[e.id] ?? []).filter((s) => !s.isWarmup).length))
   const ready = sorted.every((e) => {
@@ -587,7 +611,6 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
       for (const e of sorted) next[e.id] = { ...next[e.id], rir: null }
       return next
     })
-    setNonce((n) => n + 1)
     onLogged(restSec, sorted[0].exerciseId)
   }
 
@@ -614,7 +637,6 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
         <GroupExercise key={e.id} entry={e} name={nameOf(e.exerciseId)}
           values={vals[e.id] ?? { w: '', r: '', rir: null }}
           onChange={(v) => setVals((old) => ({ ...old, [e.id]: v }))}
-          sets={setsByEntry[e.id] ?? []}
           prev={prevByEntry[e.id] ?? null} />
       ))}
 
