@@ -169,4 +169,4 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 }
 .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active { color: var(--gold); }
-.tab-icon { font-size: 20px; line-height: 1; }
+.tab-icon { line-height: 0; display: block; }

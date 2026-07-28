@@ -93,13 +93,18 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, dragHan
             {e.food.name}
           </span>
           <span className="muted" style={{ fontSize: 11 }}>
-            {e.food.brand ? `${e.food.brand} · ` : ''}{e.log.grams} g ·{' '}
+            {e.food.brand ? `${e.food.brand} · ` : ''}{e.log.grams} g
+          </span>
+        </span>
+        {/* Calorie e macro incolonnati a destra: i numeri stanno insieme, non sparsi. */}
+        <span style={{ flex: 'none', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ display: 'block', color: 'var(--gold)' }}>{e.macros.kcal}</span>
+          <span style={{ fontSize: 11 }}>
             <span style={{ color: 'var(--carb)' }}>C{e.macros.carbs}</span>{' '}
             <span style={{ color: 'var(--prot)' }}>P{e.macros.protein}</span>{' '}
             <span style={{ color: 'var(--fat)' }}>G{e.macros.fat}</span>
           </span>
         </span>
-        <span style={{ flex: 'none', color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{e.macros.kcal}</span>
       </div>
     </div>
   )
