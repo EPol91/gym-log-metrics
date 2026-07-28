@@ -430,9 +430,9 @@ function GroupPicker({ fromEntryId, entries, nameOf, onClose }: {
 
   return createPortal(
     <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()}
-        style={{ width: 'min(520px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px 16px 0 0', padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))' }}>
+        style={{ width: 'min(520px, 100%)', maxHeight: '92%', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px 16px 0 0', padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))' }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 8 }}>
           <strong>Abbina a {from ? nameOf(from.exerciseId) : ''}</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>

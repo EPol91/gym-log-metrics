@@ -229,7 +229,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
 
       {/* Modale Cardio (portal a schermo intero) */}
       {open && phase !== 'running' && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'var(--bg)', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 120, background: 'var(--bg)', overflowY: 'auto' }}>
           <div className="col" style={{ maxWidth: 520, margin: '0 auto', padding: '14px 16px calc(20px + env(safe-area-inset-bottom))', gap: 9 }}>
             <div className="row spread">
               <h2 style={{ margin: 0 }}>🏃 Cardio</h2>

@@ -54,7 +54,7 @@ export function DayCalendar({ date, onPick, onClose }: {
 
   return createPortal(
     <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ width: 'min(420px, 100%)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: 14 }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 10 }}>

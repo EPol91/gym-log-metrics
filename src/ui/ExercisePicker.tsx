@@ -30,10 +30,10 @@ export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => vo
   // intrappolerebbero un position:fixed annidato).
   return createPortal(
     <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{
-          width: 'min(520px, 100%)', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          width: 'min(520px, 100%)', maxHeight: '92%', display: 'flex', flexDirection: 'column',
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px 16px 0 0',
           padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
         }}>
