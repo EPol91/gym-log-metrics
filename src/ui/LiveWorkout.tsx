@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
-  deleteExerciseEntry, moveExerciseEntry, allExercises,
+  deleteExerciseEntry, moveExerciseEntry, allExercises, groupEntries, ungroupEntries,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
 } from '../db/repo'
 import { e1rm, bestE1rm } from '../metrics/metrics'
@@ -286,10 +287,11 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
   )
 }
 
-function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext }: {
+function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
   entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number
   pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
   onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
+  onGroup?: () => void
 }) {
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [w, setW] = useState('')
@@ -360,6 +362,7 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className={showHist ? 'chip on' : 'chip'} onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
         <button className={showSettings ? 'chip on' : 'chip'} onClick={() => setShowSettings((v) => !v)}>⚙</button>
+        {onGroup && <button className="chip" onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
         <button className="chip" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
         <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
         <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
@@ -412,6 +415,221 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
   )
 }
 
+type Block =
+  | { kind: 'single'; entry: ExerciseEntry }
+  | { kind: 'group'; id: string; entries: ExerciseEntry[] }
+
+/** Scelta degli esercizi da abbinare: 1 o 2 in più, per superset o triset. */
+function GroupPicker({ fromEntryId, entries, nameOf, onClose }: {
+  sessionId: string; fromEntryId: string; entries: ExerciseEntry[]
+  nameOf: (id: string) => string; onClose: () => void
+}) {
+  const [sel, setSel] = useState<string[]>([])
+  const others = entries.filter((e) => e.id !== fromEntryId && !e.groupId)
+  const from = entries.find((e) => e.id === fromEntryId)
+
+  return createPortal(
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ width: 'min(520px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px 16px 0 0', padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="row spread" style={{ alignItems: 'center', marginBottom: 8 }}>
+          <strong>Abbina a {from ? nameOf(from.exerciseId) : ''}</strong>
+          <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
+        </div>
+        <p className="muted small" style={{ marginTop: 0 }}>
+          Scegline uno (superset) o due (triset): si eseguono di fila, il recupero parte a fine giro.
+        </p>
+
+        {others.length === 0 && <p className="muted small">Nessun altro esercizio libero in questa seduta.</p>}
+        {others.map((e) => {
+          const on = sel.includes(e.id)
+          return (
+            <div key={e.id} onClick={() => setSel((s) => on ? s.filter((x) => x !== e.id) : s.length >= 2 ? s : [...s, e.id])}
+              className="row spread"
+              style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}>
+              <span>{nameOf(e.exerciseId)}</span>
+              <span style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid var(--line)', background: on ? 'var(--gold)' : 'transparent', color: '#1a1400', display: 'grid', placeItems: 'center', fontSize: 13 }}>{on ? '✓' : ''}</span>
+            </div>
+          )
+        })}
+
+        <div className="row" style={{ gap: 6, marginTop: 12 }}>
+          <button className="ghost" style={{ flex: 1 }} onClick={onClose}>Annulla</button>
+          <button className="primary" style={{ flex: 2 }} disabled={sel.length === 0}
+            onClick={async () => { await groupEntries([fromEntryId, ...sel]); onClose() }}>
+            {sel.length === 2 ? 'Crea triset' : 'Crea superset'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+const GROUP_LABEL = ['A', 'B', 'C']
+
+/** Un esercizio dentro un superset: campi compatti, si compila e basta. */
+function GroupExercise({ entry, name, values, onChange, sets, prev }: {
+  entry: ExerciseEntry; name: string
+  values: { w: string; r: string; rir: number | null }
+  onChange: (v: { w: string; r: string; rir: number | null }) => void
+  sets: SetEntry[]
+  prev: SetEntry | null
+}) {
+  const label = GROUP_LABEL[entry.groupOrder ?? 0] ?? '?'
+  const done = sets.filter((s) => !s.isWarmup)
+  return (
+    <div className="card" style={{ margin: 0, padding: '10px 12px' }}>
+      <div className="row spread" style={{ alignItems: 'baseline' }}>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: 'var(--gold)', fontWeight: 700, marginRight: 6 }}>{label}</span>{name}
+        </span>
+        <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>
+          {prev ? `ultima ${prev.weight}×${prev.reps}` : 'prima volta'}
+        </span>
+      </div>
+
+      {done.length > 0 && (
+        <div className="muted" style={{ fontSize: 11, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+          {done.map((s, i) => `${i + 1}) ${s.weight}×${s.reps}`).join('  ·  ')}
+        </div>
+      )}
+
+      <div className="row" style={{ gap: 6, marginTop: 8 }}>
+        <div style={{ flex: 1 }}>
+          <label className="fl">kg</label>
+          <input inputMode="decimal" value={values.w} onChange={(e) => onChange({ ...values, w: e.target.value })}
+            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="fl">reps</label>
+          <input inputMode="numeric" value={values.r} onChange={(e) => onChange({ ...values, r: e.target.value })}
+            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="fl">RIR</label>
+          <input inputMode="numeric" value={values.rir == null ? '' : String(values.rir)} placeholder="0"
+            onChange={(e) => {
+              const n = parseNum(e.target.value, { min: 0, max: 10, int: true })
+              onChange({ ...values, rir: e.target.value.trim() === '' ? null : (n ?? values.rir) })
+            }}
+            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Blocco superset/triset: compili tutti gli esercizi e chiudi il giro con un tocco.
+ * Il recupero parte solo a fine giro — è il senso stesso del superset.
+ */
+function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, onPrev, onNext, onUngroup }: {
+  entries: ExerciseEntry[]
+  nameOf: (id: string) => string
+  restSec: number
+  pos: number; total: number
+  restNode: React.ReactNode
+  onLogged: (sec: number, exerciseId: string) => void
+  onPrev?: () => void; onNext?: () => void
+  onUngroup: () => void
+}) {
+  const sorted = [...entries].sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
+  const [vals, setVals] = useState<Record<string, { w: string; r: string; rir: number | null }>>({})
+  const [setsByEntry, setSetsByEntry] = useState<Record<string, SetEntry[]>>({})
+  const [prevByEntry, setPrevByEntry] = useState<Record<string, SetEntry | null>>({})
+  const [nonce, setNonce] = useState(0)
+
+  // Serie già fatte e riferimento della volta scorsa, per ogni esercizio del gruppo.
+  useEffect(() => {
+    let alive = true
+    Promise.all(sorted.map(async (e) => ({
+      id: e.id,
+      sets: await setsOf(e.id),
+      prev: await lastWorkingSet(e.exerciseId, e.sessionId),
+    }))).then((rows) => {
+      if (!alive) return
+      const s: Record<string, SetEntry[]> = {}
+      const p: Record<string, SetEntry | null> = {}
+      for (const r of rows) { s[r.id] = r.sets; p[r.id] = r.prev }
+      setSetsByEntry(s); setPrevByEntry(p)
+      // Precompilo con l'ultima serie fatta oggi, altrimenti con quella della volta scorsa.
+      setVals((old) => {
+        const next = { ...old }
+        for (const r of rows) {
+          if (next[r.id]) continue
+          const src = r.sets.length ? r.sets[r.sets.length - 1] : r.prev
+          next[r.id] = { w: src ? String(src.weight) : '', r: src ? String(src.reps) : '', rir: null }
+        }
+        return next
+      })
+    })
+    return () => { alive = false }
+  }, [entries.map((e) => e.id).join(','), nonce]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rounds = Math.min(...sorted.map((e) => (setsByEntry[e.id] ?? []).filter((s) => !s.isWarmup).length))
+  const ready = sorted.every((e) => {
+    const v = vals[e.id]
+    return v && parseNum(v.w, { min: 0 }) != null && parseNum(v.r, { min: 1, int: true }) != null
+  })
+
+  /** Chiude il giro: una serie per ogni esercizio del gruppo, poi parte il recupero. */
+  async function closeRound() {
+    for (const e of sorted) {
+      const v = vals[e.id]
+      const wn = parseNum(v.w, { min: 0 }), rn = parseNum(v.r, { min: 1, int: true })
+      if (wn == null || rn == null) continue
+      await addSet(e.id, { weight: wn, reps: rn, rir: v.rir ?? 0, restSec })
+    }
+    setVals((old) => {
+      const next = { ...old }
+      for (const e of sorted) next[e.id] = { ...next[e.id], rir: null }
+      return next
+    })
+    setNonce((n) => n + 1)
+    onLogged(restSec, sorted[0].exerciseId)
+  }
+
+  const kind = sorted.length === 3 ? 'TRISET' : 'SUPERSET'
+
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onPrev ? 'visible' : 'hidden' }} onClick={onPrev} aria-label="Blocco precedente">‹</button>
+        <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
+          <div className="muted small" style={{ letterSpacing: '.12em' }}>{kind} {pos} / {total}</div>
+          <h2 style={{ margin: '2px 0', fontSize: 18 }}>
+            {sorted.map((e) => nameOf(e.exerciseId)).join(' + ')}
+          </h2>
+          <div className="row" style={{ gap: 6, justifyContent: 'center', marginTop: 4 }}>
+            <span className="chip on" style={{ padding: '3px 10px' }}>Giro {rounds + 1}</span>
+            <button className="chip" style={{ padding: '3px 10px' }} onClick={onUngroup}>⛓ Sciogli</button>
+          </div>
+        </div>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Blocco successivo">›</button>
+      </div>
+
+      {sorted.map((e) => (
+        <GroupExercise key={e.id} entry={e} name={nameOf(e.exerciseId)}
+          values={vals[e.id] ?? { w: '', r: '', rir: null }}
+          onChange={(v) => setVals((old) => ({ ...old, [e.id]: v }))}
+          sets={setsByEntry[e.id] ?? []}
+          prev={prevByEntry[e.id] ?? null} />
+      ))}
+
+      {restNode}
+
+      <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 15 }} disabled={!ready} onClick={closeRound}>
+        ✓ Chiudi giro {rounds + 1}
+      </button>
+      <p className="muted small" style={{ textAlign: 'center', margin: 0 }}>
+        Nessun recupero tra gli esercizi: parte a fine giro.
+      </p>
+    </div>
+  )
+}
+
 export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string; onFinish: () => void; onHome?: () => void }) {
   const entries = useLiveQuery(() => entriesOf(sessionId), [sessionId]) ?? []
   const exercises = useLiveQuery(allExercises, []) ?? []
@@ -429,7 +647,20 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [cur, setCur] = useState(() => { try { return Number(sessionStorage.getItem(curKey)) || 0 } catch { return 0 } })
   useEffect(() => { try { sessionStorage.setItem(curKey, String(cur)) } catch { /* ignore */ } }, [cur, curKey])
   const [cardioOpen, setCardioOpen] = useState(false)
-  const current = entries.length ? Math.min(cur, entries.length - 1) : 0
+
+  const [grouping, setGrouping] = useState<string | null>(null)
+
+  // La vista scorre per BLOCCHI: un esercizio singolo o un superset/triset intero.
+  const blocks: Block[] = []
+  const seen = new Set<string>()
+  for (const e of entries) {
+    if (!e.groupId) { blocks.push({ kind: 'single', entry: e }); continue }
+    if (seen.has(e.groupId)) continue
+    seen.add(e.groupId)
+    blocks.push({ kind: 'group', id: e.groupId, entries: entries.filter((x) => x.groupId === e.groupId) })
+  }
+  const current = blocks.length ? Math.min(cur, blocks.length - 1) : 0
+  const block = blocks[current]
 
   const cardioFlush = useRef<(() => Promise<void>) | null>(null)
   async function finishAll() { await cardioFlush.current?.(); onFinish() } // salva il cardio in sospeso, poi chiudi
@@ -445,6 +676,13 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const restPresets = rest != null
     ? Array.from(new Set([rest, 60, 90, 120, 150, 180])).sort((a, b) => a - b)
     : REST_PRESETS
+
+  // Un solo timer, mostrato dentro il blocco corrente (singolo o superset).
+  const restNode = rest != null ? (
+    <RestTimer key={restNonce} defaultSec={rest} presets={restPresets} store={restStore}
+      onPick={(s) => { if (restExId) setExerciseRest(restExId, s); if (restSetId) updateSet(restSetId, { restSec: s }) }}
+      onClose={() => { restStore.current = null; setRest(null) }} />
+  ) : null
 
   return (
     <div className="col">
@@ -466,26 +704,34 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
         </div>
       </div>
 
-      {entries.length > 0 && (
-        <>
-          <EntryCard key={entries[current].id} entry={entries[current]} name={nameOf(entries[current].exerciseId)}
-            settings={exercises.find((x) => x.id === entries[current].exerciseId)?.settings ?? ''}
-            sessionId={sessionId} restSec={restOf(entries[current].exerciseId)}
-            pos={current + 1} total={entries.length}
-            restNode={rest != null ? (
-              <RestTimer key={restNonce} defaultSec={rest} presets={restPresets} store={restStore}
-                onPick={(s) => { if (restExId) setExerciseRest(restExId, s); if (restSetId) updateSet(restSetId, { restSec: s }) }}
-                onClose={() => { restStore.current = null; setRest(null) }} />
-            ) : null}
-            isFirst={current === 0} isLast={current === entries.length - 1} onLogged={startRest}
-            onPrev={current > 0 ? () => setCur(current - 1) : undefined}
-            onNext={current < entries.length - 1 ? () => setCur(current + 1) : undefined} />
-        </>
-      )}
+      {blocks.length > 0 && (block.kind === 'group' ? (
+        <GroupCard entries={block.entries} nameOf={nameOf}
+          restSec={restOf(block.entries[0].exerciseId)}
+          pos={current + 1} total={blocks.length}
+          restNode={restNode}
+          onLogged={startRest}
+          onPrev={current > 0 ? () => setCur(current - 1) : undefined}
+          onNext={current < blocks.length - 1 ? () => setCur(current + 1) : undefined}
+          onUngroup={() => ungroupEntries(block.id)} />
+      ) : (
+        <EntryCard key={block.entry.id} entry={block.entry} name={nameOf(block.entry.exerciseId)}
+          settings={exercises.find((x) => x.id === block.entry.exerciseId)?.settings ?? ''}
+          sessionId={sessionId} restSec={restOf(block.entry.exerciseId)}
+          pos={current + 1} total={blocks.length}
+          restNode={restNode}
+          isFirst={current === 0} isLast={current === blocks.length - 1} onLogged={startRest}
+          onGroup={entries.length > 1 ? () => setGrouping(block.entry.id) : undefined}
+          onPrev={current > 0 ? () => setCur(current - 1) : undefined}
+          onNext={current < blocks.length - 1 ? () => setCur(current + 1) : undefined} />
+      ))}
 
       <button onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       {picking && (
-        <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setCur(entries.length); setPicking(false) }} onClose={() => setPicking(false)} />
+        <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setCur(blocks.length); setPicking(false) }} onClose={() => setPicking(false)} />
+      )}
+      {grouping && (
+        <GroupPicker sessionId={sessionId} fromEntryId={grouping} entries={entries} nameOf={nameOf}
+          onClose={() => setGrouping(null)} />
       )}
 
       <CardioBlock sessionId={sessionId} flushRef={cardioFlush} open={cardioOpen} onOpenChange={setCardioOpen} />

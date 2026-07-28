@@ -116,6 +116,13 @@ export interface ExerciseEntry extends BaseRecord {
   sessionId: ID
   exerciseId: ID
   order: number
+  /**
+   * Superset / triset: gli esercizi con lo stesso `groupId` si eseguono di fila,
+   * senza recupero in mezzo. Il recupero parte a fine giro. Assente = esercizio singolo.
+   */
+  groupId?: ID
+  /** Posizione dentro il gruppo: 0 = A, 1 = B, 2 = C. */
+  groupOrder?: number
 }
 
 /** Una serie. RPE opzionale (fallback su e1RM). PR è derivato → NON salvato qui, calcolato. */

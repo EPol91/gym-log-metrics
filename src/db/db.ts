@@ -96,6 +96,12 @@ export class GymLogDB extends Dexie {
         await tx.table('foodLogs').update(l.id, { mealId })
       }
     })
+    // v8: superset/triset — indice sul gruppo per raccogliere gli esercizi abbinati.
+    // Nessuna trasformazione dei dati: chi non ha groupId resta un esercizio singolo.
+    this.version(8).stores({
+      exerciseEntries: 'id, userId, sessionId, exerciseId, groupId',
+    })
+
   }
 }
 

@@ -403,6 +403,49 @@ export async function listGoalHistory(): Promise<{ date: string; target: number 
   return rows.map((r) => ({ date: r.date, target: r.target }))
 }
 
+// --- Superset / triset ---
+
+/**
+ * Unisce 2-3 esercizi in un gruppo: si eseguono di fila e il recupero parte a fine giro.
+ * Gli esercizi vengono resi contigui nell'ordine della seduta.
+ */
+export async function groupEntries(entryIds: string[]): Promise<string | null> {
+  if (entryIds.length < 2 || entryIds.length > 3) return null
+  const rows = (await db.exerciseEntries.bulkGet(entryIds)).filter(Boolean) as ExerciseEntry[]
+  if (rows.length !== entryIds.length) return null
+
+  const groupId = newId()
+  const ts = nowISO()
+  const all = (await db.exerciseEntries.where({ sessionId: rows[0].sessionId }).toArray())
+    .sort((a, b) => a.order - b.order)
+  const anchor = Math.min(...rows.map((r) => r.order))
+  const others = all.filter((e) => !entryIds.includes(e.id))
+
+  // Il gruppo prende il posto del primo dei suoi esercizi; gli altri scorrono.
+  const before = others.filter((e) => e.order < anchor).map((e) => e.id)
+  const after = others.filter((e) => e.order > anchor).map((e) => e.id)
+  const seq = [...before, ...entryIds, ...after]
+
+  for (let i = 0; i < seq.length; i++) {
+    const id = seq[i]
+    const k = entryIds.indexOf(id)
+    await db.exerciseEntries.update(id, {
+      order: i, updatedAt: ts,
+      ...(k >= 0 ? { groupId, groupOrder: k } : {}),
+    })
+  }
+  return groupId
+}
+
+/** Scioglie il gruppo: gli esercizi restano al loro posto ma tornano indipendenti. */
+export async function ungroupEntries(groupId: string): Promise<void> {
+  const rows = await db.exerciseEntries.where('groupId').equals(groupId).toArray()
+  const ts = nowISO()
+  for (const r of rows) {
+    await db.exerciseEntries.update(r.id, { groupId: undefined, groupOrder: undefined, updatedAt: ts })
+  }
+}
+
 // --- Esercizi nella seduta ---
 export async function addExerciseEntry(sessionId: string, exerciseId: string): Promise<string> {
   const ts = nowISO()
