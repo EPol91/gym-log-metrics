@@ -1,9 +1,10 @@
-export type Tab = 'home' | 'exercises' | 'body' | 'history' | 'profile'
+export type Tab = 'home' | 'exercises' | 'diet' | 'body' | 'history' | 'profile'
 
 export function Nav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const items: { key: Tab; label: string; icon: string }[] = [
     { key: 'home', label: 'Home', icon: '⌂' },
     { key: 'exercises', label: 'Esercizi', icon: '❑' },
+    { key: 'diet', label: 'Dieta', icon: '🍽' },
     { key: 'body', label: 'Corpo', icon: '⚖' },
     { key: 'history', label: 'Storico', icon: '≡' },
     { key: 'profile', label: 'Profilo', icon: '☰' },

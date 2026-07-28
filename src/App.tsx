@@ -7,6 +7,7 @@ import { HomeScreen } from './ui/HomeScreen'
 import { HistoryScreen } from './ui/HistoryScreen'
 import { ExercisesScreen } from './ui/ExercisesScreen'
 import { BodyScreen } from './ui/BodyScreen'
+import { DietScreen } from './ui/DietScreen'
 import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
@@ -123,6 +124,7 @@ export default function App() {
         {nav.tab === 'exercises' && (nav.exercise
           ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
           : <ExercisesScreen onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
+        {nav.tab === 'diet' && <DietScreen />}
         {nav.tab === 'body' && <BodyScreen />}
         {nav.tab === 'history' && <HistoryScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
         {nav.tab === 'profile' && (

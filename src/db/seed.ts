@@ -39,29 +39,30 @@ export async function ensureSeed(): Promise<User> {
     await db.exercises.bulkAdd(rows)
   }
 
-  // Tipi giornata: i tre di partenza. Gli obiettivi restano a 0 finché non si
-  // apre la Dieta, dove vengono proposti dai dati dell'utente (o scritti a mano).
-  const dayTypeCount = await db.dayTypes.where('userId').equals(LOCAL_USER_ID).count()
-  if (dayTypeCount === 0) {
-    const ts = nowISO()
-    const zero = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
-    await db.dayTypes.bulkAdd([
-      { id: newId(), userId: LOCAL_USER_ID, createdAt: ts, updatedAt: ts, key: 'on', name: 'ON', targets: { ...zero }, order: 0, builtin: true },
-      { id: newId(), userId: LOCAL_USER_ID, createdAt: ts, updatedAt: ts, key: 'off', name: 'OFF', targets: { ...zero }, order: 1, builtin: true },
-      { id: newId(), userId: LOCAL_USER_ID, createdAt: ts, updatedAt: ts, key: 'reload', name: 'Reload', targets: { ...zero }, order: 2, builtin: true },
-    ])
-  }
+  // Tipi giornata e alimenti base usano ID DETERMINISTICI: due avvii ravvicinati
+  // (o due schede aperte) non possono duplicarli, e chi c'è già non viene toccato
+  // — le correzioni dell'utente restano intatte.
+  const ts2 = nowISO()
+  const zero = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  const builtinTypes = [
+    { key: 'on', name: 'ON' }, { key: 'off', name: 'OFF' }, { key: 'reload', name: 'Reload' },
+  ].map((t, i) => ({
+    id: `daytype-${t.key}`, userId: LOCAL_USER_ID, createdAt: ts2, updatedAt: ts2,
+    key: t.key, name: t.name, targets: { ...zero }, order: i, builtin: true,
+  }))
+  const existingTypes = new Set((await db.dayTypes.bulkGet(builtinTypes.map((t) => t.id))).filter(Boolean).map((t) => t!.id))
+  const newTypes = builtinTypes.filter((t) => !existingTypes.has(t.id))
+  if (newTypes.length) await db.dayTypes.bulkPut(newTypes)
 
-  // Alimenti base: inclusi una volta sola, poi sono modificabili come gli altri.
-  const foodCount = await db.foods.where('userId').equals(LOCAL_USER_ID).count()
-  if (foodCount === 0) {
-    const ts = nowISO()
-    await db.foods.bulkAdd(BASE_FOODS.map((f) => ({
-      id: newId(), userId: LOCAL_USER_ID, createdAt: ts, updatedAt: ts,
-      name: f.name, per100: f.per100, source: 'base' as const,
-      ...(f.servingG ? { servingG: f.servingG, servingLabel: f.servingLabel } : {}),
-    })))
-  }
+  const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-')
+  const baseRows = BASE_FOODS.map((f) => ({
+    id: `base-${slug(f.name)}`, userId: LOCAL_USER_ID, createdAt: ts2, updatedAt: ts2,
+    name: f.name, per100: f.per100, source: 'base' as const,
+    ...(f.servingG ? { servingG: f.servingG, servingLabel: f.servingLabel } : {}),
+  }))
+  const existingFoods = new Set((await db.foods.bulkGet(baseRows.map((f) => f.id))).filter(Boolean).map((f) => f!.id))
+  const newFoods = baseRows.filter((f) => !existingFoods.has(f.id))
+  if (newFoods.length) await db.foods.bulkPut(newFoods)
 
   return user
 }
