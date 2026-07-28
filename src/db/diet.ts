@@ -4,6 +4,7 @@
 import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { todayLocal } from '../util/date'
+import { snapshotAndDelete, type Trash } from './trash'
 import type { DayType, Food, FoodLog, Macros, Meal, SavedMeal } from './schema'
 
 const U = LOCAL_USER_ID
@@ -54,9 +55,12 @@ export async function updateFood(id: string, patch: Partial<Pick<Food, 'name' | 
   await db.foods.update(id, { ...patch, edited: true, updatedAt: nowISO() })
 }
 
-export async function deleteFood(id: string): Promise<void> {
+export async function deleteFood(id: string): Promise<Trash> {
+  const food = await db.foods.get(id)
+  const logs = await db.foodLogs.where('foodId').equals(id).toArray()
   await db.foodLogs.where('foodId').equals(id).delete()
   await db.foods.delete(id)
+  return [{ table: 'foods', rows: food ? [food] : [] }, { table: 'foodLogs', rows: logs }]
 }
 
 // --- Pasti ------------------------------------------------------------------
@@ -272,10 +276,10 @@ export async function updateDayType(id: string, patch: Partial<Pick<DayType, 'na
   await db.dayTypes.update(id, { ...patch, updatedAt: nowISO() })
 }
 
-export async function deleteDayType(id: string): Promise<void> {
+export async function deleteDayType(id: string): Promise<Trash> {
   const d = await db.dayTypes.get(id)
-  if (d?.builtin) return // i tre di partenza si modificano, non si eliminano
-  await db.dayTypes.delete(id)
+  if (d?.builtin) return [] // i tre di partenza si modificano, non si eliminano
+  return snapshotAndDelete('dayTypes', id)
 }
 
 // --- Pasti salvati (modelli riutilizzabili) ---------------------------------
@@ -293,8 +297,8 @@ export async function saveMealAsTemplate(mealId: string, name: string): Promise<
   })
 }
 
-export async function deleteSavedMeal(id: string): Promise<void> {
-  await db.savedMeals.delete(id)
+export async function deleteSavedMeal(id: string): Promise<Trash> {
+  return snapshotAndDelete('savedMeals', id)
 }
 
 /** Aggiunge tutti gli alimenti di un modello dentro un pasto. */

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { usePersistedState } from '../util/persist'
 import { BodyScreen } from './BodyScreen'
 import { HistoryScreen } from './HistoryScreen'
 import { AnalyticsScreen } from './AnalyticsScreen'
@@ -7,7 +7,7 @@ type Sub = 'body' | 'history' | 'analytics'
 
 /** Corpo · Storico · Analisi in un'unica voce: la barra in basso resta a 5. */
 export function ProgressScreen({ onReopen }: { onReopen?: (id: string) => void }) {
-  const [sub, setSub] = useState<Sub>('body')
+  const [sub, setSub] = usePersistedState<Sub>('progress-sub', 'body')
   const TABS: { key: Sub; label: string }[] = [
     { key: 'body', label: 'Corpo' },
     { key: 'history', label: 'Storico' },

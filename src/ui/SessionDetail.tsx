@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { cardioOf, deleteSession, finishSession, reopenSession, sessionElapsedSec, setSessionType, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
@@ -28,7 +29,7 @@ function SetEditRow({ s }: { s: SetEntry }) {
     <div className="setline">
       <span className="muted">{s.isWarmup ? 'W' : ''}</span>
       <span onClick={() => setEd(true)} style={{ cursor: 'pointer' }}>{s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''} <span className="muted small">✎</span></span>
-      <button className="ghost small" onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>✕</button>
+      <button className="ghost small" onClick={() => { if (confirm('Eliminare la serie?')) deleteWithUndo('Serie eliminata', () => deleteSet(s.id)) }}>✕</button>
     </div>
   )
 }
@@ -123,7 +124,7 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
         <div className="card" key={it.entryId}>
           <div className="row spread">
             <strong>{it.name}</strong>
-            {edit && <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${it.name}?`)) deleteExerciseEntry(it.entryId) }}>🗑</button>}
+            {edit && <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${it.name}?`)) deleteWithUndo(`${it.name} rimosso dalla seduta`, () => deleteExerciseEntry(it.entryId)) }}>🗑</button>}
           </div>
           {edit ? (
             <>
@@ -169,7 +170,7 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
       <div className="row">
         {!d.session.finishedAt && <button className="ghost" style={{ flex: 1 }} onClick={() => finishSession(sessionId)}>Chiudi seduta</button>}
         <button className="ghost" style={{ flex: 1, color: '#e57373' }}
-          onClick={() => { if (confirm('Eliminare definitivamente questa seduta?')) { deleteSession(sessionId); onBack() } }}>
+          onClick={() => { if (confirm('Eliminare definitivamente questa seduta?')) { deleteWithUndo('Seduta eliminata', () => deleteSession(sessionId)); onBack() } }}>
           🗑 Elimina seduta
         </button>
       </div>

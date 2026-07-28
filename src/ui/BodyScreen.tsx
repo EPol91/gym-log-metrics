@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { usePersistedState } from '../util/persist'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listMeasurements, deleteMeasurement, upsertMeasurement, getUser, todayISO } from '../db/repo'
+import { deleteWithUndo } from '../db/trash'
 import { computeFfmi } from '../metrics/body'
 import { parseNum } from '../util/validate'
 import { LineChart } from './LineChart'
@@ -23,7 +25,7 @@ function MeasureRow({ m }: { m: BodyMeasurement }) {
           <div style={{ flex: 1 }}><label className="fl">% grasso</label><input inputMode="decimal" value={bf} onChange={(e) => setBf(e.target.value)} /></div>
         </div>
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
-          <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la misura?')) deleteMeasurement(m.id) }}>🗑</button>
+          <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la misura?')) deleteWithUndo('Misura del ' + m.date + ' eliminata', () => deleteMeasurement(m.id)) }}>🗑</button>
           <button className="ghost" style={{ flex: 1 }} onClick={() => { setW(String(m.weight)); setBf(m.bodyFat != null ? String(m.bodyFat) : ''); setEd(false) }}>Annulla</button>
           <button className="primary" style={{ flex: 2 }} disabled={wn == null} onClick={async () => {
             if (wn == null) return
@@ -46,10 +48,10 @@ function MeasureRow({ m }: { m: BodyMeasurement }) {
 export function BodyScreen() {
   const rows = useLiveQuery(listMeasurements, []) ?? []
   const user = useLiveQuery(getUser, [])
-  const [date, setDate] = useState(todayISO())
+  const [date, setDate] = usePersistedState('body-date', todayISO())
   const [w, setW] = useState('')
   const [bf, setBf] = useState('')
-  const [chart, setChart] = useState<'weight' | 'bf'>('weight')
+  const [chart, setChart] = usePersistedState<'weight' | 'bf'>('body-chart', 'weight')
 
   const latest = rows[rows.length - 1]
   const prev = rows[rows.length - 2]

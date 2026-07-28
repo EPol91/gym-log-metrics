@@ -13,7 +13,7 @@ import { DietTargets } from './DietTargets'
 import { FoodPicker } from './FoodPicker'
 import { FoodSheet, MacroDonut } from './FoodSheet'
 import { DayCalendar } from './DayCalendar'
-import { UndoToast } from './UndoToast'
+import { usePersistedState } from '../util/persist'
 import { shiftDate } from '../util/date'
 import type { DiaryEntry, DiaryMeal } from '../db/diet'
 
@@ -130,7 +130,7 @@ function MealRecap({ m }: { m: DiaryMeal }) {
 }
 
 export function DietScreen() {
-  const [date, setDate] = useState(todayDiet())
+  const [date, setDate] = usePersistedState('diet-date', todayDiet())
   const [picking, setPicking] = useState<{ id: string; name: string } | null>(null)
   const [showTargets, setShowTargets] = useState(false)
   const [showCal, setShowCal] = useState(false)
@@ -159,6 +159,8 @@ export function DietScreen() {
       age: new Date().getFullYear() - user.birthYear,
       sex: user.sex ?? 'm', weeklySessions: user.weeklyTarget ?? 4,
       phase: phase?.phase ?? null,
+      activityLevel: user.activityLevel, formula: user.bmrFormula,
+      bodyFatPct: meas[meas.length - 1]?.bodyFat,
     })
     : null
   const t = activeType && activeType.targets.kcal > 0 ? activeType.targets : suggested
@@ -354,7 +356,6 @@ export function DietScreen() {
         <DayCalendar date={date} onPick={(d) => { setDate(d); setShowCal(false) }} onClose={() => setShowCal(false)} />
       )}
 
-      <UndoToast />
     </div>
   )
 }

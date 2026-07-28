@@ -19,7 +19,7 @@ export function subscribeUndo(l: (a: UndoAction | null) => void): () => void {
 }
 
 /** Registra l'azione annullabile. Scade da sola: non resta lì per sempre. */
-export function pushUndo(label: string, run: UndoAction['run'], ttlMs = 8000): void {
+export function pushUndo(label: string, run: UndoAction['run'], ttlMs = 12000): void {
   current = { label, run }
   emit()
   if (timer) clearTimeout(timer)

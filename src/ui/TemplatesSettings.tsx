@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { deleteWithUndo } from '../db/trash'
 import { listTemplates, deleteTemplate } from '../db/repo'
 
 export function TemplatesSettings({ onEdit, onNew }: { onEdit: (id: string) => void; onNew: () => void }) {
@@ -19,7 +20,7 @@ export function TemplatesSettings({ onEdit, onNew }: { onEdit: (id: string) => v
                 {t.name} <span className="muted small">· {t.items.length} esercizi</span>
               </button>
               <button className="ghost small" onClick={() => onEdit(t.id)}>✎</button>
-              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteTemplate(t.id) }}>✕</button>
+              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
             </div>
           ))}
         </div>

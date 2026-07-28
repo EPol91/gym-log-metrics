@@ -102,6 +102,10 @@ export class GymLogDB extends Dexie {
       exerciseEntries: 'id, userId, sessionId, exerciseId, groupId',
     })
 
+    // v9: livello di attivita e formula BMR sul profilo. Campi opzionali,
+    // nessuna migrazione dei dati: chi non li imposta resta com'era.
+    this.version(9).stores({})
+
   }
 }
 

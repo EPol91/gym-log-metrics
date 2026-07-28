@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
@@ -108,7 +109,7 @@ export function StartScreen({
                 </span>
               </button>
               <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
-              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteTemplate(t.id) }}>✕</button>
+              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
             </div>
           ))}
         </div>

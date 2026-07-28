@@ -15,6 +15,7 @@ import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ReadinessScreen } from './ui/ReadinessScreen'
 import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
+import { UndoToast } from './ui/UndoToast'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
 type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean }
@@ -36,7 +37,7 @@ function loadNav(): Nav {
   return DEFAULT_NAV
 }
 
-export default function App() {
+function AppScreens() {
   const [ready, setReady] = useState(false)
   const [nav, setNav] = useState<Nav>(loadNav)
   const navRef = useRef(nav)
@@ -134,5 +135,15 @@ export default function App() {
       </div>
       <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null, exerciseNew: false })} />
     </div>
+  )
+}
+
+// L'annulla vive fuori dalle schermate: vale per ogni eliminazione, ovunque tu sia.
+export default function App() {
+  return (
+    <>
+      <AppScreens />
+      <UndoToast />
+    </>
   )
 }

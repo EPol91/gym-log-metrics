@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listDayTypes, updateDayType, addDayType, deleteDayType } from '../db/diet'
 import { kcalOf, type MacroTargets } from '../scores/nutritionTargets'
@@ -37,16 +38,16 @@ function TargetEditor({ d, suggested }: { d: DayType; suggested: MacroTargets | 
           {!d.builtin && <span className="muted small"> · personalizzato</span>}
         </span>
         <span className="muted small">
-          {set.kcal > 0 ? `${set.kcal} kcal · P${set.protein} C${set.carbs} G${set.fat}` : 'da impostare'} {open ? '▾' : '›'}
+          {set.kcal > 0 ? `${set.kcal} kcal · C${set.carbs} P${set.protein} G${set.fat}` : 'da impostare'} {open ? '▾' : '›'}
         </span>
       </button>
 
       {open && (
         <div style={{ marginTop: 10 }}>
           <div className="row" style={{ gap: 6 }}>
-            <div style={{ flex: 1 }}><label className="fl">Proteine (g)</label><input inputMode="numeric" value={p} onChange={(e) => setP(e.target.value)} style={{ textAlign: 'center' }} /></div>
-            <div style={{ flex: 1 }}><label className="fl">Carbo (g)</label><input inputMode="numeric" value={c} onChange={(e) => setC(e.target.value)} style={{ textAlign: 'center' }} /></div>
-            <div style={{ flex: 1 }}><label className="fl">Grassi (g)</label><input inputMode="numeric" value={f} onChange={(e) => setF(e.target.value)} style={{ textAlign: 'center' }} /></div>
+            <div style={{ flex: 1 }}><label className="fl" style={{ color: 'var(--carb)' }}>Carbo (g)</label><input inputMode="numeric" value={c} onChange={(e) => setC(e.target.value)} style={{ textAlign: 'center' }} /></div>
+            <div style={{ flex: 1 }}><label className="fl" style={{ color: 'var(--prot)' }}>Proteine (g)</label><input inputMode="numeric" value={p} onChange={(e) => setP(e.target.value)} style={{ textAlign: 'center' }} /></div>
+            <div style={{ flex: 1 }}><label className="fl" style={{ color: 'var(--fat)' }}>Grassi (g)</label><input inputMode="numeric" value={f} onChange={(e) => setF(e.target.value)} style={{ textAlign: 'center' }} /></div>
           </div>
           <p className="muted small" style={{ marginTop: 6 }}>
             = <strong style={{ color: 'var(--gold)' }}>{kcal}</strong> kcal · le calorie si ricavano dai macro, non si impostano a parte.
@@ -54,7 +55,7 @@ function TargetEditor({ d, suggested }: { d: DayType; suggested: MacroTargets | 
 
           <div className="row" style={{ gap: 6, marginTop: 8 }}>
             {suggested && <button className="ghost" style={{ flex: 1 }} onClick={applySuggestion}>Proponi</button>}
-            {!d.builtin && <button className="ghost" style={{ flex: 'none' }} onClick={() => { if (confirm(`Eliminare "${d.name}"?`)) deleteDayType(d.id) }}>🗑</button>}
+            {!d.builtin && <button className="ghost" style={{ flex: 'none' }} onClick={() => { if (confirm(`Eliminare "${d.name}"?`)) deleteWithUndo(`"${d.name}" eliminato`, () => deleteDayType(d.id)) }}>🗑</button>}
             <button className="primary" style={{ flex: 2 }}
               onClick={() => updateDayType(d.id, { targets: { kcal, protein: pn, carbs: cn, fat: fn }, manual: true })}>
               Salva
@@ -80,7 +81,7 @@ export function DietTargets({ onBack, suggested }: { onBack: () => void; suggest
         <div className="card" style={{ borderColor: 'var(--gold-dim)' }}>
           <div className="muted small">Proposta dai tuoi dati</div>
           <div className="small" style={{ marginTop: 4 }}>
-            <strong style={{ color: 'var(--gold)' }}>{suggested.kcal} kcal</strong> · P{suggested.protein} C{suggested.carbs} G{suggested.fat}
+            <strong style={{ color: 'var(--gold)' }}>{suggested.kcal} kcal</strong> · C{suggested.carbs} P{suggested.protein} G{suggested.fat}
           </div>
           <p className="muted small" style={{ marginTop: 6, lineHeight: 1.5 }}>
             Da peso, altezza, età, sedute a settimana e fase. È una stima di partenza:

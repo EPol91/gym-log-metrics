@@ -36,6 +36,10 @@ export interface User extends BaseRecord {
   heightCm?: number
   /** sesso biologico → migliora la stima calorica (formula Keytel). Opzionale. */
   sex?: 'm' | 'f'
+  /** livello di attivita dichiarato: se assente si deduce dalle sedute settimanali. */
+  activityLevel?: ActivityLevel
+  /** formula per il metabolismo basale. Default: Mifflin-St Jeor. */
+  bmrFormula?: BmrFormula
   /** durata predefinita del timer di recupero (secondi). */
   restDefaultSec?: number
   /** true dopo il primo avvio guidato (onboarding). */
@@ -44,6 +48,11 @@ export interface User extends BaseRecord {
   waterTarget?: number
   saltTarget?: number
 }
+
+/** Livello di attivita quotidiana: moltiplica il metabolismo basale. */
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh'
+/** Formula per il metabolismo basale. */
+export type BmrFormula = 'mifflin' | 'harris' | 'katch'
 
 export interface Gym extends BaseRecord {
   name: string

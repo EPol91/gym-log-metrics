@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listGyms, addGym, setDefaultGym, deleteGym, renameGym, setGymPosition } from '../db/repo'
 import { getPosition, isGeoSupported } from '../util/geo'
@@ -41,7 +42,7 @@ export function GymSettings() {
                   {g.isDefault ? '★ ' : ''}{g.name}{g.lat != null && <span className="muted small"> · 📍</span>}
                 </button>
                 <button className="ghost small" onClick={() => { setEditId(g.id); setEditName(g.name) }}>✎</button>
-                {gyms.length > 1 && <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${g.name}?`)) deleteGym(g.id) }}>✕</button>}
+                {gyms.length > 1 && <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${g.name}?`)) deleteWithUndo(`Palestra "${g.name}" eliminata`, () => deleteGym(g.id)) }}>✕</button>}
               </div>
               {isGeoSupported() && (
                 <div className="row" style={{ gap: 6, marginTop: 4 }}>

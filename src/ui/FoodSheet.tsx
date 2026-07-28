@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { macrosFor, updateFood, deleteFood } from '../db/diet'
+import { deleteWithUndo } from '../db/trash'
 import { parseNum } from '../util/validate'
 import type { Food, Macros } from '../db/schema'
 
@@ -145,7 +146,7 @@ export function FoodSheet({ food, grams: initialGrams, mode, onConfirm, onDelete
       <FoodForm title={`Correggi "${food.name}"`} initial={food}
         onCancel={() => setFixing(false)}
         onDelete={async () => {
-          if (confirm(`Eliminare ${food.name} dalla libreria?`)) { await deleteFood(food.id); setFixing(false); onBack() }
+          if (confirm(`Eliminare ${food.name} dalla libreria?`)) { await deleteWithUndo(`"${food.name}" eliminato dalla libreria`, () => deleteFood(food.id)); setFixing(false); onBack() }
         }}
         onSave={async (v) => { await updateFood(food.id, v); setFixing(false) }} />
     )

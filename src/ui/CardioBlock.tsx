@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements } from '../db/repo'
@@ -81,7 +82,7 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
         <span onClick={() => setEdit(true)} style={{ cursor: 'pointer' }}>
           {c.cardioType ? `${TYPE_LABEL[c.cardioType]} · ` : ''}{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.maxBpm ? ` · max ${c.maxBpm}` : ''}{c.calories ? ` · ${c.calories} kcal` : ''}{z ? ` · ${z.label}` : ''} <span className="muted small">✎</span>
         </span>
-        <button className="ghost small" onClick={() => { if (confirm('Eliminare il cardio?')) deleteCardio(c.id) }}>✕</button>
+        <button className="ghost small" onClick={() => { if (confirm('Eliminare il cardio?')) deleteWithUndo('Cardio eliminato', () => deleteCardio(c.id)) }}>✕</button>
       </div>
       {z && <CardioViz bpm={c.avgBpm} pct={z.pct} zone={z.zone} />}
     </div>
@@ -280,7 +281,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
                       {presets.map((p) => (
                         <div className="row spread" key={p.id}>
                           <button className="ghost" style={{ flex: 1, textAlign: 'left' }} onClick={() => applyTemplate(p)}>{p.name} <span className="muted small">· {tplDesc(p)}</span></button>
-                          <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteCardioPreset(p.id) }}>✕</button>
+                          <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${p.name}?`)) deleteWithUndo(`Template "${p.name}" eliminato`, () => deleteCardioPreset(p.id)) }}>✕</button>
                         </div>
                       ))}
                     </div>

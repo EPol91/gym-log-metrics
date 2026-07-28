@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePersistedState } from '../util/persist'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseList } from '../scores/exerciseStats'
 import { allExercises, getOrCreateExercise } from '../db/repo'
@@ -9,7 +10,7 @@ import type { MuscleGroup } from '../db/schema'
 // isNew=true apre il dettaglio già in modifica: un esercizio appena creato nasce senza gruppo muscolare.
 export function ExercisesScreen({ onOpen }: { onOpen: (id: string, isNew?: boolean) => void }) {
   const [q, setQ] = useState('')
-  const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
+  const [muscle, setMuscle] = usePersistedState<MuscleGroup | null>('ex-muscle', null)
   const all = useLiveQuery(allExercises, []) ?? []
   const stats = useLiveQuery(computeExerciseList, [])
   const statsById = new Map((stats ?? []).map((s) => [s.id, s]))

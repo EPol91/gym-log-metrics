@@ -4,10 +4,12 @@ import { LOCAL_USER_ID } from './seed'
 import { normalizeName } from './catalog'
 import { todayLocal } from '../util/date'
 import { bestE1rm } from '../metrics/metrics'
+import { snapshotAndDelete, type Trash } from './trash'
 import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
   CardioSession, CardioMethod, CardioType, NutritionContext, NutritionDayType, NutritionStatus,
+  ActivityLevel, BmrFormula,
 } from './schema'
 
 const U = LOCAL_USER_ID
@@ -74,12 +76,24 @@ export async function setSessionType(sessionId: string, type: WorkoutType): Prom
 }
 
 /** Elimina una seduta e tutto il suo contenuto (esercizi, set, cardio). */
-export async function deleteSession(sessionId: string): Promise<void> {
+export async function deleteSession(sessionId: string): Promise<Trash> {
+  const session = await db.sessions.get(sessionId)
   const entries = await db.exerciseEntries.where({ sessionId }).toArray()
-  for (const e of entries) await db.sets.where({ entryId: e.id }).delete()
+  const sets: unknown[] = []
+  for (const e of entries) {
+    sets.push(...await db.sets.where({ entryId: e.id }).toArray())
+    await db.sets.where({ entryId: e.id }).delete()
+  }
+  const cardio = await db.cardio.where({ sessionId }).toArray()
   await db.exerciseEntries.where({ sessionId }).delete()
   await db.cardio.where({ sessionId }).delete()
   await db.sessions.delete(sessionId)
+  return [
+    { table: 'sessions', rows: session ? [session] : [] },
+    { table: 'exerciseEntries', rows: entries },
+    { table: 'sets', rows: sets },
+    { table: 'cardio', rows: cardio },
+  ]
 }
 
 // --- Palestre (location manuale) ---
@@ -100,8 +114,8 @@ export async function setDefaultGym(id: string): Promise<void> {
     if (g.isDefault !== (g.id === id)) await db.gyms.update(g.id, { isDefault: g.id === id, updatedAt: nowISO() })
   }
 }
-export async function deleteGym(id: string): Promise<void> {
-  await db.gyms.delete(id)
+export async function deleteGym(id: string): Promise<Trash> {
+  return snapshotAndDelete('gyms', id)
 }
 export async function renameGym(id: string, name: string): Promise<void> {
   await db.gyms.update(id, { name: name.trim() || 'Palestra', updatedAt: nowISO() })
@@ -200,8 +214,8 @@ export async function startFromTemplate(templateId: string, readiness: Readiness
   return sessionId
 }
 
-export async function deleteTemplate(id: string): Promise<void> {
-  await db.templates.delete(id)
+export async function deleteTemplate(id: string): Promise<Trash> {
+  return snapshotAndDelete('templates', id)
 }
 
 // --- Cardio ---
@@ -229,8 +243,8 @@ export function cardioOf(sessionId: string) {
   return db.cardio.where({ sessionId }).toArray()
 }
 
-export async function deleteCardio(id: string): Promise<void> {
-  await db.cardio.delete(id)
+export async function deleteCardio(id: string): Promise<Trash> {
+  return snapshotAndDelete('cardio', id)
 }
 
 // --- Preset cardio a intervalli (custom) ---
@@ -251,8 +265,8 @@ export async function addCardioTemplate(name: string, t: CardioTemplateInput): P
   const ts = nowISO()
   await db.cardioPresets.add({ id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: name.trim() || 'Template', ...t })
 }
-export async function deleteCardioPreset(id: string): Promise<void> {
-  await db.cardioPresets.delete(id)
+export async function deleteCardioPreset(id: string): Promise<Trash> {
+  return snapshotAndDelete('cardioPresets', id)
 }
 
 // --- Body Metrics ---
@@ -310,8 +324,8 @@ export function listMeasurements() {
   return db.bodyMeasurements.where('userId').equals(U).sortBy('date')
 }
 
-export async function deleteMeasurement(id: string): Promise<void> {
-  await db.bodyMeasurements.delete(id)
+export async function deleteMeasurement(id: string): Promise<Trash> {
+  return snapshotAndDelete('bodyMeasurements', id)
 }
 
 // --- Nutrition (contesto giornaliero; NON entra negli Score) ---
@@ -363,6 +377,7 @@ export async function updateUser(
     name?: string; weeklyTarget?: number; unit?: Unit; birthYear?: number
     restingHr?: number; hrMaxMeasured?: number; heightCm?: number; restDefaultSec?: number
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
+    activityLevel?: ActivityLevel; bmrFormula?: BmrFormula
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana
@@ -463,9 +478,15 @@ export function entriesOf(sessionId: string) {
 }
 
 /** Elimina un esercizio dalla seduta e tutti i suoi set. */
-export async function deleteExerciseEntry(entryId: string): Promise<void> {
+export async function deleteExerciseEntry(entryId: string): Promise<Trash> {
+  const entry = await db.exerciseEntries.get(entryId)
+  const sets = await db.sets.where({ entryId }).toArray()
   await db.sets.where({ entryId }).delete()
   await db.exerciseEntries.delete(entryId)
+  return [
+    { table: 'exerciseEntries', rows: entry ? [entry] : [] },
+    { table: 'sets', rows: sets },
+  ]
 }
 
 /** Sposta un esercizio su/giù nella seduta (scambio di order). */
@@ -521,8 +542,8 @@ export function setsOf(entryId: string) {
   return db.sets.where({ entryId }).sortBy('order')
 }
 
-export async function deleteSet(id: string): Promise<void> {
-  await db.sets.delete(id)
+export async function deleteSet(id: string): Promise<Trash> {
+  return snapshotAndDelete('sets', id)
 }
 
 /** Miglior e1RM storico di un esercizio (per rilevare i PR), escludendo una seduta. */

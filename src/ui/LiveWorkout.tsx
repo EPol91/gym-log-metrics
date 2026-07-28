@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -263,7 +264,7 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
         </div>
       </div>
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
-        <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la serie?')) deleteSet(s.id) }}>🗑</button>
+        <button className="ghost" style={{ flex: 1 }} onClick={() => { if (confirm('Eliminare la serie?')) deleteWithUndo('Serie eliminata', () => deleteSet(s.id)) }}>🗑</button>
         <button className="ghost" style={{ flex: 1 }} onClick={() => setEd(false)}>Annulla</button>
         <button className="primary" style={{ flex: 2 }} onClick={async () => {
           const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
@@ -365,7 +366,7 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
         {onGroup && <button className="chip" onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
         <button className="chip" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
         <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
-        <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteExerciseEntry(entry.id) }}>🗑</button>
+        <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
       </div>
       {!showSettings && settings && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {settings}</div>}
       {showSettings && <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />}
