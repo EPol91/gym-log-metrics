@@ -652,7 +652,11 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
   )
 }
 
-export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string; onFinish: () => void; onHome?: () => void }) {
+export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
+  sessionId: string; onFinish: () => void; onHome?: () => void
+  /** Blocco su cui posizionarsi tornando dalla panoramica. */
+  jumpTo?: { index: number; nonce: number } | null
+}) {
   const entries = useLiveQuery(() => entriesOf(sessionId), [sessionId]) ?? []
   const exercises = useLiveQuery(allExercises, []) ?? []
   const session = useLiveQuery(() => getSession(sessionId), [sessionId])
@@ -671,6 +675,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
   const [cardioOpen, setCardioOpen] = useState(false)
 
   const [grouping, setGrouping] = useState<string | null>(null)
+
+  // Torno dalla panoramica: mi posiziono sul blocco che ho toccato.
+  useEffect(() => { if (jumpTo) setCur(jumpTo.index) }, [jumpTo?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // La vista scorre per BLOCCHI: un esercizio singolo o un superset/triset intero.
   const blocks: Block[] = []
@@ -711,7 +718,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome }: { sessionId: string
       {/* Barra fissa in alto: Home · pallini esercizi · Recupero + durata */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
         <div className="row spread" style={{ gap: 6 }}>
-          {onHome ? <button className="ghost small" style={{ flex: 'none', padding: '8px 10px' }} onClick={onHome}>‹ Home</button> : <span />}
+          {onHome ? <button className="ghost small" style={{ flex: 'none', padding: '8px 10px' }} onClick={onHome} aria-label="Panoramica allenamento">‹ Riepilogo</button> : <span />}
           {/* I pallini cedono spazio: con molti esercizi non devono spingere fuori l'orologio. */}
           <span className="row" style={{ gap: 5, flex: 1, minWidth: 0, justifyContent: 'center', overflow: 'hidden' }}>
             {entries.map((e, i) => (
