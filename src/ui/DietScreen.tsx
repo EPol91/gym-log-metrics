@@ -29,8 +29,9 @@ const labelFor = (iso: string) => {
 /** Barra macro con il colore del macro e i grammi presi/obiettivo. */
 function MacroTrack({ label, value, target, color }: { label: string; value: number; target: number; color: string }) {
   const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0
+  // Etichetta e numeri centrati sulla barra, non allineati a sinistra.
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
       <div style={{ fontSize: 11, color }}>{label}</div>
       <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', margin: '4px 0', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 999, transition: 'width .3s' }} />
