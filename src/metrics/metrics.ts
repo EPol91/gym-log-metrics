@@ -18,9 +18,14 @@ export function volume(sets: SetEntry[]): number {
   return sets.filter(isWorkingSet).reduce((acc, s) => acc + s.reps, 0)
 }
 
-/** Tonnellaggio = somma di peso × ripetizioni (carico totale sollevato). */
+/**
+ * Tonnellaggio = somma di peso × ripetizioni (carico totale sollevato).
+ * Arrotondato a 1 decimale: con carichi tipo 6.8 kg la somma in virgola mobile
+ * lascia code assurde (156.39999999999998 invece di 156.4).
+ */
 export function tonnage(sets: SetEntry[]): number {
-  return sets.filter(isWorkingSet).reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const raw = sets.filter(isWorkingSet).reduce((acc, s) => acc + s.weight * s.reps, 0)
+  return Math.round(raw * 10) / 10
 }
 
 /** Miglior e1RM tra le serie di lavoro. */

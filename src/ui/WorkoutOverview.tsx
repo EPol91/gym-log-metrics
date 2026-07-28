@@ -131,7 +131,7 @@ export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
                       </div>
                       <div className="muted" style={{ fontSize: 10, marginTop: 4 }}>
                         e1RM migliore {Math.round(best)} kg
-                        {work[0]?.restSec != null ? ` · recupero ${fmtRest(work[0].restSec)}` : ''}
+                        {work[0]?.restSec ? ` · recupero ${fmtRest(work[0].restSec)}` : ''}
                       </div>
                     </>
                   )}
