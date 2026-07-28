@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   computeDiary, listDayTypes, todayDiet, addMeal, renameMeal, deleteMeal, moveMeal, ensureMeals,
@@ -360,7 +361,9 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  return (
+  // Portal su body: gli antenati animati hanno `transform`, che intrappolerebbe
+  // un position:fixed annidato facendolo comparire nel posto sbagliato.
+  return createPortal(
     <div onClick={onClose}
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()}
@@ -378,7 +381,8 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
           onDeleteLog={onDelete}
           onBack={onClose} />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
