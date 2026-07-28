@@ -7,7 +7,10 @@ import type { Food, Macros } from '../db/schema'
 export function MacroDonut({ m, size = 76 }: { m: Macros; size?: number }) {
   const kc = { carb: m.carbs * 4, prot: m.protein * 4, fat: m.fat * 9 }
   const tot = kc.carb + kc.prot + kc.fat
-  const r = size / 2 - 7
+  // Spessore PROPORZIONALE: con un tratto fisso, sugli anelli piccoli il buco
+  // sparisce e il cerchio diventa una torta piena.
+  const stroke = Math.max(4, size * 0.2)
+  const r = size / 2 - stroke / 2 - 1
   const circ = 2 * Math.PI * r
   const seg = (v: number) => (tot > 0 ? (v / tot) * circ : 0)
   let off = 0
@@ -18,10 +21,10 @@ export function MacroDonut({ m, size = 76 }: { m: Macros; size?: number }) {
   ]
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flex: 'none' }}>
-      {tot === 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth="12" />}
+      {tot === 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={stroke} />}
       {parts.map((p, i) => {
         const el = (
-          <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth="12"
+          <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth={stroke}
             strokeDasharray={`${p.v} ${circ - p.v}`} strokeDashoffset={-off} />
         )
         off += p.v

@@ -258,7 +258,7 @@ export function DietScreen() {
         <div className="card" key={m.meal.id}>
           <div className="row spread" style={{ alignItems: 'center' }}>
             <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
-              {m.entries.length > 0 && <MacroDonut m={m.totals} size={26} />}
+              {m.entries.length > 0 && <MacroDonut m={m.totals} size={34} />}
               <strong style={{ fontSize: 15 }}>{m.meal.name}</strong>
             </span>
             <div className="row" style={{ gap: 6, alignItems: 'center' }}>
