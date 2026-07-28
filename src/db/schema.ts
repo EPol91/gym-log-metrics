@@ -153,6 +153,74 @@ export interface NutritionContext extends BaseRecord {
   status?: NutritionStatus | null // null = deselezionato
 }
 
+// --- Dieta / macro -----------------------------------------------------------
+
+/** Valori nutrizionali per 100 g (o 100 ml per i liquidi). */
+export interface Macros {
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber?: number
+  sugar?: number
+  salt?: number
+}
+
+/** Da dove arriva l'alimento. `mine` = creato a mano dall'utente. */
+export type FoodSource = 'base' | 'off' | 'mine'
+
+/**
+ * Alimento in libreria. SEMPRE modificabile, anche se arrivato da un database:
+ * i valori dei database sono spesso approssimativi o non aggiornati, quelli sulla
+ * confezione comandano. `edited` marca le correzioni dell'utente, che non vengono
+ * MAI sovrascritte da un aggiornamento esterno.
+ */
+export interface Food extends BaseRecord {
+  name: string
+  brand?: string
+  barcode?: string
+  per100: Macros
+  /** Porzione tipica in grammi (es. 1 uovo = 55 g), per l'inserimento rapido. */
+  servingG?: number
+  servingLabel?: string
+  source: FoodSource
+  edited?: boolean
+  favorite?: boolean
+  /** Ultimo utilizzo: alimenta l'elenco "Recenti". */
+  lastUsedAt?: ISODateTime
+}
+
+export type MealKey = 'colazione' | 'pranzo' | 'cena' | 'spuntino'
+
+/** Una riga del diario: alimento + quantità in un pasto di una data. */
+export interface FoodLog extends BaseRecord {
+  date: ISODate
+  meal: MealKey
+  foodId: ID
+  grams: number
+  order: number
+}
+
+/** Combinazione riutilizzabile di alimenti (es. "colazione tipo"). */
+export interface SavedMeal extends BaseRecord {
+  name: string
+  items: { foodId: ID; grams: number }[]
+}
+
+/**
+ * Tipo di giornata con i suoi obiettivi (ON / OFF / Reload di partenza, altri
+ * aggiungibili). `builtin` marca i tre iniziali: si possono modificare ma non eliminare.
+ */
+export interface DayType extends BaseRecord {
+  key: string
+  name: string
+  targets: { kcal: number; protein: number; carbs: number; fat: number }
+  /** true se gli obiettivi sono stati scritti a mano: il ricalcolo automatico non li tocca. */
+  manual?: boolean
+  order: number
+  builtin?: boolean
+}
+
 export type CardioMethod = 'standard' | 'hrr'
 export type CardioType =
   | 'corsa' | 'camminata' | 'cyclette' | 'ellittica' | 'vogatore' | 'assaultbike'
