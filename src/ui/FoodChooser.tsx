@@ -149,7 +149,9 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
           <strong>Scegli un ingrediente</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
-        {body}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {body}
+        </div>
       </div>
     </div>,
     document.body,

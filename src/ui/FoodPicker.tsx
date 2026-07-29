@@ -234,7 +234,11 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
             <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
           </div>
         </div>
-        {lettore.overlay ?? body}
+        {/* Un solo contenitore che scorre per tutti i contenuti: il form del nuovo
+            alimento non ne aveva uno e veniva tagliato in fondo senza poter scorrere. */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {lettore.overlay ?? body}
+        </div>
       </div>
     </div>,
     document.body,
