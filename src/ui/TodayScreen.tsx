@@ -10,6 +10,7 @@ import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre } from '../util/format'
 import { ScoreRing } from './anim'
+import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
 import { useEffect } from 'react'
 
@@ -69,6 +70,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         <div>
           <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
           <h1>Ciao{nome ? ` ${nome}` : ''} <span className="brand">👋</span></h1>
+          <p className="muted small" style={{ marginTop: 2 }}>{dailyPhrase()}</p>
         </div>
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
