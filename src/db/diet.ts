@@ -19,12 +19,17 @@ export function listFoods() {
   return db.foods.where('userId').equals(U).toArray()
 }
 
-/** Preferiti e usati di recente in cima: sono il 90% degli inserimenti. */
+/**
+ * Ordine alfabetico, con i preferiti in cima: un elenco che si sfoglia deve
+ * stare dove te lo aspetti. Per ritrovare in fretta c e la ricerca, che e piu
+ * veloce di qualsiasi lista di recenti.
+ */
 export async function listFoodsRanked(): Promise<Food[]> {
   const all = await listFoods()
+  const perNome = (a: Food, b: Food) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
   return all.sort((a, b) => {
     if (!!b.favorite !== !!a.favorite) return b.favorite ? 1 : -1
-    return (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '')
+    return perNome(a, b)
   })
 }
 
