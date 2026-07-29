@@ -7,6 +7,7 @@ import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
   DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
+  Habit, HabitEntry,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -29,6 +30,8 @@ export class GymLogDB extends Dexie {
   savedMeals!: Table<SavedMeal, string>
   dayTypes!: Table<DayType, string>
   meals!: Table<Meal, string>
+  habits!: Table<Habit, string>
+  habitEntries!: Table<HabitEntry, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -105,6 +108,13 @@ export class GymLogDB extends Dexie {
     // v9: livello di attivita e formula BMR sul profilo. Campi opzionali,
     // nessuna migrazione dei dati: chi non li imposta resta com'era.
     this.version(9).stores({})
+
+    // v10: abitudini. Il valore giornaliero ha una sorgente (manuale oggi,
+    // Health Connect col wrap nativo): la tabella non cambierà quando arriverà.
+    this.version(10).stores({
+      habits: 'id, userId, key, order',
+      habitEntries: 'id, userId, habitKey, date, [habitKey+date]',
+    })
 
   }
 }

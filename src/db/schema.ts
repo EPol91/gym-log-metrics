@@ -247,6 +247,36 @@ export interface DayType extends BaseRecord {
   builtin?: boolean
 }
 
+/**
+ * Da dove arriva il valore di un'abitudine. Oggi si scrive solo a mano, ma il campo
+ * c'è dal primo giorno: quando l'app girerà dentro un wrap nativo, Health Connect
+ * scriverà qui i passi senza nessuna migrazione dei dati.
+ */
+export type HabitSource = 'manual' | 'healthConnect' | 'whoop'
+
+/** Abitudine da seguire nel tempo: oggi solo i passi, la tabella è già generica. */
+export interface Habit extends BaseRecord {
+  /** chiave stabile: 'steps', domani 'water', 'sonno'… */
+  key: string
+  name: string
+  /** obiettivo giornaliero, nell'unità dell'abitudine */
+  target: number
+  unit: string
+  /** sorgente da cui ci si aspetta il dato: decide cosa mostrare finché non arriva */
+  source: HabitSource
+  active: boolean
+  order: number
+}
+
+/** Valore di un'abitudine in un giorno: una riga per abitudine e data. */
+export interface HabitEntry extends BaseRecord {
+  habitKey: string
+  date: ISODate
+  value: number
+  /** chi ha scritto il valore: un dato automatico non va sovrascritto da uno a mano */
+  source: HabitSource
+}
+
 export type CardioMethod = 'standard' | 'hrr'
 export type CardioType =
   | 'corsa' | 'camminata' | 'cyclette' | 'ellittica' | 'vogatore' | 'assaultbike'

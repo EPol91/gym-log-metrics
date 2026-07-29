@@ -203,6 +203,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
 
       <MetabolismCard />
 
+
       <div className="card">
         <label className="fl">Target giornalieri (opz.)</label>
         <div className="row">

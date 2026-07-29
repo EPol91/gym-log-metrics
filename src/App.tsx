@@ -13,6 +13,7 @@ import { AnalyticsScreen } from './ui/AnalyticsScreen'
 import { TemplateEditor } from './ui/TemplateEditor'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ReadinessScreen } from './ui/ReadinessScreen'
+import { HabitsScreen } from './ui/HabitsScreen'
 import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
 import { UndoToast } from './ui/UndoToast'
@@ -125,6 +126,7 @@ function AppScreens() {
           ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
           : <ExercisesScreen onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
         {nav.tab === 'diet' && <DietScreen />}
+        {nav.tab === 'habits' && <HabitsScreen />}
         {nav.tab === 'progress' && <ProgressScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
         {nav.tab === 'profile' && (
           <ProfileScreen
