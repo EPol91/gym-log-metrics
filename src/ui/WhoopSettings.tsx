@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { fmtOre } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   connectUrl, whoopStatus, whoopDisconnect, syncWhoop, whoopDaysRecent, clearWhoopData,
@@ -33,7 +34,8 @@ export function WhoopSettings() {
     setBusy('sync'); setEsito(null)
     try {
       const r = await syncWhoop(quanti)
-      setEsito(`${r.giorni} giornate e ${r.allenamenti} allenamenti aggiornati.`)
+      setEsito(`${r.giorni} giornate e ${r.allenamenti} allenamenti aggiornati.`
+        + (r.troncato ? ' WHOOP ne aveva altri: tocca di nuovo per continuare.' : ''))
       await aggiornaStato()
     } catch (e) {
       setEsito(e instanceof Error && e.message.includes('401')
@@ -76,7 +78,7 @@ export function WhoopSettings() {
             <div className="row" style={{ gap: 6, marginTop: 10, textAlign: 'center' }}>
               {[
                 { v: ultimo.recovery != null ? `${ultimo.recovery}%` : '—', l: 'recupero' },
-                { v: ultimo.sleepHours != null ? `${ultimo.sleepHours}h` : '—', l: 'sonno' },
+                { v: fmtOre(ultimo.sleepHours), l: 'sonno' },
                 { v: ultimo.strain != null ? `${ultimo.strain}` : '—', l: 'sforzo' },
                 { v: ultimo.hrv != null ? `${ultimo.hrv}` : '—', l: 'HRV' },
               ].map((x) => (

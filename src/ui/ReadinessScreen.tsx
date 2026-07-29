@@ -4,6 +4,7 @@ import { computeReadiness } from '../scores/readiness'
 import { getTodayReadiness, saveDailyReadiness } from '../db/repo'
 import { workoutPhrase } from '../util/phrases'
 import { whoopDay } from '../db/whoop'
+import { fmtOre } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReadinessCheck } from '../db/schema'
 
@@ -74,7 +75,7 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
               <strong style={{ color: 'var(--gold)' }}>WHOOP di stanotte</strong>
               <span className="muted">
                 {whoop.recovery != null ? ` · recupero ${whoop.recovery}%` : ''}
-                {whoop.sleepHours != null ? ` · ${whoop.sleepHours}h di sonno` : ''}
+                {whoop.sleepHours != null ? ` · ${fmtOre(whoop.sleepHours)} di sonno` : ''}
                 {whoop.sleepPerf != null ? ` (resa ${whoop.sleepPerf}%)` : ''}
               </span>
             </span>

@@ -61,7 +61,7 @@ interface Paged<T> { records: T[]; next_token?: string }
  * Scorre tutte le pagine di una collezione. `maxPagine` tiene il conto delle
  * chiamate: il limite WHOOP è 100 al minuto e non ha senso avvicinarcisi.
  */
-async function tutte<T>(path: string, start: string, maxPagine = 12): Promise<T[]> {
+async function tutte<T>(path: string, start: string, maxPagine = 60): Promise<{ righe: T[]; troncato: boolean }> {
   const out: T[] = []
   let token: string | undefined
   for (let i = 0; i < maxPagine; i++) {
@@ -70,9 +70,12 @@ async function tutte<T>(path: string, start: string, maxPagine = 12): Promise<T[
     const page = await api<Paged<T>>(path, p)
     out.push(...(page.records ?? []))
     token = page.next_token
-    if (!token) break
+    if (!token) return { righe: out, troncato: false }
+    // Il limite WHOOP è 100 chiamate al minuto: una pausa breve e non lo sfioriamo.
+    if (i % 10 === 9) await new Promise((r) => setTimeout(r, 1200))
   }
-  return out
+  // Pagine finite ma WHOOP ne aveva altre: meglio dirlo che far finta di niente.
+  return { righe: out, troncato: true }
 }
 
 // --- Traduzione -------------------------------------------------------------
@@ -95,15 +98,16 @@ const arrotonda = (v: number | undefined, d = 1) => (v != null ? Math.round(v * 
  * Sincronizza gli ultimi `giorni` di dati. Restituisce quante giornate e quanti
  * allenamenti sono arrivati, così l'interfaccia può dirlo invece di far finta.
  */
-export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allenamenti: number }> {
+export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allenamenti: number; troncato: boolean }> {
   const start = new Date(Date.now() - giorni * 86400_000).toISOString()
 
-  const [cicli, recuperi, sonni, allenamenti] = await Promise.all([
-    tutte<CycleRec>('/v2/cycle', start),
-    tutte<RecoveryRec>('/v2/recovery', start),
-    tutte<SleepRec>('/v2/activity/sleep', start),
-    tutte<WorkoutRec>('/v2/activity/workout', start),
-  ])
+  // In sequenza, non in parallelo: quattro raffiche insieme avvicinano il limite al minuto.
+  const c1 = await tutte<CycleRec>('/v2/cycle', start)
+  const r1 = await tutte<RecoveryRec>('/v2/recovery', start)
+  const s1 = await tutte<SleepRec>('/v2/activity/sleep', start)
+  const w1 = await tutte<WorkoutRec>('/v2/activity/workout', start)
+  const cicli = c1.righe, recuperi = r1.righe, sonni = s1.righe, allenamenti = w1.righe
+  const troncato = c1.troncato || r1.troncato || s1.troncato || w1.troncato
 
   // Il recupero è legato al ciclo, non alla data: si aggancia lì.
   const recPerCiclo = new Map(recuperi.map((r) => [r.cycle_id, r]))
@@ -169,7 +173,7 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
   }) as WhoopWorkout)
   if (righeW.length) await db.whoopWorkouts.bulkPut(righeW)
 
-  return { giorni: righe.length, allenamenti: righeW.length }
+  return { giorni: righe.length, allenamenti: righeW.length, troncato }
 }
 
 // --- Letture ----------------------------------------------------------------

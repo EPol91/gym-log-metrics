@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { whoopDay, whoopWorkoutsOf } from '../db/whoop'
+import { fmtOre } from '../util/format'
 import { todayLocal } from '../util/date'
 
 const min = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000))
@@ -26,7 +27,7 @@ export function WhoopToday() {
         <div className="row" style={{ textAlign: 'center' }}>
           {[
             { v: d!.recovery != null ? `${d!.recovery}%` : '—', l: 'recupero' },
-            { v: d!.sleepHours != null ? `${d!.sleepHours}h` : '—', l: 'sonno' },
+            { v: fmtOre(d!.sleepHours), l: 'sonno' },
             { v: d!.strain != null ? `${d!.strain}` : '—', l: 'sforzo' },
             { v: d!.restingHr != null ? `${d!.restingHr}` : '—', l: 'FC riposo' },
           ].map((x) => (
