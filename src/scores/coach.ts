@@ -7,6 +7,7 @@
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
+import { fmtOre } from '../util/format'
 import { bestE1rm, isWorkingSet, tonnage } from '../metrics/metrics'
 import type { SetEntry, WorkoutSession } from '../db/schema'
 import type { HomeData } from './dashboardScores'
@@ -206,6 +207,16 @@ async function healthLine(): Promise<CoachLine | null> {
         fact: `Recupero ${dOggi.recovery}%, sopra la tua media di ${Math.round(mediaRec)}%.`,
         advice: 'se c\'è un giorno per il carico pesante, di solito è questo.',
       }
+    }
+
+    // Giornata nella norma. Prima qui si taceva, e un blocco che parla solo agli
+    // estremi sembra spento: se il dato c'è, va detto anche quando è ordinario.
+    const mediaSonnoOggi = mediaWhoop(storico, (d) => d.sleepHours)
+    const pocoSonno = mediaSonnoOggi != null && dOggi.sleepHours != null && dOggi.sleepHours < mediaSonnoOggi - 0.5
+    return {
+      fact: `Recupero ${dOggi.recovery}%, in linea con la tua media di ${Math.round(mediaRec)}%.`
+        + (pocoSonno ? ` Stanotte ${fmtOre(dOggi.sleepHours)} contro una media di ${fmtOre(mediaSonnoOggi!)}.` : ''),
+      ...(pocoSonno ? { advice: 'se cali a metà seduta, la spiegazione è probabilmente lì.' } : {}),
     }
   }
 
