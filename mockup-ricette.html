@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETP HEALTH · Ricette — mockup</title>
+<style>
+:root{
+  --bg:#0b0b0b; --surface:#141414; --surface-2:#1c1c1c; --line:#262626;
+  --text:#f2f2f2; --muted:#8f8f8f; --gold:#d4af37; --gold-dim:#b8952f; --gold-bg:#20200f;
+  --good:#4caf50; --carb:#FFC63D; --prot:#2ecc71; --fat:#e74c3c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:#050505; color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  padding:34px 22px 70px;
+}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif;margin:0}
+.page-head{max-width:1240px;margin:0 auto 30px}
+.page-head h1{font-size:28px;letter-spacing:.3px}
+.page-head h1 span{color:var(--gold)}
+.page-head p{color:var(--muted);font-size:14px;line-height:1.6;max-width:760px;margin:10px 0 0}
+.legendbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.legendbar b{
+  font-weight:600;font-size:11px;padding:4px 11px;border-radius:999px;
+  background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);
+}
+.legendbar i{
+  font-style:normal;font-size:11px;padding:4px 11px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
+}
+
+.frames{
+  max-width:1240px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:34px 26px;
+}
+.frame > .cap{margin-bottom:11px}
+.frame .n{
+  display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;
+  background:var(--gold);color:#1a1400;font-size:11px;font-weight:700;margin-right:8px;
+  vertical-align:middle;
+}
+.frame .t{font-size:14px;font-weight:600}
+.frame .s{color:var(--muted);font-size:12px;margin:5px 0 0;line-height:1.5}
+
+.phone{
+  height:730px;border:1px solid #2f2f2f;border-radius:26px;background:var(--bg);
+  overflow:hidden;position:relative;box-shadow:0 18px 44px rgba(0,0,0,.6);
+}
+.scroll{height:100%;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.app{padding:14px 14px 78px;display:flex;flex-direction:column;gap:8px}
+
+/* --- componenti reali dell'app --- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.spread{justify-content:space-between}
+.col{display:flex;flex-direction:column;gap:8px}
+button{
+  font-family:inherit;font-size:15px;color:var(--text);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;
+}
+button.primary{background:var(--gold);color:#1a1400;border-color:var(--gold);font-weight:600}
+button.ghost{background:transparent}
+.chip{
+  font-size:12px;padding:5px 13px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--line);color:var(--muted);flex:0 0 auto;width:auto;
+}
+.chip.on{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+input{
+  font-family:inherit;font-size:16px;color:var(--text);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;
+}
+label.fl{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+
+.tabbar{
+  position:absolute;left:0;bottom:0;width:100%;display:flex;
+  background:var(--surface);border-top:1px solid var(--line);padding:6px 8px;
+}
+.tab{flex:1;min-width:0;background:transparent;border:none;border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);padding:8px 0;font-size:11px}
+.tab.active{color:var(--gold)}
+.tab-icon{line-height:0;display:block}
+
+/* --- specifici ricette --- */
+.screenhead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.screenhead h2{font-size:20px;flex:1;min-width:0}
+.back{background:transparent;border:none;color:var(--muted);font-size:20px;padding:4px 6px;cursor:pointer}
+
+.rcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:11px;align-items:center}
+.rcard .nm{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .mt{font-size:11px;color:var(--muted);margin-top:3px}
+.rcard .kc{color:var(--gold);font-variant-numeric:tabular-nums}
+.mode{font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);flex:none}
+.mode.g{border-color:#3a3320;color:var(--gold-dim)}
+
+.stepper{display:flex;align-items:center;gap:5px}
+.stepper button{width:38px;height:38px;padding:0;border-radius:10px;color:var(--gold);font-size:19px;line-height:1}
+.stepper input{width:56px;text-align:center;font-size:19px;font-weight:700;padding:8px 2px;font-variant-numeric:tabular-nums}
+
+.mgrid{display:flex;gap:4px}
+.mcell{flex:1;text-align:center;min-width:0}
+.mcell .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.mcell .l{font-size:10px;color:var(--muted)}
+
+.seg{display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px}
+.seg button{background:transparent;border:none;border-radius:999px;padding:5px 11px;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--gold);color:#1a1400;font-weight:600}
+
+.grp{margin-top:13px}
+.grp:first-child{margin-top:0}
+.grp h4{font-family:'Playfair Display',Georgia,serif;font-size:14px;color:var(--gold);margin:0 0 3px;font-weight:600}
+.grp .rule{height:1px;background:linear-gradient(90deg,#4a3f1c,transparent);margin-bottom:3px}
+.ing{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ing:last-child{border-bottom:none}
+.ing .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ing .q{font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;flex:none}
+.ing .q.warn{color:var(--fat)}
+.ing.done .nm{color:var(--muted);text-decoration:line-through}
+.ing.done .q{color:var(--muted)}
+
+.box{width:18px;height:18px;flex:none;border-radius:5px;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:11px;color:#1a1400;background:transparent}
+.box.on{background:var(--gold);border-color:var(--gold)}
+
+.step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.5}
+.step:last-child{border-bottom:none}
+.step .n{
+  width:23px;height:23px;flex:none;border-radius:50%;border:1px solid #4a3f1c;color:var(--gold);
+  display:grid;place-items:center;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.step.done{color:var(--muted)}
+.step.done .n{background:var(--gold);border-color:var(--gold);color:#1a1400}
+.step.done .tx{text-decoration:line-through}
+
+.sheetwrap{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
+.sheet{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px 16px 18px}
+.sheet h3{font-size:16px;font-family:'Inter',system-ui,sans-serif;font-weight:600}
+
+.entry{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--line)}
+.entry .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entry .sub{font-size:11px;color:var(--muted)}
+.entry .num{flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.entry .num .k{display:block;color:var(--gold)}
+.entry .num .m{font-size:11px}
+.recipeline{border-left:2px solid var(--gold);padding-left:8px;margin-left:-2px}
+
+.track{height:5px;border-radius:999px;background:var(--surface-2);margin:4px 0;overflow:hidden}
+.track > i{display:block;height:100%;border-radius:999px}
+
+.pick{display:flex;align-items:center;gap:9px;padding:10px 2px;border-top:1px solid var(--line)}
+.pick .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.notes{max-width:1240px;margin:56px auto 0;border-top:1px solid var(--line);padding-top:30px}
+.notes h2{font-size:20px;margin-bottom:14px}
+.notes h3{font-size:15px;font-family:'Inter',system-ui,sans-serif;font-weight:600;margin:22px 0 8px;color:var(--gold)}
+.notes p,.notes li{color:#c9c9c9;font-size:14px;line-height:1.65}
+.notes ul{margin:0;padding-left:20px}
+.notes code{font-family:ui-monospace,Consolas,monospace;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.notes pre{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px;overflow-x:auto}
+.notes pre code{background:none;border:none;padding:0;line-height:1.6}
+.notes .q{border-left:2px solid var(--gold);padding:2px 0 2px 14px;margin:14px 0;color:#c9c9c9}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>ETP HEALTH · <span>Ricette</span> — mockup</h1>
+  <p>Nove schermate a grandezza reale, con i colori, i caratteri e i componenti dell'app.
+     Le calorie e i macro sono calcolati sugli alimenti veri delle due ricette del ricettario, non inventati.
+     I riquadri scorrono: trascina dentro un telefono per vedere il resto della schermata.</p>
+  <div class="legendbar">
+    <b>Schermate nuove</b>
+    <i>Schermate esistenti che cambiano</i>
+  </div>
+</div>
+
+<div class="frames">
+
+<!-- ============ 1. DIETA ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">1</span><span class="t">Dieta — da dove si entra</span>
+    <p class="s">Una chip accanto a Obiettivi. Nessuna voce nuova nella barra in basso.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="row spread">
+        <button class="ghost" style="padding:6px 12px">‹</button>
+        <button class="chip" style="font-size:15px;padding:7px 16px">📅 Oggi</button>
+        <button class="ghost" style="padding:6px 12px">›</button>
+      </div>
+
+      <div class="row" style="gap:6px;overflow-x:auto;padding-bottom:2px">
+        <button class="chip on">ON</button>
+        <button class="chip">OFF</button>
+        <button class="chip">Reload</button>
+        <button class="chip">⚙ Obiettivi</button>
+        <button class="chip on" style="border-width:1px">📖 Ricette</button>
+      </div>
+
+      <div class="card" style="padding:11px 12px;margin-bottom:0">
+        <div class="row" style="gap:12px">
+          <span class="donut" data-c="146" data-p="121" data-f="52" data-size="66"></span>
+          <div class="row" style="gap:10px;flex:1;min-width:0">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:var(--carb)">Carboidrati</div>
+              <div class="track"><i style="width:63%;background:var(--carb)"></i></div>
+              <div style="font-size:14px;font-weight:600;color:var(--carb)">146 <span class="muted" style="font-size:11px;font-weight:400">/ 230</span></div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:var(--prot)">Proteine</div>
+              <div class="track"><i style="width:72%;background:var(--prot)"></i></div>
+              <div style="font-size:14px;font-weight:600;color:var(--prot)">121 <span class="muted" style="font-size:11px;font-weight:400">/ 168</span></div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:var(--fat)">Grassi</div>
+              <div class="track"><i style="width:74%;background:var(--fat)"></i></div>
+              <div style="font-size:14px;font-weight:600;color:var(--fat)">52 <span class="muted" style="font-size:11px;font-weight:400">/ 70</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="height:6px;border-radius:999px;background:var(--surface-2);margin-top:9px;overflow:hidden">
+          <div style="height:100%;width:69%;background:var(--gold);border-radius:999px"></div>
+        </div>
+        <div style="text-align:center;font-size:13px;margin-top:4px">
+          <strong style="color:var(--gold)">1 542</strong>
+          <span class="muted"> / 2 240 kcal · restano 698</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:11px 12px;margin-bottom:0">
+        <div class="row spread">
+          <span class="row" style="gap:8px;min-width:0">
+            <span class="donut" data-c="62" data-p="34" data-f="14" data-size="34"></span>
+            <strong style="font-size:15px">Colazione</strong>
+          </span>
+          <div class="row" style="gap:6px">
+            <span class="muted small">521 kcal</span>
+            <button class="ghost small" style="padding:4px 10px">⋮</button>
+          </div>
+        </div>
+        <div class="entry">
+          <span class="nm">Fiocchi d'avena<span class="sub" style="display:block">80 g</span></span>
+          <span class="num"><span class="k">296</span><span class="m"><span style="color:var(--carb)">C: 48</span>, <span style="color:var(--prot)">P: 10</span>, <span style="color:var(--fat)">G: 5,6</span></span></span>
+        </div>
+        <div class="entry">
+          <span class="nm">Skyr naturale<span class="sub" style="display:block">250 g</span></span>
+          <span class="num"><span class="k">158</span><span class="m"><span style="color:var(--carb)">C: 10</span>, <span style="color:var(--prot)">P: 27,5</span>, <span style="color:var(--fat)">G: 0,5</span></span></span>
+        </div>
+        <button class="chip" style="margin-top:8px">＋ Aggiungi cibo</button>
+      </div>
+
+      <div class="card" style="padding:11px 12px;margin-bottom:0">
+        <div class="row spread">
+          <span class="row" style="gap:8px;min-width:0">
+            <span class="donut" data-c="84" data-p="87" data-f="38" data-size="34"></span>
+            <strong style="font-size:15px">Pranzo</strong>
+          </span>
+          <div class="row" style="gap:6px">
+            <span class="muted small">1 021 kcal</span>
+            <button class="ghost small" style="padding:4px 10px">⋮</button>
+          </div>
+        </div>
+        <button class="chip" style="margin-top:8px">＋ Aggiungi cibo</button>
+      </div>
+    </div></div>
+    <nav class="tabbar" data-active="2"></nav>
+  </div>
+</div>
+
+<!-- ============ 2. LISTA RICETTE ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">2</span><span class="t">Ricette — la lista</span>
+    <p class="s">Anello dei macro come nel diario. L'etichetta dice subito se la ricetta va a porzioni o a grammi.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="screenhead">
+        <button class="back">‹</button>
+        <h2>Ricette</h2>
+        <button class="chip on">＋ Nuova</button>
+      </div>
+
+      <input placeholder="🔍 Cerca ricetta…" style="margin-top:4px">
+
+      <div class="row" style="gap:6px;overflow-x:auto;padding:2px 0">
+        <button class="chip on">Tutte (7)</button>
+        <button class="chip">★ Preferite</button>
+        <button class="chip">Dolci</button>
+        <button class="chip">Colazione</button>
+        <button class="chip">Pasti salvati</button>
+      </div>
+
+      <div class="col" style="gap:8px;margin-top:2px">
+        <div class="rcard">
+          <span class="donut" data-c="12" data-p="28.3" data-f="6.3" data-size="40"></span>
+          <span style="flex:1;min-width:0">
+            <span class="nm">★ Tiramisù fit</span>
+            <span class="mt"><span class="kc">226 kcal</span> a porzione · P 28,3 · 6 porzioni</span>
+          </span>
+          <span class="mode">porzioni</span>
+        </div>
+
+        <div class="rcard">
+          <span class="donut" data-c="5.5" data-p="12.8" data-f="2.9" data-size="40"></span>
+          <span style="flex:1;min-width:0">
+            <span class="nm">Tiramisù fit all'olio EVO</span>
+            <span class="mt"><span class="kc">103 kcal</span> per 100 g · P 12,8 · resa 1 320 g</span>
+          </span>
+          <span class="mode g">grammi</span>
+        </div>
+
+        <div class="rcard">
+          <span class="donut" data-c="62" data-p="34" data-f="14" data-size="40"></span>
+          <span style="flex:1;min-width:0">
+            <span class="nm">★ Colazione tipo</span>
+            <span class="mt"><span class="kc">521 kcal</span> a porzione · P 34,0 · 1 porzione</span>
+          </span>
+          <span class="mode">porzioni</span>
+        </div>
+
+        <div class="rcard">
+          <span class="donut" data-c="19" data-p="9" data-f="2.4" data-size="40"></span>
+          <span style="flex:1;min-width:0">
+            <span class="nm">Pancake proteici</span>
+            <span class="mt"><span class="kc">134 kcal</span> a porzione · P 9,0 · 4 porzioni</span>
+          </span>
+          <span class="mode">porzioni</span>
+        </div>
+
+        <div class="rcard">
+          <span class="donut" data-c="2.1" data-p="24" data-f="8.5" data-size="40"></span>
+          <span style="flex:1;min-width:0">
+            <span class="nm">Ragù di tacchino</span>
+            <span class="mt"><span class="kc">181 kcal</span> per 100 g · P 24,0 · resa 940 g</span>
+          </span>
+          <span class="mode g">grammi</span>
+        </div>
+      </div>
+
+      <p class="muted small" style="margin-top:6px;line-height:1.5">
+        I <strong>pasti salvati</strong> che avevi sono diventati ricette senza procedimento: li trovi qui insieme alle altre.
+      </p>
+    </div></div>
+    <nav class="tabbar" data-active="2"></nav>
+  </div>
+</div>
+
+<!-- ============ 3. DETTAGLIO A PORZIONI ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">3</span><span class="t">Dettaglio · ricetta <em style="color:var(--gold);font-style:normal">a porzioni</em></span>
+    <p class="s">Le quantità seguono lo stepper. Ingredienti e passi si spuntano mentre cucini.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="screenhead">
+        <button class="back">‹</button>
+        <h2 style="font-size:19px">Tiramisù fit</h2>
+        <button class="chip">✎</button>
+        <button class="chip on">★</button>
+      </div>
+      <div class="row" style="gap:6px;margin-bottom:2px">
+        <span class="tag">porzioni</span><span class="tag">Dolci</span><span class="tag">⏱ 40 min + 6 h</span>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread">
+          <span style="font-size:15px">Porzioni</span>
+          <span class="stepper">
+            <button>−</button><input value="8"><button>+</button>
+          </span>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px">Ricetta base per 6 · quantità × 1,33</div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:10px">
+          <strong style="font-size:14px">Valori</strong>
+          <span class="seg">
+            <button class="on">Porzione</button><button>Totale</button>
+          </span>
+        </div>
+        <div class="row" style="gap:12px">
+          <span class="donut" data-c="12" data-p="28.3" data-f="6.3" data-size="58"></span>
+          <div class="mgrid" style="flex:1">
+            <div class="mcell"><div class="v" style="color:var(--carb)">12,0</div><div class="l">Carbo</div></div>
+            <div class="mcell"><div class="v" style="color:var(--prot)">28,3</div><div class="l">Proteine</div></div>
+            <div class="mcell"><div class="v" style="color:var(--fat)">6,3</div><div class="l">Grassi</div></div>
+            <div class="mcell"><div class="v" style="color:var(--gold)">226</div><div class="l">Calorie</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:9px">
+          <strong style="font-size:14px">Ingredienti <span class="muted" style="font-weight:400">· per 8 porzioni</span></strong>
+          <button class="chip">Azzera</button>
+        </div>
+
+        <div class="grp">
+          <h4>Base</h4><div class="rule"></div>
+          <div class="ing done"><span class="box on">✓</span><span class="nm">Albume</span><span class="q">267 g</span></div>
+          <div class="ing done"><span class="box on">✓</span><span class="nm">Uovo intero</span><span class="q">73 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Farina di avena</span><span class="q">80 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Whey vaniglia</span><span class="q">40 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Eritritolo</span><span class="q">40 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Lievito per dolci</span><span class="q">5,3 g</span></div>
+        </div>
+
+        <div class="grp">
+          <h4>Crema</h4><div class="rule"></div>
+          <div class="ing"><span class="box"></span><span class="nm">Skyr naturale</span><span class="q">667 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Fiocchi di latte</span><span class="q">267 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Isolate vaniglia</span><span class="q">40 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Eritritolo</span><span class="q">40 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Xantana</span><span class="q warn">0,7 g</span></div>
+        </div>
+
+        <div class="grp">
+          <h4>Finitura</h4><div class="rule"></div>
+          <div class="ing"><span class="box"></span><span class="nm">Caffè</span><span class="q">267 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Cacao amaro</span><span class="q">13 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Cioccolato fondente 85%</span><span class="q">40 g</span></div>
+        </div>
+
+        <p class="muted" style="font-size:11px;margin:10px 0 0;line-height:1.5">
+          In rosso le quantità sotto 1 g: serve la bilancia di precisione.
+        </p>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:6px">
+          <strong style="font-size:14px">Procedimento <span class="muted" style="font-weight:400">· 2 / 13</span></strong>
+          <button class="chip on">🔆 Schermo acceso</button>
+        </div>
+        <div class="step done"><span class="n">1</span><span class="tx">Monta l'albume a neve ferma.</span></div>
+        <div class="step done"><span class="n">2</span><span class="tx">Mescola farina di avena, whey, eritritolo e lievito con l'uovo intero.</span></div>
+        <div class="step"><span class="n">3</span><span class="tx">Incorpora l'albume dal basso verso l'alto.</span></div>
+        <div class="step"><span class="n">4</span><span class="tx">Versa in teglia 20×20 e cuoci in forno statico a 180 °C per 12 minuti. Fai raffreddare completamente.</span></div>
+        <div class="step"><span class="n">5</span><span class="tx">Scola i fiocchi di latte dal liquido e frullali fino a crema liscia.</span></div>
+        <div class="step"><span class="n">6</span><span class="tx">Unisci skyr, fiocchi frullati, isolate ed eritritolo. Monta aggiungendo la xantana a pioggia.</span></div>
+        <div class="step"><span class="n">7</span><span class="tx">Taglia la base in 2 strati.</span></div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0;border-color:#3a3320">
+        <div class="muted" style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Nota</div>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#d6d0c4">
+          Stendi il cioccolato solo dopo il riposo in frigo: sulla crema morbida affonda invece di formare lo strato croccante.
+        </p>
+      </div>
+
+      <button class="primary" style="margin-top:2px">＋ Aggiungi al diario</button>
+    </div></div>
+    <nav class="tabbar" data-active="2"></nav>
+  </div>
+</div>
+
+<!-- ============ 4. DETTAGLIO A GRAMMI ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">4</span><span class="t">Dettaglio · ricetta <em style="color:var(--gold);font-style:normal">a grammi</em></span>
+    <p class="s">Stessa schermata, testa diversa: al posto delle porzioni c'è il peso finale, e i valori sono per 100 g del piatto.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="screenhead">
+        <button class="back">‹</button>
+        <h2 style="font-size:18px">Tiramisù fit all'olio EVO</h2>
+        <button class="chip">✎</button>
+        <button class="chip">☆</button>
+      </div>
+      <div class="row" style="gap:6px;margin-bottom:2px">
+        <span class="tag" style="border-color:#3a3320;color:var(--gold-dim)">grammi</span>
+        <span class="tag">Dolci</span><span class="tag">⏱ 40 min + 6 h</span>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread">
+          <span style="font-size:15px">Peso finale</span>
+          <span class="stepper">
+            <input value="1320" style="width:88px"><span class="muted" style="font-size:15px">g</span>
+          </span>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">
+          Crudo 1 380,5 g · in cottura ne perde 60. Pesa la teglia da fredda e correggi qui: i valori per 100 g si aggiornano.
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:10px">
+          <strong style="font-size:14px">Valori</strong>
+          <span class="seg">
+            <button class="on">100 g</button><button>Totale</button>
+          </span>
+        </div>
+        <div class="row" style="gap:12px">
+          <span class="donut" data-c="5.5" data-p="12.8" data-f="2.9" data-size="58"></span>
+          <div class="mgrid" style="flex:1">
+            <div class="mcell"><div class="v" style="color:var(--carb)">5,5</div><div class="l">Carbo</div></div>
+            <div class="mcell"><div class="v" style="color:var(--prot)">12,8</div><div class="l">Proteine</div></div>
+            <div class="mcell"><div class="v" style="color:var(--fat)">2,9</div><div class="l">Grassi</div></div>
+            <div class="mcell"><div class="v" style="color:var(--gold)">103</div><div class="l">Calorie</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:9px">
+          <strong style="font-size:14px">Ingredienti <span class="muted" style="font-weight:400">· dose intera</span></strong>
+          <button class="chip">Azzera</button>
+        </div>
+        <div class="grp">
+          <h4>Base</h4><div class="rule"></div>
+          <div class="ing done"><span class="box on">✓</span><span class="nm">Albume</span><span class="q">250 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Farina di avena</span><span class="q">60 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Whey vaniglia</span><span class="q">30 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Olio extravergine di oliva</span><span class="q">6 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Eritritolo</span><span class="q">30 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Lievito per dolci</span><span class="q">4 g</span></div>
+        </div>
+        <div class="grp">
+          <h4>Crema</h4><div class="rule"></div>
+          <div class="ing"><span class="box"></span><span class="nm">Skyr naturale</span><span class="q">500 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Fiocchi di latte</span><span class="q">200 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Isolate vaniglia</span><span class="q">30 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Eritritolo</span><span class="q">30 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Xantana</span><span class="q warn">0,5 g</span></div>
+        </div>
+        <div class="grp">
+          <h4>Finitura</h4><div class="rule"></div>
+          <div class="ing"><span class="box"></span><span class="nm">Caffè</span><span class="q">200 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Cacao amaro</span><span class="q">10 g</span></div>
+          <div class="ing"><span class="box"></span><span class="nm">Cioccolato fondente 85%</span><span class="q">30 g</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:6px">
+          <strong style="font-size:14px">Procedimento <span class="muted" style="font-weight:400">· 0 / 13</span></strong>
+          <button class="chip">🔆 Schermo acceso</button>
+        </div>
+        <div class="step"><span class="n">1</span><span class="tx">Preleva 50 g di albume e tienilo da parte. Monta il resto a neve ferma.</span></div>
+        <div class="step"><span class="n">2</span><span class="tx">Mescola farina di avena, whey, eritritolo e lievito con l'albume tenuto da parte e l'olio, fino a ottenere un impasto omogeneo.</span></div>
+        <div class="step"><span class="n">3</span><span class="tx">Incorpora l'albume montato dal basso verso l'alto.</span></div>
+      </div>
+
+      <button class="primary" style="margin-top:2px">＋ Aggiungi al diario</button>
+    </div></div>
+    <nav class="tabbar" data-active="2"></nav>
+  </div>
+</div>
+
+<!-- ============ 5. SHEET PORZIONI ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">5</span><span class="t">Aggiungi al diario · <em style="color:var(--gold);font-style:normal">a porzioni</em></span>
+    <p class="s">Scegli il pasto e quante porzioni. Le mezze porzioni si scrivono a mano.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app" style="opacity:.4">
+      <div class="screenhead"><button class="back">‹</button><h2 style="font-size:19px">Tiramisù fit</h2></div>
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread"><span style="font-size:15px">Porzioni</span>
+          <span class="stepper"><button>−</button><input value="8"><button>+</button></span></div>
+      </div>
+      <div class="card" style="padding:12px;margin-bottom:0;height:120px"></div>
+      <div class="card" style="padding:12px;margin-bottom:0;height:220px"></div>
+    </div></div>
+
+    <div class="sheetwrap">
+      <div class="sheet">
+        <div class="row spread" style="margin-bottom:12px">
+          <h3>Aggiungi al diario</h3>
+          <button class="ghost" style="width:34px;height:34px;padding:0">✕</button>
+        </div>
+
+        <label class="fl">Giorno</label>
+        <div class="row" style="gap:6px;margin-bottom:12px">
+          <button class="chip on">Oggi</button><button class="chip">Ieri</button><button class="chip">📅 Altro</button>
+        </div>
+
+        <label class="fl">Pasto</label>
+        <div class="row wrap" style="gap:6px;margin-bottom:14px">
+          <button class="chip">Colazione</button>
+          <button class="chip">Pranzo</button>
+          <button class="chip on">Cena</button>
+          <button class="chip">Spuntini</button>
+        </div>
+
+        <label class="fl">Quante porzioni</label>
+        <div class="row" style="gap:6px;margin-bottom:12px">
+          <button style="flex:none">−</button>
+          <input value="1" style="flex:1;text-align:center;font-size:20px;font-weight:700">
+          <button style="flex:none">+</button>
+        </div>
+        <div class="row" style="gap:6px;margin-bottom:14px">
+          <button class="chip">½</button><button class="chip on">1</button><button class="chip">1 ½</button><button class="chip">2</button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;padding:11px 12px;background:var(--bg)">
+          <div class="row" style="gap:11px">
+            <span class="donut" data-c="12" data-p="28.3" data-f="6.3" data-size="46"></span>
+            <div class="mgrid" style="flex:1">
+              <div class="mcell"><div class="v" style="color:var(--carb);font-size:16px">12,0</div><div class="l">Carbo</div></div>
+              <div class="mcell"><div class="v" style="color:var(--prot);font-size:16px">28,3</div><div class="l">Proteine</div></div>
+              <div class="mcell"><div class="v" style="color:var(--fat);font-size:16px">6,3</div><div class="l">Grassi</div></div>
+              <div class="mcell"><div class="v" style="color:var(--gold);font-size:16px">226</div><div class="l">Calorie</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="gap:6px">
+          <button class="ghost" style="flex:1">Annulla</button>
+          <button class="primary" style="flex:2">Aggiungi a Cena</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 6. SHEET GRAMMI ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">6</span><span class="t">Aggiungi al diario · <em style="color:var(--gold);font-style:normal">a grammi</em></span>
+    <p class="s">Stessa scheda, ma pesi il piatto. Le scorciatoie sono frazioni della resa.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app" style="opacity:.4">
+      <div class="screenhead"><button class="back">‹</button><h2 style="font-size:18px">Tiramisù fit all'olio EVO</h2></div>
+      <div class="card" style="padding:12px;margin-bottom:0">
+        <div class="row spread"><span style="font-size:15px">Peso finale</span>
+          <span class="stepper"><input value="1320" style="width:88px"><span class="muted">g</span></span></div>
+      </div>
+      <div class="card" style="padding:12px;margin-bottom:0;height:120px"></div>
+      <div class="card" style="padding:12px;margin-bottom:0;height:220px"></div>
+    </div></div>
+
+    <div class="sheetwrap">
+      <div class="sheet">
+        <div class="row spread" style="margin-bottom:12px">
+          <h3>Aggiungi al diario</h3>
+          <button class="ghost" style="width:34px;height:34px;padding:0">✕</button>
+        </div>
+
+        <label class="fl">Giorno</label>
+        <div class="row" style="gap:6px;margin-bottom:12px">
+          <button class="chip on">Oggi</button><button class="chip">Ieri</button><button class="chip">📅 Altro</button>
+        </div>
+
+        <label class="fl">Pasto</label>
+        <div class="row wrap" style="gap:6px;margin-bottom:14px">
+          <button class="chip">Colazione</button>
+          <button class="chip">Pranzo</button>
+          <button class="chip on">Spuntini</button>
+          <button class="chip">Cena</button>
+        </div>
+
+        <label class="fl">Quanti grammi <span style="color:#5f5f5f">· resa 1 320 g</span></label>
+        <div class="row" style="gap:6px;margin-bottom:12px">
+          <button style="flex:none">−10</button>
+          <input value="180" style="flex:1;text-align:center;font-size:20px;font-weight:700">
+          <button style="flex:none">+10</button>
+        </div>
+        <div class="row" style="gap:6px;margin-bottom:14px">
+          <button class="chip">⅛ · 165 g</button><button class="chip">⅙ · 220 g</button><button class="chip">¼ · 330 g</button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;padding:11px 12px;background:var(--bg)">
+          <div class="row" style="gap:11px">
+            <span class="donut" data-c="9.9" data-p="23" data-f="5.2" data-size="46"></span>
+            <div class="mgrid" style="flex:1">
+              <div class="mcell"><div class="v" style="color:var(--carb);font-size:16px">9,9</div><div class="l">Carbo</div></div>
+              <div class="mcell"><div class="v" style="color:var(--prot);font-size:16px">23,0</div><div class="l">Proteine</div></div>
+              <div class="mcell"><div class="v" style="color:var(--fat);font-size:16px">5,2</div><div class="l">Grassi</div></div>
+              <div class="mcell"><div class="v" style="color:var(--gold);font-size:16px">185</div><div class="l">Calorie</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="gap:6px">
+          <button class="ghost" style="flex:1">Annulla</button>
+          <button class="primary" style="flex:2">Aggiungi a Spuntini</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 7. DIARIO DOPO ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">7</span><span class="t">Il diario dopo l'aggiunta</span>
+    <p class="s">Una riga sola, col filetto oro. Toccandola si apre e mostra gli ingredienti; da lì la trasformi in righe normali se vuoi ritoccarne una.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="row spread">
+        <button class="ghost" style="padding:6px 12px">‹</button>
+        <button class="chip" style="font-size:15px;padding:7px 16px">📅 Oggi</button>
+        <button class="ghost" style="padding:6px 12px">›</button>
+      </div>
+
+      <div class="card" style="padding:11px 12px;margin-bottom:0">
+        <div class="row spread">
+          <span class="row" style="gap:8px;min-width:0">
+            <span class="donut" data-c="21.9" data-p="51.3" data-f="11.5" data-size="34"></span>
+            <strong style="font-size:15px">Cena</strong>
+          </span>
+          <div class="row" style="gap:6px">
+            <span class="muted small">411 kcal</span>
+            <button class="ghost small" style="padding:4px 10px">⋮</button>
+          </div>
+        </div>
+
+        <div class="entry recipeline">
+          <span class="nm">📖 Tiramisù fit
+            <span class="sub" style="display:block">1 porzione · 14 ingredienti ▾</span></span>
+          <span class="num"><span class="k">226</span><span class="m"><span style="color:var(--carb)">C: 12</span>, <span style="color:var(--prot)">P: 28,3</span>, <span style="color:var(--fat)">G: 6,3</span></span></span>
+        </div>
+
+        <div class="entry">
+          <span class="nm">Petto di pollo<span class="sub" style="display:block">150 g</span></span>
+          <span class="num"><span class="k">165</span><span class="m"><span style="color:var(--carb)">C: 0</span>, <span style="color:var(--prot)">P: 34,5</span>, <span style="color:var(--fat)">G: 2,7</span></span></span>
+        </div>
+
+        <div class="row" style="padding:7px 0 2px;border-top:1px solid var(--line);margin-top:5px">
+          <div class="mcell"><div class="v" style="color:var(--carb);font-size:15px">21,9</div><div class="l" style="font-size:9px">Carbo</div></div>
+          <div class="mcell"><div class="v" style="color:var(--prot);font-size:15px">51,3</div><div class="l" style="font-size:9px">Proteine</div></div>
+          <div class="mcell"><div class="v" style="color:var(--fat);font-size:15px">11,5</div><div class="l" style="font-size:9px">Grassi</div></div>
+          <div class="mcell"><div class="v" style="color:var(--gold);font-size:15px">411</div><div class="l" style="font-size:9px">kcal</div></div>
+        </div>
+
+        <button class="chip" style="margin-top:8px">＋ Aggiungi cibo</button>
+      </div>
+
+      <div class="card" style="padding:11px 12px;margin-bottom:0">
+        <div class="row spread">
+          <span class="row" style="gap:8px;min-width:0">
+            <span class="donut" data-c="9.9" data-p="23" data-f="5.2" data-size="34"></span>
+            <strong style="font-size:15px">Spuntini</strong>
+          </span>
+          <div class="row" style="gap:6px">
+            <span class="muted small">185 kcal</span>
+            <button class="ghost small" style="padding:4px 10px">⋮</button>
+          </div>
+        </div>
+        <div class="entry recipeline">
+          <span class="nm">📖 Tiramisù fit all'olio EVO
+            <span class="sub" style="display:block">180 g · 14 ingredienti ▾</span></span>
+          <span class="num"><span class="k">185</span><span class="m"><span style="color:var(--carb)">C: 9,9</span>, <span style="color:var(--prot)">P: 23</span>, <span style="color:var(--fat)">G: 5,2</span></span></span>
+        </div>
+        <button class="chip" style="margin-top:8px">＋ Aggiungi cibo</button>
+      </div>
+
+      <p class="muted small" style="line-height:1.5;margin-top:2px">
+        La riga conserva i macro del momento in cui l'hai aggiunta: se domani correggi la ricetta,
+        il diario di oggi resta com'era.
+      </p>
+    </div></div>
+    <nav class="tabbar" data-active="2"></nav>
+  </div>
+</div>
+
+<!-- ============ 8. EDITOR ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">8</span><span class="t">Editor — il toggle sta qui</span>
+    <p class="s">Porzioni o grammi si sceglie una volta, quando crei la ricetta. Gli ingredienti si aggiungono con lo stesso pannello del diario: ricerca, scanner, nuovo alimento.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app">
+      <div class="screenhead">
+        <button class="back">‹</button><h2 style="font-size:19px">Modifica ricetta</h2>
+      </div>
+
+      <div class="card" style="padding:13px;margin-bottom:0">
+        <label class="fl">Nome</label>
+        <input value="Tiramisù fit" style="margin-bottom:12px">
+
+        <label class="fl">Come si conta questa ricetta</label>
+        <div class="seg" style="width:100%;margin-bottom:9px">
+          <button class="on" style="flex:1">A porzioni</button>
+          <button style="flex:1">A grammi</button>
+        </div>
+        <p class="muted" style="font-size:11px;margin:0 0 12px;line-height:1.55">
+          <strong style="color:var(--gold)">A porzioni:</strong> nel diario aggiungi «1 porzione».
+          Per le teglie e i dolci che tagli.<br>
+          <strong style="color:var(--gold-dim)">A grammi:</strong> nel diario pesi il piatto e aggiungi «180 g».
+          Per sughi, impasti, cose che stanno in un contenitore.
+        </p>
+
+        <div class="row" style="gap:8px">
+          <div style="flex:1">
+            <label class="fl">Porzioni</label>
+            <input value="6" style="text-align:center">
+          </div>
+          <div style="flex:1">
+            <label class="fl">Tempo (min)</label>
+            <input value="40" style="text-align:center">
+          </div>
+        </div>
+
+        <label class="fl" style="margin-top:12px">Tag</label>
+        <div class="row wrap" style="gap:6px">
+          <button class="chip on">Dolci ✕</button><button class="chip">＋ tag</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:13px;margin-bottom:0">
+        <div class="row spread" style="margin-bottom:10px">
+          <strong style="font-size:14px">Ingredienti</strong>
+          <button class="chip">＋ Sezione</button>
+        </div>
+
+        <div class="grp">
+          <div class="row spread" style="margin-bottom:3px">
+            <h4 style="margin:0">Base</h4>
+            <span class="muted" style="font-size:11px">⋮⋮ ✕</span>
+          </div>
+          <div class="rule"></div>
+          <div class="ing"><span class="muted" style="font-size:13px">⋮⋮</span><span class="nm">Albume</span>
+            <input value="200" style="width:64px;padding:6px;text-align:center;font-size:14px"><span class="muted small">g</span></div>
+          <div class="ing"><span class="muted" style="font-size:13px">⋮⋮</span><span class="nm">Uovo intero</span>
+            <input value="55" style="width:64px;padding:6px;text-align:center;font-size:14px"><span class="muted small">g</span></div>
+          <div class="ing"><span class="muted" style="font-size:13px">⋮⋮</span><span class="nm">Farina di avena</span>
+            <input value="60" style="width:64px;padding:6px;text-align:center;font-size:14px"><span class="muted small">g</span></div>
+          <button class="chip" style="margin-top:9px">＋ Ingrediente</button>
+        </div>
+
+        <div class="grp">
+          <div class="row spread" style="margin-bottom:3px">
+            <h4 style="margin:0">Crema</h4>
+            <span class="muted" style="font-size:11px">⋮⋮ ✕</span>
+          </div>
+          <div class="rule"></div>
+          <div class="ing"><span class="muted" style="font-size:13px">⋮⋮</span><span class="nm">Skyr naturale</span>
+            <input value="500" style="width:64px;padding:6px;text-align:center;font-size:14px"><span class="muted small">g</span></div>
+          <button class="chip" style="margin-top:9px">＋ Ingrediente</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:13px;margin-bottom:0">
+        <strong style="font-size:14px">Procedimento</strong>
+        <p class="muted" style="font-size:11px;margin:4px 0 8px">Un passaggio per riga.</p>
+        <textarea rows="6" style="font-family:inherit;font-size:14px;line-height:1.6;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:11px;width:100%;resize:vertical">Monta l'albume a neve ferma.
+Mescola farina di avena, whey, eritritolo e lievito con l'uovo intero.
+Incorpora l'albume dal basso verso l'alto.
+Versa in teglia 20×20 e cuoci in forno statico a 180 °C per 12 minuti.</textarea>
+      </div>
+
+      <div class="row" style="gap:6px;margin-top:2px">
+        <button class="ghost" style="color:#e57373;flex:none">🗑</button>
+        <button class="ghost" style="flex:1">Annulla</button>
+        <button class="primary" style="flex:2">Salva ricetta</button>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ============ 9. FOODPICKER ============ -->
+<div class="frame">
+  <div class="cap">
+    <span class="n">9</span><span class="t">Aggiungi cibo — terza scheda</span>
+    <p class="s">Dal pasto arrivi alle ricette senza uscire dal diario. Stesso pannello di oggi, una scheda in più.</p>
+  </div>
+  <div class="phone">
+    <div class="scroll"><div class="app" style="opacity:.4">
+      <div class="card" style="padding:11px 12px;height:110px"></div>
+      <div class="card" style="padding:11px 12px;height:150px"></div>
+    </div></div>
+
+    <div class="sheetwrap">
+      <div class="sheet" style="max-height:88%">
+        <div class="row spread" style="margin-bottom:11px">
+          <h3>Aggiungi a Cena</h3>
+          <button class="ghost" style="width:34px;height:34px;padding:0">✕</button>
+        </div>
+
+        <div class="row" style="gap:8px">
+          <input placeholder="🔍 Cerca alimento…" style="flex:1">
+          <button class="chip on" style="flex:none;padding:0 14px;height:44px">▦</button>
+        </div>
+
+        <div class="row" style="gap:6px;margin-top:10px">
+          <button class="chip">I miei (214)</button>
+          <button class="chip">Cerca online</button>
+          <button class="chip on">📖 Ricette (7)</button>
+          <button class="chip">＋ Nuovo</button>
+        </div>
+
+        <div style="margin-top:8px">
+          <div class="pick">
+            <span class="donut" data-c="12" data-p="28.3" data-f="6.3" data-size="34"></span>
+            <span class="nm">★ Tiramisù fit
+              <span class="sub" style="display:block;font-size:11px;color:var(--muted)">226 kcal a porzione · 6 porzioni</span></span>
+            <span class="muted small">›</span>
+          </div>
+          <div class="pick">
+            <span class="donut" data-c="5.5" data-p="12.8" data-f="2.9" data-size="34"></span>
+            <span class="nm">Tiramisù fit all'olio EVO
+              <span class="sub" style="display:block;font-size:11px;color:var(--muted)">103 kcal per 100 g · resa 1 320 g</span></span>
+            <span class="muted small">›</span>
+          </div>
+          <div class="pick">
+            <span class="donut" data-c="62" data-p="34" data-f="14" data-size="34"></span>
+            <span class="nm">★ Colazione tipo
+              <span class="sub" style="display:block;font-size:11px;color:var(--muted)">521 kcal a porzione · pasto salvato</span></span>
+            <span class="muted small">›</span>
+          </div>
+          <div class="pick">
+            <span class="donut" data-c="19" data-p="9" data-f="2.4" data-size="34"></span>
+            <span class="nm">Pancake proteici
+              <span class="sub" style="display:block;font-size:11px;color:var(--muted)">134 kcal a porzione · 4 porzioni</span></span>
+            <span class="muted small">›</span>
+          </div>
+          <div class="pick">
+            <span class="donut" data-c="2.1" data-p="24" data-f="8.5" data-size="34"></span>
+            <span class="nm">Ragù di tacchino
+              <span class="sub" style="display:block;font-size:11px;color:var(--muted)">181 kcal per 100 g · resa 940 g</span></span>
+            <span class="muted small">›</span>
+          </div>
+        </div>
+
+        <p class="muted" style="font-size:11px;margin-top:12px;line-height:1.5">
+          Toccando una ricetta scegli porzioni o grammi, poi finisce nel pasto.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /frames -->
+
+<div class="notes">
+  <h2>Note di lettura</h2>
+
+  <h3>Il toggle porzioni / grammi</h3>
+  <p>È una proprietà della <strong>ricetta</strong>, decisa nell'editor, e comanda tutto il resto: come
+     si scala il dettaglio, cosa chiede la scheda «Aggiungi al diario», come si legge la riga nel diario.</p>
+  <ul>
+    <li><strong>A porzioni</strong> — la ricetta dichiara quante porzioni fa (6). Lo stepper riscala gli ingredienti,
+        i valori si leggono a porzione o in totale, nel diario aggiungi «1 porzione».</li>
+    <li><strong>A grammi</strong> — la ricetta dichiara il peso finale del piatto (1 320 g, che è meno del crudo:
+        in cottura si perde acqua). I valori si leggono per 100 g, nel diario pesi e aggiungi «180 g».</li>
+  </ul>
+  <p class="q">Il peso finale è modificabile dal dettaglio, non solo dall'editor: la teglia di oggi non pesa
+     come quella del mese scorso, e correggendolo lì i valori per 100 g si aggiornano subito.</p>
+
+  <h3>Una riga sola nel diario</h3>
+  <p>La ricetta entra come <strong>una riga</strong>, non come quattordici. La riga porta il filetto oro e l'icona 📖,
+     si espande per mostrare gli ingredienti scalati, e da lì si può «sciogliere» in righe normali se serve
+     correggere un singolo ingrediente di quella sera.</p>
+  <p>La riga <strong>congela i macro</strong> del momento in cui l'hai aggiunta. Se fra un mese cambi la dose di whey,
+     il diario di oggi non si muove — che è l'unico comportamento sensato per uno storico.</p>
+
+  <h3>Modello dati</h3>
+  <pre><code>// nuova tabella, schema v11
+interface RecipeItem  { foodId: ID; grams: number }
+interface RecipeGroup { name: string; items: RecipeItem[] }
+
+interface Recipe extends BaseRecord {
+  name: string
+  mode: 'servings' | 'grams'   // ← il toggle
+  servings?: number            // se mode = 'servings'
+  yieldG?: number              // se mode = 'grams' — peso finale cotto
+  groups: RecipeGroup[]
+  steps: string[]
+  note?: string
+  timeMin?: number
+  tags?: string[]
+  favorite?: boolean
+  lastUsedAt?: ISODateTime
+}
+
+// FoodLog guadagna tre campi opzionali: chi non li ha resta una riga normale
+interface FoodLog {
+  // …campi di oggi…
+  recipeId?: ID
+  portions?: number            // ricetta a porzioni
+  macrosSnapshot?: Macros      // congelati all'inserimento
+}</code></pre>
+  <p>Gli ingredienti puntano a <code>foods.id</code>: correggi un alimento in libreria e tutte le ricette
+     si ricalcolano da sole. È la connessione che chiedevi.</p>
+
+  <h3>Cosa succede ai pasti salvati</h3>
+  <p>La tabella <code>savedMeals</code> viene assorbita: ogni pasto salvato diventa una ricetta
+     <code>mode:'servings'</code>, <code>servings:1</code>, senza procedimento. Migrazione automatica alla v11,
+     niente da rifare a mano. Nella lista si riconoscono dal filtro «Pasti salvati».</p>
+
+  <h3>Import dal ricettario</h3>
+  <p>Le due ricette entrano così come sono. Dei 22 alimenti vengono aggiunti <strong>solo quelli che mancano
+     davvero</strong>: il confronto è per nome normalizzato (minuscole, senza accenti), quindi «Skyr naturale»
+     riconosce quello che hai già e non ne crea un secondo. Poi <code>ricettario.html</code> esce dal repo.</p>
+</div>
+
+<script>
+/* Anello dei macro: stessa matematica di MacroDonut in FoodSheet.tsx */
+document.querySelectorAll('.donut').forEach(function (el) {
+  var c = parseFloat(el.dataset.c) || 0,
+      p = parseFloat(el.dataset.p) || 0,
+      f = parseFloat(el.dataset.f) || 0,
+      size = parseFloat(el.dataset.size) || 40
+  var kc = { carb: c * 4, prot: p * 4, fat: f * 9 }
+  var tot = kc.carb + kc.prot + kc.fat
+  var stroke = Math.max(4, size * 0.2)
+  var r = size / 2 - stroke / 2 - 1
+  var circ = 2 * Math.PI * r
+  var parts = [
+    { v: tot ? (kc.carb / tot) * circ : 0, color: 'var(--carb)' },
+    { v: tot ? (kc.prot / tot) * circ : 0, color: 'var(--prot)' },
+    { v: tot ? (kc.fat / tot) * circ : 0, color: 'var(--fat)' }
+  ]
+  var off = 0, inner = ''
+  if (!tot) inner += '<circle cx="' + size/2 + '" cy="' + size/2 + '" r="' + r + '" fill="none" stroke="var(--surface-2)" stroke-width="' + stroke + '"/>'
+  parts.forEach(function (s) {
+    inner += '<circle cx="' + size/2 + '" cy="' + size/2 + '" r="' + r + '" fill="none" stroke="' + s.color +
+             '" stroke-width="' + stroke + '" stroke-dasharray="' + s.v + ' ' + (circ - s.v) +
+             '" stroke-dashoffset="' + (-off) + '"/>'
+    off += s.v
+  })
+  el.innerHTML = '<svg width="' + size + '" height="' + size + '" style="transform:rotate(-90deg);flex:none;display:block">' + inner + '</svg>'
+  el.style.flex = 'none'
+})
+
+/* Barra in basso: stesse icone di Nav.tsx */
+var TABS = [
+  ['Home',      '<path d="M3 10.5l9-7 9 7V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],
+  ['Esercizi',  '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>'],
+  ['Dieta',     '<path d="M7 3v6.5a2 2 0 0 0 4 0V3M9 11.5V21M17.5 3c1.8 2 1.8 6.5 0 8.5V21"/>'],
+  ['Abitudini', '<rect x="1.6" y="3.4" width="14.4" height="13.2" rx="2.2"/><path d="M5.2 1.8v3.2M12.4 1.8v3.2M1.6 7.2h14.4"/><path d="M8.8 7.2v9.4M1.6 11.9h14.4"/><path d="M3.6 9.3l.9.9 1.7-2M10.8 9.3l.9.9 1.7-2M3.6 14l.9.9 1.7-2"/><path d="M16.2 17.3c.9-1.4 1.7-2.1 2.5-2.1 1.1 0 1.9 1 1.9 2.1s-.8 2.1-1.9 2.1c-.8 0-1.6-.7-2.5-2.1zm0 0c-.9-1.4-1.7-2.1-2.5-2.1-1.1 0-1.9 1-1.9 2.1s.8 2.1 1.9 2.1c.8 0 1.6-.7 2.5-2.1z"/>'],
+  ['Progressi', '<path d="M3.5 20h17M6 16l4-5 3.5 3.2L20 7M20 7h-3.6M20 7v3.6"/>'],
+  ['Profilo',   '<circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.5c.6-3.7 3.7-5.6 7.4-5.6s6.8 1.9 7.4 5.6"/>']
+]
+document.querySelectorAll('.tabbar').forEach(function (nav) {
+  var active = parseInt(nav.dataset.active, 10)
+  nav.innerHTML = TABS.map(function (t, i) {
+    return '<button class="tab' + (i === active ? ' active' : '') + '">' +
+      '<span class="tab-icon"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t[1] + '</svg></span>' +
+      '<span class="tab-label">' + t[0] + '</span></button>'
+  }).join('')
+})
+</script>
+</body>
+</html>
