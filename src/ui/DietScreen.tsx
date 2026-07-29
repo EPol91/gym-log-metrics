@@ -9,7 +9,10 @@ import {
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
 import { pushUndo } from '../util/undo'
+import { saveMealAsRecipe } from '../db/recipes'
 import { DietTargets } from './DietTargets'
+import { RecipesScreen } from './RecipesScreen'
+import { RecipeEntrySheet } from './RecipeEntrySheet'
 import { FoodPicker } from './FoodPicker'
 import { FoodSheet, MacroDonut } from './FoodSheet'
 import { DayCalendar } from './DayCalendar'
@@ -72,6 +75,15 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
   const start = useRef<number | null>(null)
   const moved = useRef(false)
 
+  // Riga-ricetta: filetto oro a sinistra e il libro davanti al nome. Si distingue
+  // da un alimento a colpo d'occhio, perché si comporta in modo diverso al tocco.
+  const isRecipe = !!e.log.recipeId
+  const quantita = isRecipe
+    ? e.log.portions != null
+      ? `${String(e.log.portions).replace('.', ',')} ${e.log.portions === 1 ? 'porzione' : 'porzioni'}`
+      : `${e.log.grams} g`
+    : `${e.log.grams} g`
+
   return (
     <div data-drag-id={e.log.id}
       style={{ position: 'relative', overflow: lifted ? 'visible' : 'hidden', borderTop: '1px solid var(--line)', zIndex: lifted ? 5 : undefined }}>
@@ -107,12 +119,13 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
             display: 'grid', placeItems: 'center', fontSize: 12,
           }}>{selected ? '✓' : ''}</span>
         )}
+        {isRecipe && <span style={{ flex: 'none', width: 2, alignSelf: 'stretch', background: 'var(--gold)', borderRadius: 2 }} />}
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
-            {e.food.name}
+            {isRecipe ? '📖 ' : ''}{e.food.name}
           </span>
           <span className="muted" style={{ fontSize: 11 }}>
-            {e.food.brand ? `${e.food.brand} · ` : ''}{e.log.grams} g
+            {e.food.brand ? `${e.food.brand} · ` : ''}{quantita}
           </span>
         </span>
         {/* Calorie e macro incolonnati a destra: i numeri stanno insieme, non sparsi. */}
@@ -151,6 +164,7 @@ export function DietScreen() {
   const [date, setDate] = usePersistedState('diet-date', todayDiet())
   const [picking, setPicking] = useState<{ id: string; name: string } | null>(null)
   const [showTargets, setShowTargets] = useState(false)
+  const [showRecipes, setShowRecipes] = useState(false)
   const [showCal, setShowCal] = useState(false)
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null)
   const [menuMeal, setMenuMeal] = useState<string | null>(null)
@@ -191,6 +205,7 @@ export function DietScreen() {
   useEffect(() => { if (!selectMode) setSelected(new Set()) }, [selectMode])
 
   if (showTargets) return <DietTargets onBack={() => setShowTargets(false)} suggested={suggested} />
+  if (showRecipes) return <RecipesScreen onBack={() => setShowRecipes(false)} />
 
   /**
    * Pressione prolungata → la riga si stacca e segue il dito.
@@ -318,6 +333,7 @@ export function DietScreen() {
           </button>
         ))}
         <button className="chip" onClick={() => setShowTargets(true)}>⚙ Obiettivi</button>
+        <button className="chip" onClick={() => setShowRecipes(true)}>📖 Ricette</button>
       </div>
 
       {/* Riepilogo macro */}
@@ -405,6 +421,14 @@ export function DietScreen() {
               <button className="chip" onClick={async () => { await moveMeal(m.meal.id, -1); setMenuMeal(null) }}>↑</button>
               <button className="chip" onClick={async () => { await moveMeal(m.meal.id, 1); setMenuMeal(null) }}>↓</button>
               <button className="chip" onClick={() => { setSelectMode(true); setMenuMeal(null) }}>☑ Seleziona</button>
+              {/* Erede dei "pasti salvati": il pasto diventa una ricetta riutilizzabile. */}
+              <button className="chip" onClick={async () => {
+                const n = prompt('Salva come ricetta — nome', m.meal.name)?.trim()
+                setMenuMeal(null)
+                if (!n) return
+                const id = await saveMealAsRecipe(m.meal.id, n)
+                if (!id) alert('Questo pasto non ha alimenti da salvare.')
+              }}>💾 Salva come ricetta</button>
               <button className="chip" style={{ color: '#e57373' }} onClick={() => removeMeal(m.meal.id, m.meal.name)}>🗑 Elimina pasto</button>
             </div>
           )}
@@ -444,9 +468,12 @@ export function DietScreen() {
         <FoodPicker date={date} mealId={picking.id} mealName={picking.name} onClose={() => setPicking(null)} />
       )}
 
-      {editEntry && (
-        <EditEntrySheet entry={editEntry} onClose={() => setEditEntry(null)}
-          onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
+      {/* Una riga-ricetta non si modifica come un alimento: ha la sua scheda. */}
+      {editEntry && (editEntry.log.recipeId
+        ? <RecipeEntrySheet entry={editEntry} onClose={() => setEditEntry(null)}
+            onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
+        : <EditEntrySheet entry={editEntry} onClose={() => setEditEntry(null)}
+            onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
       )}
 
       {showCal && (

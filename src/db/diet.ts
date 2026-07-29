@@ -5,7 +5,7 @@ import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { todayLocal } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
-import type { DayType, Food, FoodLog, Macros, Meal, SavedMeal } from './schema'
+import type { DayType, Food, FoodLog, Macros, Meal } from './schema'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
@@ -69,16 +69,31 @@ export function mealsOfDate(date: string) {
   return db.meals.where('date').equals(date).filter((m) => m.userId === U).toArray()
 }
 
+/**
+ * Chiamate in volo per data. Due schermate che aprono lo stesso giorno nello stesso
+ * istante devono creare i pasti UNA volta: senza questo, la seconda leggeva ancora
+ * "nessun pasto" e ne creava altri quattro, con il diario sdoppiato.
+ */
+const mealsInFlight = new Map<string, Promise<Meal[]>>()
+
 /** Pasti del giorno, creandoli alla prima apertura di una data mai usata. */
-export async function ensureMeals(date: string): Promise<Meal[]> {
-  const existing = (await mealsOfDate(date)).sort((a, b) => a.order - b.order)
-  if (existing.length) return existing
-  const ts = nowISO()
-  const rows: Meal[] = DEFAULT_MEALS.map((name, i) => ({
-    id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, name, order: i,
-  }))
-  await db.meals.bulkAdd(rows)
-  return rows
+export function ensureMeals(date: string): Promise<Meal[]> {
+  const running = mealsInFlight.get(date)
+  if (running) return running
+
+  const run = db.transaction('rw', db.meals, async () => {
+    const existing = (await mealsOfDate(date)).sort((a, b) => a.order - b.order)
+    if (existing.length) return existing
+    const ts = nowISO()
+    const rows: Meal[] = DEFAULT_MEALS.map((name, i) => ({
+      id: newId(), userId: U, createdAt: ts, updatedAt: ts, date, name, order: i,
+    }))
+    await db.meals.bulkAdd(rows)
+    return rows
+  }).finally(() => { mealsInFlight.delete(date) })
+
+  mealsInFlight.set(date, run)
+  return run
 }
 
 export async function addMeal(date: string, name = 'Nuovo pasto'): Promise<string> {
@@ -131,10 +146,24 @@ export async function duplicateMeal(id: string, toDate?: string): Promise<string
   const newMealId = await addMeal(date, toDate ? meal.name : `${meal.name} (copia)`)
   const ts = nowISO()
   await db.foodLogs.bulkAdd(logs.map((l, i) => ({
-    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    date, mealId: newMealId, foodId: l.foodId, grams: l.grams, order: i,
+    ...copyOf(l), id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    date, mealId: newMealId, order: i,
   })))
   return newMealId
+}
+
+/**
+ * Parte copiabile di una riga: quantità e provenienza, niente identità né posizione.
+ * Passa da qui anche la riga-ricetta, che senza i suoi campi diventerebbe una riga vuota.
+ */
+function copyOf(l: FoodLog) {
+  return {
+    foodId: l.foodId, grams: l.grams,
+    ...(l.recipeId ? {
+      recipeId: l.recipeId, nameSnapshot: l.nameSnapshot, macrosSnapshot: l.macrosSnapshot,
+      ...(l.portions != null ? { portions: l.portions } : {}),
+    } : {}),
+  }
 }
 
 /** Incolla il contenuto di un pasto dentro un altro (in coda). */
@@ -145,8 +174,8 @@ export async function pasteIntoMeal(sourceMealId: string, targetMealId: string):
   const base = await db.foodLogs.where('mealId').equals(targetMealId).count()
   const ts = nowISO()
   const rows: FoodLog[] = logs.map((l, i) => ({
-    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    date: target.date, mealId: targetMealId, foodId: l.foodId, grams: l.grams, order: base + i,
+    ...copyOf(l), id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    date: target.date, mealId: targetMealId, order: base + i,
   }))
   await db.foodLogs.bulkAdd(rows)
   return rows.map((r) => r.id)
@@ -215,7 +244,33 @@ export function macrosFor(per100: Macros, grams: number): Macros {
   }
 }
 
+/**
+ * Una riga del diario pronta da mostrare. `food` c'è sempre, anche per le righe-ricetta:
+ * lì è un alimento finto costruito dallo snapshot, così tutto ciò che disegna una riga
+ * continua a funzionare senza sapere niente delle ricette.
+ */
 export interface DiaryEntry { log: FoodLog; food: Food; macros: Macros }
+
+/**
+ * Alimento finto per una riga-ricetta. Non finisce mai nel database: serve solo
+ * a dare una forma nota a chi disegna. L'id `recipe:<id>` è riconoscibile a colpo
+ * d'occhio se compare per sbaglio da qualche parte.
+ */
+function recipeAsFood(log: FoodLog): Food {
+  const m = log.macrosSnapshot ?? ZERO()
+  // per100 sensato solo per le ricette pesate; per quelle a porzioni non vuol dire nulla.
+  const k = log.grams > 0 ? 100 / log.grams : 0
+  return {
+    id: `recipe:${log.recipeId}`, userId: log.userId,
+    createdAt: log.createdAt, updatedAt: log.updatedAt,
+    name: log.nameSnapshot ?? 'Ricetta',
+    per100: {
+      kcal: Math.round(m.kcal * k), protein: Math.round(m.protein * k * 10) / 10,
+      carbs: Math.round(m.carbs * k * 10) / 10, fat: Math.round(m.fat * k * 10) / 10,
+    },
+    source: 'mine',
+  }
+}
 export interface DiaryMeal { meal: Meal; entries: DiaryEntry[]; totals: Macros }
 export interface DiaryDay { meals: DiaryMeal[]; totals: Macros }
 
@@ -244,6 +299,14 @@ export async function computeDiary(date: string): Promise<DiaryDay> {
     const entries: DiaryEntry[] = []
     let mt = ZERO()
     for (const log of logs.filter((l) => l.mealId === meal.id)) {
+      // Riga-ricetta: i macro sono quelli congelati all'inserimento, non si ricalcolano.
+      // Resta leggibile anche se la ricetta nel frattempo è stata eliminata.
+      if (log.recipeId) {
+        const macros = log.macrosSnapshot ?? ZERO()
+        entries.push({ log, food: recipeAsFood(log), macros })
+        mt = add(mt, macros)
+        continue
+      }
       const food = foods.get(log.foodId)
       if (!food) continue // alimento eliminato: la riga sparisce
       const macros = macrosFor(food.per100, log.grams)
@@ -290,33 +353,8 @@ export async function deleteDayType(id: string): Promise<Trash> {
   return snapshotAndDelete('dayTypes', id)
 }
 
-// --- Pasti salvati (modelli riutilizzabili) ---------------------------------
+// --- Pasti salvati ----------------------------------------------------------
+// Assorbiti dalle ricette nella v11: un pasto salvato è una ricetta a 1 porzione
+// senza procedimento. Vedi `saveMealAsRecipe` in db/recipes.ts.
 
-export function listSavedMeals() {
-  return db.savedMeals.where('userId').equals(U).toArray()
-}
-
-export async function saveMealAsTemplate(mealId: string, name: string): Promise<void> {
-  const logs = (await db.foodLogs.where('mealId').equals(mealId).toArray()).sort((a, b) => a.order - b.order)
-  const ts = nowISO()
-  await db.savedMeals.add({
-    id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    name: name.trim(), items: logs.map((l) => ({ foodId: l.foodId, grams: l.grams })),
-  })
-}
-
-export async function deleteSavedMeal(id: string): Promise<Trash> {
-  return snapshotAndDelete('savedMeals', id)
-}
-
-/** Aggiunge tutti gli alimenti di un modello dentro un pasto. */
-export async function applySavedMeal(savedId: string, date: string, mealId: string): Promise<string[]> {
-  const m = await db.savedMeals.get(savedId)
-  if (!m) return []
-  const ids: string[] = []
-  for (const it of m.items) ids.push(await addFoodLog(date, mealId, it.foodId, it.grams))
-  return ids
-}
-
-export type { SavedMeal }
 export { today as todayDiet }

@@ -190,6 +190,20 @@ export function whoopWorkoutsOf(date: string) {
   return db.whoopWorkouts.where('date').equals(date).filter((w) => w.userId === U).toArray()
 }
 
+/**
+ * Giornate WHOOP di un periodo, in ordine cronologico, con le date in cui ti sei
+ * allenato. Serve a incrociare i due mondi: allenarsi da scarichi si vede solo qui.
+ */
+export async function whoopTrend(giorni: number): Promise<{ righe: WhoopDay[]; sedute: Set<string> }> {
+  const da = new Date(Date.now() - giorni * 86400_000).toISOString().slice(0, 10)
+  const righe = (await db.whoopDays.where('userId').equals(U).toArray())
+    .filter((d) => d.date >= da)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const sessioni = await db.sessions.where('userId').equals(U).toArray()
+  const sedute = new Set(sessioni.filter((s) => s.date >= da && s.finishedAt).map((s) => s.date))
+  return { righe, sedute }
+}
+
 /** Cancella la copia locale: si usa quando scolleghi, per non lasciare dati orfani. */
 export async function clearWhoopData(): Promise<void> {
   await db.whoopDays.where('userId').equals(U).delete()

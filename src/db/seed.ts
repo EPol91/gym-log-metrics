@@ -2,6 +2,7 @@
 import { db, newId, nowISO } from './db'
 import { EXERCISE_CATALOG } from './catalog'
 import { BASE_FOODS } from './baseFoods'
+import { ensureRecipeSeed } from './recipeSeed'
 import type { User, Gym, Exercise } from './schema'
 
 /** Utente unico locale (single-user ora; è comunque un userId, multi-tenant-ready). */
@@ -65,6 +66,7 @@ export async function ensureSeed(): Promise<User> {
   if (newFoods.length) await db.foods.bulkPut(newFoods)
 
   await dedupeSeeded()
+  await ensureRecipeSeed()
 
   return user
 }

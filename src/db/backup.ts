@@ -1,9 +1,15 @@
 // Export / Import completo dei dati (Bible: controllo totale, migrazione dispositivi).
 import { db, nowISO } from './db'
 
+// Tutte le tabelle, nessuna esclusa: un backup che si dimentica la dieta o le
+// abitudini non è un backup. Chi importa un file più vecchio semplicemente non
+// avrà quelle voci, e le tabelle mancanti vengono saltate senza errori.
 const TABLES = [
   'users', 'gyms', 'exercises', 'sessions', 'exerciseEntries', 'sets',
   'bodyMeasurements', 'nutrition', 'cardio', 'phases', 'templates',
+  'cardioPresets', 'readinessChecks', 'goalHistory',
+  'foods', 'foodLogs', 'meals', 'dayTypes', 'savedMeals', 'recipes',
+  'habits', 'habitEntries',
 ] as const
 
 export interface BackupFile {

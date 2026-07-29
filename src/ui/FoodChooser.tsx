@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } from '../db/diet'
-import { listRecipesRanked, computeRecipe } from '../db/recipes'
+import { listFoodsRanked, addFood, findFoodByBarcode } from '../db/diet'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
 import { BarcodeScanner, isScanSupported } from './BarcodeScanner'
-import { FoodSheet, FoodForm, MacroDonut } from './FoodSheet'
-import { AddRecipeSheet } from './AddRecipeSheet'
-import type { Food, Recipe } from '../db/schema'
+import { FoodForm } from './FoodSheet'
+import type { Food } from '../db/schema'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; mealId: string; mealName: string; onClose: () => void }) {
+/**
+ * Scelta di un alimento dalla libreria, senza aggiungerlo a niente.
+ * Serve all'editor delle ricette: stessa ricerca, stesso scanner e stesso form
+ * del pannello del diario, ma alla fine restituisce l'alimento invece di registrarlo.
+ */
+export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; onClose: () => void }) {
   const [q, setQ] = useState('')
-  const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
-  const [chosen, setChosen] = useState<Food | null>(null)
-  const [recipe, setRecipe] = useState<Recipe | null>(null)
+  const [tab, setTab] = useState<'mine' | 'online'>('mine')
   const [creating, setCreating] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [online, setOnline] = useState<OffFood[]>([])
@@ -23,8 +24,6 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
   const [msg, setMsg] = useState<string | null>(null)
 
   const foods = useLiveQuery(listFoodsRanked, []) ?? []
-  const recipes = useLiveQuery(listRecipesRanked, []) ?? []
-  const allFoods = useLiveQuery(listFoods, []) ?? []
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -47,28 +46,22 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
     } catch { setMsg('Ricerca online non riuscita: sei offline?') } finally { setBusy(false) }
   }
 
-  /** Salva l'alimento trovato online nella libreria e passa alla quantità. */
-  async function useOffFood(o: OffFood) {
+  /** Salva in libreria l'alimento trovato online e lo consegna alla ricetta. */
+  async function salvaDaOff(o: OffFood) {
     const id = await addFood({ name: o.name, brand: o.brand, barcode: o.barcode, per100: o.per100, source: 'off', servingG: o.servingG })
     const f = (await listFoodsRanked()).find((x) => x.id === id)
-    if (f) setChosen(f)
+    if (f) onPick(f)
   }
 
   async function onScanned(code: string) {
     setScanning(false); setBusy(true); setMsg(null)
     try {
       const existing = await findFoodByBarcode(code)
-      if (existing) { setChosen(existing); return } // già in libreria: valori tuoi
+      if (existing) { onPick(existing); return }
       const o = await fetchByBarcode(code)
       if (!o) { setMsg(`Codice ${code} non trovato: creane uno tu dai valori in etichetta.`); setCreating(true); return }
-      await useOffFood(o)
+      await salvaDaOff(o)
     } catch { setMsg('Lettura non riuscita.') } finally { setBusy(false) }
-  }
-
-  async function add(grams: number) {
-    if (!chosen) return
-    await addFoodLog(date, mealId, chosen.id, grams)
-    onClose()
   }
 
   let body: React.ReactNode
@@ -80,11 +73,9 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
         onSave={async (v) => {
           const id = await addFood({ ...v, source: 'mine' })
           const f = (await listFoodsRanked()).find((x) => x.id === id)
-          setCreating(false); if (f) setChosen(f)
+          setCreating(false); if (f) onPick(f)
         }} />
     )
-  } else if (chosen) {
-    body = <FoodSheet food={chosen} mode="add" onConfirm={add} onBack={() => setChosen(null)} />
   } else {
     body = (
       <>
@@ -101,7 +92,6 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
           <button className={tab === 'online' ? 'chip on' : 'chip'} onClick={runOnlineSearch} disabled={!q.trim() || busy}>
             {busy ? 'Cerco…' : 'Cerca online'}
           </button>
-          <button className={tab === 'recipes' ? 'chip on' : 'chip'} onClick={() => setTab('recipes')}>📖 Ricette ({recipes.length})</button>
           <button className="chip" onClick={() => setCreating(true)}>＋ Nuovo</button>
         </div>
 
@@ -110,17 +100,16 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
         <div className="col" style={{ gap: 0, marginTop: 6, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {tab === 'mine' && filtered.map((f) => (
             <div key={f.id} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => setChosen(f)}>
+              onClick={() => onPick(f)}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {f.favorite ? '★ ' : ''}{f.name}
                 </span>
                 <span className="muted small">
                   {f.brand ? `${f.brand} · ` : ''}{f.per100.kcal} kcal · C: {f.per100.carbs}, P: {f.per100.protein}, G: {f.per100.fat}
-                  {f.edited ? ' · corretto' : ''}
                 </span>
               </span>
-              <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>›</span>
+              <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>＋</span>
             </div>
           ))}
           {tab === 'mine' && filtered.length === 0 && (
@@ -129,7 +118,7 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
 
           {tab === 'online' && online.map((o) => (
             <div key={o.barcode ?? o.name} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => useOffFood(o)}>
+              onClick={() => salvaDaOff(o)}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
                 <span className="muted small">{o.brand ? `${o.brand} · ` : ''}{o.per100.kcal} kcal · C: {o.per100.carbs}, P: {o.per100.protein}, G: {o.per100.fat}</span>
@@ -137,39 +126,6 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
               <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>＋</span>
             </div>
           ))}
-          {tab === 'recipes' && (() => {
-            const byId = new Map(allFoods.map((f) => [f.id, f]))
-            const visibili = nq ? recipes.filter((r) => norm(r.name).includes(nq)) : recipes
-            if (!visibili.length) {
-              return <p className="muted small" style={{ marginTop: 10 }}>
-                {recipes.length ? 'Nessuna ricetta con questo nome.' : 'Non hai ancora ricette: creale da Dieta → 📖 Ricette.'}
-              </p>
-            }
-            return visibili.map((r) => {
-              const c = computeRecipe(r, byId)
-              const unit = r.mode === 'servings' ? c.perServing : c.per100
-              const m = unit ?? c.totals
-              return (
-                <div key={r.id} className="row spread" style={{ alignItems: 'center', gap: 9, padding: '9px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-                  onClick={() => setRecipe(r)}>
-                  <MacroDonut m={m} size={34} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.favorite ? '★ ' : ''}{r.name}
-                    </span>
-                    <span className="muted small">
-                      {unit
-                        ? `${m.kcal} kcal ${r.mode === 'servings' ? 'a porzione' : 'per 100 g'}`
-                        : 'peso finale da impostare'}
-                      {r.mode === 'servings' ? ` · ${r.servings ?? 1} porzioni` : ` · resa ${r.yieldG} g`}
-                    </span>
-                  </span>
-                  <span className="muted small" style={{ flex: 'none' }}>›</span>
-                </div>
-              )
-            })
-          })()}
-
           {tab === 'online' && online.length > 0 && (
             <p className="muted" style={{ fontSize: 10, marginTop: 8 }}>
               Dati da Open Food Facts. Controlla sempre con l'etichetta: sono inseriti dagli utenti e puoi correggerli dopo l'aggiunta.
@@ -180,7 +136,7 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
     )
   }
 
-  const pannello = createPortal(
+  return createPortal(
     <div onClick={onClose}
       style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()}
@@ -190,24 +146,12 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
           padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
         }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 10 }}>
-          <strong>Aggiungi a {mealName}</strong>
+          <strong>Scegli un ingrediente</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
         {body}
       </div>
     </div>,
     document.body,
-  )
-
-  // La scheda della ricetta sta FUORI dallo sfondo del pannello: dentro, il tocco
-  // sul suo sfondo risalirebbe lungo l'albero React e chiuderebbe anche il pannello.
-  return (
-    <>
-      {pannello}
-      {recipe && (
-        <AddRecipeSheet recipe={recipe} date={date} mealId={mealId}
-          onClose={() => setRecipe(null)} onDone={() => onClose()} />
-      )}
-    </>
   )
 }
