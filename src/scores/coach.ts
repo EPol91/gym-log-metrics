@@ -154,7 +154,7 @@ async function creditLine(home: HomeData, sessions: WorkoutSession[]): Promise<C
 /** Media di un campo sulle giornate WHOOP disponibili, esclusa quella di oggi. */
 function mediaWhoop(giorni: WhoopDay[], f: (d: WhoopDay) => number | undefined): number | null {
   const v = giorni.map(f).filter((x): x is number => x != null)
-  return v.length >= 7 ? v.reduce((a, b) => a + b, 0) / v.length : null
+  return v.length >= 5 ? v.reduce((a, b) => a + b, 0) / v.length : null
 }
 
 /**
@@ -170,8 +170,29 @@ async function healthLine(): Promise<CoachLine | null> {
   const dOggi = oggi.date === todayISO() ? oggi : null
   const storico = giorni.filter((g) => g.date !== todayISO())
 
-  // 1) Recupero di oggi contro la tua media.
+  // 1) Recupero di oggi. Con almeno cinque giorni alle spalle il confronto è con
+  //    la TUA media; prima di allora si usano le fasce di WHOOP, che è meglio di
+  //    tacere e lasciarti pensare che il coach sia rotto.
   const mediaRec = mediaWhoop(storico, (d) => d.recovery)
+  if (dOggi?.recovery != null && mediaRec == null) {
+    const r = dOggi.recovery
+    if (r < 34) {
+      return {
+        fact: `Recupero ${r}%: fascia rossa di WHOOP.`,
+        advice: 'una seduta più corta rende spesso più di una saltata.',
+      }
+    }
+    if (r >= 67) {
+      return {
+        fact: `Recupero ${r}%: fascia verde di WHOOP.`,
+        advice: 'se c\'è un giorno per il carico pesante, di solito è questo.',
+      }
+    }
+    return {
+      fact: `Recupero ${r}%: fascia gialla di WHOOP.`,
+      advice: 'con qualche giorno in più di storico il confronto sarà con la tua media, non con le fasce.',
+    }
+  }
   if (dOggi?.recovery != null && mediaRec != null) {
     const scarto = dOggi.recovery - mediaRec
     if (scarto <= -12) {

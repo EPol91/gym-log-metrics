@@ -315,10 +315,13 @@ export function DietScreen() {
 
   return (
     <div className="col" style={{ gap: 8 }}>
-      {/* Giorno · a destra le due azioni: non sono tipi di giornata e non devono
-          far scorrere la riga sotto, dove finivano tagliate a meta. */}
+      {/* Ricette a sinistra, data al centro, obiettivi a destra: la data resta
+          centrata perche i due lati pesano uguale. */}
       <div className="row" style={{ alignItems: 'center' }}>
-        <div style={{ flex: 1 }} />
+        <div className="row" style={{ flex: 1 }}>
+          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Ricette"
+            onClick={() => setShowRecipes(true)}>📖</button>
+        </div>
         <div className="row" style={{ gap: 2, alignItems: 'center', flex: 'none' }}>
           <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
           <button className="chip" style={{ fontSize: 15, padding: '7px 14px' }} onClick={() => setShowCal(true)}>
@@ -326,11 +329,9 @@ export function DietScreen() {
           </button>
           <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
         </div>
-        <div className="row" style={{ gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+        <div className="row" style={{ flex: 1, justifyContent: 'flex-end' }}>
           <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Obiettivi"
             onClick={() => setShowTargets(true)}>⚙</button>
-          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Ricette"
-            onClick={() => setShowRecipes(true)}>📖</button>
         </div>
       </div>
 
