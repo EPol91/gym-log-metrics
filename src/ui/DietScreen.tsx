@@ -315,25 +315,32 @@ export function DietScreen() {
 
   return (
     <div className="col" style={{ gap: 8 }}>
-      {/* Giorno */}
+      {/* Giorno · a destra le due azioni: non sono tipi di giornata e non devono
+          far scorrere la riga sotto, dove finivano tagliate a meta. */}
       <div className="row spread" style={{ alignItems: 'center' }}>
-        <button className="ghost" style={{ padding: '6px 12px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
-        <button className="chip" style={{ fontSize: 15, padding: '7px 16px' }} onClick={() => setShowCal(true)}>
-          📅 {labelFor(date)}
-        </button>
-        <button className="ghost" style={{ padding: '6px 12px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
+        <div className="row" style={{ gap: 2, alignItems: 'center', minWidth: 0 }}>
+          <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
+          <button className="chip" style={{ fontSize: 15, padding: '7px 14px' }} onClick={() => setShowCal(true)}>
+            📅 {labelFor(date)}
+          </button>
+          <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
+        </div>
+        <div className="row" style={{ gap: 6, flex: 'none' }}>
+          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Obiettivi"
+            onClick={() => setShowTargets(true)}>⚙</button>
+          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Ricette"
+            onClick={() => setShowRecipes(true)}>📖</button>
+        </div>
       </div>
 
-      {/* Tipo giornata + obiettivi */}
-      <div className="row" style={{ gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+      {/* Tipo giornata: sono tre, stanno in riga senza scorrere */}
+      <div className="row" style={{ gap: 6 }}>
         {dayTypes.map((d) => (
           <button key={d.id} className={nutri?.dayType === d.key ? 'chip on' : 'chip'}
             onClick={() => upsertNutrition(date, { dayType: nutri?.dayType === d.key ? null : d.key as never })}>
             {d.name}
           </button>
         ))}
-        <button className="chip" onClick={() => setShowTargets(true)}>⚙ Obiettivi</button>
-        <button className="chip" onClick={() => setShowRecipes(true)}>📖 Ricette</button>
       </div>
 
       {/* Riepilogo macro */}
