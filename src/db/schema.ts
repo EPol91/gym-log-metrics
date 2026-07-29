@@ -1,4 +1,4 @@
-// Modello dati EP - GYM LOG & METRICS
+// Modello dati ETP HEALTH
 // Principi (Project Bible + Architettura v0):
 // - Single source of truth: si salvano SOLO i dati grezzi. Metriche/score derivati a runtime.
 // - Multi-tenant-ready: ogni record porta userId + timestamp, formato "sync-ready".

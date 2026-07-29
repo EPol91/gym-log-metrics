@@ -43,7 +43,7 @@ export async function importBackup(json: string): Promise<{ ok: boolean; message
     return { ok: false, message: 'File non valido (JSON non leggibile).' }
   }
   if (parsed?.format !== 'gymlog-backup' || !parsed.data) {
-    return { ok: false, message: 'Non è un backup di GYM LOG.' }
+    return { ok: false, message: 'Non è un backup di ETP HEALTH.' }
   }
   let count = 0
   for (const t of TABLES) {

@@ -35,7 +35,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   return (
     <div className="col">
       <div>
-        <h1>Benvenuto in <span className="brand">GYM LOG</span></h1>
+        <h1>Benvenuto in <span className="brand">ETP HEALTH</span></h1>
         <p className="muted small">Due dati veloci per personalizzare l'app. Puoi cambiarli dopo nel Profilo.</p>
       </div>
 

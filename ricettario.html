@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ricettario</title>
+<style>
+:root{
+  --bg:#0B0A09;
+  --panel:#141210;
+  --panel-2:#1C1917;
+  --line:#2B2723;
+  --line-soft:#211E1B;
+  --ink:#F4EFE6;
+  --ink-2:#D3CABB;
+  --muted:#8E8578;
+  --gold:#D4AF37;
+  --gold-2:#B8942C;
+  --gold-soft:#6E5B22;
+  --warn:#C4614A;
+  --serif:ui-serif,Georgia,"Times New Roman",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%;
+  padding-bottom:calc(40px + env(safe-area-inset-bottom));
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+
+/* ---- testata ---- */
+header.top{
+  position:sticky;top:0;z-index:30;background:rgba(11,10,9,.96);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft);
+}
+.top-in{max-width:720px;margin:0 auto;padding:12px 16px 0}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.brand h1{
+  font-family:var(--serif);font-size:20px;font-weight:600;margin:0;
+  letter-spacing:.3px;color:var(--ink);
+}
+.brand h1 em{font-style:normal;color:var(--gold)}
+.brand span{font-size:13px;color:var(--muted)}
+nav.tabs{display:flex;gap:22px}
+nav.tabs button{
+  background:none;border:0;padding:0 0 10px;color:var(--muted);
+  font-size:15px;border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+nav.tabs button[aria-selected="true"]{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ---- blocchi ---- */
+.card{
+  background:var(--panel);border:1px solid var(--line-soft);
+  border-radius:var(--r);padding:16px;margin-top:14px;
+}
+.sect{margin-top:24px}
+.sect > h2{
+  font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 3px;white-space:nowrap;
+}
+.sect > h2 + p{margin:0 0 10px;font-size:13px;color:var(--muted);line-height:1.45}
+.rule{height:1px;background:linear-gradient(90deg,var(--gold-soft),transparent);margin:10px 0 0}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.muted{color:var(--muted)}
+.note{font-size:14px;color:var(--ink-2);line-height:1.55}
+.hint{font-size:13px;color:var(--muted);line-height:1.5;margin-top:12px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---- controlli ---- */
+input,select,textarea{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:9px;
+  padding:10px 12px;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--gold-soft)}
+input[type=number]{font-family:var(--mono);text-align:right}
+textarea{resize:vertical;min-height:110px;line-height:1.6}
+label.f{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.fld{margin-bottom:14px}
+.fld:last-child{margin-bottom:0}
+
+.btn{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:9px;
+  padding:10px 16px;font-size:15px;min-height:40px;
+}
+.btn:hover{border-color:var(--gold-soft)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#0B0A09;font-weight:600}
+.btn.primary:hover{background:var(--gold-2)}
+.btn.ghost{background:none;border-color:transparent;padding-left:0;color:var(--muted)}
+.btn.ghost:hover{color:var(--gold);border-color:transparent}
+.btn.danger{border-color:#4A2E28;color:#D9917E}
+.btn.sm{padding:7px 13px;font-size:14px;min-height:34px}
+.btn.wide{width:100%;justify-content:center}
+
+/* ---- elenco ricette ---- */
+.rlist{display:grid;gap:10px;margin-top:14px}
+.ritem{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);
+  padding:15px 17px;text-align:left;width:100%;display:block;
+}
+.ritem:hover{border-color:var(--gold-soft)}
+.ritem h3{font-family:var(--serif);font-size:18px;margin:0;font-weight:600}
+.ritem .meta{font-size:13px;color:var(--muted);margin-top:2px}
+.ritem .sum{
+  display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;padding-top:11px;
+  border-top:1px solid var(--line-soft);
+}
+.ritem .sum span{font-size:13px;color:var(--ink-2)}
+.ritem .sum b{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.ritem .sum span:first-child b{color:var(--gold)}
+
+/* ---- porzioni ---- */
+.scaler{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);
+  padding:14px 16px;margin-top:16px;
+}
+.scaler .lab{font-size:15px;color:var(--ink-2)}
+.scaler .factor{font-size:13px;color:var(--muted);margin-top:9px}
+.stepper{display:flex;align-items:center;gap:5px}
+.stepper button{
+  width:40px;height:40px;border-radius:10px;background:var(--panel-2);
+  border:1px solid var(--line);color:var(--gold);font-size:20px;line-height:1;
+}
+.stepper button:hover{border-color:var(--gold-soft)}
+.stepper input{
+  width:52px;text-align:center;font-family:var(--mono);font-size:18px;
+  padding:9px 2px;background:none;border-color:transparent;
+}
+
+/* ---- macro ---- */
+.macros{
+  display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-soft);
+  border:1px solid var(--line-soft);border-radius:var(--r);overflow:hidden;margin-top:10px;
+}
+@media(min-width:620px){.macros{grid-template-columns:repeat(4,1fr)}}
+.macros .m{background:var(--panel);padding:12px 14px}
+.macros .mv{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
+.macros .mu{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:3px}
+.macros .ml{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.macros .m.gold .mv{color:var(--gold)}
+.toggle{display:flex;gap:3px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:2px}
+.toggle button{background:none;border:0;border-radius:7px;padding:6px 12px;font-size:14px;color:var(--muted)}
+.toggle button[aria-pressed="true"]{background:var(--gold);color:#0B0A09;font-weight:600}
+
+/* ---- ingredienti ---- */
+.grp{margin-top:18px}
+.grp:first-child{margin-top:0}
+.grp h4{
+  font-family:var(--serif);font-size:15px;color:var(--gold);
+  margin:0 0 4px;font-weight:600;
+}
+.grp .rule{margin-bottom:6px}
+ul.ing{list-style:none;margin:0;padding:0}
+ul.ing li{
+  display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding:9px 0;border-bottom:1px solid var(--line-soft);
+}
+ul.ing li:last-child{border-bottom:0;padding-bottom:0}
+ul.ing .in{color:var(--ink);line-height:1.4}
+ul.ing .q{
+  font-family:var(--mono);font-size:15px;color:var(--gold);
+  white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+ul.ing .q.warnq{color:var(--warn)}
+
+/* ---- procedimento ---- */
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+ol.steps li{
+  counter-increment:s;position:relative;padding:11px 0 11px 36px;
+  border-bottom:1px solid var(--line-soft);line-height:1.5;
+}
+ol.steps li:last-child{border-bottom:0;padding-bottom:0}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:0;top:11px;width:25px;height:25px;
+  border:1px solid var(--gold-soft);border-radius:50%;color:var(--gold);
+  font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center;
+}
+
+/* ---- alimenti ---- */
+.search{margin-top:14px}
+.frow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 44px 38px 38px 38px;
+  gap:9px;align-items:center;width:100%;
+}
+.foodrow{
+  background:none;border:0;border-bottom:1px solid var(--line-soft);
+  padding:12px 2px;text-align:left;color:var(--ink);
+}
+.foodrow:hover{background:var(--panel)}
+.foodrow .fn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.foodrow span+span{
+  font-family:var(--mono);font-size:14px;color:var(--ink-2);
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+.foodrow .kc{color:var(--gold);font-weight:600}
+.legend{
+  padding:0 2px 8px;font-size:12px;color:var(--muted);
+  border-bottom:1px solid var(--line);margin-top:14px;
+}
+.legend span+span{text-align:right;font-size:11px}
+.cam{
+  width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;
+  object-fit:cover;border:1px solid var(--line);display:block;
+}
+.resrow{
+  display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:10px;align-items:center;
+  width:100%;background:none;border:0;border-bottom:1px solid var(--line-soft);
+  padding:11px 2px;text-align:left;color:var(--ink);
+}
+.resrow:hover{background:var(--panel-2)}
+.resrow .fn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.resrow .kc{
+  font-family:var(--mono);font-size:14px;color:var(--gold);
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+.scanmsg{font-size:14px;color:var(--ink-2);line-height:1.5;margin:0 0 14px}
+.scanwarn{font-size:13px;color:var(--warn);line-height:1.45;margin-top:12px}
+.divisore{height:1px;background:var(--line);margin:18px 0}
+.credit{font-size:11px;color:var(--muted);margin:16px 0 0;text-align:center}
+.modal{
+  position:fixed;inset:0;z-index:80;background:rgba(6,5,5,.72);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;
+}
+@media(min-width:560px){.modal{align-items:center;padding:20px}}
+.sheet{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:16px 16px 0 0;width:100%;max-width:480px;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  max-height:88vh;overflow:auto;
+}
+@media(min-width:560px){.sheet{border-radius:16px}}
+.sheet h3{font-family:var(--serif);font-size:18px;margin:0 0 3px;font-weight:600}
+.sheet .sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+.foodcard{
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);
+  padding:14px 16px;margin-top:10px;
+}
+.foodcard .fname input{
+  font-family:var(--serif);font-size:16px;background:none;border-color:transparent;
+  padding:0 0 9px;border-radius:0;border-bottom:1px solid var(--line-soft);
+}
+.foodcard .fname input:focus{border-bottom-color:var(--gold-soft)}
+.fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+@media(min-width:560px){.fgrid{grid-template-columns:repeat(5,1fr)}}
+.fgrid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.fgrid input,.fgrid select{padding:8px 10px;font-size:15px}
+.foodcard .del{margin-top:12px;text-align:right}
+
+/* ---- editor ---- */
+.grpbox{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);padding:15px;margin-top:10px}
+.ed-row{display:grid;grid-template-columns:1fr 92px 40px;gap:8px;align-items:center;margin-bottom:8px}
+.ed-row .x{background:none;border:1px solid var(--line);border-radius:9px;height:40px;color:var(--muted);font-size:18px}
+.ed-row .x:hover{color:var(--warn);border-color:#4A2E28}
+.ed-head{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty p{margin:0 0 18px;font-size:15px}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:60;
+  background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:11px;
+  padding:11px 18px;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,.6);
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><h1>Ricett<em>a</em>rio</h1><span id="stat"></span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="ricette" aria-selected="true">Ricette</button>
+      <button role="tab" data-tab="alimenti" aria-selected="false">Alimenti</button>
+      <button role="tab" data-tab="dati" aria-selected="false">Dati</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap" id="view"></div>
+
+<script>
+/* ---------- storage: window.storage (chat) -> localStorage (PWA) -> memoria ---------- */
+const KEY='ricettario:v1';
+const Store={
+  async get(){
+    try{ if(window.storage){ const r=await window.storage.get(KEY); return r?JSON.parse(r.value):null; } }catch(e){}
+    try{ const v=localStorage.getItem(KEY); return v?JSON.parse(v):null; }catch(e){}
+    return window.__mem||null;
+  },
+  async set(o){
+    const s=JSON.stringify(o); window.__mem=o;
+    try{ if(window.storage){ await window.storage.set(KEY,s); return; } }catch(e){}
+    try{ localStorage.setItem(KEY,s); }catch(e){}
+  }
+};
+
+/* ---------- utility ---------- */
+const uid=()=>Math.random().toString(36).slice(2,9);
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:0;};
+function fmt(n,d=1){
+  if(!isFinite(n))return '0';
+  const r=Math.round(n*Math.pow(10,d))/Math.pow(10,d);
+  return String(r).replace('.',',');
+}
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- seconda ricetta: base senza uovo, con olio EVO ---------- */
+function recOlio(idOf){
+  return {
+    id:uid(),
+    nome:'Tiramis\u00f9 fit all\u2019olio EVO',
+    porzioni:6,
+    note:'Usa un olio delicato. Un fruttato intenso si sente anche a 1 g per porzione. L\u2019olio sostituisce il tuorlo nel tenere morbida la base.',
+    gruppi:[
+      {nome:'Base',items:[
+        {f:idOf('Albume'),q:250},{f:idOf('Farina di avena'),q:60},{f:idOf('Whey vaniglia'),q:30},
+        {f:idOf('Olio extravergine di oliva'),q:6},{f:idOf('Eritritolo'),q:30},{f:idOf('Lievito per dolci'),q:4}
+      ]},
+      {nome:'Crema',items:[
+        {f:idOf('Skyr naturale'),q:500},{f:idOf('Fiocchi di latte'),q:200},
+        {f:idOf('Isolate vaniglia'),q:30},{f:idOf('Eritritolo'),q:30},{f:idOf('Xantana'),q:0.5}
+      ]},
+      {nome:'Finitura',items:[
+        {f:idOf('Caff\u00e8'),q:200},{f:idOf('Cacao amaro'),q:10},{f:idOf('Cioccolato fondente 85%'),q:30}
+      ]}
+    ],
+    passi:[
+      'Preleva 50 g di albume e tienilo da parte. Monta il resto a neve ferma.',
+      'Mescola farina di avena, whey, eritritolo e lievito con l\u2019albume tenuto da parte e l\u2019olio, fino a ottenere un impasto omogeneo.',
+      'Incorpora l\u2019albume montato dal basso verso l\u2019alto.',
+      'Versa in teglia 20\u00d720 e cuoci in forno statico a 180 \u00b0C per 12 minuti. Fai raffreddare completamente.',
+      'Scola i fiocchi di latte dal liquido e frullali fino a crema liscia.',
+      'Unisci skyr, fiocchi frullati, isolate ed eritritolo. Monta aggiungendo la xantana a pioggia.',
+      'Taglia la base in 2 strati.',
+      'Inzuppa il primo strato nel caff\u00e8, copri con met\u00e0 crema.',
+      'Ripeti con il secondo strato e la crema rimanente. Livella bene la superficie.',
+      'Spolvera con il cacao amaro.',
+      'Frigo 6 ore.',
+      'Sciogli il cioccolato a bagnomaria, versalo sulla superficie e stendilo sottile.',
+      'Rimetti in frigo 20 minuti, o 10 in freezer, finch\u00e9 non solidifica.'
+    ]
+  };
+}
+
+/* ---------- dati iniziali (valori per 100 g / 100 ml) ---------- */
+function seed(){
+  const F=(nome,u,kcal,p,c,g)=>({id:uid(),nome,u,kcal,p,c,g});
+  const foods=[
+    F('Albume','g',52,11,0.7,0.2),
+    F('Uovo intero','g',143,12.6,0.7,9.5),
+    F('Tuorlo','g',322,15.9,1.1,28.2),
+    F('Skyr naturale','g',63,11,4,0.2),
+    F('Fiocchi di latte','g',99,11,3.4,4.3),
+    F('Ricotta light','g',90,11,4,4),
+    F('Quark magro','g',67,12,4,0.3),
+    F('Mascarpone','g',450,4.5,3,47),
+    F('Whey vaniglia','g',380,80,6,4),
+    F('Isolate vaniglia','g',373,90,1,0.5),
+    F('Olio extravergine di oliva','g',900,0,0,100),
+    F('Farina di avena','g',370,13,60,7),
+    F('Farina 00','g',340,10,71,1),
+    F('Farina di cocco','g',400,18,22,14),
+    F('Farina di lupino','g',380,40,10,10),
+    F('Cacao amaro','g',355,20,11,21),
+    F('Cioccolato fondente 85%','g',592,10,15,50),
+    F('Eritritolo','g',0,0,0,0),
+    F('Lievito per dolci','g',0,0,0,0),
+    F('Xantana','g',0,0,0,0),
+    F('Caffè','ml',0,0,0,0),
+    F('Bevanda mandorla non zuccherata','ml',13,0.4,0.3,1.1)
+  ];
+  const id=n=>foods.find(f=>f.nome===n).id;
+  const recipes=[{
+    id:uid(),
+    nome:'Tiramisù fit',
+    porzioni:6,
+    note:'Stendi il cioccolato solo dopo il riposo in frigo: sulla crema morbida affonda invece di formare lo strato croccante.',
+    gruppi:[
+      {nome:'Base',items:[
+        {f:id('Albume'),q:200},{f:id('Uovo intero'),q:55},{f:id('Farina di avena'),q:60},
+        {f:id('Whey vaniglia'),q:30},{f:id('Eritritolo'),q:30},{f:id('Lievito per dolci'),q:4}
+      ]},
+      {nome:'Crema',items:[
+        {f:id('Skyr naturale'),q:500},{f:id('Fiocchi di latte'),q:200},
+        {f:id('Isolate vaniglia'),q:30},{f:id('Eritritolo'),q:30},{f:id('Xantana'),q:0.5}
+      ]},
+      {nome:'Finitura',items:[
+        {f:id('Caffè'),q:200},{f:id('Cacao amaro'),q:10},{f:id('Cioccolato fondente 85%'),q:30}
+      ]}
+    ],
+    passi:[
+      'Monta l\u2019albume a neve ferma.',
+      'Mescola farina di avena, whey, eritritolo e lievito con l\u2019uovo intero.',
+      'Incorpora l\u2019albume dal basso verso l\u2019alto.',
+      'Versa in teglia 20\u00d720 e cuoci in forno statico a 180 \u00b0C per 12 minuti. Fai raffreddare completamente.',
+      'Scola i fiocchi di latte dal liquido e frullali fino a crema liscia.',
+      'Unisci skyr, fiocchi frullati, isolate ed eritritolo. Monta aggiungendo la xantana a pioggia.',
+      'Taglia la base in 2 strati.',
+      'Inzuppa il primo strato nel caff\u00e8, copri con met\u00e0 crema.',
+      'Ripeti con il secondo strato e la crema rimanente. Livella bene la superficie.',
+      'Spolvera con il cacao amaro.',
+      'Frigo 6 ore.',
+      'Sciogli il cioccolato a bagnomaria, versalo sulla superficie e stendilo sottile.',
+      'Rimetti in frigo 20 minuti, o 10 in freezer, finch\u00e9 non solidifica.'
+    ]
+  },recOlio(id)];
+  return {foods,recipes};
+}
+
+/* ---------- stato ---------- */
+let S={foods:[],recipes:[]};
+let ui={tab:'ricette',open:null,porz:null,perPorzione:true,editing:null};
+
+async function boot(){
+  S=await Store.get()||seed();
+  S.foods=S.foods||[];S.recipes=S.recipes||[];
+  await migra();
+  render();
+}
+
+/* aggiunge cio' che manca senza toccare quello che l'utente ha gia' */
+function trovaId(nome){
+  let f=S.foods.find(x=>x.nome.toLowerCase()===nome.toLowerCase());
+  if(!f){f={id:uid(),nome,u:'g',kcal:0,p:0,c:0,g:0};S.foods.push(f);}
+  return f.id;
+}
+async function migra(){
+  let mod=false;
+  if(!S.foods.some(f=>f.nome.toLowerCase()==='olio extravergine di oliva')){
+    S.foods.push({id:uid(),nome:'Olio extravergine di oliva',u:'g',kcal:900,p:0,c:0,g:100});mod=true;
+  }
+  const n='tiramis\u00f9 fit all\u2019olio evo';
+  if(!S.recipes.some(r=>String(r.nome).toLowerCase()===n)){
+    S.recipes.push(recOlio(trovaId));mod=true;
+  }
+  if(mod)await save();
+}
+const save=()=>Store.set(S);
+const food=id=>S.foods.find(f=>f.id===id);
+
+function calc(rec,fattore){
+  const t={kcal:0,p:0,c:0,g:0};
+  (rec.gruppi||[]).forEach(gr=>gr.items.forEach(it=>{
+    const f=food(it.f); if(!f)return;
+    const q=num(it.q)*fattore/100;
+    t.kcal+=q*num(f.kcal);t.p+=q*num(f.p);t.c+=q*num(f.c);t.g+=q*num(f.g);
+  }));
+  return t;
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('nav.tabs button').forEach(b=>
+    b.setAttribute('aria-selected',String(b.dataset.tab===ui.tab)));
+  document.getElementById('stat').textContent=
+    S.recipes.length+' ricette · '+S.foods.length+' alimenti';
+  const v=document.getElementById('view');
+  if(ui.tab==='alimenti')v.innerHTML=viewFoods();
+  else if(ui.tab==='dati')v.innerHTML=viewData();
+  else if(ui.editing)v.innerHTML=viewEditor();
+  else if(ui.open)v.innerHTML=viewRecipe();
+  else v.innerHTML=viewList();
+}
+
+function macroCells(m){
+  return `
+    <div class="m gold"><span class="mv">${fmt(m.kcal,0)}</span><span class="mu">kcal</span><span class="ml">Energia</span></div>
+    <div class="m"><span class="mv">${fmt(m.p)}</span><span class="mu">g</span><span class="ml">Proteine</span></div>
+    <div class="m"><span class="mv">${fmt(m.c)}</span><span class="mu">g</span><span class="ml">Carboidrati</span></div>
+    <div class="m"><span class="mv">${fmt(m.g)}</span><span class="mu">g</span><span class="ml">Grassi</span></div>`;
+}
+
+function viewList(){
+  if(!S.recipes.length)return `<div class="empty">
+    <p>Non hai ancora ricette.</p>
+    <button class="btn primary" data-act="new">Aggiungi la prima ricetta</button></div>`;
+  return `
+    <div class="sect" style="margin-top:26px">
+      <h2>Le tue ricette</h2>
+      <p>Apri una ricetta per adattarla al numero di porzioni che ti serve.</p>
+    </div>
+    <div class="rlist">`+S.recipes.map(r=>{
+      const t=calc(r,1),n=Math.max(1,num(r.porzioni)||1);
+      return `<button class="ritem" data-act="open" data-id="${r.id}">
+        <h3>${esc(r.nome)}</h3>
+        <div class="meta">Ricetta base per ${n} porzioni</div>
+        <div class="sum">
+          <span><b>${fmt(t.kcal/n,0)}</b> kcal</span>
+          <span><b>${fmt(t.p/n)}</b> g proteine</span>
+          <span><b>${fmt(t.c/n)}</b> g carboidrati</span>
+          <span><b>${fmt(t.g/n)}</b> g grassi</span>
+        </div></button>`;
+    }).join('')+`</div>
+    <button class="btn wide" data-act="new" style="margin-top:20px">Aggiungi ricetta</button>`;
+}
+
+function viewRecipe(){
+  const r=S.recipes.find(x=>x.id===ui.open); if(!r){ui.open=null;return viewList();}
+  const base=Math.max(1,num(r.porzioni)||1);
+  const p=Math.max(1,ui.porz||base);
+  const fatt=p/base;
+  const tot=calc(r,fatt);
+  const d=ui.perPorzione?p:1;
+  const m={kcal:tot.kcal/d,p:tot.p/d,c:tot.c/d,g:tot.g/d};
+
+  const gruppi=(r.gruppi||[]).map(gr=>`<div class="grp">
+      <h4>${esc(gr.nome)}</h4><div class="rule"></div><ul class="ing">`+
+    gr.items.map(it=>{
+      const f=food(it.f); if(!f)return '';
+      const q=num(it.q)*fatt;
+      return `<li><span class="in">${esc(f.nome)}</span>
+        <span class="q${q<1?' warnq':''}">${fmt(q, q<10?1:0)} ${f.u}</span></li>`;
+    }).join('')+`</ul></div>`).join('');
+
+  return `
+  <div class="row" style="margin-top:16px;justify-content:space-between">
+    <button class="btn ghost sm" data-act="back">← Tutte le ricette</button>
+    <button class="btn sm" data-act="edit" data-id="${r.id}">Modifica</button>
+  </div>
+
+  <h2 style="font-family:var(--serif);font-size:25px;margin:12px 0 0;font-weight:600;line-height:1.2">${esc(r.nome)}</h2>
+  <div class="rule" style="margin-top:10px"></div>
+
+  <div class="scaler">
+    <div class="spread">
+      <div class="lab">Porzioni</div>
+      <div class="stepper">
+        <button data-act="minus" aria-label="Riduci porzioni">−</button>
+        <input type="number" min="1" step="1" value="${p}" data-act="porz" aria-label="Numero di porzioni">
+        <button data-act="plus" aria-label="Aumenta porzioni">+</button>
+      </div>
+    </div>
+    <div class="factor">Ricetta base per ${base} · quantità × ${fmt(fatt,2)}</div>
+  </div>
+
+  <div class="sect">
+    <div class="spread">
+      <h2 style="margin:0">Valori nutrizionali</h2>
+      <span class="toggle">
+        <button data-act="per" aria-pressed="${ui.perPorzione}">Porzione</button>
+        <button data-act="tot" aria-pressed="${!ui.perPorzione}">Totale</button>
+      </span>
+    </div>
+    <div class="macros">${macroCells(m)}</div>
+  </div>
+
+  <div class="sect">
+    <h2>Ingredienti</h2>
+    <p>Quantità già calcolate per ${p} ${p===1?'porzione':'porzioni'}.</p>
+    <div class="card" style="margin-top:0">${gruppi||'<span class="muted">Nessun ingrediente inserito.</span>'}</div>
+  </div>
+
+  ${(r.passi&&r.passi.length)?`<div class="sect">
+    <h2>Procedimento</h2>
+    <div class="card" style="margin-top:0"><ol class="steps">${r.passi.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>
+  </div>`:''}
+
+  ${r.note?`<div class="sect">
+    <h2>Nota</h2>
+    <div class="card" style="margin-top:0"><p class="note" style="margin:0">${esc(r.note)}</p></div>
+  </div>`:''}
+
+  <p class="hint">Le quantità sotto 1 grammo sono in rosso: servono una bilancia di precisione.</p>`;
+}
+
+function viewEditor(){
+  const r=ui.editing;
+  const opts=v=>S.foods.slice().sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(f=>`<option value="${f.id}"${f.id===v?' selected':''}>${esc(f.nome)}</option>`).join('');
+  const gruppi=r.gruppi.map((gr,gi)=>`
+    <div class="grpbox">
+      <div class="ed-head">
+        <input value="${esc(gr.nome)}" data-g="${gi}" data-k="gnome" placeholder="Nome della sezione" style="flex:1">
+        <button class="btn sm danger" data-act="delgrp" data-g="${gi}">Elimina</button>
+      </div>
+      ${gr.items.map((it,ii)=>`<div class="ed-row">
+        <select data-g="${gi}" data-i="${ii}" data-k="f">${opts(it.f)}</select>
+        <input type="number" step="0.1" min="0" value="${it.q}" data-g="${gi}" data-i="${ii}" data-k="q">
+        <button class="x" data-act="delitem" data-g="${gi}" data-i="${ii}" aria-label="Rimuovi ingrediente">×</button>
+      </div>`).join('')}
+      <button class="btn sm" data-act="additem" data-g="${gi}">Aggiungi ingrediente</button>
+    </div>`).join('');
+
+  return `
+  <div class="sect" style="margin-top:26px">
+    <h2>${r._new?'Nuova ricetta':'Modifica ricetta'}</h2>
+    <p>Le quantità che inserisci valgono per le porzioni di riferimento.</p>
+    <div class="card" style="margin-top:0">
+      <div class="fld">
+        <label class="f">Nome</label>
+        <input value="${esc(r.nome)}" data-k="nome" placeholder="Es. Tiramisù fit">
+      </div>
+      <div class="fld">
+        <label class="f">Porzioni di riferimento</label>
+        <input type="number" min="1" step="1" value="${r.porzioni}" data-k="porzioni" style="width:120px">
+      </div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="spread">
+      <h2 style="margin:0">Ingredienti</h2>
+      <button class="btn sm" data-act="addgrp">Aggiungi sezione</button>
+    </div>
+    <p style="margin-top:6px">Quantità in grammi o millilitri, secondo l'unità dell'alimento.</p>
+    ${gruppi||'<p class="hint" style="margin-top:0">Aggiungi una sezione, per esempio “Base” o “Crema”, per inserire gli ingredienti.</p>'}
+  </div>
+
+  <div class="sect">
+    <h2>Procedimento</h2>
+    <p>Un passaggio per riga.</p>
+    <div class="card" style="margin-top:0">
+      <div class="fld"><textarea data-k="passi" style="min-height:220px">${esc(r.passi.join('\n'))}</textarea></div>
+      <div class="fld">
+        <label class="f">Nota, se serve</label>
+        <textarea data-k="note" style="min-height:80px">${esc(r.note||'')}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:24px;justify-content:space-between">
+    <button class="btn danger" data-act="delrec">Elimina</button>
+    <span class="row">
+      <button class="btn ghost" data-act="cancel">Annulla</button>
+      <button class="btn primary" data-act="saverec">Salva ricetta</button>
+    </span>
+  </div>`;
+}
+
+function viewFoods(){
+  const righe=S.foods.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>`
+    <button class="foodrow frow" data-act="openfood" data-id="${f.id}" data-nome="${esc(f.nome.toLowerCase())}">
+      <span class="fn">${esc(f.nome)}</span>
+      <span class="kc">${fmt(f.kcal,0)}</span>
+      <span>${fmt(f.p)}</span>
+      <span>${fmt(f.c)}</span>
+      <span>${fmt(f.g)}</span>
+    </button>`).join('');
+  return `
+  <div class="sect" style="margin-top:22px">
+    <h2>Alimenti</h2>
+    <p>Valori riferiti a 100 g o 100 ml. Tocca un alimento per correggerne i valori: tutte le ricette che lo usano si ricalcolano.</p>
+    <div class="search"><input id="cerca" placeholder="Cerca un alimento" oninput="filtraAlimenti(this.value)" aria-label="Cerca un alimento"></div>
+    <button class="btn wide" data-act="scan" style="margin-top:8px">Scansiona codice a barre</button>
+  </div>
+  <div class="legend frow"><span>Alimento</span><span>kcal</span><span>prot</span><span>carbo</span><span>grassi</span></div>
+  ${righe}
+  <button class="btn wide" data-act="addfood" style="margin-top:16px">Aggiungi alimento</button>
+  <p class="hint">Se elimini un alimento usato in una ricetta, quella riga sparisce dal calcolo.</p>
+  ${ui.foodOpen?modalFood():''}
+  ${ui.scan?modalScan():''}`;
+}
+
+function modalScan(){
+  const sc=ui.scan;
+  let corpo='';
+
+  if(sc.stato==='camera'){
+    corpo=`<p class="scanmsg">Inquadra il codice a barre sulla confezione.</p>
+      <video id="cam" class="cam" playsinline muted></video>
+      <div class="row" style="margin-top:16px;justify-content:space-between">
+        <button class="btn sm" data-act="scanmanual">Inserisci a mano</button>
+        <button class="btn sm" data-act="scanclose">Annulla</button>
+      </div>`;
+  }
+
+  if(sc.stato==='manuale'){
+    corpo=`${sc.msg?`<p class="scanmsg">${esc(sc.msg)}</p>`:''}
+      <div class="fld">
+        <label class="f">Codice a barre</label>
+        <input id="codice" inputmode="numeric" placeholder="8001234567890">
+      </div>
+      <div class="row" style="justify-content:space-between">
+        <button class="btn sm" data-act="scanclose">Annulla</button>
+        <button class="btn primary" data-act="scango">Cerca codice</button>
+      </div>
+      <div class="divisore"></div>
+      <div class="fld">
+        <label class="f">Oppure cerca per nome</label>
+        <input id="nomeprod" placeholder="albume, skyr, cacao…">
+      </div>
+      <button class="btn wide" data-act="scannome">Cerca per nome</button>`;
+  }
+
+  if(sc.stato==='risultati'){
+    corpo=`<p class="scanmsg">Risultati per “${esc(sc.q)}”, con le kcal per 100 g. Tocca quello giusto.</p>
+      <div>${sc.lista.map((x,i)=>`<button class="resrow" data-act="scanpick" data-i="${i}">
+        <span class="fn">${esc(x.nome)}</span><span class="kc">${fmt(x.kcal,0)}</span>
+      </button>`).join('')}</div>
+      <div class="row" style="margin-top:16px;justify-content:space-between">
+        <button class="btn sm" data-act="scanmanual">Nuova ricerca</button>
+        <button class="btn sm" data-act="scanclose">Chiudi</button>
+      </div>`;
+  }
+
+  if(sc.stato==='attesa'){
+    corpo=`<p class="scanmsg">${esc(sc.msg||('Cerco il prodotto '+sc.code+'\u2026'))}</p>
+      <button class="btn sm" data-act="scanclose">Annulla</button>`;
+  }
+
+  if(sc.stato==='errore'){
+    corpo=`<p class="scanmsg">${esc(sc.msg)}</p>
+      <div class="row" style="justify-content:space-between">
+        <button class="btn sm" data-act="scanmanual">Cerca per nome</button>
+        ${sc.creabile
+          ?`<button class="btn primary" data-act="screa">Inserisci i valori</button>`
+          :`<button class="btn sm" data-act="scanclose">Chiudi</button>`}
+      </div>`;
+  }
+
+  if(sc.stato==='conferma'){
+    const d=sc.dati;
+    const vuoto=!num(d.kcal)&&!num(d.p)&&!num(d.c)&&!num(d.g);
+    corpo=`<p class="scanmsg">${sc.code?`Codice ${esc(sc.code)}. `:''}Controlla i valori prima di salvare: il database è compilato dagli utenti e non sempre è corretto.</p>
+      <div class="fld">
+        <label class="f">Nome</label>
+        <input value="${esc(d.nome)}" data-sk="nome">
+      </div>
+      <div class="fgrid" style="grid-template-columns:repeat(2,1fr)">
+        <div><label>Kcal</label><input type="number" step="0.1" value="${d.kcal}" data-sk="kcal"></div>
+        <div><label>Proteine</label><input type="number" step="0.1" value="${d.p}" data-sk="p"></div>
+        <div><label>Carboidrati</label><input type="number" step="0.1" value="${d.c}" data-sk="c"></div>
+        <div><label>Grassi</label><input type="number" step="0.1" value="${d.g}" data-sk="g"></div>
+        <div><label>Unità</label><select data-sk="u">
+          <option value="g"${d.u==='g'?' selected':''}>g</option>
+          <option value="ml"${d.u==='ml'?' selected':''}>ml</option></select></div>
+      </div>
+      ${vuoto?'<p class="scanwarn">Il database non ha i valori nutrizionali di questo prodotto. Inseriscili leggendo l\u2019etichetta.</p>':''}
+      <div class="row" style="margin-top:20px;justify-content:space-between">
+        <button class="btn sm" data-act="scanclose">Annulla</button>
+        <button class="btn primary" data-act="scansave">Salva alimento</button>
+      </div>`;
+  }
+
+  return `<div class="modal" data-act="scanclose"><div class="sheet" data-act="stop">
+    <h3>Scansione</h3>
+    <p class="sub">Valori per 100 g o 100 ml</p>
+    ${corpo}
+    <p class="credit">Dati da Open Food Facts, licenza ODbL</p>
+  </div></div>`;
+}
+
+/* ---------- fotocamera e ricerca prodotto ---------- */
+let scanStream=null,scanLoop=null;
+
+function stopScanner(){
+  if(scanLoop){clearInterval(scanLoop);scanLoop=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+}
+
+async function avviaScanner(){
+  const v=document.getElementById('cam'); if(!v)return;
+  if(!('BarcodeDetector' in window)){
+    ui.scan={stato:'manuale',msg:'Questo browser non legge i codici a barre. Inserisci il codice a mano.'};
+    render();return;
+  }
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    v.srcObject=scanStream; await v.play();
+  }catch(e){
+    ui.scan={stato:'manuale',msg:'Fotocamera non disponibile. Succede aprendo il file dal telefono invece che da un indirizzo web: inserisci il codice a mano.'};
+    render();return;
+  }
+  let det;
+  try{ det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']}); }
+  catch(e){ det=new BarcodeDetector(); }
+  scanLoop=setInterval(async()=>{
+    try{
+      const c=await det.detect(v);
+      if(c&&c.length){stopScanner();cercaProdotto(c[0].rawValue);}
+    }catch(e){}
+  },400);
+}
+
+function normProd(pr){
+  const n=pr.nutriments||{};
+  const kcal=(n['energy-kcal_100g']!=null)?n['energy-kcal_100g']
+    :((n['energy_100g']!=null)?n['energy_100g']/4.184:0);
+  return {
+    code:pr.code||'',
+    nome:[pr.product_name,pr.brands].filter(Boolean).join(' ').trim().slice(0,60),
+    u:'g',
+    kcal:Math.round(num(kcal)*10)/10,
+    p:num(n.proteins_100g),c:num(n.carbohydrates_100g),g:num(n.fat_100g)
+  };
+}
+
+/* due motori di ricerca: il nuovo, e quello storico come riserva */
+async function cercaNome(q){
+  q=String(q||'').trim();
+  if(q.length<2){
+    ui.scan={stato:'errore',msg:'Scrivi almeno due lettere.'};render();return;
+  }
+  ui.scan={stato:'attesa',msg:'Cerco \u201c'+q+'\u201d nel database\u2026'};render();
+  const campi='code,product_name,brands,nutriments';
+  const fonti=[
+    'https://search.openfoodfacts.org/search?q='+encodeURIComponent(q)+'&page_size=20&fields='+campi,
+    'https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+
+      '&search_simple=1&action=process&json=1&page_size=20&fields='+campi
+  ];
+  for(let i=0;i<fonti.length;i++){
+    try{
+      const r=await fetch(fonti[i]);
+      if(!r.ok)continue;
+      const j=await r.json();
+      const arr=j.hits||j.products||[];
+      const lista=arr.map(normProd).filter(x=>x.nome);
+      if(lista.length){ui.scan={stato:'risultati',q,lista};render();return;}
+    }catch(e){}
+  }
+  ui.scan={stato:'errore',creabile:true,code:'',
+    msg:'Nessun risultato per \u201c'+q+'\u201d. Puoi inserire i valori leggendoli dall\u2019etichetta.'};
+  render();
+}
+
+async function cercaProdotto(code){
+  code=String(code).trim();
+  if(!/^[0-9]{6,14}$/.test(code)){
+    ui.scan={stato:'errore',msg:'Codice non valido: servono da 6 a 14 cifre.'};render();return;
+  }
+  S.barcode=S.barcode||{};
+  if(S.barcode[code]){
+    ui.scan={stato:'conferma',code,dati:Object.assign({},S.barcode[code])};render();return;
+  }
+  ui.scan={stato:'attesa',code};render();
+  try{
+    const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+
+      '.json?fields=product_name,brands,nutriments');
+    const j=await r.json();
+    if(!j||!j.product){
+      ui.scan={stato:'errore',code,creabile:true,
+        msg:'Questo prodotto non c\u2019\u00e8 nel database. Capita spesso con le marche del supermercato. Inserisci i valori dall\u2019etichetta: li salvo sul codice, la prossima volta li ritrovi subito.'};
+      render();return;
+    }
+    const n=j.product.nutriments||{};
+    const kcal=(n['energy-kcal_100g']!=null)?n['energy-kcal_100g']
+      :((n['energy_100g']!=null)?n['energy_100g']/4.184:0);
+    const d={
+      nome:[j.product.product_name,j.product.brands].filter(Boolean).join(' ').trim().slice(0,60)||('Prodotto '+code),
+      u:'g',
+      kcal:Math.round(num(kcal)*10)/10,
+      p:num(n.proteins_100g),c:num(n.carbohydrates_100g),g:num(n.fat_100g)
+    };
+    S.barcode[code]=d;await save();
+    ui.scan={stato:'conferma',code,dati:Object.assign({},d)};render();
+  }catch(e){
+    ui.scan={stato:'errore',msg:'Database non raggiungibile. Serve la connessione a internet per la prima lettura di un prodotto.'};
+    render();
+  }
+}
+
+function modalFood(){
+  const f=food(ui.foodOpen); if(!f){ui.foodOpen=null;return '';}
+  return `
+  <div class="modal" data-act="closefood">
+    <div class="sheet" data-act="stop">
+      <h3>Modifica alimento</h3>
+      <p class="sub">Valori per 100 ${f.u==='ml'?'ml':'g'}</p>
+      <div class="fld">
+        <label class="f">Nome</label>
+        <input value="${esc(f.nome)}" data-fid="${f.id}" data-k="nome">
+      </div>
+      <div class="fgrid" style="grid-template-columns:repeat(2,1fr)">
+        <div><label>Kcal</label><input type="number" step="0.1" value="${f.kcal}" data-fid="${f.id}" data-k="kcal"></div>
+        <div><label>Proteine</label><input type="number" step="0.1" value="${f.p}" data-fid="${f.id}" data-k="p"></div>
+        <div><label>Carboidrati</label><input type="number" step="0.1" value="${f.c}" data-fid="${f.id}" data-k="c"></div>
+        <div><label>Grassi</label><input type="number" step="0.1" value="${f.g}" data-fid="${f.id}" data-k="g"></div>
+        <div><label>Unità</label><select data-fid="${f.id}" data-k="u">
+          <option value="g"${f.u==='g'?' selected':''}>g</option>
+          <option value="ml"${f.u==='ml'?' selected':''}>ml</option></select></div>
+      </div>
+      <div class="row" style="margin-top:20px;justify-content:space-between">
+        <button class="btn sm danger" data-act="delfood" data-id="${f.id}">Elimina</button>
+        <button class="btn primary" data-act="closefood">Fine</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewData(){
+  return `
+  <div class="sect" style="margin-top:26px">
+    <h2>Backup</h2>
+    <p>Esporta ricette e alimenti in un file, per spostarli o tenerli al sicuro.</p>
+    <div class="card" style="margin-top:0">
+      <p class="note" style="margin:0 0 18px">L'importazione aggiunge soltanto ciò che manca e non sostituisce mai quello che hai già. Una ricetta con un nome che esiste già viene aggiunta a parte, con l'indicazione “importata”.</p>
+      <div class="row">
+        <button class="btn" data-act="export">Esporta</button>
+        <button class="btn" data-act="import">Importa</button>
+      </div>
+      <input type="file" id="file" accept="application/json,.json" hidden>
+    </div>
+  </div>
+  <div class="sect">
+    <h2>Ripristino</h2>
+    <p>Torna alla ricetta e agli alimenti di partenza.</p>
+    <div class="card" style="margin-top:0">
+      <p class="note" style="margin:0 0 18px">Cancella tutte le ricette e gli alimenti che hai aggiunto. Esporta un backup prima di procedere.</p>
+      <button class="btn danger" data-act="reset">Ripristina i dati iniziali</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- eventi ---------- */
+document.querySelector('nav.tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-tab]'); if(!b)return;
+  ui.tab=b.dataset.tab; ui.editing=null; ui.foodOpen=null;
+  stopScanner(); ui.scan=null; render();
+});
+
+document.getElementById('view').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const a=b.dataset.act;
+  if(a==='stop')return;
+  if(a==='scan'){ui.scan={stato:'camera'};render();avviaScanner();return;}
+  if(a==='scanclose'){stopScanner();ui.scan=null;render();return;}
+  if(a==='scanmanual'){stopScanner();ui.scan={stato:'manuale',msg:ui.scan&&ui.scan.msg};render();return;}
+  if(a==='screa'){
+    ui.scan={stato:'conferma',code:ui.scan.code,
+      dati:{nome:'',u:'g',kcal:0,p:0,c:0,g:0}};
+    render();return;
+  }
+  if(a==='scannome'){const el=document.getElementById('nomeprod');cercaNome(el?el.value:'');return;}
+  if(a==='scanpick'){
+    const x=ui.scan.lista[+b.dataset.i];
+    ui.scan={stato:'conferma',code:x.code,
+      dati:{nome:x.nome,u:x.u,kcal:x.kcal,p:x.p,c:x.c,g:x.g}};
+    render();return;
+  }
+  if(a==='scango'){const el=document.getElementById('codice');cercaProdotto(el?el.value:'');return;}
+  if(a==='scansave'){
+    const d=ui.scan.dati;
+    if(!String(d.nome).trim()){toast('Serve un nome');return;}
+    const nuovo={id:uid(),nome:String(d.nome).trim(),u:d.u||'g',
+      kcal:num(d.kcal),p:num(d.p),c:num(d.c),g:num(d.g)};
+    S.foods.push(nuovo);
+    if(ui.scan.code){
+      S.barcode=S.barcode||{};
+      S.barcode[ui.scan.code]={nome:nuovo.nome,u:nuovo.u,kcal:nuovo.kcal,p:nuovo.p,c:nuovo.c,g:nuovo.g};
+    }
+    ui.scan=null;await save();render();toast('Alimento aggiunto');return;
+  }
+  if(a==='openfood'){ui.foodOpen=b.dataset.id;render();return;}
+  if(a==='closefood'){ui.foodOpen=null;render();return;}
+
+  if(a==='open'){ui.open=b.dataset.id;ui.porz=null;render();}
+  if(a==='back'){ui.open=null;render();}
+  if(a==='per'){ui.perPorzione=true;render();}
+  if(a==='tot'){ui.perPorzione=false;render();}
+  if(a==='plus'||a==='minus'){
+    const r=S.recipes.find(x=>x.id===ui.open);
+    const base=Math.max(1,num(r.porzioni)||1);
+    ui.porz=Math.max(1,(ui.porz||base)+(a==='plus'?1:-1));render();
+  }
+  if(a==='new'){
+    ui.editing={id:uid(),nome:'',porzioni:4,gruppi:[{nome:'Ingredienti',items:[]}],passi:[],note:'',_new:true};
+    ui.open=null;render();
+  }
+  if(a==='edit'){
+    const r=S.recipes.find(x=>x.id===b.dataset.id);
+    ui.editing=JSON.parse(JSON.stringify(r));render();
+  }
+  if(a==='cancel'){ui.editing=null;render();}
+  if(a==='addgrp'){ui.editing.gruppi.push({nome:'Nuova sezione',items:[]});render();}
+  if(a==='delgrp'){ui.editing.gruppi.splice(+b.dataset.g,1);render();}
+  if(a==='additem'){
+    if(!S.foods.length){toast('Aggiungi prima un alimento');return;}
+    ui.editing.gruppi[+b.dataset.g].items.push({f:S.foods[0].id,q:0});render();
+  }
+  if(a==='delitem'){ui.editing.gruppi[+b.dataset.g].items.splice(+b.dataset.i,1);render();}
+  if(a==='saverec'){
+    const r=ui.editing;
+    if(!r.nome.trim()){toast('Serve un nome');return;}
+    r.porzioni=Math.max(1,num(r.porzioni)||1);
+    const i=S.recipes.findIndex(x=>x.id===r.id);
+    delete r._new;
+    if(i>=0)S.recipes[i]=r;else S.recipes.push(r);
+    ui.editing=null;ui.open=r.id;ui.porz=null;await save();render();toast('Ricetta salvata');
+  }
+  if(a==='delrec'){
+    if(!confirm('Eliminare "'+(ui.editing.nome||'ricetta')+'"?'))return;
+    S.recipes=S.recipes.filter(x=>x.id!==ui.editing.id);
+    ui.editing=null;ui.open=null;await save();render();toast('Ricetta eliminata');
+  }
+  if(a==='addfood'){
+    const nf={id:uid(),nome:'Nuovo alimento',u:'g',kcal:0,p:0,c:0,g:0};
+    S.foods.push(nf);ui.foodOpen=nf.id;await save();render();
+  }
+  if(a==='delfood'){
+    const f=food(b.dataset.id);
+    if(!confirm('Eliminare "'+f.nome+'"?'))return;
+    S.foods=S.foods.filter(x=>x.id!==b.dataset.id);ui.foodOpen=null;await save();render();
+  }
+  if(a==='export'){
+    const blob=new Blob([JSON.stringify({v:1,foods:S.foods,recipes:S.recipes},null,2)],{type:'application/json'});
+    const a2=document.createElement('a');
+    a2.href=URL.createObjectURL(blob);
+    a2.download='ricettario-'+new Date().toISOString().slice(0,10)+'.json';
+    a2.click();URL.revokeObjectURL(a2.href);
+  }
+  if(a==='import')document.getElementById('file').click();
+  if(a==='reset'){
+    if(!confirm('Cancellare tutto e ripristinare i dati iniziali?'))return;
+    S=seed();ui.open=null;ui.editing=null;await save();render();toast('Dati ripristinati');
+  }
+});
+
+/* input: modifica in tempo reale */
+document.getElementById('view').addEventListener('input',async e=>{
+  const t=e.target,k=t.dataset.k;
+
+  if(t.dataset.act==='porz'){ui.porz=Math.max(1,Math.round(num(t.value))||1);
+    const r=S.recipes.find(x=>x.id===ui.open);renderMacrosOnly(r);return;}
+
+  if(t.dataset.sk&&ui.scan&&ui.scan.dati){
+    const k=t.dataset.sk;
+    ui.scan.dati[k]=(k==='nome'||k==='u')?t.value:num(t.value);
+    return;
+  }
+  if(t.dataset.fid){
+    const f=food(t.dataset.fid);
+    f[k]=(k==='nome'||k==='u')?t.value:num(t.value);
+    clearTimeout(window.__t);window.__t=setTimeout(save,400);return;
+  }
+  if(!ui.editing||!k)return;
+  const r=ui.editing;
+  if(k==='nome')r.nome=t.value;
+  else if(k==='porzioni')r.porzioni=num(t.value);
+  else if(k==='note')r.note=t.value;
+  else if(k==='passi')r.passi=t.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  else if(k==='gnome')r.gruppi[+t.dataset.g].nome=t.value;
+  else if(k==='q')r.gruppi[+t.dataset.g].items[+t.dataset.i].q=num(t.value);
+});
+document.getElementById('view').addEventListener('change',e=>{
+  const t=e.target;
+  if(ui.editing&&t.dataset.k==='f')
+    ui.editing.gruppi[+t.dataset.g].items[+t.dataset.i].f=t.value;
+});
+
+/* ricalcolo senza perdere il focus sullo stepper */
+function renderMacrosOnly(r){
+  if(!r)return;
+  const base=Math.max(1,num(r.porzioni)||1),p=Math.max(1,ui.porz||base),fatt=p/base;
+  const tot=calc(r,fatt),d=ui.perPorzione?p:1;
+  const box=document.querySelector('.macros');
+  if(box)box.innerHTML=macroCells({kcal:tot.kcal/d,p:tot.p/d,c:tot.c/d,g:tot.g/d});
+  const f2=document.querySelector('.factor');
+  if(f2)f2.textContent='Ricetta base per '+base+' · quantità × '+fmt(fatt,2);
+  const sub=document.querySelectorAll('.sect > p');
+  if(sub[1])sub[1].textContent='Quantità già calcolate per '+p+(p===1?' porzione.':' porzioni.');
+  document.querySelectorAll('.grp').forEach((gEl,gi)=>{
+    const gr=r.gruppi[gi];if(!gr)return;
+    gEl.querySelectorAll('ul.ing li').forEach((li,ii)=>{
+      const it=gr.items[ii];if(!it)return;
+      const q=num(it.q)*fatt,span=li.querySelector('.q');
+      span.textContent=fmt(q,q<10?1:0)+' '+((food(it.f)||{}).u||'g');
+      span.className=q<1?'q warnq':'q';
+    });
+  });
+}
+
+function filtraAlimenti(v){
+  const t=v.trim().toLowerCase();
+  document.querySelectorAll('.foodrow').forEach(el=>{
+    el.style.display=(!t||el.dataset.nome.indexOf(t)>=0)?'':'none';
+  });
+}
+
+/* import additivo */
+document.addEventListener('change',async e=>{
+  if(e.target.id!=='file'||!e.target.files.length)return;
+  try{
+    const d=JSON.parse(await e.target.files[0].text());
+    let nf=0,nr=0;
+    (d.foods||[]).forEach(f=>{
+      if(S.foods.some(x=>x.nome.toLowerCase()===String(f.nome).toLowerCase()))return;
+      S.foods.push({...f,id:uid()});nf++;
+    });
+    (d.recipes||[]).forEach(r=>{
+      const dup=S.recipes.some(x=>x.nome.toLowerCase()===String(r.nome).toLowerCase());
+      const map={};(d.foods||[]).forEach(f=>{
+        const m=S.foods.find(x=>x.nome.toLowerCase()===String(f.nome).toLowerCase());
+        if(m)map[f.id]=m.id;
+      });
+      const copy=JSON.parse(JSON.stringify(r));
+      copy.id=uid();
+      if(dup)copy.nome=r.nome+' (importata)';
+      (copy.gruppi||[]).forEach(g=>g.items.forEach(it=>{if(map[it.f])it.f=map[it.f];}));
+      S.recipes.push(copy);nr++;
+    });
+    await save();render();toast(nr+' ricette e '+nf+' alimenti aggiunti');
+  }catch(err){toast('File non valido');}
+  e.target.value='';
+});
+
+boot();
+</script>
+</body>
+</html>

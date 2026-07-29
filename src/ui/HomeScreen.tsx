@@ -119,7 +119,7 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, o
       {/* Saluto + anello "Oggi" in alto a destra */}
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div>
-          <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>GYM LOG &amp; METRICS</p>
+          <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
           <h1>Ciao{firstName ? ` ${firstName}` : ''} <span className="brand">👋</span></h1>
           <p className="muted small">{dailyPhrase()}</p>
         </div>

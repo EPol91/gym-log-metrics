@@ -14,9 +14,9 @@ export default defineConfig(({ command }) => ({
       registerType: 'prompt',
       injectRegister: false,
       manifest: {
-        name: 'GYM LOG & METRICS',
-        short_name: 'GYM LOG',
-        description: 'Logging allenamenti e metriche, offline-first.',
+        name: 'ETP HEALTH',
+        short_name: 'ETP HEALTH',
+        description: 'Allenamento, alimentazione, recupero e abitudini in un posto solo. Offline-first.',
         theme_color: '#0e0e10',
         background_color: '#0e0e10',
         display: 'standalone',
