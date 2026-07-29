@@ -57,7 +57,7 @@ export function AiSettings() {
         </div>
         <p className="muted small" style={{ marginTop: 6 }}>
           {getApiKey()
-            ? 'Euristico: sempre disponibile, offline, istantaneo. AI: aggiunge in Home un pulsante per far commentare i tuoi dati al modello (consuma la tua chiave).'
+            ? 'Euristico: sempre disponibile, offline, istantaneo. AI: aggiunge in Oggi un pulsante per far commentare i tuoi dati al modello (consuma la tua chiave). Cosa esce di casa: le righe del coach, i quattro Score, l obiettivo settimanale e i vitali WHOOP del giorno (recupero, HRV, FC a riposo, sonno, sforzo). Niente nomi, niente diario alimentare.'
             : 'Serve la chiave qui sopra per attivare il coach AI. Senza, resta quello euristico.'}
         </p>
       </div>

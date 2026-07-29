@@ -10,7 +10,7 @@ import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre } from '../util/format'
 import { ScoreRing } from './anim'
-import { CoachCard } from './HomeScreen'
+import { CoachCard } from './CoachCard'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }

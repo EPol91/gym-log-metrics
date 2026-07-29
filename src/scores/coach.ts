@@ -10,6 +10,7 @@ import { todayLocal } from '../util/date'
 import { bestE1rm, isWorkingSet, tonnage } from '../metrics/metrics'
 import type { SetEntry, WorkoutSession } from '../db/schema'
 import type { HomeData } from './dashboardScores'
+import type { WhoopDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
@@ -144,7 +145,172 @@ async function creditLine(home: HomeData, sessions: WorkoutSession[]): Promise<C
   return null
 }
 
-/** Le righe del Coach: max 3, in ordine (oggi · cosa notano i dati · riconoscimento). */
+
+// --- Salute: quello che dicono recupero, sonno e HRV --------------------------
+
+/** Media di un campo sulle giornate WHOOP disponibili, esclusa quella di oggi. */
+function mediaWhoop(giorni: WhoopDay[], f: (d: WhoopDay) => number | undefined): number | null {
+  const v = giorni.map(f).filter((x): x is number => x != null)
+  return v.length >= 7 ? v.reduce((a, b) => a + b, 0) / v.length : null
+}
+
+/**
+ * Blocco salute: il sensore parla per primo, perché è il dato che condiziona
+ * tutto il resto della giornata. Le soglie sono le TUE medie, non numeri da manuale.
+ */
+async function healthLine(): Promise<CoachLine | null> {
+  const giorni = (await db.whoopDays.where('userId').equals(U).toArray())
+    .sort((a, b) => a.date.localeCompare(b.date))
+  if (!giorni.length) return null
+
+  const oggi = giorni[giorni.length - 1]
+  const dOggi = oggi.date === todayISO() ? oggi : null
+  const storico = giorni.filter((g) => g.date !== todayISO())
+
+  // 1) Recupero di oggi contro la tua media.
+  const mediaRec = mediaWhoop(storico, (d) => d.recovery)
+  if (dOggi?.recovery != null && mediaRec != null) {
+    const scarto = dOggi.recovery - mediaRec
+    if (scarto <= -12) {
+      return {
+        fact: `Recupero ${dOggi.recovery}%, sotto la tua media di ${Math.round(mediaRec)}%.`,
+        advice: 'una seduta più corta rende spesso più di una saltata.',
+      }
+    }
+    if (scarto >= 12) {
+      return {
+        fact: `Recupero ${dOggi.recovery}%, sopra la tua media di ${Math.round(mediaRec)}%.`,
+        advice: 'se c\'è un giorno per il carico pesante, di solito è questo.',
+      }
+    }
+  }
+
+  // 2) Debito di sonno: tre notti sotto la media spiegano molte cose.
+  const mediaSonno = mediaWhoop(storico, (d) => d.sleepHours)
+  const ultime3 = giorni.slice(-3).map((g) => g.sleepHours).filter((x): x is number => x != null)
+  if (mediaSonno != null && ultime3.length === 3 && ultime3.every((h) => h < mediaSonno - 0.5)) {
+    const tot = Math.round((mediaSonno * 3 - ultime3.reduce((a, b) => a + b, 0)) * 60)
+    return {
+      fact: `Tre notti sotto la tua media: ${tot} minuti di sonno in meno.`,
+      advice: 'se cali a metà seduta, la spiegazione è probabilmente questa.',
+    }
+  }
+
+  // 3) HRV in discesa sulla settimana.
+  const hrv = giorni.slice(-14).map((g) => g.hrv).filter((x): x is number => x != null)
+  if (hrv.length >= 10) {
+    const prima = hrv.slice(0, Math.floor(hrv.length / 2))
+    const dopo = hrv.slice(Math.floor(hrv.length / 2))
+    const m = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length
+    const calo = (m(prima) - m(dopo)) / m(prima)
+    if (calo >= 0.12) {
+      return {
+        fact: `HRV in calo del ${Math.round(calo * 100)}% rispetto alla settimana prima.`,
+        advice: 'spesso arriva prima della stanchezza percepita; vale la pena tenerlo d\'occhio.',
+      }
+    }
+  }
+
+  return null
+}
+
+// --- Nutrizione ---------------------------------------------------------------
+
+/**
+ * Blocco nutrizione: proteine e calorie contro la fase. Parla solo se hai
+ * davvero registrato qualcosa — un diario vuoto non è un digiuno.
+ */
+async function nutritionLine(): Promise<CoachLine | null> {
+  const oggi = todayISO()
+  const da = new Date(Date.now() - 3 * DAY).toISOString().slice(0, 10)
+  const logs = (await db.foodLogs.where('userId').equals(U).toArray()).filter((l) => l.date >= da && l.date <= oggi)
+  if (!logs.length) return null
+
+  const foods = new Map((await db.foods.where('userId').equals(U).toArray()).map((f) => [f.id, f]))
+  const perGiorno = new Map<string, { kcal: number; prot: number }>()
+  for (const l of logs) {
+    const acc = perGiorno.get(l.date) ?? { kcal: 0, prot: 0 }
+    if (l.macrosSnapshot) {
+      acc.kcal += l.macrosSnapshot.kcal
+      acc.prot += l.macrosSnapshot.protein
+    } else {
+      const f = foods.get(l.foodId)
+      if (f) {
+        acc.kcal += (f.per100.kcal * l.grams) / 100
+        acc.prot += (f.per100.protein * l.grams) / 100
+      }
+    }
+    perGiorno.set(l.date, acc)
+  }
+
+  const meas = await db.bodyMeasurements.where('userId').equals(U).sortBy('date')
+  const peso = meas.length ? meas[meas.length - 1].weight : null
+
+  // 1) Proteine sotto 1,6 g/kg su tutti i giorni registrati.
+  const giorniPieni = [...perGiorno.entries()].filter(([, v]) => v.kcal > 500)
+  if (peso && giorniPieni.length >= 2) {
+    const perKg = giorniPieni.map(([, v]) => v.prot / peso)
+    if (perKg.every((x) => x < 1.6)) {
+      const media = perKg.reduce((a, b) => a + b, 0) / perKg.length
+      return {
+        fact: `Proteine a ${media.toFixed(1)} g/kg negli ultimi ${giorniPieni.length} giorni registrati.`,
+        advice: 'sotto 1,6 g/kg la massa magra è meno protetta, soprattutto in definizione.',
+      }
+    }
+  }
+
+  // 2) Calorie che vanno contro la fase.
+  const fase = (await db.phases.where('userId').equals(U).toArray()).find((p) => !p.endDate)
+  const tipi = await db.dayTypes.where('userId').equals(U).toArray()
+  const target = tipi.map((t) => t.targets.kcal).filter((k) => k > 0).sort((a, b) => a - b)
+  if (fase && giorniPieni.length >= 2 && target.length) {
+    const mediaKcal = giorniPieni.reduce((a, [, v]) => a + v.kcal, 0) / giorniPieni.length
+    const minimo = target[0], massimo = target[target.length - 1]
+    if (fase.phase === 'cut' && mediaKcal > massimo * 1.1) {
+      return {
+        fact: `Media ${Math.round(mediaKcal)} kcal sui giorni registrati, sopra i tuoi obiettivi, e sei in cut.`,
+        advice: 'se il peso non scende, è il primo posto dove guardare.',
+      }
+    }
+    if (fase.phase === 'bulk' && mediaKcal < minimo * 0.9) {
+      return {
+        fact: `Media ${Math.round(mediaKcal)} kcal sui giorni registrati, sotto i tuoi obiettivi, e sei in bulk.`,
+        advice: 'crescere con poco carburante è la parte difficile.',
+      }
+    }
+  }
+
+  return null
+}
+
+// --- Sforzo WHOOP contro sedute registrate ------------------------------------
+
+/** Ti alleni sistematicamente da scarico? È la domanda che nessuna app sa fare da sola. */
+async function loadVsRecoveryLine(sessions: WorkoutSession[]): Promise<CoachLine | null> {
+  const giorni = await db.whoopDays.where('userId').equals(U).toArray()
+  if (giorni.length < 20) return null
+  const da = new Date(Date.now() - 30 * DAY).toISOString().slice(0, 10)
+  const recenti = giorni.filter((g) => g.date >= da && g.recovery != null)
+  if (recenti.length < 10) return null
+
+  const allenato = new Set(sessions.filter((s) => s.date >= da && s.finishedAt).map((s) => s.date))
+  const scarichi = recenti.filter((g) => g.recovery! < 40)
+  const scarichiAllenati = scarichi.filter((g) => allenato.has(g.date)).length
+  if (scarichi.length >= 3 && scarichiAllenati >= Math.ceil(scarichi.length * 0.6)) {
+    return {
+      fact: `Negli ultimi 30 giorni ti sei allenato ${scarichiAllenati} volte su ${scarichi.length} giornate con recupero sotto il 40%.`,
+      advice: 'non è un errore, ma vale la pena guardare se quelle sedute reggono il confronto con le altre.',
+    }
+  }
+  return null
+}
+
+/**
+ * Le righe del Coach, al massimo quattro, in ordine di priorità:
+ * salute di oggi → nutrizione → allenamento → riconoscimento.
+ * Se una categoria non ha niente da dire cede il posto: meglio tre righe
+ * che contano di quattro riempite.
+ */
 export async function computeCoach(home: HomeData): Promise<CoachLine[]> {
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
@@ -154,22 +320,32 @@ export async function computeCoach(home: HomeData): Promise<CoachLine[]> {
   const checkToday = daily?.check ?? fromSession?.readiness ?? null
 
   const lines: CoachLine[] = [todayLine(checkToday, home.todayReady)]
-  const notice = await noticeLine(home, sessions)
-  if (notice) lines.push(notice)
-  const credit = await creditLine(home, sessions)
-  if (credit) lines.push(credit)
+  const candidate = [
+    await healthLine(),
+    await nutritionLine(),
+    await loadVsRecoveryLine(sessions),
+    await noticeLine(home, sessions),
+    await creditLine(home, sessions),
+  ]
+  for (const c of candidate) {
+    if (c && lines.length < 4) lines.push(c)
+  }
   return lines
 }
 
 /** Contesto testuale per il Coach AI (opzione attivabile nel Profilo). */
-export function coachPrompt(home: HomeData, lines: CoachLine[]): string {
+export function coachPrompt(home: HomeData, lines: CoachLine[], whoop?: WhoopDay | null): string {
   const facts = lines.map((l) => `- ${l.fact}`).join('\n')
-  const s = (v: number | null) => (v == null ? 'n/d' : String(v))
+  const s = (v: number | null | undefined) => (v == null ? 'n/d' : String(v))
+  const vitali = whoop
+    ? `Vitali di oggi (WHOOP): recupero ${s(whoop.recovery)}%, HRV ${s(whoop.hrv)} ms, FC a riposo ${s(whoop.restingHr)}, sonno ${s(whoop.sleepHours)} h, sforzo ${s(whoop.strain)}.\n`
+    : ''
   return `Sei il coach di un bodybuilder/powerbuilder che usa questa app.
 Dati di oggi:
 ${facts}
 Score: Readiness ${s(home.readiness.value)}, Workout ${s(home.workout.value)}, Performance ${s(home.performance.value)}, Consistency ${s(home.consistency.value)}.
 Obiettivo settimana: ${home.weekGoal.done}/${home.weekGoal.target}, streak ${home.weekGoal.streak} giorni.
+${vitali}
 
-Scrivi max 3 frasi brevi in italiano. Distingui sempre il dato dal consiglio: i consigli vanno introdotti da "Consiglio:" e non devono mai essere imperativi né presentati come verità certe — l'atleta decide da sé. Niente motivazione generica: parla solo dei suoi numeri.`
+Scrivi max 4 frasi brevi in italiano. Distingui sempre il dato dal consiglio: i consigli vanno introdotti da "Consiglio:" e non devono mai essere imperativi né presentati come verità certe — l'atleta decide da sé. Niente motivazione generica: parla solo dei suoi numeri.`
 }
