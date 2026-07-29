@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoods } from '../db/diet'
 import { addRecipe, updateRecipe, deleteRecipe, getRecipe, type RecipeDraft } from '../db/recipes'
@@ -30,6 +30,12 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
   const [loaded, setLoaded] = useState(!recipeId)
   const [picking, setPicking] = useState<number | null>(null) // indice della sezione
   const [saving, setSaving] = useState(false)
+  // Testo del campo porzioni: tenerlo come stringa e non come numero e cio che
+  // permette di cancellarlo senza che torni 1 e la cifra dopo ci si accodi.
+  const [porzioni, setPorzioni] = useState('6')
+  // Ultimo numero valido digitato: e a questo che si torna se lasci il campo vuoto,
+  // senza dipendere da quale versione della bozza vede il gestore.
+  const ultimoValido = useRef(6)
 
   // Si carica una volta sola: la query è reattiva e riscriverebbe sopra le tue modifiche.
   useEffect(() => {
@@ -58,7 +64,9 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
       const crudo = d.groups.reduce((a, g) => a + g.items.reduce((b, it) => b + (Number(it.grams) || 0), 0), 0)
       set({ mode, yieldG: d.yieldG ?? (crudo > 0 ? Math.round(crudo) : undefined) })
     } else {
-      set({ mode, servings: d.servings ?? 6 })
+      const n = d.servings ?? 6
+      set({ mode, servings: n })
+      setPorzioni(String(n)); ultimoValido.current = n
     }
   }
 
@@ -100,17 +108,32 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
           <div style={{ flex: 1 }}>
             <label className="fl">{byPortions ? 'Porzioni' : 'Peso finale (g)'}</label>
             {byPortions ? (
-              <input inputMode="numeric" value={String(d.servings ?? 1)} style={{ textAlign: 'center' }}
-                onChange={(e) => set({ servings: clampNum(e.target.value, { min: 1, max: 99, int: true }) ?? 1 })} />
+              /* Il campo tiene il testo, non il numero: altrimenti cancellando
+                 tornava 1 e la cifra successiva ci si accodava (1 + 4 = 14). */
+              <input inputMode="numeric" value={porzioni} style={{ textAlign: 'center' }}
+                onChange={(e) => {
+                  const t = e.target.value.replace(/[^0-9]/g, '')
+                  setPorzioni(t)
+                  // clampNum stringe al minimo: il vuoto diventerebbe 1. Va escluso prima.
+                  const n = t === '' ? null : clampNum(t, { min: 1, max: 99, int: true })
+                  if (n != null) { ultimoValido.current = n; set({ servings: n }) }
+                }}
+                onBlur={() => {
+                  const n = porzioni.trim() === '' ? null : clampNum(porzioni, { min: 1, max: 99, int: true })
+                  // Vuoto o assurdo: torna all'ultimo valore valido, senza sorprese al salvataggio.
+                  const v = n ?? ultimoValido.current
+                  ultimoValido.current = v
+                  setPorzioni(String(v)); set({ servings: v })
+                }} />
             ) : (
               <input inputMode="numeric" value={d.yieldG != null ? String(d.yieldG) : ''} placeholder="es. 1320" style={{ textAlign: 'center' }}
-                onChange={(e) => set({ yieldG: clampNum(e.target.value, { min: 1, max: 20000, int: true }) ?? undefined })} />
+                onChange={(e) => set({ yieldG: e.target.value.trim() === '' ? undefined : clampNum(e.target.value, { min: 1, max: 20000, int: true }) ?? undefined })} />
             )}
           </div>
           <div style={{ flex: 1 }}>
             <label className="fl">Tempo (min)</label>
             <input inputMode="numeric" value={d.timeMin != null ? String(d.timeMin) : ''} placeholder="—" style={{ textAlign: 'center' }}
-              onChange={(e) => set({ timeMin: clampNum(e.target.value, { min: 0, max: 2000, int: true }) ?? undefined })} />
+              onChange={(e) => set({ timeMin: e.target.value.trim() === '' ? undefined : clampNum(e.target.value, { min: 0, max: 2000, int: true }) ?? undefined })} />
           </div>
         </div>
 
