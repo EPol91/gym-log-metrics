@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ETP HEALTH — Privacy Policy</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0e0e10; color:#f2f2f2; font-family:Inter,system-ui,-apple-system,sans-serif; line-height:1.7; }
+  main { max-width:720px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-family:Georgia,serif; color:#d4af37; font-size:28px; margin:0 0 4px; }
+  h2 { font-size:18px; font-weight:500; margin:32px 0 8px; color:#d4af37; }
+  p, li { color:#dcdcdc; }
+  .muted { color:#8f8f8f; font-size:14px; }
+  hr { border:0; border-top:1px solid #262626; margin:40px 0; }
+  a { color:#d4af37; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ETP HEALTH</h1>
+  <p class="muted">Privacy Policy · ultimo aggiornamento: 29 luglio 2026</p>
+
+  <h2>In breve</h2>
+  <p>ETP HEALTH è un'applicazione personale per allenamento, alimentazione, recupero e abitudini.
+     I dati restano sul dispositivo di chi la usa. Non esiste un server che li raccoglie, non c'è
+     profilazione, non c'è pubblicità, non ci sono strumenti di analisi del comportamento.</p>
+
+  <h2>Quali dati vengono trattati</h2>
+  <ul>
+    <li>Dati inseriti dall'utente: allenamenti, serie, misure corporee, alimenti, obiettivi, abitudini.</li>
+    <li>Dati facoltativi da dispositivi collegati: frequenza cardiaca da fascia Bluetooth durante l'attività.</li>
+    <li>Dati facoltativi da WHOOP, se l'utente collega il proprio account: recupero, sonno, sforzo,
+        allenamenti, misure corporee e profilo di base.</li>
+  </ul>
+
+  <h2>Dove sono conservati</h2>
+  <p>Tutti i dati sono salvati <strong>localmente</strong> nel browser del dispositivo (IndexedDB) e non
+     lasciano il dispositivo, salvo che sia l'utente a esportarli con la funzione di backup.</p>
+  <p>Se l'utente collega WHOOP, i token di accesso sono conservati cifrati su una funzione serverless
+     Cloudflare Workers gestita dal titolare, al solo scopo di richiedere i dati a WHOOP per conto
+     dell'utente. I dati sanitari ricevuti non vengono conservati su quel server: transitano e basta.</p>
+
+  <h2>Con chi sono condivisi</h2>
+  <p>Con nessuno. I dati non vengono venduti, ceduti, né usati per pubblicità o addestramento di modelli.
+     Le uniche chiamate verso l'esterno sono: WHOOP (se collegato, per leggere i propri dati) e
+     Open Food Facts (se si cerca un alimento online).</p>
+
+  <h2>Revoca e cancellazione</h2>
+  <p>Il collegamento con WHOOP si può interrompere in qualsiasi momento dal Profilo dell'app o dalle
+     impostazioni dell'account WHOOP: alla revoca i token vengono eliminati. I dati locali si cancellano
+     disinstallando l'applicazione o cancellando i dati del sito dal browser.</p>
+
+  <h2>Titolare e contatti</h2>
+  <p>Emanuel Terence Pol — <a href="mailto:emanuel.pol91@gmail.com">emanuel.pol91@gmail.com</a></p>
+
+  <hr />
+
+  <h2>English summary</h2>
+  <p>ETP HEALTH is a personal training, nutrition, recovery and habits app. All user data is stored
+     locally on the user's device (IndexedDB) and never leaves it, unless the user exports a backup.
+     No tracking, no advertising, no analytics, no data selling.</p>
+  <p>If the user connects WHOOP, OAuth tokens are stored encrypted in a Cloudflare Workers instance
+     operated by the data controller, solely to request the user's own data from the WHOOP API on their
+     behalf. Health data received from WHOOP is not persisted on that server. The user can revoke access
+     at any time from the app or from their WHOOP account settings; revoking deletes the stored tokens.</p>
+  <p>Controller: Emanuel Terence Pol — <a href="mailto:emanuel.pol91@gmail.com">emanuel.pol91@gmail.com</a></p>
+</main>
+</body>
+</html>
