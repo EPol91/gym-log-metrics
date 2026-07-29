@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ETP HEALTH — proposta struttura B</title>
+<style>
+  :root{
+    --bg:#0b0b0b; --surface:#141414; --surface-2:#1c1c1c; --line:#262626;
+    --text:#f2f2f2; --muted:#8f8f8f; --gold:#d4af37; --good:#4caf50;
+    --carb:#FFC63D; --prot:#2ecc71; --fat:#e74c3c;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#050505;color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;padding:28px 16px 60px}
+  .intro{max-width:900px;margin:0 auto 26px}
+  .intro h1{font-family:Georgia,serif;color:var(--gold);font-size:26px;margin:0 0 6px}
+  .intro p{color:var(--muted);line-height:1.6;margin:0}
+  .wrap{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:390px;max-width:100%;background:var(--bg);border:1px solid #1f1f1f;border-radius:26px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+  .status{display:flex;justify-content:space-between;padding:8px 18px 2px;font-size:12px;color:var(--muted)}
+  .screen{padding:14px 16px 8px;display:flex;flex-direction:column;gap:8px}
+  .cap{text-align:center;color:var(--muted);font-size:13px;margin:10px 0 0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+  .row{display:flex;gap:8px;align-items:center}
+  .spread{justify-content:space-between}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  .lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .num{color:var(--gold);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+  .sub{font-size:10px;color:var(--muted)}
+  .cell{flex:1;min-width:0;text-align:center}
+  h1.hi{font-family:Georgia,serif;font-size:25px;margin:0}
+  .chip{font-size:12px;padding:5px 13px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);display:inline-block}
+  .chip.on{background:#20200f;border-color:var(--gold);color:var(--gold)}
+  .bar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:999px}
+  .grip{color:#3a3a3a;font-size:15px;letter-spacing:-2px}
+  .tabbar{display:flex;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px 10px;margin-top:10px}
+  .tab{flex:1;text-align:center;color:var(--muted);font-size:11px}
+  .tab.active{color:var(--gold)}
+  .tab svg{display:block;margin:0 auto 2px}
+  .primary{width:100%;background:var(--gold);color:#1a1400;border:none;border-radius:10px;padding:12px;font-weight:600;font-size:15px}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 12px;font-size:14px}
+  .note{max-width:900px;margin:34px auto 0;color:var(--muted);line-height:1.7}
+  .note strong{color:var(--text)}
+  .note h2{color:var(--gold);font-family:Georgia,serif;font-size:19px;margin:26px 0 8px}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Proposta B — Oggi, Allenamento, Nutrizione, Salute, Profilo</h1>
+  <p>Il criterio è uno solo: <strong style="color:#f2f2f2">Oggi = adesso</strong>, <strong style="color:#f2f2f2">Salute = andamento</strong>. I numeri qui sotto sono quelli veri arrivati dal tuo WHOOP, così vedi come si legge davvero.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ OGGI ============ -->
+  <div>
+  <div class="phone">
+    <div class="status"><span>17:30</span><span>▮▮▮ 64</span></div>
+    <div class="screen">
+
+      <div class="row spread" style="align-items:flex-start">
+        <div>
+          <div class="lbl" style="margin-bottom:2px">ETP HEALTH</div>
+          <h1 class="hi">Ciao Emanuel 👋</h1>
+          <div class="muted small">Oggi si costruisce.</div>
+        </div>
+        <div style="text-align:center;flex:0 0 auto">
+          <svg width="78" height="78" viewBox="0 0 78 78">
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#1c1c1c" stroke-width="7"/>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="#d4af37" stroke-width="7" stroke-linecap="round"
+                    stroke-dasharray="145 201" transform="rotate(-90 39 39)"/>
+            <text x="39" y="45" text-anchor="middle" fill="#d4af37" font-size="22" font-family="Georgia,serif">72</text>
+          </svg>
+          <div class="sub" style="color:var(--good)">Oggi · pronto</div>
+        </div>
+      </div>
+
+      <div class="row spread" style="margin:2px 0 0">
+        <span class="muted small">I tuoi riquadri</span>
+        <span class="chip">≡ Riordina</span>
+      </div>
+
+      <!-- VITALI -->
+      <div class="card">
+        <div class="row spread"><span class="lbl">Vitali · WHOOP</span><span class="grip">≡</span></div>
+        <div class="row" style="margin-top:8px">
+          <div class="cell"><div class="num">58%</div><div class="sub">recupero</div></div>
+          <div class="cell"><div class="num">5h 19</div><div class="sub">sonno</div></div>
+          <div class="cell"><div class="num">4.2</div><div class="sub">sforzo</div></div>
+          <div class="cell"><div class="num">49.9</div><div class="sub">HRV</div></div>
+        </div>
+        <svg width="100%" height="30" viewBox="0 0 320 30" preserveAspectRatio="none" style="margin-top:8px">
+          <polyline fill="none" stroke="#d4af37" stroke-width="1.6" stroke-linejoin="round"
+            points="0,20 27,14 53,18 80,9 107,13 133,22 160,17 187,11 213,15 240,8 267,19 293,16 320,12"/>
+        </svg>
+        <div class="sub">ultimi 14 giorni · recupero</div>
+      </div>
+
+      <!-- CORPO -->
+      <div class="card">
+        <div class="row spread"><span class="lbl">Corpo</span><span class="grip">≡</span></div>
+        <div class="row" style="margin-top:8px">
+          <div class="cell"><div class="num">82,4</div><div class="sub">kg</div></div>
+          <div class="cell"><div class="num" style="color:var(--good)">−0,6</div><div class="sub">7 giorni</div></div>
+          <div class="cell"><div class="num">14,0%</div><div class="sub">grasso</div></div>
+          <div class="cell"><div class="num">22,8</div><div class="sub">FFMI</div></div>
+        </div>
+        <div style="margin-top:9px" class="row">
+          <button class="ghost" style="flex:1">＋ Peso di oggi</button>
+        </div>
+      </div>
+
+      <!-- NUTRIZIONE -->
+      <div class="card">
+        <div class="row spread"><span class="lbl">Nutrizione</span><span class="grip">≡</span></div>
+        <div class="row" style="margin-top:8px;align-items:flex-end">
+          <div style="flex:1">
+            <div class="row spread"><span class="small">1.240 <span class="muted">/ 2.480 kcal</span></span><span class="muted small">restano 1.240</span></div>
+            <div class="bar" style="margin-top:6px"><i style="width:50%;background:var(--gold)"></i></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:9px">
+          <div class="cell"><div style="color:var(--carb);font-size:15px;font-weight:600">148</div><div class="sub">carbo</div></div>
+          <div class="cell"><div style="color:var(--prot);font-size:15px;font-weight:600">92</div><div class="sub">proteine</div></div>
+          <div class="cell"><div style="color:var(--fat);font-size:15px;font-weight:600">41</div><div class="sub">grassi</div></div>
+        </div>
+      </div>
+
+      <!-- ALLENAMENTO -->
+      <div class="card">
+        <div class="row spread"><span class="lbl">Allenamento</span><span class="grip">≡</span></div>
+        <div class="row spread" style="margin-top:8px">
+          <span class="small"><strong>Push</strong> <span class="muted">· previsto oggi</span></span>
+          <span class="muted small">ultima: 2 giorni fa</span>
+        </div>
+        <div class="muted small" style="margin-top:4px">Consiglio: con recupero al 58% tieni il volume dell'ultima volta.</div>
+        <button class="primary" style="margin-top:9px">＋ Inizia allenamento</button>
+      </div>
+
+      <!-- ABITUDINI -->
+      <div class="card">
+        <div class="row spread"><span class="lbl">Abitudini</span><span class="grip">≡</span></div>
+        <div class="row spread" style="margin-top:8px">
+          <span class="small">Passi</span>
+          <span class="small" style="font-variant-numeric:tabular-nums">6.240 <span class="muted">/ 10.000</span></span>
+        </div>
+        <div class="bar" style="margin-top:6px"><i style="width:62%;background:var(--gold)"></i></div>
+      </div>
+
+    </div>
+
+    <div class="tabbar">
+      <div class="tab active">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+      <div class="tab">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Allena</div>
+      <div class="tab">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v6.5a2 2 0 0 0 4 0V3M9 11.5V21M17.5 3c1.8 2 1.8 6.5 0 8.5V21"/></svg>Cibo</div>
+      <div class="tab">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5h4l2-5 3.5 10 2.5-6 1.5 3h4.5"/></svg>Salute</div>
+      <div class="tab">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.5c.6-3.7 3.7-5.6 7.4-5.6s6.8 1.9 7.4 5.6"/></svg>Profilo</div>
+    </div>
+  </div>
+  <p class="cap"><strong style="color:#f2f2f2">Oggi</strong> — solo lo stato di adesso. I riquadri li ordini tu.</p>
+  </div>
+
+  <!-- ============ SALUTE ============ -->
+  <div>
+  <div class="phone">
+    <div class="status"><span>17:31</span><span>▮▮▮ 64</span></div>
+    <div class="screen">
+
+      <h1 class="hi" style="margin-bottom:2px">Salute</h1>
+      <div class="muted small" style="margin-bottom:4px">Come stai andando, non come stai adesso.</div>
+
+      <div class="row" style="gap:6px;overflow:hidden">
+        <span class="chip on">Vitali</span><span class="chip">Corpo</span><span class="chip">Abitudini</span><span class="chip">Analisi</span><span class="chip">Storico</span>
+      </div>
+
+      <div class="row" style="gap:6px;margin-top:2px">
+        <span class="chip">30 giorni</span><span class="chip on">90 giorni</span><span class="chip">6 mesi</span>
+      </div>
+
+      <div class="card">
+        <div class="row spread"><span class="lbl">Recupero</span><span class="muted small">media 61%</span></div>
+        <svg width="100%" height="86" viewBox="0 0 320 86" preserveAspectRatio="none" style="margin-top:6px">
+          <line x1="0" y1="22" x2="320" y2="22" stroke="#1c1c1c"/><line x1="0" y1="54" x2="320" y2="54" stroke="#1c1c1c"/>
+          <polyline fill="none" stroke="#d4af37" stroke-width="1.8" stroke-linejoin="round"
+            points="0,52 22,40 44,58 66,34 88,44 110,66 132,50 154,30 176,42 198,24 220,60 242,46 264,36 286,54 308,44 320,38"/>
+          <circle cx="320" cy="38" r="3" fill="#d4af37"/>
+        </svg>
+        <div class="row spread"><span class="sub">verde sopra 66 · giallo 34-66 · rosso sotto 34</span><span class="sub">oggi 58%</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row spread"><span class="lbl">HRV</span><span class="muted small">media 47,2 ms</span></div>
+        <svg width="100%" height="60" viewBox="0 0 320 60" preserveAspectRatio="none" style="margin-top:6px">
+          <polyline fill="none" stroke="#2ecc71" stroke-width="1.6" stroke-linejoin="round"
+            points="0,38 24,30 48,42 72,26 96,34 120,48 144,32 168,22 192,36 216,18 240,44 264,30 288,26 312,34 320,28"/>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="row spread"><span class="lbl">Sonno</span><span class="muted small">media 6h 42</span></div>
+        <svg width="100%" height="60" viewBox="0 0 320 60" preserveAspectRatio="none" style="margin-top:6px">
+          <g fill="#d4af37" opacity=".85">
+            <rect x="2" y="26" width="14" height="34" rx="2"/><rect x="24" y="18" width="14" height="42" rx="2"/>
+            <rect x="46" y="34" width="14" height="26" rx="2"/><rect x="68" y="14" width="14" height="46" rx="2"/>
+            <rect x="90" y="22" width="14" height="38" rx="2"/><rect x="112" y="40" width="14" height="20" rx="2"/>
+            <rect x="134" y="20" width="14" height="40" rx="2"/><rect x="156" y="12" width="14" height="48" rx="2"/>
+            <rect x="178" y="28" width="14" height="32" rx="2"/><rect x="200" y="16" width="14" height="44" rx="2"/>
+            <rect x="222" y="36" width="14" height="24" rx="2"/><rect x="244" y="24" width="14" height="36" rx="2"/>
+            <rect x="266" y="19" width="14" height="41" rx="2"/><rect x="288" y="30" width="14" height="30" rx="2"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="row spread"><span class="lbl">Sforzo e sedute</span><span class="muted small">14 sedute</span></div>
+        <div class="muted small" style="margin-top:6px;line-height:1.6">
+          Ti sei allenato <strong style="color:#f2f2f2">3 volte</strong> con recupero sotto il 40%.
+          <br><span style="color:var(--gold)">Consiglio:</span> nei giorni scarichi hai chiuso con volume più basso della media — non è un caso.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="tabbar">
+      <div class="tab"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+      <div class="tab"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Allena</div>
+      <div class="tab"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v6.5a2 2 0 0 0 4 0V3M9 11.5V21M17.5 3c1.8 2 1.8 6.5 0 8.5V21"/></svg>Cibo</div>
+      <div class="tab active"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5h4l2-5 3.5 10 2.5-6 1.5 3h4.5"/></svg>Salute</div>
+      <div class="tab"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.5c.6-3.7 3.7-5.6 7.4-5.6s6.8 1.9 7.4 5.6"/></svg>Profilo</div>
+    </div>
+  </div>
+  <p class="cap"><strong style="color:#f2f2f2">Salute</strong> — tutti gli andamenti in un posto solo.</p>
+  </div>
+
+</div>
+
+<div class="note">
+  <h2>Cosa cambia rispetto a oggi</h2>
+  <p><strong>Home diventa Oggi</strong> e smette di essere il telecomando dell'allenamento: resta un cruscotto che si legge, con i riquadri che ordini tu. Il pulsante per iniziare la seduta rimane, ma dentro il riquadro Allenamento — dove ha un senso, non come voce principale della schermata.</p>
+  <p><strong>Progressi diventa Salute</strong> e assorbe le Abitudini e i vitali WHOOP. Sparisce la domanda "dove va un andamento": vanno tutti lì.</p>
+  <p><strong>Esercizi diventa Allena</strong>: avvio seduta, template, libreria esercizi e storico delle sedute nello stesso posto.</p>
+  <p><strong>Dieta diventa Cibo</strong> e ospita anche le ricette, così la voce nuova della sessione parallela non deve occupare un settimo posto in barra.</p>
+  <p><strong>Il Profilo resta</strong>, ma solo per impostazioni e collegamenti: WHOOP, AI, backup, palestra, metabolismo.</p>
+  <h2>Un dubbio onesto</h2>
+  <p>Oggi e Salute possono sembrare parenti. Reggono solo se teniamo la regola senza sconti: in <strong>Oggi</strong> nessun grafico storico, in <strong>Salute</strong> nessun numero di oggi senza il suo andamento accanto.</p>
+</div>
+
+</body>
+</html>
