@@ -10,7 +10,10 @@ import { todayLocal } from '../util/date'
 import { bestE1rm, isWorkingSet, tonnage } from '../metrics/metrics'
 import type { SetEntry, WorkoutSession } from '../db/schema'
 import type { HomeData } from './dashboardScores'
-import type { WhoopDay } from '../db/schema'
+import type { CoachBlock, WhoopDay } from '../db/schema'
+
+/** Blocchi attivi per difetto: tutti tranne la nutrizione, che si accende dal Profilo. */
+export const COACH_BLOCKS_DEFAULT: CoachBlock[] = ['salute', 'carico', 'allenamento', 'riconoscimenti']
 
 const U = LOCAL_USER_ID
 const DAY = 86_400_000
@@ -214,6 +217,75 @@ async function healthLine(): Promise<CoachLine | null> {
   return null
 }
 
+// --- Nutrizione ---------------------------------------------------------------
+
+/**
+ * Blocco nutrizione: proteine e calorie contro la fase. Parla solo se hai
+ * davvero registrato qualcosa — un diario vuoto non è un digiuno.
+ */
+async function nutritionLine(): Promise<CoachLine | null> {
+  const oggi = todayISO()
+  const da = new Date(Date.now() - 3 * DAY).toISOString().slice(0, 10)
+  const logs = (await db.foodLogs.where('userId').equals(U).toArray()).filter((l) => l.date >= da && l.date <= oggi)
+  if (!logs.length) return null
+
+  const foods = new Map((await db.foods.where('userId').equals(U).toArray()).map((f) => [f.id, f]))
+  const perGiorno = new Map<string, { kcal: number; prot: number }>()
+  for (const l of logs) {
+    const acc = perGiorno.get(l.date) ?? { kcal: 0, prot: 0 }
+    if (l.macrosSnapshot) {
+      acc.kcal += l.macrosSnapshot.kcal
+      acc.prot += l.macrosSnapshot.protein
+    } else {
+      const f = foods.get(l.foodId)
+      if (f) {
+        acc.kcal += (f.per100.kcal * l.grams) / 100
+        acc.prot += (f.per100.protein * l.grams) / 100
+      }
+    }
+    perGiorno.set(l.date, acc)
+  }
+
+  const meas = await db.bodyMeasurements.where('userId').equals(U).sortBy('date')
+  const peso = meas.length ? meas[meas.length - 1].weight : null
+
+  // 1) Proteine sotto 1,6 g/kg su tutti i giorni registrati.
+  const giorniPieni = [...perGiorno.entries()].filter(([, v]) => v.kcal > 500)
+  if (peso && giorniPieni.length >= 2) {
+    const perKg = giorniPieni.map(([, v]) => v.prot / peso)
+    if (perKg.every((x) => x < 1.6)) {
+      const media = perKg.reduce((a, b) => a + b, 0) / perKg.length
+      return {
+        fact: `Proteine a ${media.toFixed(1)} g/kg negli ultimi ${giorniPieni.length} giorni registrati.`,
+        advice: 'sotto 1,6 g/kg la massa magra è meno protetta, soprattutto in definizione.',
+      }
+    }
+  }
+
+  // 2) Calorie che vanno contro la fase.
+  const fase = (await db.phases.where('userId').equals(U).toArray()).find((p) => !p.endDate)
+  const tipi = await db.dayTypes.where('userId').equals(U).toArray()
+  const target = tipi.map((t) => t.targets.kcal).filter((k) => k > 0).sort((a, b) => a - b)
+  if (fase && giorniPieni.length >= 2 && target.length) {
+    const mediaKcal = giorniPieni.reduce((a, [, v]) => a + v.kcal, 0) / giorniPieni.length
+    const minimo = target[0], massimo = target[target.length - 1]
+    if (fase.phase === 'cut' && mediaKcal > massimo * 1.1) {
+      return {
+        fact: `Media ${Math.round(mediaKcal)} kcal sui giorni registrati, sopra i tuoi obiettivi, e sei in cut.`,
+        advice: 'se il peso non scende, è il primo posto dove guardare.',
+      }
+    }
+    if (fase.phase === 'bulk' && mediaKcal < minimo * 0.9) {
+      return {
+        fact: `Media ${Math.round(mediaKcal)} kcal sui giorni registrati, sotto i tuoi obiettivi, e sei in bulk.`,
+        advice: 'crescere con poco carburante è la parte difficile.',
+      }
+    }
+  }
+
+  return null
+}
+
 // --- Sforzo WHOOP contro sedute registrate ------------------------------------
 
 /** Ti alleni sistematicamente da scarico? È la domanda che nessuna app sa fare da sola. */
@@ -238,7 +310,8 @@ async function loadVsRecoveryLine(sessions: WorkoutSession[]): Promise<CoachLine
 
 /**
  * Le righe del Coach, al massimo quattro, in ordine di priorità:
- * salute di oggi → carico contro recupero → allenamento → riconoscimento.
+ * salute → nutrizione → carico contro recupero → allenamento → riconoscimento,
+ * saltando i blocchi che hai spento nel Profilo.
  * Se una categoria non ha niente da dire cede il posto: meglio tre righe
  * che contano di quattro riempite.
  */
@@ -251,13 +324,18 @@ export async function computeCoach(home: HomeData): Promise<CoachLine[]> {
   const checkToday = daily?.check ?? fromSession?.readiness ?? null
 
   const lines: CoachLine[] = [todayLine(checkToday, home.todayReady)]
-  const candidate = [
-    await healthLine(),
-    await loadVsRecoveryLine(sessions),
-    await noticeLine(home, sessions),
-    await creditLine(home, sessions),
+  // Cosa il coach può guardare lo decidi tu, dal Profilo.
+  const user = await db.users.get(U)
+  const attivi = new Set<CoachBlock>(user?.coachBlocks ?? COACH_BLOCKS_DEFAULT)
+
+  const candidate: [CoachBlock, CoachLine | null][] = [
+    ['salute', attivi.has('salute') ? await healthLine() : null],
+    ['nutrizione', attivi.has('nutrizione') ? await nutritionLine() : null],
+    ['carico', attivi.has('carico') ? await loadVsRecoveryLine(sessions) : null],
+    ['allenamento', attivi.has('allenamento') ? await noticeLine(home, sessions) : null],
+    ['riconoscimenti', attivi.has('riconoscimenti') ? await creditLine(home, sessions) : null],
   ]
-  for (const c of candidate) {
+  for (const [, c] of candidate) {
     if (c && lines.length < 4) lines.push(c)
   }
   return lines

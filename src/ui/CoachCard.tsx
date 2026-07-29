@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { computeCoach, coachPrompt } from '../scores/coach'
+import { computeCoach, coachPrompt, COACH_BLOCKS_DEFAULT } from '../scores/coach'
 import { isCoachAiOn, getAIProvider } from '../ai/aiEngine'
 import { whoopDay } from '../db/whoop'
+import { getUser } from '../db/repo'
 import type { HomeData } from '../scores/dashboardScores'
 
 /**
@@ -14,14 +15,17 @@ import type { HomeData } from '../scores/dashboardScores'
 export function CoachCard({ home }: { home: HomeData }) {
   const lines = useLiveQuery(() => computeCoach(home), [home]) ?? []
   const vitali = useLiveQuery(() => whoopDay(), [])
+  const user = useLiveQuery(getUser, [])
   const aiOn = useLiveQuery(isCoachAiOn, []) ?? false
+  // Blocco spento = fuori anche dal prompt: se non lo vuoi vedere, non deve uscire di casa.
+  const salute = (user?.coachBlocks ?? COACH_BLOCKS_DEFAULT).includes('salute')
   const [aiText, setAiText] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
 
   async function askAi() {
     setAiLoading(true); setAiError(null)
-    try { setAiText(await getAIProvider().analyze(coachPrompt(home, lines, vitali))) }
+    try { setAiText(await getAIProvider().analyze(coachPrompt(home, lines, salute ? vitali : null))) }
     catch (e) { setAiError((e as Error).message) }
     finally { setAiLoading(false) }
   }

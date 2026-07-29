@@ -9,7 +9,7 @@ import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
   CardioSession, CardioMethod, CardioType, NutritionContext, NutritionDayType, NutritionStatus,
-  ActivityLevel, BmrFormula,
+  ActivityLevel, BmrFormula, CoachBlock,
 } from './schema'
 
 const U = LOCAL_USER_ID
@@ -377,7 +377,7 @@ export async function updateUser(
     name?: string; weeklyTarget?: number; unit?: Unit; birthYear?: number
     restingHr?: number; hrMaxMeasured?: number; heightCm?: number; restDefaultSec?: number
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
-    activityLevel?: ActivityLevel; bmrFormula?: BmrFormula
+    activityLevel?: ActivityLevel; bmrFormula?: BmrFormula; coachBlocks?: CoachBlock[]
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

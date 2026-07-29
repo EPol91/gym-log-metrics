@@ -40,6 +40,8 @@ export interface User extends BaseRecord {
   activityLevel?: ActivityLevel
   /** formula per il metabolismo basale. Default: Mifflin-St Jeor. */
   bmrFormula?: BmrFormula
+  /** blocchi del Coach attivi. Assente = tutti tranne la nutrizione. */
+  coachBlocks?: CoachBlock[]
   /** durata predefinita del timer di recupero (secondi). */
   restDefaultSec?: number
   /** true dopo il primo avvio guidato (onboarding). */
@@ -305,6 +307,12 @@ export interface DayType extends BaseRecord {
  * c'è dal primo giorno: quando l'app girerà dentro un wrap nativo, Health Connect
  * scriverà qui i passi senza nessuna migrazione dei dati.
  */
+/**
+ * Blocchi del Coach. Sono acceso/spento perche' cosa vale la pena guardare
+ * lo decide chi si allena, non chi scrive l'app.
+ */
+export type CoachBlock = 'salute' | 'nutrizione' | 'carico' | 'allenamento' | 'riconoscimenti'
+
 export type HabitSource = 'manual' | 'healthConnect' | 'whoop'
 
 /** Abitudine da seguire nel tempo: oggi solo i passi, la tabella è già generica. */
