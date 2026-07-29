@@ -218,19 +218,72 @@ export interface Meal extends BaseRecord {
   order: number
 }
 
-/** Una riga del diario: alimento + quantità dentro un pasto. */
+/**
+ * Una riga del diario: alimento + quantità dentro un pasto.
+ *
+ * Una riga può anche essere una RICETTA intera invece di un singolo alimento.
+ * In quel caso `recipeId` è valorizzato e `foodId` resta vuoto: la riga porta con sé
+ * i macro del momento in cui l'hai aggiunta (`macrosSnapshot`) e il nome di allora
+ * (`nameSnapshot`). Congelarli è voluto — se domani correggi la ricetta, il diario
+ * di ieri deve restare quello che hai davvero mangiato.
+ */
 export interface FoodLog extends BaseRecord {
   date: ISODate
   mealId: ID
   foodId: ID
+  /** grammi dell'alimento; per una ricetta a grammi è il peso di piatto pesato. 0 per le ricette a porzioni. */
   grams: number
   order: number
+  /** riga-ricetta: id della ricetta di provenienza */
+  recipeId?: ID
+  /** riga-ricetta a porzioni: quante porzioni (anche 0,5) */
+  portions?: number
+  /** riga-ricetta: macro congelati all'inserimento */
+  macrosSnapshot?: Macros
+  /** riga-ricetta: nome di allora, così la riga resta leggibile anche se la ricetta sparisce */
+  nameSnapshot?: string
 }
 
-/** Combinazione riutilizzabile di alimenti (es. "colazione tipo"). */
+/**
+ * Combinazione riutilizzabile di alimenti (es. "colazione tipo").
+ * @deprecated Assorbita dalle ricette nella v11: un pasto salvato è una ricetta
+ * a 1 porzione senza procedimento. La tabella resta solo per la migrazione.
+ */
 export interface SavedMeal extends BaseRecord {
   name: string
   items: { foodId: ID; grams: number }[]
+}
+
+// --- Ricette -----------------------------------------------------------------
+
+/**
+ * Come si conta una ricetta. Deciso una volta nell'editor, comanda tutto il resto:
+ * la scalatura nel dettaglio, cosa chiede l'aggiunta al diario, come si legge la riga.
+ * - `servings` — la ricetta fa N porzioni; nel diario aggiungi «1 porzione».
+ * - `grams`    — la ricetta rende N grammi di piatto finito; nel diario pesi e aggiungi «180 g».
+ */
+export type RecipeMode = 'servings' | 'grams'
+
+/** Un ingrediente: punta alla libreria alimenti, così una correzione lì ricalcola le ricette. */
+export interface RecipeItem { foodId: ID; grams: number }
+
+/** Sezione della ricetta (Base, Crema, Finitura…). Una ricetta semplice ne ha una sola. */
+export interface RecipeGroup { name: string; items: RecipeItem[] }
+
+export interface Recipe extends BaseRecord {
+  name: string
+  mode: RecipeMode
+  /** se mode = 'servings': porzioni di riferimento della dose scritta */
+  servings?: number
+  /** se mode = 'grams': peso del piatto FINITO (in cottura si perde acqua, è meno del crudo) */
+  yieldG?: number
+  groups: RecipeGroup[]
+  steps: string[]
+  note?: string
+  timeMin?: number
+  tags?: string[]
+  favorite?: boolean
+  lastUsedAt?: ISODateTime
 }
 
 /**
@@ -275,6 +328,47 @@ export interface HabitEntry extends BaseRecord {
   value: number
   /** chi ha scritto il valore: un dato automatico non va sovrascritto da uno a mano */
   source: HabitSource
+}
+
+/**
+ * Una giornata come la vede WHOOP. Copia locale di un dato altrui: si può
+ * ricostruire in qualsiasi momento risincronizzando, quindi non entra nei backup
+ * come verità e non sovrascrive mai quello che scrivi tu nel Check.
+ */
+export interface WhoopDay extends BaseRecord {
+  date: ISODate
+  /** 0-100 */
+  recovery?: number
+  /** HRV in millisecondi (rMSSD) */
+  hrv?: number
+  restingHr?: number
+  spo2?: number
+  skinTempC?: number
+  /** 0-100 */
+  sleepPerf?: number
+  sleepHours?: number
+  sleepEfficiency?: number
+  respiratoryRate?: number
+  /** 0-21 */
+  strain?: number
+  kcal?: number
+  avgHr?: number
+  maxHr?: number
+  syncedAt: ISODateTime
+}
+
+/** Un allenamento registrato da WHOOP (anche quelli fatti fuori dall'app). */
+export interface WhoopWorkout extends BaseRecord {
+  whoopId: string
+  date: ISODate
+  sport?: string
+  start: ISODateTime
+  end: ISODateTime
+  strain?: number
+  kcal?: number
+  avgHr?: number
+  maxHr?: number
+  distanceM?: number
 }
 
 export type CardioMethod = 'standard' | 'hrr'

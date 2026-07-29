@@ -7,7 +7,7 @@ import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
   DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
-  Habit, HabitEntry,
+  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -32,6 +32,9 @@ export class GymLogDB extends Dexie {
   meals!: Table<Meal, string>
   habits!: Table<Habit, string>
   habitEntries!: Table<HabitEntry, string>
+  recipes!: Table<Recipe, string>
+  whoopDays!: Table<WhoopDay, string>
+  whoopWorkouts!: Table<WhoopWorkout, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -114,6 +117,32 @@ export class GymLogDB extends Dexie {
     this.version(10).stores({
       habits: 'id, userId, key, order',
       habitEntries: 'id, userId, habitKey, date, [habitKey+date]',
+    })
+
+    // v11: ricette. I "pasti salvati" ci finiscono dentro: erano già una ricetta
+    // senza porzioni e senza procedimento, tenerli separati significava due posti
+    // dove salvare la stessa cosa. La vecchia tabella resta vuota, non si tocca.
+    // `foodLogs` non cambia indici: i campi della riga-ricetta sono opzionali.
+    this.version(11).stores({
+      recipes: 'id, userId, name, lastUsedAt',
+    }).upgrade(async (tx) => {
+      const saved = await tx.table('savedMeals').toArray()
+      if (!saved.length) return
+      const ts = new Date().toISOString()
+      await tx.table('recipes').bulkAdd(saved.map((m) => ({
+        id: crypto.randomUUID(), userId: m.userId,
+        createdAt: m.createdAt ?? ts, updatedAt: ts,
+        name: m.name, mode: 'servings' as const, servings: 1,
+        groups: [{ name: 'Ingredienti', items: (m.items ?? []).map((it: { foodId: string; grams: number }) => ({ foodId: it.foodId, grams: it.grams })) }],
+        steps: [] as string[],
+      })))
+    })
+
+    // v12: copia locale dei dati WHOOP. Sono un dato altrui: si ricostruiscono
+    // risincronizzando, quindi nessuna migrazione e nessun dramma se un giorno manca.
+    this.version(12).stores({
+      whoopDays: 'id, userId, date',
+      whoopWorkouts: 'id, userId, date, whoopId',
     })
 
   }

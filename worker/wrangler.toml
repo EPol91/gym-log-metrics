@@ -1,0 +1,14 @@
+name = "etp-health-whoop"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# Client ID: non è un segreto, viaggia in chiaro nell'URL di autorizzazione.
+# Il Client Secret sta nei secret del Worker (WHOOP_CLIENT_SECRET), mai qui.
+[vars]
+WHOOP_CLIENT_ID = "fb32c92f-3201-469e-bd5b-e88ec1e9726e"
+REDIRECT_URI = "https://etp-health-whoop.emanuel-pol91.workers.dev/callback"
+
+# Token di accesso e refresh, legati a un identificativo casuale generato dall'app.
+[[kv_namespaces]]
+binding = "WHOOP"
+id = "3cc22f94ec1949cb9d316769c6498888"

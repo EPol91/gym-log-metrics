@@ -3,6 +3,8 @@ import { READINESS_QUESTIONS } from './readinessOptions'
 import { computeReadiness } from '../scores/readiness'
 import { getTodayReadiness, saveDailyReadiness } from '../db/repo'
 import { workoutPhrase } from '../util/phrases'
+import { whoopDay } from '../db/whoop'
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReadinessCheck } from '../db/schema'
 
 type Answers = Partial<Record<'sleep' | 'fatigue' | 'soreness' | 'energy', number>>
@@ -19,6 +21,11 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
 }) {
   const [a, setA] = useState<Answers>({})
   const [prefilled, setPrefilled] = useState(false)
+  const whoop = useLiveQuery(() => whoopDay(), [])
+  const [usato, setUsato] = useState(false)
+
+  // Le risposte hanno cinque gradini: un 62% di recupero diventa "50", non "62".
+  const gradino = (v: number) => [0, 25, 50, 75, 100].reduce((best, g) => (Math.abs(g - v) < Math.abs(best - v) ? g : best), 0)
 
   // Se hai già fatto il check oggi, parti da quelle risposte: confermi o correggi.
   useEffect(() => {
@@ -58,6 +65,37 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
       </div>
 
       {prefilled && <p className="muted small" style={{ margin: 0 }}>Risposte di oggi già inserite: conferma o correggi.</p>}
+
+      {/* WHOOP propone, non decide: la tua sensazione resta l'ultima parola. */}
+      {whoop && (whoop.recovery != null || whoop.sleepPerf != null) && (
+        <div className="card" style={{ borderColor: 'var(--gold)' }}>
+          <div className="row spread" style={{ alignItems: 'center' }}>
+            <span className="small">
+              <strong style={{ color: 'var(--gold)' }}>WHOOP di stanotte</strong>
+              <span className="muted">
+                {whoop.recovery != null ? ` · recupero ${whoop.recovery}%` : ''}
+                {whoop.sleepHours != null ? ` · ${whoop.sleepHours}h di sonno` : ''}
+                {whoop.sleepPerf != null ? ` (resa ${whoop.sleepPerf}%)` : ''}
+              </span>
+            </span>
+          </div>
+          <button className="chip" style={{ marginTop: 8 }} disabled={usato}
+            onClick={() => {
+              setA((prev) => ({
+                ...prev,
+                ...(whoop.sleepPerf != null ? { sleep: gradino(whoop.sleepPerf) } : {}),
+                ...(whoop.recovery != null ? { fatigue: gradino(whoop.recovery) } : {}),
+              }))
+              setUsato(true)
+            }}>
+            {usato ? 'Inseriti · correggili se non ti torna' : 'Usa questi dati'}
+          </button>
+          <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>
+            Consiglio: compila sonno e stanchezza da qui, e lascia a te indolenzimento ed energia —
+            quelli il sensore non li misura.
+          </p>
+        </div>
+      )}
 
       {READINESS_QUESTIONS.map((q) => (
         <div className="card" key={q.key}>

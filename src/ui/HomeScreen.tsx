@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { WhoopToday } from './WhoopToday'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome, type HomeData } from '../scores/dashboardScores'
 import { computeCoach, coachPrompt } from '../scores/coach'
@@ -144,6 +145,8 @@ export function HomeScreen({ onStartWorkout, onResumeWorkout, onOpenAnalytics, o
           ＋ Inizia allenamento
         </button>
       )}
+
+      <WhoopToday />
 
       {!home ? (
         <p className="muted">Calcolo…</p>

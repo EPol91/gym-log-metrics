@@ -6,6 +6,7 @@ import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { CsvImport } from './CsvImport'
 import { GymSettings } from './GymSettings'
+import { WhoopSettings } from './WhoopSettings'
 import { TemplatesSettings } from './TemplatesSettings'
 import { parseNum } from '../util/validate'
 import { fmtRest } from '../util/format'
@@ -224,6 +225,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
       <div className="col" style={{ gap: 7 }}>
         <Section title="⭐ Template di allenamento"><TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} /></Section>
         <Section title="🏋️ Palestra"><GymSettings /></Section>
+        <Section title="⌚ WHOOP"><WhoopSettings /></Section>
         <Section title="🤖 AI"><AiSettings /></Section>
         <Section title="⬆️ Import CSV (Strong / Hevy)"><CsvImport /></Section>
         <Section title="💾 Backup dati"><BackupSettings /></Section>
