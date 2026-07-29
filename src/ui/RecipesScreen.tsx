@@ -35,7 +35,12 @@ function RecipeCard({ recipe, foods, onOpen }: {
       onClick={onOpen}>
       <MacroDonut m={m} size={40} />
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* Il nome va a capo invece di essere troncato: una ricetta si riconosce
+            dal nome intero, non dai primi venti caratteri. Due righe al massimo. */}
+        <span style={{
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', fontSize: 15, lineHeight: 1.25,
+        }}>
           {recipe.favorite ? '★ ' : ''}{recipe.name}
         </span>
         <span className="muted" style={{ fontSize: 11 }}>{sotto}</span>
