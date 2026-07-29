@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   computeDiary, listDayTypes, todayDiet, addMeal, renameMeal, deleteMeal, moveMeal, ensureMeals,
   duplicateMeal, pasteIntoMeal, deleteFoodLogs, restoreFoodLogs, moveLogsToMeal,
-  reorderLogs, reorderMeals, updateFoodLog, macrosFor,
+  reorderLogs, reorderMeals, updateFoodLog, macrosFor, duplicateLogs,
 } from '../db/diet'
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
@@ -114,9 +114,10 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
         }}>
         {selectMode && (
           <span style={{
-            width: 18, height: 18, flex: 'none', borderRadius: 5, border: '1px solid var(--line)',
+            width: 22, height: 22, flex: 'none', borderRadius: 6,
+            border: '1px solid ' + (selected ? 'var(--gold)' : 'var(--line)'),
             background: selected ? 'var(--gold)' : 'transparent', color: '#1a1400',
-            display: 'grid', placeItems: 'center', fontSize: 12,
+            display: 'grid', placeItems: 'center', fontSize: 13,
           }}>{selected ? '✓' : ''}</span>
         )}
         {isRecipe && <span style={{ flex: 'none', width: 2, alignSelf: 'stretch', background: 'var(--gold)', borderRadius: 2 }} />}
@@ -370,11 +371,29 @@ export function DietScreen() {
       {selectMode && (
         <div className="card" style={{ borderColor: 'var(--gold)', padding: '10px 12px' }}>
           <div className="row spread" style={{ alignItems: 'center' }}>
-            <span className="small">{selected.size} selezionate</span>
-            <div className="row" style={{ gap: 6 }}>
-              <button className="chip" disabled={!selected.size} onClick={() => removeEntries([...selected])}>🗑 Elimina</button>
-              <button className="chip" onClick={() => setSelectMode(false)}>Fine</button>
-            </div>
+            <span className="small">
+              {selected.size === 0 ? 'Tocca le righe da scegliere' : `${selected.size} selezionate`}
+            </span>
+            <button className="chip" onClick={() => setSelectMode(false)}>Fine</button>
+          </div>
+
+          <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
+            <button className="chip" onClick={() => {
+              const tutte = (diary?.meals ?? []).flatMap((m) => m.entries.map((e) => e.log.id))
+              setSelected(selected.size === tutte.length ? new Set() : new Set(tutte))
+            }}>
+              {(() => {
+                const tutte = (diary?.meals ?? []).flatMap((m) => m.entries.map((e) => e.log.id))
+                return selected.size === tutte.length && tutte.length > 0 ? 'Nessuna' : 'Tutte'
+              })()}
+            </button>
+            <button className="chip" disabled={!selected.size} onClick={async () => {
+              const ids = await duplicateLogs([...selected])
+              setSelected(new Set())
+              if (ids.length) pushUndo(`${ids.length} righe duplicate`, async () => { await deleteFoodLogs(ids) })
+            }}>⧉ Duplica</button>
+            <button className="chip" style={{ color: '#e57373' }} disabled={!selected.size}
+              onClick={() => removeEntries([...selected])}>🗑 Elimina</button>
           </div>
           {selected.size > 0 && diary && (
             <div className="row" style={{ gap: 6, marginTop: 8, overflowX: 'auto' }}>

@@ -221,6 +221,22 @@ export async function moveLogsToMeal(ids: string[], mealId: string): Promise<voi
   }
 }
 
+/**
+ * Duplica le righe scelte dentro il loro stesso pasto. Torna gli id creati,
+ * cosi l annulla puo toglierli senza toccare gli originali.
+ */
+export async function duplicateLogs(ids: string[]): Promise<string[]> {
+  const righe = (await db.foodLogs.bulkGet(ids)).filter((l): l is FoodLog => !!l)
+  const ts = nowISO()
+  const creati: FoodLog[] = []
+  for (const l of righe) {
+    const coda = await db.foodLogs.where('mealId').equals(l.mealId).count()
+    creati.push({ ...copyOf(l), id: newId(), userId: U, createdAt: ts, updatedAt: ts, date: l.date, mealId: l.mealId, order: coda })
+  }
+  if (creati.length) await db.foodLogs.bulkAdd(creati)
+  return creati.map((r) => r.id)
+}
+
 /** Riordina le righe dentro un pasto secondo la sequenza di id passata. */
 export async function reorderLogs(mealId: string, orderedIds: string[]): Promise<void> {
   const ts = nowISO()
