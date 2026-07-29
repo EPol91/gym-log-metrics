@@ -5,6 +5,7 @@ import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } fr
 import { listRecipesRanked, computeRecipe } from '../db/recipes'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
 import { BarcodeScanner, isScanSupported } from './BarcodeScanner'
+import { useScanner } from './useScanner'
 import { FoodSheet, FoodForm, MacroDonut } from './FoodSheet'
 import { AddRecipeSheet } from './AddRecipeSheet'
 import type { Food, Recipe } from '../db/schema'
@@ -71,12 +72,28 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
     onClose()
   }
 
+  const lettore = useScanner()
+  // Selezione multipla: spunti più alimenti e li aggiungi in un colpo, ognuno con
+  // la sua porzione predefinita. I grammi si correggono dopo, nel diario.
+  const [selezione, setSelezione] = useState<Set<string>>(new Set())
+  const inSelezione = selezione.size > 0
+
+  function spunta(id: string) {
+    setSelezione((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function aggiungiSelezionati() {
+    const scelti = foods.filter((f) => selezione.has(f.id))
+    for (const f of scelti) await addFoodLog(date, mealId, f.id, f.servingG ?? 100)
+    onClose()
+  }
+
   let body: React.ReactNode
   if (scanning) {
     body = <BarcodeScanner onDetected={onScanned} onCancel={() => setScanning(false)} />
   } else if (creating) {
     body = (
-      <FoodForm title="Nuovo alimento" onCancel={() => setCreating(false)}
+      <FoodForm title="Nuovo alimento" onCancel={() => setCreating(false)} onScan={lettore.scan}
         onSave={async (v) => {
           const id = await addFood({ ...v, source: 'mine' })
           const f = (await listFoodsRanked()).find((x) => x.id === id)
@@ -102,16 +119,33 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
             {busy ? 'Cerco…' : 'Cerca online'}
           </button>
           <button className={tab === 'recipes' ? 'chip on' : 'chip'} onClick={() => setTab('recipes')}>📖 Ricette ({recipes.length})</button>
-          <button className="chip" onClick={() => setCreating(true)}>＋ Nuovo</button>
         </div>
 
         {msg && <p className="muted small" style={{ marginTop: 8 }}>{msg}</p>}
 
+        {inSelezione && (
+          <div className="row spread" style={{ alignItems: 'center', marginTop: 8, padding: '8px 10px', border: '1px solid var(--gold)', borderRadius: 10 }}>
+            <span className="small">{selezione.size} selezionati</span>
+            <div className="row" style={{ gap: 6, flex: 'none' }}>
+              <button className="chip" onClick={() => setSelezione(new Set())}>Annulla</button>
+              <button className="chip on" onClick={aggiungiSelezionati}>Aggiungi tutti</button>
+            </div>
+          </div>
+        )}
+
         <div className="col" style={{ gap: 0, marginTop: 6, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {tab === 'mine' && filtered.map((f) => (
             <div key={f.id} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => setChosen(f)}>
-              <span style={{ minWidth: 0 }}>
+              onClick={() => (inSelezione ? spunta(f.id) : setChosen(f))}>
+              <button aria-label={selezione.has(f.id) ? 'Togli dalla selezione' : 'Aggiungi alla selezione'}
+                onClick={(e) => { e.stopPropagation(); spunta(f.id) }}
+                style={{
+                  width: 22, height: 22, flex: 'none', marginRight: 9, padding: 0, borderRadius: 6,
+                  border: '1px solid ' + (selezione.has(f.id) ? 'var(--gold)' : 'var(--line)'),
+                  background: selezione.has(f.id) ? 'var(--gold)' : 'transparent',
+                  color: '#1a1400', display: 'grid', placeItems: 'center', fontSize: 13,
+                }}>{selezione.has(f.id) ? '✓' : ''}</button>
+              <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {f.favorite ? '★ ' : ''}{f.name}
                 </span>
@@ -191,9 +225,16 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
         }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 10 }}>
           <strong>Aggiungi a {mealName}</strong>
-          <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
+          {/* Creare un alimento è un'azione, non un filtro: sta in testata insieme
+              alla chiusura, dove non rischia di finire fuori dallo schermo. */}
+          <div className="row" style={{ gap: 6, flex: 'none' }}>
+            <button className="ghost" aria-label="Nuovo alimento"
+              style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center', fontSize: 20, color: 'var(--gold)' }}
+              onClick={() => setCreating(true)}>＋</button>
+            <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
+          </div>
         </div>
-        {body}
+        {lettore.overlay ?? body}
       </div>
     </div>,
     document.body,

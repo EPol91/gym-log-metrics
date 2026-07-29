@@ -179,6 +179,11 @@ export interface Macros {
   protein: number
   carbs: number
   fat: number
+  /** Dettaglio dei grassi, come sta scritto sulla confezione. Tutti facoltativi. */
+  satFat?: number
+  monoFat?: number
+  polyFat?: number
+  transFat?: number
   fiber?: number
   sugar?: number
   salt?: number

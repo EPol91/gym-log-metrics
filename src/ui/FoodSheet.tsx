@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { macrosFor, updateFood, deleteFood } from '../db/diet'
 import { deleteWithUndo } from '../db/trash'
 import { parseNum } from '../util/validate'
+import { useScanner } from './useScanner'
 import type { Food, Macros } from '../db/schema'
 
 /** Ripartizione calorica dei macro: è così che si legge un alimento a colpo d'occhio. */
@@ -53,26 +54,61 @@ export function MacroRow({ m, size = 19 }: { m: Macros; size?: number }) {
   )
 }
 
-/** Form dei valori per 100 g: crea un alimento o corregge quelli esistenti. */
-export function FoodForm({ initial, title, onSave, onCancel, onDelete }: {
+/**
+ * Form dei valori per 100 g: crea un alimento o corregge quelli esistenti.
+ * I tre macro e le calorie restano in alto, sempre visibili. Tutto il resto
+ * dell'etichetta sta sotto "Altri valori", chiuso: chi vuole solo i macro non
+ * si trova una pagina lunga il doppio, chi è pignolo ha dove essere pignolo.
+ */
+export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }: {
   initial?: Partial<Food>
   title: string
-  onSave: (v: { name: string; brand?: string; per100: Macros; servingG?: number }) => void
+  onSave: (v: { name: string; brand?: string; per100: Macros; servingG?: number; barcode?: string }) => void
   onCancel: () => void
   onDelete?: () => void
+  /** Apre il lettore e restituisce il codice letto. Assente = niente scansione. */
+  onScan?: () => Promise<string | null>
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [brand, setBrand] = useState(initial?.brand ?? '')
+  const [barcode, setBarcode] = useState(initial?.barcode ?? '')
   const [kcal, setKcal] = useState(initial?.per100 ? String(initial.per100.kcal) : '')
   const [p, setP] = useState(initial?.per100 ? String(initial.per100.protein) : '')
   const [c, setC] = useState(initial?.per100 ? String(initial.per100.carbs) : '')
   const [f, setF] = useState(initial?.per100 ? String(initial.per100.fat) : '')
   const [serving, setServing] = useState(initial?.servingG ? String(initial.servingG) : '')
 
+  const val = (k: keyof Macros) => {
+    const v = initial?.per100?.[k]
+    return v == null ? '' : String(v)
+  }
+  const [sat, setSat] = useState(val('satFat'))
+  const [mono, setMono] = useState(val('monoFat'))
+  const [poly, setPoly] = useState(val('polyFat'))
+  const [trans, setTrans] = useState(val('transFat'))
+  const [fiber, setFiber] = useState(val('fiber'))
+  const [sugar, setSugar] = useState(val('sugar'))
+  const [salt, setSalt] = useState(val('salt'))
+
+  // Aperta da sola se l'alimento porta già qualcuno di questi valori: nasconderli
+  // a chi li ha compilati sarebbe un modo per fargli credere di averli persi.
+  const [altri, setAltri] = useState(
+    [sat, mono, poly, trans, fiber, sugar, salt].some((x) => x !== ''),
+  )
+
   const n = (v: string, max: number) => parseNum(v, { min: 0, max })
   const pn = n(p, 100), cn = n(c, 100), fn = n(f, 100), kn = n(kcal, 1000)
   const kcalAuto = pn != null && cn != null && fn != null ? Math.round(pn * 4 + cn * 4 + fn * 9) : null
   const ok = name.trim() !== '' && pn != null && cn != null && fn != null
+
+  const opzionale = (v: string, max = 100) => (v.trim() === '' ? undefined : n(v, max) ?? undefined)
+
+  const campo = (etichetta: string, v: string, set: (x: string) => void, colore?: string) => (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <label className="fl" style={colore ? { color: colore } : undefined}>{etichetta}</label>
+      <input inputMode="decimal" value={v} placeholder="—" onChange={(e) => set(e.target.value)} style={{ textAlign: 'center' }} />
+    </div>
+  )
 
   return (
     <div>
@@ -82,19 +118,21 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete }: {
       <label className="fl" style={{ marginTop: 8 }}>Marca (facoltativo)</label>
       <input value={brand} onChange={(e) => setBrand(e.target.value)} />
 
+      {/* Codice a barre: legarlo qui significa ritrovare l'alimento con una
+          scansione la prossima volta, invece di ricercarlo a mano. */}
+      <label className="fl" style={{ marginTop: 8 }}>Codice a barre (facoltativo)</label>
+      <div className="row" style={{ gap: 6 }}>
+        <input inputMode="numeric" value={barcode} placeholder="—" onChange={(e) => setBarcode(e.target.value.replace(/[^0-9]/g, ''))} style={{ flex: 1 }} />
+        {onScan && (
+          <button className="chip on" style={{ flex: 'none', padding: '0 14px' }} aria-label="Scansiona codice a barre"
+            onClick={async () => { const code = await onScan(); if (code) setBarcode(code) }}>▦</button>
+        )}
+      </div>
+
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label className="fl" style={{ color: 'var(--carb)' }}>Carbo</label>
-          <input inputMode="decimal" value={c} onChange={(e) => setC(e.target.value)} style={{ textAlign: 'center' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="fl" style={{ color: 'var(--prot)' }}>Proteine</label>
-          <input inputMode="decimal" value={p} onChange={(e) => setP(e.target.value)} style={{ textAlign: 'center' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="fl" style={{ color: 'var(--fat)' }}>Grassi</label>
-          <input inputMode="decimal" value={f} onChange={(e) => setF(e.target.value)} style={{ textAlign: 'center' }} />
-        </div>
+        {campo('Carbo', c, setC, 'var(--carb)')}
+        {campo('Proteine', p, setP, 'var(--prot)')}
+        {campo('Grassi', f, setF, 'var(--fat)')}
       </div>
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
         <div style={{ flex: 1 }}>
@@ -107,6 +145,38 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete }: {
         </div>
       </div>
 
+      <button className="chip" style={{ marginTop: 10 }} onClick={() => setAltri((v) => !v)}>
+        {altri ? '▾' : '›'} Altri valori dell'etichetta
+      </button>
+
+      {altri && (
+        <div style={{ marginTop: 8 }}>
+          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            Di cui grassi
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            {campo('Saturi', sat, setSat)}
+            {campo('Monoins.', mono, setMono)}
+          </div>
+          <div className="row" style={{ gap: 6, marginTop: 8 }}>
+            {campo('Polins.', poly, setPoly)}
+            {campo('Trans', trans, setTrans)}
+          </div>
+
+          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', margin: '12px 0 4px' }}>
+            Carboidrati e altro
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            {campo('Zuccheri', sugar, setSugar)}
+            {campo('Fibre', fiber, setFiber)}
+            {campo('Sale', salt, setSalt, undefined)}
+          </div>
+          <p className="muted small" style={{ margin: '8px 0 0' }}>
+            Tutti facoltativi, in grammi per 100 g. Lasciali vuoti se sulla confezione non ci sono.
+          </p>
+        </div>
+      )}
+
       <div className="row" style={{ gap: 6, marginTop: 12 }}>
         {onDelete && <button className="ghost" style={{ color: '#e57373' }} onClick={onDelete}>🗑</button>}
         <button className="ghost" style={{ flex: 1 }} onClick={onCancel}>Annulla</button>
@@ -114,7 +184,17 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete }: {
           onClick={() => ok && onSave({
             name: name.trim(),
             brand: brand.trim() || undefined,
-            per100: { kcal: kn ?? kcalAuto ?? 0, protein: pn!, carbs: cn!, fat: fn! },
+            barcode: barcode.trim() || undefined,
+            per100: {
+              kcal: kn ?? kcalAuto ?? 0, protein: pn!, carbs: cn!, fat: fn!,
+              ...(opzionale(sat) != null ? { satFat: opzionale(sat) } : {}),
+              ...(opzionale(mono) != null ? { monoFat: opzionale(mono) } : {}),
+              ...(opzionale(poly) != null ? { polyFat: opzionale(poly) } : {}),
+              ...(opzionale(trans) != null ? { transFat: opzionale(trans) } : {}),
+              ...(opzionale(fiber) != null ? { fiber: opzionale(fiber) } : {}),
+              ...(opzionale(sugar) != null ? { sugar: opzionale(sugar) } : {}),
+              ...(opzionale(salt, 50) != null ? { salt: opzionale(salt, 50) } : {}),
+            },
             servingG: parseNum(serving, { min: 1, max: 2000 }) ?? undefined,
           })}>
           Salva
@@ -138,12 +218,14 @@ export function FoodSheet({ food, grams: initialGrams, mode, onConfirm, onDelete
 }) {
   const [g, setG] = useState(String(initialGrams ?? food.servingG ?? 100))
   const [fixing, setFixing] = useState(false)
+  const lettore = useScanner()
   const grams = parseNum(g, { min: 1, max: 5000 }) ?? 0
   const m = macrosFor(food.per100, grams)
 
   if (fixing) {
+    if (lettore.overlay) return lettore.overlay
     return (
-      <FoodForm title={`Correggi "${food.name}"`} initial={food}
+      <FoodForm title={`Correggi "${food.name}"`} initial={food} onScan={lettore.scan}
         onCancel={() => setFixing(false)}
         onDelete={async () => {
           if (confirm(`Eliminare ${food.name} dalla libreria?`)) { await deleteWithUndo(`"${food.name}" eliminato dalla libreria`, () => deleteFood(food.id)); setFixing(false); onBack() }

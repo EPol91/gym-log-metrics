@@ -4,6 +4,9 @@ export interface NumOpts { min?: number; max?: number; int?: boolean }
 
 /** Ritorna il numero valido, o null se non valido / fuori range. */
 export function parseNum(v: string | number, opts: NumOpts = {}): number | null {
+  // Campo vuoto = nessun valore, non zero. Number('') fa 0, e quello zero e finito
+  // piu volte dentro i dati come se fosse stato scritto davvero.
+  if (typeof v === 'string' && v.trim() === '') return null
   const raw = typeof v === 'number' ? v : Number(String(v).trim().replace(',', '.'))
   if (!Number.isFinite(raw)) return null
   let n = raw
@@ -15,6 +18,7 @@ export function parseNum(v: string | number, opts: NumOpts = {}): number | null 
 
 /** Come parseNum ma clampa dentro il range invece di rifiutare. */
 export function clampNum(v: string | number, opts: NumOpts = {}): number | null {
+  if (typeof v === 'string' && v.trim() === '') return null
   const raw = typeof v === 'number' ? v : Number(String(v).trim().replace(',', '.'))
   if (!Number.isFinite(raw)) return null
   let n = opts.int ? Math.round(raw) : raw
