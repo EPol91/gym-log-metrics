@@ -47,23 +47,23 @@ function RecipeCard({ recipe, foods, onOpen }: {
         }}>
           {recipe.favorite ? '★ ' : ''}{recipe.name}
         </span>
-        <span style={{
-          display: 'block', fontSize: 11, marginTop: 2,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {unit || !byPortions ? (
-            <>
+        {/* Due righe invece di una troncata: i macro su una riga sola non ci
+            stanno accanto alle calorie, e finivano tagliati a metà. */}
+        {unit || !byPortions ? (
+          <>
+            <span style={{ display: 'block', fontSize: 11, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
               <span style={{ color: 'var(--gold)' }}>{m.kcal}</span>
-              <span className="muted"> kcal {perChi} · </span>
+              <span className="muted"> kcal {perChi}</span>
+            </span>
+            <span style={{ display: 'block', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
               <span style={{ color: 'var(--carb)' }}>C: {fmt1(m.carbs)}</span>
-              <span className="muted">, </span>
+              <span className="muted"> · </span>
               <span style={{ color: 'var(--prot)' }}>P: {fmt1(m.protein)}</span>
-              <span className="muted">, </span>
+              <span className="muted"> · </span>
               <span style={{ color: 'var(--fat)' }}>G: {fmt1(m.fat)}</span>
-            </>
-          ) : <span className="muted">peso finale da impostare</span>}
-        </span>
+            </span>
+          </>
+        ) : <span className="muted" style={{ display: 'block', fontSize: 11, marginTop: 2 }}>peso finale da impostare</span>}
       </span>
       <span className="tag" style={{ flex: 'none', whiteSpace: 'nowrap', ...(byPortions ? {} : { borderColor: 'var(--gold-dim)', color: 'var(--gold-dim)' }) }}>
         {etichetta}

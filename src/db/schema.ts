@@ -186,7 +186,17 @@ export interface Macros {
   transFat?: number
   fiber?: number
   sugar?: number
+  /** Sale in g. Il sodio sta a parte perché molte etichette danno solo quello. */
   salt?: number
+  sodium?: number
+  cholesterol?: number
+  potassium?: number
+  calcium?: number
+  iron?: number
+  /** Vitamine in % del valore giornaliero, come le danno le etichette. */
+  vitA?: number
+  vitC?: number
+  vitD?: number
 }
 
 /** Da dove arriva l'alimento. `mine` = creato a mano dall'utente. */

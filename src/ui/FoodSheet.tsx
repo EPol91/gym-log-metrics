@@ -55,6 +55,28 @@ export function MacroRow({ m, size = 19 }: { m: Macros; size?: number }) {
 }
 
 /**
+ * I valori facoltativi dell'etichetta, nell'ordine in cui stanno sulle confezioni.
+ * `max` serve solo a scartare i valori impossibili, non a giudicare.
+ */
+const EXTRA: { key: keyof Macros; label: string; unit: string; group: string; max: number }[] = [
+  { key: 'satFat', label: 'Saturi', unit: 'g', group: 'Di cui grassi', max: 100 },
+  { key: 'monoFat', label: 'Monoinsaturi', unit: 'g', group: 'Di cui grassi', max: 100 },
+  { key: 'polyFat', label: 'Polinsaturi', unit: 'g', group: 'Di cui grassi', max: 100 },
+  { key: 'transFat', label: 'Trans', unit: 'g', group: 'Di cui grassi', max: 100 },
+  { key: 'cholesterol', label: 'Colesterolo', unit: 'mg', group: 'Di cui grassi', max: 5000 },
+  { key: 'sugar', label: 'Zuccheri', unit: 'g', group: 'Di cui carboidrati', max: 100 },
+  { key: 'fiber', label: 'Fibre', unit: 'g', group: 'Di cui carboidrati', max: 100 },
+  { key: 'salt', label: 'Sale', unit: 'g', group: 'Sali e minerali', max: 50 },
+  { key: 'sodium', label: 'Sodio', unit: 'mg', group: 'Sali e minerali', max: 20000 },
+  { key: 'potassium', label: 'Potassio', unit: 'mg', group: 'Sali e minerali', max: 20000 },
+  { key: 'calcium', label: 'Calcio', unit: 'mg', group: 'Sali e minerali', max: 20000 },
+  { key: 'iron', label: 'Ferro', unit: 'mg', group: 'Sali e minerali', max: 1000 },
+  { key: 'vitA', label: 'Vitamina A', unit: '%', group: 'Vitamine', max: 1000 },
+  { key: 'vitC', label: 'Vitamina C', unit: '%', group: 'Vitamine', max: 1000 },
+  { key: 'vitD', label: 'Vitamina D', unit: '%', group: 'Vitamine', max: 1000 },
+]
+
+/**
  * Form dei valori per 100 g: crea un alimento o corregge quelli esistenti.
  * I tre macro e le calorie restano in alto, sempre visibili. Tutto il resto
  * dell'etichetta sta sotto "Altri valori", chiuso: chi vuole solo i macro non
@@ -82,19 +104,16 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
     const v = initial?.per100?.[k]
     return v == null ? '' : String(v)
   }
-  const [sat, setSat] = useState(val('satFat'))
-  const [mono, setMono] = useState(val('monoFat'))
-  const [poly, setPoly] = useState(val('polyFat'))
-  const [trans, setTrans] = useState(val('transFat'))
-  const [fiber, setFiber] = useState(val('fiber'))
-  const [sugar, setSugar] = useState(val('sugar'))
-  const [salt, setSalt] = useState(val('salt'))
+  // Tutti i valori facoltativi in una mappa: venti useState separati sarebbero
+  // venti occasioni di sbagliarne uno.
+  const [extra, setExtra] = useState<Record<string, string>>(() =>
+    Object.fromEntries(EXTRA.map((e) => [e.key, val(e.key)])),
+  )
+  const setE = (k: string, v: string) => setExtra((p) => ({ ...p, [k]: v }))
 
   // Aperta da sola se l'alimento porta già qualcuno di questi valori: nasconderli
   // a chi li ha compilati sarebbe un modo per fargli credere di averli persi.
-  const [altri, setAltri] = useState(
-    [sat, mono, poly, trans, fiber, sugar, salt].some((x) => x !== ''),
-  )
+  const [altri, setAltri] = useState(Object.values(extra).some((x) => x !== ''))
 
   const n = (v: string, max: number) => parseNum(v, { min: 0, max })
   const pn = n(p, 100), cn = n(c, 100), fn = n(f, 100), kn = n(kcal, 1000)
@@ -151,28 +170,24 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
 
       {altri && (
         <div style={{ marginTop: 8 }}>
-          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-            Di cui grassi
-          </div>
-          <div className="row" style={{ gap: 6 }}>
-            {campo('Saturi', sat, setSat)}
-            {campo('Monoins.', mono, setMono)}
-          </div>
-          <div className="row" style={{ gap: 6, marginTop: 8 }}>
-            {campo('Polins.', poly, setPoly)}
-            {campo('Trans', trans, setTrans)}
-          </div>
-
-          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', margin: '12px 0 4px' }}>
-            Carboidrati e altro
-          </div>
-          <div className="row" style={{ gap: 6 }}>
-            {campo('Zuccheri', sugar, setSugar)}
-            {campo('Fibre', fiber, setFiber)}
-            {campo('Sale', salt, setSalt, undefined)}
-          </div>
-          <p className="muted small" style={{ margin: '8px 0 0' }}>
-            Tutti facoltativi, in grammi per 100 g. Lasciali vuoti se sulla confezione non ci sono.
+          {[...new Set(EXTRA.map((e) => e.group))].map((gruppo) => (
+            <div key={gruppo} style={{ marginTop: 10 }}>
+              <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                {gruppo}
+              </div>
+              <div className="row wrap" style={{ gap: 6 }}>
+                {EXTRA.filter((e) => e.group === gruppo).map((e) => (
+                  <div key={e.key} style={{ flex: '1 1 45%', minWidth: 0 }}>
+                    <label className="fl">{e.label} <span className="muted">({e.unit})</span></label>
+                    <input inputMode="decimal" value={extra[e.key] ?? ''} placeholder="—"
+                      onChange={(ev) => setE(e.key, ev.target.value)} style={{ textAlign: 'center' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="muted small" style={{ margin: '10px 0 0' }}>
+            Tutti facoltativi, riferiti a 100 g. Lascia vuoto quello che sulla confezione non c'è.
           </p>
         </div>
       )}
@@ -187,13 +202,10 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
             barcode: barcode.trim() || undefined,
             per100: {
               kcal: kn ?? kcalAuto ?? 0, protein: pn!, carbs: cn!, fat: fn!,
-              ...(opzionale(sat) != null ? { satFat: opzionale(sat) } : {}),
-              ...(opzionale(mono) != null ? { monoFat: opzionale(mono) } : {}),
-              ...(opzionale(poly) != null ? { polyFat: opzionale(poly) } : {}),
-              ...(opzionale(trans) != null ? { transFat: opzionale(trans) } : {}),
-              ...(opzionale(fiber) != null ? { fiber: opzionale(fiber) } : {}),
-              ...(opzionale(sugar) != null ? { sugar: opzionale(sugar) } : {}),
-              ...(opzionale(salt, 50) != null ? { salt: opzionale(salt, 50) } : {}),
+              ...Object.fromEntries(
+                EXTRA.map((e) => [e.key, opzionale(extra[e.key] ?? '', e.max)])
+                  .filter(([, v]) => v != null),
+              ),
             },
             servingG: parseNum(serving, { min: 1, max: 2000 }) ?? undefined,
           })}>

@@ -261,6 +261,14 @@ export function macrosFor(per100: Macros, grams: number): Macros {
     ...(per100.fiber != null ? { fiber: r(per100.fiber)! } : {}),
     ...(per100.sugar != null ? { sugar: r(per100.sugar)! } : {}),
     ...(per100.salt != null ? { salt: r(per100.salt)! } : {}),
+    ...(per100.sodium != null ? { sodium: r(per100.sodium)! } : {}),
+    ...(per100.cholesterol != null ? { cholesterol: r(per100.cholesterol)! } : {}),
+    ...(per100.potassium != null ? { potassium: r(per100.potassium)! } : {}),
+    ...(per100.calcium != null ? { calcium: r(per100.calcium)! } : {}),
+    ...(per100.iron != null ? { iron: r(per100.iron)! } : {}),
+    ...(per100.vitA != null ? { vitA: r(per100.vitA)! } : {}),
+    ...(per100.vitC != null ? { vitC: r(per100.vitC)! } : {}),
+    ...(per100.vitD != null ? { vitD: r(per100.vitD)! } : {}),
   }
 }
 
