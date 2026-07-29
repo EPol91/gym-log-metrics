@@ -3,24 +3,23 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureSeed } from './db/seed'
 import { getUser } from './db/repo'
 import { Onboarding } from './ui/Onboarding'
-import { HomeScreen } from './ui/HomeScreen'
-import { ExercisesScreen } from './ui/ExercisesScreen'
+import { TodayScreen } from './ui/TodayScreen'
+import { TrainScreen } from './ui/TrainScreen'
 import { DietScreen } from './ui/DietScreen'
-import { ProgressScreen } from './ui/ProgressScreen'
+import { HealthScreen } from './ui/HealthScreen'
 import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
 import { TemplateEditor } from './ui/TemplateEditor'
 import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ReadinessScreen } from './ui/ReadinessScreen'
-import { HabitsScreen } from './ui/HabitsScreen'
 import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
 import { UndoToast } from './ui/UndoToast'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
 type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean }
-const DEFAULT_NAV: Nav = { tab: 'home', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false }
+const DEFAULT_NAV: Nav = { tab: 'today', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false }
 
 // Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
 // aggiornare ricarica la pagina, quindi decidi tu quando.
@@ -33,8 +32,21 @@ function UpdateBanner() {
   )
 }
 
+// Traduzione delle voci vecchie: chi aveva l'app aperta su "Progressi" non deve
+// ritrovarsi su una scheda che non esiste più.
+const VECCHIE: Record<string, Tab> = {
+  home: 'today', exercises: 'train', diet: 'food', habits: 'health', progress: 'health', profile: 'profile',
+}
+
 function loadNav(): Nav {
-  try { const s = sessionStorage.getItem('nav'); if (s) return { ...DEFAULT_NAV, ...JSON.parse(s) } } catch { /* ignore */ }
+  try {
+    const s = sessionStorage.getItem('nav')
+    if (s) {
+      const n = { ...DEFAULT_NAV, ...JSON.parse(s) } as Nav
+      if (VECCHIE[n.tab as string]) n.tab = VECCHIE[n.tab as string]
+      return n
+    }
+  } catch { /* ignore */ }
   return DEFAULT_NAV
 }
 
@@ -84,7 +96,7 @@ function AppScreens() {
 
   // Primo avvio: onboarding guidato.
   if (user && !user.onboarded) {
-    return <div className="app slide-up"><Onboarding onDone={() => replace({ tab: 'home' })} /></div>
+    return <div className="app slide-up"><Onboarding onDone={() => replace({ tab: 'today' })} /></div>
   }
 
   // Flussi a schermo intero (senza tab bar).
@@ -114,20 +126,22 @@ function AppScreens() {
   return (
     <div className="app">
       <div className="screen" key={nav.tab}>
-        {nav.tab === 'home' && (
-          <HomeScreen
+        {nav.tab === 'today' && (
+          <TodayScreen
             onStartWorkout={() => push({ workingOut: true, resumeId: null })}
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
-            onOpenAnalytics={() => push({ analytics: true })}
             onOpenCheck={() => push({ check: true })}
+            onGo={(dove) => push({ tab: dove })}
           />
         )}
-        {nav.tab === 'exercises' && (nav.exercise
+        {nav.tab === 'train' && (nav.exercise
           ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
-          : <ExercisesScreen onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
-        {nav.tab === 'diet' && <DietScreen />}
-        {nav.tab === 'habits' && <HabitsScreen />}
-        {nav.tab === 'progress' && <ProgressScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
+          : <TrainScreen
+            onStartWorkout={() => push({ workingOut: true, resumeId: null })}
+            onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
+            onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
+        {nav.tab === 'food' && <DietScreen />}
+        {nav.tab === 'health' && <HealthScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
         {nav.tab === 'profile' && (
           <ProfileScreen
             onEditTemplate={(id) => push({ editTemplate: id })}

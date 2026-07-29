@@ -31,7 +31,7 @@ function todayStatus(v: number | null): { label: string; color: string } {
 
 // Coach: il dato in chiaro, il consiglio marcato e in sordina — così si distingue
 // a colpo d'occhio ciò che è misurato da ciò che è solo un suggerimento.
-function CoachCard({ home }: { home: HomeData }) {
+export function CoachCard({ home }: { home: HomeData }) {
   const lines = useLiveQuery(() => computeCoach(home), [home]) ?? []
   const [aiText, setAiText] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)

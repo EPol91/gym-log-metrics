@@ -1,0 +1,248 @@
+import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { computeHome } from '../scores/dashboardScores'
+import { getUser, getOngoingSession, upsertMeasurement, todayISO } from '../db/repo'
+import { computeDiary, todayDiet } from '../db/diet'
+import { whoopDay, whoopWorkoutsOf } from '../db/whoop'
+import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
+import { usePersistedState } from '../util/persist'
+import { useHoldDrag } from './useHoldDrag'
+import { parseNum } from '../util/validate'
+import { fmtOre } from '../util/format'
+import { ScoreRing } from './anim'
+import { CoachCard } from './HomeScreen'
+import { useEffect } from 'react'
+
+const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
+const NUM: React.CSSProperties = { color: 'var(--gold)', fontSize: 19, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }
+
+const cella = (v: string | number, l: string) => (
+  <div key={l} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+    <div style={NUM}>{v}</div>
+    <div className="muted" style={{ fontSize: 10 }}>{l}</div>
+  </div>
+)
+
+const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'abitudini']
+
+/**
+ * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
+ * in Salute. I riquadri si riordinano tenendoli premuti, come le righe della dieta.
+ */
+export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo }: {
+  onStartWorkout: () => void
+  onResumeWorkout: (id: string) => void
+  onOpenCheck: () => void
+  onGo: (dove: 'food' | 'health' | 'train') => void
+}) {
+  const home = useLiveQuery(computeHome, [])
+  const user = useLiveQuery(getUser, [])
+  const ongoing = useLiveQuery(getOngoingSession, [])
+  const [ordine, setOrdine] = usePersistedState<string[]>('today-cards', ORDINE_DEFAULT)
+  const { press, inDragOrder, liftStyle } = useHoldDrag((_, ids) => setOrdine(ids))
+
+  const nome = (user?.name ?? '').trim().split(' ')[0]
+
+  // Se un domani si aggiungono riquadri, quelli nuovi entrano in coda invece di sparire.
+  const chiavi = [...ordine.filter((k) => ORDINE_DEFAULT.includes(k)), ...ORDINE_DEFAULT.filter((k) => !ordine.includes(k))]
+
+  const card = (key: string, corpo: React.ReactNode) => (
+    <div key={key} className="card" data-drag-id={key}
+      onPointerDown={press('today', key)}
+      style={{ padding: '11px 12px', marginBottom: 0, ...liftStyle('today', key) }}>
+      {corpo}
+    </div>
+  )
+
+  const contenuto: Record<string, React.ReactNode> = {
+    vitali: <CardVitali onOpen={() => onGo('health')} />,
+    corpo: <CardCorpo peso={home?.bodyWeight ?? null} />,
+    nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
+    allenamento: <CardAllenamento home={home} ongoing={ongoing ?? null}
+      onStart={onStartWorkout} onResume={onResumeWorkout} />,
+    abitudini: <CardAbitudini onOpen={() => onGo('health')} />,
+  }
+
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      <div className="row spread" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
+          <h1>Ciao{nome ? ` ${nome}` : ''} <span className="brand">👋</span></h1>
+        </div>
+        <button onClick={onOpenCheck} aria-label="Check del giorno"
+          style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
+          <ScoreRing value={home?.todayReady ?? null} size={82} />
+          <div className="small" style={{ marginTop: 1, letterSpacing: '.04em', color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
+            {home?.todayReady == null ? 'Oggi · fai il check' : 'Oggi'}
+          </div>
+        </button>
+      </div>
+
+      {home && <CoachCard home={home} />}
+
+      <div className="row spread" style={{ marginTop: 2 }}>
+        <span className="muted small">I tuoi riquadri</span>
+        <span className="muted small">tieni premuto per riordinare</span>
+      </div>
+
+      {inDragOrder('today', chiavi, (k) => k).map((k) => card(k, contenuto[k]))}
+    </div>
+  )
+}
+
+// --- I riquadri -------------------------------------------------------------
+
+function CardVitali({ onOpen }: { onOpen: () => void }) {
+  const d = useLiveQuery(() => whoopDay(), [])
+  const w = useLiveQuery(() => whoopWorkoutsOf(todayISO()), [])
+  const ha = d && (d.recovery != null || d.sleepHours != null || d.strain != null)
+
+  return (
+    <>
+      <div className="row spread"><span style={LBL}>Vitali · WHOOP</span><span className="muted small">≡</span></div>
+      {ha ? (
+        <>
+          <div className="row" style={{ marginTop: 8 }}>
+            {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero')}
+            {cella(fmtOre(d!.sleepHours), 'sonno')}
+            {cella(d!.strain != null ? `${d!.strain}` : '—', 'sforzo')}
+            {cella(d!.hrv != null ? `${d!.hrv}` : '—', 'HRV')}
+          </div>
+          {w && w.length > 0 && (
+            <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+              {w.map((x) => x.sport ?? 'Attività').join(' · ')} registrati dal WHOOP
+            </div>
+          )}
+          <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Andamento ›</button>
+        </>
+      ) : (
+        <p className="muted small" style={{ margin: '8px 0 0' }}>
+          Nessun dato di oggi. Collega o aggiorna WHOOP dal Profilo.
+        </p>
+      )}
+    </>
+  )
+}
+
+function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | null }) {
+  const [w, setW] = useState('')
+  const [salvato, setSalvato] = useState(false)
+  const [apri, setApri] = useState(false)
+  const n = parseNum(w, { min: 20, max: 400 })
+
+  return (
+    <>
+      <div className="row spread"><span style={LBL}>Corpo</span><span className="muted small">≡</span></div>
+      <div className="row" style={{ marginTop: 8 }}>
+        {cella(peso ? `${peso.weight}` : '—', 'kg')}
+        {cella(peso?.delta != null ? `${peso.delta > 0 ? '+' : ''}${peso.delta}` : '—', 'vs prec.')}
+      </div>
+      {!apri ? (
+        <button className="chip" style={{ marginTop: 8 }} onClick={() => setApri(true)}>＋ Peso di oggi</button>
+      ) : (
+        <div className="row" style={{ gap: 6, marginTop: 8 }}>
+          <input inputMode="decimal" value={w} placeholder={peso ? String(peso.weight) : 'kg'}
+            onChange={(e) => { setW(e.target.value); setSalvato(false) }} style={{ flex: 1, textAlign: 'center' }} />
+          <button className="primary" style={{ padding: '9px 16px' }} disabled={n == null}
+            onClick={async () => { if (n == null) return; await upsertMeasurement(todayISO(), { weight: n }); setSalvato(true); setW('') }}>
+            Salva
+          </button>
+        </div>
+      )}
+      {salvato && <p className="small" style={{ margin: '6px 0 0', color: 'var(--good)' }}>✓ salvato</p>}
+    </>
+  )
+}
+
+function CardNutrizione({ onOpen }: { onOpen: () => void }) {
+  const diary = useLiveQuery(() => computeDiary(todayDiet()), [])
+  const t = diary?.totals
+
+  return (
+    <>
+      <div className="row spread"><span style={LBL}>Nutrizione</span><span className="muted small">≡</span></div>
+      <div className="row" style={{ marginTop: 8 }}>
+        {cella(t ? t.kcal : '—', 'kcal')}
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ ...NUM, color: 'var(--carb)' }}>{t ? t.carbs : '—'}</div>
+          <div className="muted" style={{ fontSize: 10 }}>carbo</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ ...NUM, color: 'var(--prot)' }}>{t ? t.protein : '—'}</div>
+          <div className="muted" style={{ fontSize: 10 }}>proteine</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ ...NUM, color: 'var(--fat)' }}>{t ? t.fat : '—'}</div>
+          <div className="muted" style={{ fontSize: 10 }}>grassi</div>
+        </div>
+      </div>
+      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Diario di oggi ›</button>
+    </>
+  )
+}
+
+function CardAllenamento({ home, ongoing, onStart, onResume }: {
+  home: ReturnType<typeof computeHome> extends Promise<infer T> ? T | undefined : never
+  ongoing: { id: string; type: string } | null
+  onStart: () => void
+  onResume: (id: string) => void
+}) {
+  const g = home?.weekGoal
+  return (
+    <>
+      <div className="row spread"><span style={LBL}>Allenamento</span><span className="muted small">≡</span></div>
+      {g && (
+        <>
+          <div className="row spread small" style={{ marginTop: 8 }}>
+            <span className="muted">Obiettivo settimana</span>
+            <strong>{g.done} / {g.target}</strong>
+          </div>
+          <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
+            <div style={{ height: '100%', background: 'var(--gold)', width: `${g.target ? Math.min(100, g.done / g.target * 100) : 0}%` }} />
+          </div>
+        </>
+      )}
+      {home?.lastSession && (
+        <div className="muted small" style={{ marginTop: 6 }}>
+          Ultima: {home.lastSession.type} · {home.lastSession.date}
+        </div>
+      )}
+      {ongoing ? (
+        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
+      ) : (
+        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={onStart}>＋ Inizia allenamento</button>
+      )}
+    </>
+  )
+}
+
+function CardAbitudini({ onOpen }: { onOpen: () => void }) {
+  const h = useLiveQuery(() => getHabit(STEPS), [])
+  const oggi = useLiveQuery(() => getHabitValue(STEPS), [])
+  useEffect(() => { ensureHabits() }, [])
+  const target = h?.target ?? 10000
+  const fatti = oggi?.value ?? 0
+  const pct = Math.min(100, (fatti / target) * 100)
+
+  return (
+    <>
+      <div className="row spread"><span style={LBL}>Abitudini</span><span className="muted small">≡</span></div>
+      <div className="row spread small" style={{ marginTop: 8 }}>
+        <span>Passi</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {oggi ? fatti.toLocaleString('it-IT') : '—'} <span className="muted">/ {target.toLocaleString('it-IT')}</span>
+        </span>
+      </div>
+      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
+        <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%` }} />
+      </div>
+      {!oggi && (
+        <p className="muted small" style={{ margin: '6px 0 0' }}>
+          I passi arriveranno da Health Connect con l'app Android.
+        </p>
+      )}
+      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Abitudini ›</button>
+    </>
+  )
+}
