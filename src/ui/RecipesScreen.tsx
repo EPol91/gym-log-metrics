@@ -24,11 +24,15 @@ function RecipeCard({ recipe, foods, onOpen }: {
   const unit = byPortions ? calc.perServing : calc.per100
   const m = unit ?? calc.totals
 
-  const sotto = byPortions
-    ? `${m.kcal} kcal a porzione · P ${fmt1(m.protein)} · ${recipe.servings ?? 1} ${(recipe.servings ?? 1) === 1 ? 'porzione' : 'porzioni'}`
-    : unit
-      ? `${m.kcal} kcal per 100 g · P ${fmt1(m.protein)} · resa ${recipe.yieldG} g`
-      : 'peso finale da impostare'
+  // A porzioni si legge la porzione, a grammi i 100 g: è il numero che useresti
+  // davvero. Quante porzioni e quanti grammi stanno nell'etichetta a destra,
+  // che prima ripeteva la stessa cosa due volte.
+  const perChi = byPortions ? 'a porzione' : 'per 100 g'
+  const etichetta = byPortions
+    ? `${recipe.servings ?? 1} ${(recipe.servings ?? 1) === 1 ? 'porzione' : 'porzioni'}`
+    : recipe.yieldG
+      ? `${recipe.yieldG} g`
+      : 'grammi'
 
   return (
     <div className="card" style={{ padding: 12, marginBottom: 0, display: 'flex', gap: 11, alignItems: 'center', cursor: 'pointer' }}
@@ -43,10 +47,26 @@ function RecipeCard({ recipe, foods, onOpen }: {
         }}>
           {recipe.favorite ? '★ ' : ''}{recipe.name}
         </span>
-        <span className="muted" style={{ fontSize: 11 }}>{sotto}</span>
+        <span style={{
+          display: 'block', fontSize: 11, marginTop: 2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {unit || !byPortions ? (
+            <>
+              <span style={{ color: 'var(--gold)' }}>{m.kcal}</span>
+              <span className="muted"> kcal {perChi} · </span>
+              <span style={{ color: 'var(--carb)' }}>C: {fmt1(m.carbs)}</span>
+              <span className="muted">, </span>
+              <span style={{ color: 'var(--prot)' }}>P: {fmt1(m.protein)}</span>
+              <span className="muted">, </span>
+              <span style={{ color: 'var(--fat)' }}>G: {fmt1(m.fat)}</span>
+            </>
+          ) : <span className="muted">peso finale da impostare</span>}
+        </span>
       </span>
-      <span className="tag" style={{ flex: 'none', ...(byPortions ? {} : { borderColor: 'var(--gold-dim)', color: 'var(--gold-dim)' }) }}>
-        {byPortions ? 'porzioni' : 'grammi'}
+      <span className="tag" style={{ flex: 'none', whiteSpace: 'nowrap', ...(byPortions ? {} : { borderColor: 'var(--gold-dim)', color: 'var(--gold-dim)' }) }}>
+        {etichetta}
       </span>
     </div>
   )
