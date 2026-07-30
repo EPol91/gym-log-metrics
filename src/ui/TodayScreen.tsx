@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
 import { getUser, getOngoingSession, upsertMeasurement, todayISO } from '../db/repo'
 import { computeDiary, todayDiet } from '../db/diet'
-import { whoopDay, whoopWorkoutsOf } from '../db/whoop'
+import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { usePersistedState } from '../util/persist'
 import { useHoldDrag } from './useHoldDrag'
@@ -119,9 +119,7 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
           <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Andamento ›</button>
         </>
       ) : (
-        <p className="muted small" style={{ margin: '8px 0 0' }}>
-          Nessun dato di oggi. Collega o aggiorna WHOOP dal Profilo.
-        </p>
+        <VitaliAssenti />
       )}
     </>
   )
@@ -246,5 +244,47 @@ function CardAbitudini({ onOpen }: { onOpen: () => void }) {
       )}
       <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Abitudini ›</button>
     </>
+  )
+}
+
+/**
+ * Quando i vitali di oggi non ci sono, la differenza fra "non sei collegato",
+ * "WHOOP non ha ancora i dati di stanotte" e "qualcosa non funziona" è tutta:
+ * un riquadro che dice solo "nessun dato" ti lascia a indovinare.
+ */
+function VitaliAssenti() {
+  const stato = useLiveQuery(whoopStatus, [])
+  const recenti = useLiveQuery(() => whoopDaysRecent(7), [])
+  const [busy, setBusy] = useState(false)
+  const [esito, setEsito] = useState<string | null>(null)
+
+  const conDati = (recenti ?? []).find((d) => d.recovery != null || d.sleepHours != null || d.strain != null)
+
+  if (stato && !stato.collegato) {
+    return <p className="muted small" style={{ margin: '8px 0 0' }}>WHOOP non è collegato. Lo colleghi dal Profilo.</p>
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <p className="muted small" style={{ margin: 0 }}>
+        {conDati
+          ? `WHOOP non ha ancora i dati di oggi. Ultimo giorno con dati: ${conDati.date}.`
+          : 'Nessun dato scaricato da WHOOP.'}
+      </p>
+      <button className="chip" style={{ marginTop: 8 }} disabled={busy}
+        onClick={async (e) => {
+          e.stopPropagation()
+          setBusy(true); setEsito(null)
+          try {
+            const r = await syncWhoop(14)
+            setEsito(r.giorni ? `Aggiornate ${r.giorni} giornate.` : 'WHOOP non ha restituito niente di nuovo.')
+          } catch {
+            setEsito('WHOOP non risponde. Riprova più tardi.')
+          } finally { setBusy(false) }
+        }}>
+        {busy ? 'aggiorno…' : '↻ Aggiorna ora'}
+      </button>
+      {esito && <p className="muted small" style={{ margin: '6px 0 0' }}>{esito}</p>}
+    </div>
   )
 }
