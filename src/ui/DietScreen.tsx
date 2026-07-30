@@ -12,6 +12,7 @@ import { pushUndo } from '../util/undo'
 import { saveMealAsRecipe } from '../db/recipes'
 import { DietTargets } from './DietTargets'
 import { RecipesScreen } from './RecipesScreen'
+import { DayTemplates } from './DayTemplates'
 import { RecipeEntrySheet } from './RecipeEntrySheet'
 import { FoodPicker } from './FoodPicker'
 import { FoodSheet, MacroDonut } from './FoodSheet'
@@ -166,6 +167,7 @@ export function DietScreen() {
   const [picking, setPicking] = useState<{ id: string; name: string } | null>(null)
   const [showTargets, setShowTargets] = useState(false)
   const [showRecipes, setShowRecipes] = useState(false)
+  const [showDays, setShowDays] = useState(false)
   const [showCal, setShowCal] = useState(false)
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null)
   const [menuMeal, setMenuMeal] = useState<string | null>(null)
@@ -207,6 +209,7 @@ export function DietScreen() {
 
   if (showTargets) return <DietTargets onBack={() => setShowTargets(false)} suggested={suggested} />
   if (showRecipes) return <RecipesScreen onBack={() => setShowRecipes(false)} />
+  if (showDays) return <DayTemplates date={date} onClose={() => setShowDays(false)} />
 
   /**
    * Pressione prolungata → la riga si stacca e segue il dito.
@@ -319,9 +322,11 @@ export function DietScreen() {
       {/* Ricette a sinistra, data al centro, obiettivi a destra: la data resta
           centrata perche i due lati pesano uguale. */}
       <div className="row" style={{ alignItems: 'center' }}>
-        <div className="row" style={{ flex: 1 }}>
+        <div className="row" style={{ flex: 1, gap: 6 }}>
           <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Ricette"
             onClick={() => setShowRecipes(true)}>📖</button>
+          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Giornate tipo"
+            onClick={() => setShowDays(true)}>🗓</button>
         </div>
         <div className="row" style={{ gap: 2, alignItems: 'center', flex: 'none' }}>
           <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>

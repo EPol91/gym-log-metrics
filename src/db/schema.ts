@@ -223,6 +223,36 @@ export interface Food extends BaseRecord {
   lastUsedAt?: ISODateTime
 }
 
+/**
+ * Giornata tipo: una giornata alimentare intera salvata come modello, pasti
+ * compresi. Serve ai giorni che si ripetono uguali - ON e OFF di uno split -
+ * per non ricompilarli da capo ogni volta.
+ *
+ * Le righe portano una copia dei macro come le righe del diario: se domani
+ * correggi un alimento, le giornate gia applicate non cambiano da sole.
+ */
+export interface DayTemplateItem {
+  foodId: ID
+  grams: number
+  recipeId?: ID
+  portions?: number
+  macrosSnapshot?: Macros
+  nameSnapshot?: string
+}
+
+export interface DayTemplateMeal {
+  name: string
+  order: number
+  items: DayTemplateItem[]
+}
+
+export interface DayTemplate extends BaseRecord {
+  name: string
+  meals: DayTemplateMeal[]
+  /** ultimo utilizzo: i modelli che usi davvero stanno in cima */
+  lastUsedAt?: ISODateTime
+}
+
 export type MealKey = 'colazione' | 'pranzo' | 'cena' | 'spuntino'
 
 /**

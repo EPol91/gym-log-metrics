@@ -7,7 +7,7 @@ import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
   DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
-  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout,
+  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout, DayTemplate,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -35,6 +35,7 @@ export class GymLogDB extends Dexie {
   recipes!: Table<Recipe, string>
   whoopDays!: Table<WhoopDay, string>
   whoopWorkouts!: Table<WhoopWorkout, string>
+  dayTemplates!: Table<DayTemplate, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -143,6 +144,12 @@ export class GymLogDB extends Dexie {
     this.version(12).stores({
       whoopDays: 'id, userId, date',
       whoopWorkouts: 'id, userId, date, whoopId',
+    })
+
+    // v13: giornate tipo. Nessuna migrazione: chi non ne salva nessuna non
+    // vede niente di diverso.
+    this.version(13).stores({
+      dayTemplates: 'id, userId, name, lastUsedAt',
     })
 
   }

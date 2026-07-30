@@ -5,7 +5,7 @@ import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { todayLocal } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
-import type { DayType, Food, FoodLog, Macros, Meal } from './schema'
+import type { DayTemplateMeal, DayType, Food, FoodLog, Macros, Meal } from './schema'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
@@ -391,3 +391,124 @@ export async function deleteDayType(id: string): Promise<Trash> {
 // senza procedimento. Vedi `saveMealAsRecipe` in db/recipes.ts.
 
 export { today as todayDiet }
+
+// --- Giornate tipo -----------------------------------------------------------
+
+export function listDayTemplates() {
+  return db.dayTemplates.where('userId').equals(U).toArray()
+    .then((r) => r.sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.name.localeCompare(b.name, 'it')))
+}
+
+/** Fotografa una giornata intera - pasti, ordine e righe - e la salva come modello. */
+export async function saveDayAsTemplate(date: string, name: string): Promise<string | null> {
+  const pasti = (await mealsOfDate(date)).sort((a, b) => a.order - b.order)
+  if (!pasti.length) return null
+  const logs = await db.foodLogs.where('date').equals(date).filter((l) => l.userId === U).toArray()
+  const ts = nowISO()
+  const meals: DayTemplateMeal[] = pasti.map((m) => ({
+    name: m.name,
+    order: m.order,
+    items: logs.filter((l) => l.mealId === m.id).sort((a, b) => a.order - b.order).map((l) => ({
+      foodId: l.foodId, grams: l.grams,
+      ...(l.recipeId ? { recipeId: l.recipeId, nameSnapshot: l.nameSnapshot, macrosSnapshot: l.macrosSnapshot } : {}),
+      ...(l.portions != null ? { portions: l.portions } : {}),
+    })),
+  }))
+  const id = newId()
+  await db.dayTemplates.add({ id, userId: U, createdAt: ts, updatedAt: ts, name: name.trim() || 'Giornata', meals })
+  return id
+}
+
+export async function renameDayTemplate(id: string, name: string): Promise<void> {
+  await db.dayTemplates.update(id, { name: name.trim() || 'Giornata', updatedAt: nowISO() })
+}
+
+export async function deleteDayTemplate(id: string): Promise<Trash> {
+  return snapshotAndDelete('dayTemplates', id)
+}
+
+/**
+ * Riempie una giornata con un modello. sostituisci cancella quello che c'era:
+ * senza, il modello si aggiunge in coda ai pasti esistenti.
+ *
+ * Restituisce cosa serve per annullare: le righe create e quelle cancellate.
+ */
+export async function applyDayTemplate(
+  templateId: string, date: string, sostituisci: boolean,
+): Promise<{ creati: string[]; rimossi: FoodLog[]; pastiRimossi: Meal[] }> {
+  const t = await db.dayTemplates.get(templateId)
+  if (!t) return { creati: [], rimossi: [], pastiRimossi: [] }
+  const ts = nowISO()
+
+  const rimossi: FoodLog[] = []
+  const pastiRimossi: Meal[] = []
+  if (sostituisci) {
+    const vecchiLog = await db.foodLogs.where('date').equals(date).filter((l) => l.userId === U).toArray()
+    const vecchiPasti = await mealsOfDate(date)
+    rimossi.push(...vecchiLog)
+    pastiRimossi.push(...vecchiPasti)
+    await db.foodLogs.bulkDelete(vecchiLog.map((l) => l.id))
+    await db.meals.bulkDelete(vecchiPasti.map((m) => m.id))
+  }
+
+  const base = sostituisci ? 0 : (await mealsOfDate(date)).length
+  const creati: string[] = []
+  for (const m of [...t.meals].sort((a, b) => a.order - b.order)) {
+    const mealId = newId()
+    await db.meals.add({ id: mealId, userId: U, createdAt: ts, updatedAt: ts, date, name: m.name, order: base + m.order })
+    const righe: FoodLog[] = m.items.map((it, i) => ({
+      id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+      date, mealId, foodId: it.foodId, grams: it.grams, order: i,
+      ...(it.recipeId ? { recipeId: it.recipeId, nameSnapshot: it.nameSnapshot, macrosSnapshot: it.macrosSnapshot } : {}),
+      ...(it.portions != null ? { portions: it.portions } : {}),
+    }))
+    if (righe.length) await db.foodLogs.bulkAdd(righe)
+    creati.push(...righe.map((r) => r.id))
+  }
+
+  await db.dayTemplates.update(templateId, { lastUsedAt: ts })
+  return { creati, rimossi, pastiRimossi }
+}
+
+/** Copia una giornata su un'altra data, senza passare da un modello salvato. */
+export async function copyDayTo(from: string, to: string, sostituisci: boolean): Promise<{ creati: string[]; rimossi: FoodLog[]; pastiRimossi: Meal[] }> {
+  const pasti = (await mealsOfDate(from)).sort((a, b) => a.order - b.order)
+  const logs = await db.foodLogs.where('date').equals(from).filter((l) => l.userId === U).toArray()
+  const ts = nowISO()
+
+  const rimossi: FoodLog[] = []
+  const pastiRimossi: Meal[] = []
+  if (sostituisci) {
+    const vecchiLog = await db.foodLogs.where('date').equals(to).filter((l) => l.userId === U).toArray()
+    const vecchiPasti = await mealsOfDate(to)
+    rimossi.push(...vecchiLog)
+    pastiRimossi.push(...vecchiPasti)
+    await db.foodLogs.bulkDelete(vecchiLog.map((l) => l.id))
+    await db.meals.bulkDelete(vecchiPasti.map((m) => m.id))
+  }
+
+  const base = sostituisci ? 0 : (await mealsOfDate(to)).length
+  const creati: string[] = []
+  for (const m of pasti) {
+    const mealId = newId()
+    await db.meals.add({ id: mealId, userId: U, createdAt: ts, updatedAt: ts, date: to, name: m.name, order: base + m.order })
+    const righe: FoodLog[] = logs.filter((l) => l.mealId === m.id).sort((a, b) => a.order - b.order).map((l, i) => ({
+      ...copyOf(l), id: newId(), userId: U, createdAt: ts, updatedAt: ts, date: to, mealId, order: i,
+    }))
+    if (righe.length) await db.foodLogs.bulkAdd(righe)
+    creati.push(...righe.map((r) => r.id))
+  }
+  return { creati, rimossi, pastiRimossi }
+}
+
+/** Rimette una giornata com'era prima di applicare un modello. */
+export async function undoDayApply(x: { creati: string[]; rimossi: FoodLog[]; pastiRimossi: Meal[] }, date: string): Promise<void> {
+  await db.foodLogs.bulkDelete(x.creati)
+  if (x.pastiRimossi.length) {
+    const nuovi = await mealsOfDate(date)
+    await db.meals.bulkDelete(nuovi.map((m) => m.id))
+    await db.meals.bulkAdd(x.pastiRimossi)
+  }
+  if (x.rimossi.length) await db.foodLogs.bulkAdd(x.rimossi)
+}
+
