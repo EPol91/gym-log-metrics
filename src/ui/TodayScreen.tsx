@@ -73,7 +73,13 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div>
           <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
-          <h1>Ciao{nome ? ` ${nome}` : ''} <span className="brand">👋</span></h1>
+          {/* La mano resta incollata al nome: se lo spazio finisce va a capo
+              "Emanuel 👋" insieme, mai la mano da sola su una riga sua.
+              Il corpo si stringe un po' sui telefoni stretti per restare in riga. */}
+          <h1 style={{ fontSize: 'clamp(20px, 6.4vw, 26px)' }}>
+            Ciao{' '}
+            <span style={{ whiteSpace: 'nowrap' }}>{nome ? `${nome} ` : ''}<span className="brand">👋</span></span>
+          </h1>
           <p className="muted small" style={{ marginTop: 2 }}>{dailyPhrase()}</p>
         </div>
         <button onClick={onOpenCheck} aria-label="Check del giorno"
