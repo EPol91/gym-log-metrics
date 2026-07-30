@@ -15,7 +15,7 @@ import { ExerciseDetail } from './ui/ExerciseDetail'
 import { ReadinessScreen } from './ui/ReadinessScreen'
 import { Nav, type Tab } from './ui/Nav'
 import { onUpdateReady, applyPwaUpdate } from './util/pwaUpdate'
-import { autoSyncWhoop } from './db/whoop'
+import { watchAutoSync } from './db/whoop'
 import { UndoToast } from './ui/UndoToast'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
@@ -63,7 +63,7 @@ function AppScreens() {
 
   // WHOOP si aggiorna da solo all'apertura, una volta al giorno: i dati vecchi
   // fanno mentire il Coach e i Vitali proprio quando ti dimentichi di premere.
-  useEffect(() => { autoSyncWhoop() }, [])
+  useEffect(() => watchAutoSync(), [])
 
   // Nuova versione: si applica da sola (i dati stanno nel DB locale, non si perde nulla).
   // Se sei in mezzo a un allenamento non interrompo: mostro un avviso e aggiorni tu.

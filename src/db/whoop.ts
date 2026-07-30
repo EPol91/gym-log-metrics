@@ -227,6 +227,13 @@ export async function restingHrFromWhoop(giorni = 7): Promise<number | null> {
  */
 const AUTO_KEY = 'whoop-auto'
 
+const AUTO_AT = 'whoop-auto-at'
+
+/** Quando è andata a buon fine l'ultima sincronizzazione automatica. */
+export function lastAutoSync(): string | null {
+  return localStorage.getItem(AUTO_AT)
+}
+
 export async function autoSyncWhoop(): Promise<boolean> {
   const oggi = todayLocal()
   if (localStorage.getItem(AUTO_KEY) === oggi) return false
@@ -235,10 +242,27 @@ export async function autoSyncWhoop(): Promise<boolean> {
   try {
     await syncWhoop(14)
     localStorage.setItem(AUTO_KEY, oggi)
+    localStorage.setItem(AUTO_AT, nowISO())
     return true
   } catch {
     // Niente rumore: e' un aggiornamento di cortesia, non un'azione che hai chiesto.
     return false
+  }
+}
+
+/**
+ * Aggancia la sincronizzazione al RITORNO nell'app, non solo all'avvio.
+ * Sul telefono la PWA resta in memoria: riaprendola il codice di avvio non gira
+ * piu', e senza questo la sincronizzazione non partiva mai davvero.
+ */
+export function watchAutoSync(): () => void {
+  const prova = () => { if (document.visibilityState === 'visible') autoSyncWhoop() }
+  prova()
+  document.addEventListener('visibilitychange', prova)
+  window.addEventListener('focus', prova)
+  return () => {
+    document.removeEventListener('visibilitychange', prova)
+    window.removeEventListener('focus', prova)
   }
 }
 

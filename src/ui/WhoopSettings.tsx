@@ -3,6 +3,7 @@ import { fmtOre } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   connectUrl, whoopStatus, whoopDisconnect, syncWhoop, whoopDaysRecent, clearWhoopData,
+  lastAutoSync,
   type WhoopStatus,
 } from '../db/whoop'
 
@@ -95,6 +96,11 @@ export function WhoopSettings() {
           )}
 
           {ultimo && <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>Ultima giornata: {ultimo.date}</p>}
+          {lastAutoSync() && (
+            <p className="muted small" style={{ marginTop: 2, marginBottom: 0 }}>
+              Aggiornato da solo il {lastAutoSync()!.slice(0, 10)} alle {lastAutoSync()!.slice(11, 16)}
+            </p>
+          )}
 
           <div className="row" style={{ gap: 6, marginTop: 10 }}>
             <button className="chip" disabled={busy === 'sync'} onClick={() => sincronizza(180)}>Scarica 6 mesi</button>
