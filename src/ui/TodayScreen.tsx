@@ -40,6 +40,10 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   const user = useLiveQuery(getUser, [])
   const ongoing = useLiveQuery(getOngoingSession, [])
   const [ordine, setOrdine] = usePersistedState<string[]>('today-cards', ORDINE_DEFAULT)
+  // Se WHOOP ha già i dati di stanotte, il check è mezzo compilato: dirlo qui
+  // evita di doverlo aprire per scoprirlo.
+  const vitali = useLiveQuery(() => whoopDay(), [])
+  const vitaliOggi = !!vitali && (vitali.recovery != null || vitali.sleepPerf != null)
   const { press, inDragOrder, liftStyle } = useHoldDrag((_, ids) => setOrdine(ids))
 
   const nome = (user?.name ?? '').trim().split(' ')[0]
@@ -76,7 +80,11 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <ScoreRing value={home?.todayReady ?? null} size={82} />
           <div className="small" style={{ marginTop: 1, letterSpacing: '.04em', color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
-            {home?.todayReady == null ? 'Oggi · fai il check' : 'Oggi'}
+            {home?.todayReady != null
+              ? 'Oggi'
+              : vitaliOggi
+                ? 'Oggi · pronto, 2 tocchi'
+                : 'Oggi · fai il check'}
           </div>
         </button>
       </div>

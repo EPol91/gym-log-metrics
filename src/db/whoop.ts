@@ -228,21 +228,45 @@ export async function restingHrFromWhoop(giorni = 7): Promise<number | null> {
 const AUTO_KEY = 'whoop-auto'
 
 const AUTO_AT = 'whoop-auto-at'
+const AUTO_TRY = 'whoop-auto-try'
 
 /** Quando è andata a buon fine l'ultima sincronizzazione automatica. */
 export function lastAutoSync(): string | null {
   return localStorage.getItem(AUTO_AT)
 }
 
+/** La giornata di oggi è già arrivata con dentro qualcosa di utile? */
+async function oggiCompleto(): Promise<boolean> {
+  const d = await whoopDay()
+  return !!d && (d.recovery != null || d.sleepHours != null || d.strain != null)
+}
+
+/**
+ * Sincronizza da sola. Si ferma per oggi SOLO quando i dati di oggi sono
+ * arrivati davvero: WHOOP elabora la notte con i suoi tempi, e segnare
+ * "fatto" alle sette del mattino significava non riprovare piu fino a domani,
+ * lasciando il lavoro a te.
+ *
+ * Finche mancano, riprova a ogni ritorno nell app, non piu di una volta ogni
+ * quarto d ora: abbastanza per non accorgersene, poco per non tempestare WHOOP.
+ */
+const ATTESA_MS = 15 * 60_000
+
 export async function autoSyncWhoop(): Promise<boolean> {
   const oggi = todayLocal()
-  if (localStorage.getItem(AUTO_KEY) === oggi) return false
+  if (localStorage.getItem(AUTO_KEY) === oggi && await oggiCompleto()) return false
+
+  const ultimoTentativo = Number(localStorage.getItem(AUTO_TRY) ?? 0)
+  if (Date.now() - ultimoTentativo < ATTESA_MS) return false
+  localStorage.setItem(AUTO_TRY, String(Date.now()))
+
   const st = await whoopStatus()
   if (!st.collegato) return false
   try {
     await syncWhoop(14)
-    localStorage.setItem(AUTO_KEY, oggi)
     localStorage.setItem(AUTO_AT, nowISO())
+    // "Fatto per oggi" solo se oggi c'è davvero: altrimenti si riprova.
+    if (await oggiCompleto()) localStorage.setItem(AUTO_KEY, oggi)
     return true
   } catch {
     // Niente rumore: e' un aggiornamento di cortesia, non un'azione che hai chiesto.
@@ -265,7 +289,6 @@ export function watchAutoSync(): () => void {
     window.removeEventListener('focus', prova)
   }
 }
-
 /** Cancella la copia locale: si usa quando scolleghi, per non lasciare dati orfani. */
 export async function clearWhoopData(): Promise<void> {
   await db.whoopDays.where('userId').equals(U).delete()
