@@ -392,6 +392,35 @@ export async function deleteDayType(id: string): Promise<Trash> {
 
 export { today as todayDiet }
 
+/**
+ * Ricopia dentro un pasto quello che avevi nello stesso pasto un altro giorno.
+ * Cerca per nome: e' il pasto "Colazione" di ieri, non il primo della lista.
+ * Restituisce gli id creati, per l'annulla.
+ */
+export async function repeatMealFrom(mealId: string, fromDate: string): Promise<string[]> {
+  const target = await db.meals.get(mealId)
+  if (!target) return []
+  const sorgente = (await mealsOfDate(fromDate)).find((m) => m.name === target.name)
+  if (!sorgente) return []
+  const logs = (await db.foodLogs.where('mealId').equals(sorgente.id).toArray()).sort((a, b) => a.order - b.order)
+  if (!logs.length) return []
+  const base = await db.foodLogs.where('mealId').equals(mealId).count()
+  const ts = nowISO()
+  const righe: FoodLog[] = logs.map((l, i) => ({
+    ...copyOf(l), id: newId(), userId: U, createdAt: ts, updatedAt: ts,
+    date: target.date, mealId, order: base + i,
+  }))
+  await db.foodLogs.bulkAdd(righe)
+  return righe.map((r) => r.id)
+}
+
+/** Quante righe aveva quel pasto nel giorno indicato: serve a non offrire un tasto che non fa niente. */
+export async function mealCountOn(mealName: string, date: string): Promise<number> {
+  const m = (await mealsOfDate(date)).find((x) => x.name === mealName)
+  if (!m) return 0
+  return db.foodLogs.where('mealId').equals(m.id).count()
+}
+
 // --- Giornate tipo -----------------------------------------------------------
 
 export function listDayTemplates() {

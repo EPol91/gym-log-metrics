@@ -25,6 +25,21 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
   const whoop = useLiveQuery(() => whoopDay(), [])
   const [usato, setUsato] = useState(false)
 
+  // Precompilo da solo appena arrivano i dati WHOOP, se non hai gia risposto oggi:
+  // due tocchi invece di cinque. Restano tuoi indolenzimento ed energia, che il
+  // sensore non misura, e tutto resta correggibile.
+  useEffect(() => {
+    if (!whoop || usato || prefilled) return
+    if (a.sleep != null || a.fatigue != null) return
+    setA((prev) => ({
+      ...prev,
+      ...(whoop.sleepPerf != null ? { sleep: gradino(whoop.sleepPerf) } : {}),
+      ...(whoop.recovery != null ? { fatigue: gradino(whoop.recovery) } : {}),
+    }))
+    setUsato(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whoop, prefilled])
+
   // Le risposte hanno cinque gradini: un 62% di recupero diventa "50", non "62".
   const gradino = (v: number) => [0, 25, 50, 75, 100].reduce((best, g) => (Math.abs(g - v) < Math.abs(best - v) ? g : best), 0)
 
@@ -89,7 +104,7 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
               }))
               setUsato(true)
             }}>
-            {usato ? 'Inseriti · correggili se non ti torna' : 'Usa questi dati'}
+            {usato ? 'Sonno e stanchezza presi da WHOOP · correggili se non ti tornano' : 'Usa questi dati'}
           </button>
           <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>
             Consiglio: compila sonno e stanchezza da qui, e lascia a te indolenzimento ed energia —

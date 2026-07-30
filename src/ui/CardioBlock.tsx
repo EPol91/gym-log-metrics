@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { restingHrFromWhoop } from '../db/whoop'
 import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
 import { estimateCalories } from '../util/calories'
@@ -95,6 +96,9 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
 }) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
   const user = useLiveQuery(getUser, [])
+  // Media WHOOP degli ultimi 7 giorni: se c e, comanda lei.
+  const fcWhoop = useLiveQuery(() => restingHrFromWhoop(), [])
+  const fcRiposo = fcWhoop ?? user?.restingHr
   const presets = useLiveQuery(listCardioPresets, []) ?? []
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
   const measurements = useLiveQuery(listMeasurements, []) ?? []
@@ -109,7 +113,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
   const [ctype, setCtype] = useState<CardioType>('corsa')
 
   const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
-    ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured })
+    ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: fcRiposo, method, maxHr: user?.hrMaxMeasured })
     : null
 
   // setup timer
@@ -211,9 +215,9 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
       <label className="fl">Formula zona</label>
       <div className="row">
         <button className={method === 'standard' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('standard')}>Standard<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FCmax {user?.hrMaxMeasured ?? (age ? 220 - age : '—')}</span></button>
-        <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {user?.restingHr ?? '—'}</span></button>
+        <button className={method === 'hrr' ? 'sel' : ''} style={{ flex: 1, lineHeight: 1.25 }} onClick={() => setMethod('hrr')}>HRR (Karvonen)<span style={{ display: 'block', fontSize: 11, opacity: 0.75 }}>FC riposo {fcRiposo ?? '—'}{fcWhoop != null ? ' · WHOOP' : ''}</span></button>
       </div>
-      {method === 'hrr' && !user?.restingHr && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo (Profilo). Senza, uso Standard.</p>}
+      {method === 'hrr' && !fcRiposo && <p className="small" style={{ marginTop: 6, color: '#e0a030' }}>⚠ HRR richiede la FC a riposo: collega WHOOP o scrivila nel Profilo. Senza, uso Standard.</p>}
     </div>
   )
 
@@ -252,7 +256,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
                 </div>
                 {FormulaToggle}
                 {(() => {
-                  const live = bpm !== '' && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: Number(bpm), age, restingHr: user?.restingHr, method, maxHr: user?.hrMaxMeasured }) : null
+                  const live = bpm !== '' && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: Number(bpm), age, restingHr: fcRiposo, method, maxHr: user?.hrMaxMeasured }) : null
                   return <CardioViz bpm={bpm === '' ? undefined : Number(bpm)} pct={live?.pct} zone={live?.zone} />
                 })()}
                 <div className="row">

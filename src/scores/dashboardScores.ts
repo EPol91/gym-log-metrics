@@ -1,5 +1,6 @@
 // Calcolo degli Score per la Home, a partire dai grezzi nel DB (derivati, non salvati).
 import { db } from '../db/db'
+import { restingHrFromWhoop } from '../db/whoop'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal, shiftDate } from '../util/date'
 import { tonnage, volume } from '../metrics/metrics'
@@ -46,6 +47,8 @@ export interface SessionSummary {
 export async function computeHistory(): Promise<SessionSummary[]> {
   const user = await db.users.get(U)
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
+  // FC a riposo: quella misurata da WHOOP batte quella scritta a mano una volta e mai piu aggiornata.
+  const fcRiposo = (await restingHrFromWhoop()) ?? user?.restingHr
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
   const out: SessionSummary[] = []
@@ -55,7 +58,7 @@ export async function computeHistory(): Promise<SessionSummary[]> {
     const cardioRows = await db.cardio.where({ sessionId: s.id }).toArray()
     const cardio: CardioSummary[] = cardioRows.map((c) => {
       const z = c.avgBpm && (age || user?.hrMaxMeasured)
-        ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr: user?.restingHr, method: c.method ?? 'standard', maxHr: user?.hrMaxMeasured })
+        ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr: fcRiposo, method: c.method ?? 'standard', maxHr: user?.hrMaxMeasured })
         : null
       return {
         durationMin: c.durationMin,

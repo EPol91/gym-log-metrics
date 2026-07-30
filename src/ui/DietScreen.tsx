@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   computeDiary, listDayTypes, todayDiet, addMeal, renameMeal, deleteMeal, moveMeal, ensureMeals,
   duplicateMeal, pasteIntoMeal, deleteFoodLogs, restoreFoodLogs, moveLogsToMeal,
-  reorderLogs, reorderMeals, updateFoodLog, macrosFor, duplicateLogs,
+  reorderLogs, reorderMeals, updateFoodLog, macrosFor, duplicateLogs, repeatMealFrom, mealCountOn,
 } from '../db/diet'
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
@@ -484,9 +484,13 @@ export function DietScreen() {
 
           {m.entries.length > 0 && <MealRecap m={m} />}
 
-          <button className="chip" style={{ marginTop: 8 }} onClick={() => setPicking({ id: m.meal.id, name: m.meal.name })}>
-            ＋ Aggiungi cibo
-          </button>
+          <div className="row" style={{ gap: 0 }}>
+            <button className="chip" style={{ marginTop: 8 }} onClick={() => setPicking({ id: m.meal.id, name: m.meal.name })}>
+              ＋ Aggiungi cibo
+            </button>
+            <RipetiIeri mealId={m.meal.id} mealName={m.meal.name} date={date}
+              onDone={(ids) => { if (ids.length) pushUndo(`${ids.length} righe da ieri`, async () => { await deleteFoodLogs(ids) }) }} />
+          </div>
         </div>
         )
       })}
@@ -558,3 +562,22 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
 }
 
 export { macrosFor }
+
+/**
+ * "Ripeti ieri": la colazione è quasi sempre la stessa, e riscriverla ogni
+ * mattina è il lavoro più inutile dell'app. Compare solo se ieri quel pasto
+ * aveva davvero qualcosa dentro.
+ */
+function RipetiIeri({ mealId, mealName, date, onDone }: {
+  mealId: string; mealName: string; date: string; onDone: (ids: string[]) => void
+}) {
+  const ieri = shiftDate(date, -1)
+  const quante = useLiveQuery(() => mealCountOn(mealName, ieri), [mealName, ieri])
+  if (!quante) return null
+  return (
+    <button className="chip" style={{ marginTop: 8, marginLeft: 6 }}
+      onClick={async () => onDone(await repeatMealFrom(mealId, ieri))}>
+      ⟲ Ripeti ieri ({quante})
+    </button>
+  )
+}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getCurrentPhase, setPhase, clearPhase, setPhaseStartDate, getUser, updateUser, listMeasurements } from '../db/repo'
 import { ACTIVITY_LEVELS, BMR_FORMULAS, activityFactor, bmr } from '../scores/nutritionTargets'
+import { restingHrFromWhoop } from '../db/whoop'
 import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { CsvImport } from './CsvImport'
@@ -111,6 +112,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
   const phase = useLiveQuery(getCurrentPhase, [])
   const user = useLiveQuery(getUser, [])
 
+  const fcWhoop = useLiveQuery(() => restingHrFromWhoop(), [])
   const target = user?.weeklyTarget ?? 4
   const restDefault = user?.restDefaultSec ?? 90
   const REST_PRESETS = [60, 90, 120, 150, 180]
@@ -183,6 +185,11 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
             <label className="fl">FC riposo (HRR)</label>
             <input inputMode="numeric" defaultValue={user?.restingHr ?? ''}
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 30, max: 120, int: true }); if (n != null) updateUser({ restingHr: n }) }} />
+            {fcWhoop != null && (
+              <p className="muted" style={{ fontSize: 10, marginTop: 2 }}>
+                In uso: <strong style={{ color: 'var(--gold)' }}>{fcWhoop}</strong> dalla media WHOOP
+              </p>
+            )}
           </div>
           <div>
             <label className="fl">Altezza (cm · FFMI)</label>

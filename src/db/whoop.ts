@@ -204,6 +204,44 @@ export async function whoopTrend(giorni: number): Promise<{ righe: WhoopDay[]; s
   return { righe, sedute }
 }
 
+/**
+ * FC a riposo da usare per le zone HRR: la media WHOOP degli ultimi 7 giorni.
+ * Media e non valore di ieri, perché la FC a riposo oscilla di qualche battito
+ * e le zone non devono ballare da un giorno all'altro.
+ * Null se WHOOP non ha dati: chi chiama ripiega sul valore scritto nel Profilo.
+ */
+export async function restingHrFromWhoop(giorni = 7): Promise<number | null> {
+  const da = new Date(Date.now() - giorni * 86400_000).toISOString().slice(0, 10)
+  const v = (await db.whoopDays.where('userId').equals(U).toArray())
+    .filter((d) => d.date >= da)
+    .map((d) => d.restingHr)
+    .filter((x): x is number => x != null)
+  return v.length >= 3 ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null
+}
+
+/**
+ * Sincronizza da sola, al massimo una volta al giorno, quando apri l'app.
+ * In silenzio: se non c'e' rete o WHOOP non risponde, riprova alla prossima
+ * apertura senza disturbare. Senza questo, i dati sono vecchi proprio nei
+ * giorni in cui ti dimentichi di premere Aggiorna.
+ */
+const AUTO_KEY = 'whoop-auto'
+
+export async function autoSyncWhoop(): Promise<boolean> {
+  const oggi = todayLocal()
+  if (localStorage.getItem(AUTO_KEY) === oggi) return false
+  const st = await whoopStatus()
+  if (!st.collegato) return false
+  try {
+    await syncWhoop(14)
+    localStorage.setItem(AUTO_KEY, oggi)
+    return true
+  } catch {
+    // Niente rumore: e' un aggiornamento di cortesia, non un'azione che hai chiesto.
+    return false
+  }
+}
+
 /** Cancella la copia locale: si usa quando scolleghi, per non lasciare dati orfani. */
 export async function clearWhoopData(): Promise<void> {
   await db.whoopDays.where('userId').equals(U).delete()
