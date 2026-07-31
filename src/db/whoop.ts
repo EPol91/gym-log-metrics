@@ -113,6 +113,25 @@ interface WorkoutRec { id: string; start: string; end: string; sport_name?: stri
 const senzaVuoti = <T extends object>(o: T): Partial<T> =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>
 
+/**
+ * A che giornata appartiene un ciclo WHOOP.
+ *
+ * Il ciclo comincia quando ti addormenti, non quando ti svegli: andando a letto
+ * alle 23:57 il suo inizio cade il giorno prima, e due cicli finivano sulla stessa
+ * data mentre quella dopo restava senza sforzo. La giornata giusta e' quella in cui
+ * ti SVEGLI, e chi la conosce e' il sonno che WHOOP lega a quel ciclo.
+ *
+ * Senza aggancio — capita al ciclo in corso, prima che il recupero sia calcolato —
+ * si va a naso: dopo le 18 sei gia' nella giornata di domani.
+ */
+function giornoDelCiclo(c: CycleRec, sonnoPerCiclo: Map<number, SleepRec>): string {
+  const s = sonnoPerCiclo.get(c.id)
+  if (s) return giorno(s.end)
+  const d = new Date(c.start)
+  if (d.getHours() >= 18) d.setDate(d.getDate() + 1)
+  return giorno(d.toISOString())
+}
+
 const kcalDa = (kj?: number) => (kj != null ? Math.round(kj / 4.184) : undefined)
 const arrotonda = (v: number | undefined, d = 1) => (v != null ? Math.round(v * 10 ** d) / 10 ** d : undefined)
 
@@ -137,8 +156,17 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
     return perGiorno.get(data)!
   }
 
+  const sonnoPerId = new Map(sonni.map((s) => [s.id, s]))
+  const cicloPerId = new Map(cicli.map((c) => [c.id, c]))
+  // Il recupero fa da ponte fra ciclo e sonno: dice quale notte ha generato quale ciclo.
+  const sonnoPerCiclo = new Map<number, SleepRec>()
+  for (const r of recuperi) {
+    const s = r.sleep_id ? sonnoPerId.get(r.sleep_id) : undefined
+    if (s) sonnoPerCiclo.set(r.cycle_id, s)
+  }
+
   for (const c of cicli) {
-    const g = prendi(giorno(c.start))
+    const g = prendi(giornoDelCiclo(c, sonnoPerCiclo))
     g.strain = arrotonda(c.score?.strain)
     g.kcal = kcalDa(c.score?.kilojoule)
     g.avgHr = c.score?.average_heart_rate
@@ -148,13 +176,11 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
   // Il recupero appartiene alla mattina in cui ti svegli: si aggancia al sonno che
   // lo ha prodotto, non al ciclo. Passare dal ciclo voleva dire perderlo ogni volta
   // che WHOOP mandava il recupero prima del ciclo a cui appartiene.
-  const sonnoPerId = new Map(sonni.map((s) => [s.id, s]))
-  const cicloPerId = new Map(cicli.map((c) => [c.id, c]))
   for (const r of recuperi) {
     if (!r.score) continue
     const s = r.sleep_id ? sonnoPerId.get(r.sleep_id) : undefined
     const c = cicloPerId.get(r.cycle_id)
-    const data = s ? giorno(s.end) : c ? giorno(c.start) : null
+    const data = s ? giorno(s.end) : c ? giornoDelCiclo(c, sonnoPerCiclo) : null
     if (!data) continue
     const g = prendi(data)
     g.recovery = r.score.recovery_score
@@ -343,22 +369,32 @@ export async function whoopDiag(giorni = 3): Promise<string> {
   const start = new Date(Date.now() - giorni * 86400_000).toISOString()
   try {
     const cicli = await ultimiPiu<CycleRec>('/v2/cycle', start, (c) => String(c.id))
-    out.push('', `CICLI (${cicli.righe.length})`)
-    for (const c of cicli.righe.sort((a, b) => b.start.localeCompare(a.start))) {
-      out.push(`  ${c.id} · inizio ${hhmm(c.start)} → giorno ${giorno(c.start)} · ${c.score_state ?? 'stato?'} · sforzo ${c.score?.strain ?? '—'}`)
+    const rec = await ultimiPiu<RecoveryRec>('/v2/recovery', start, (r) => String(r.cycle_id))
+    const son = await tutte<SleepRec>('/v2/activity/sleep', start)
+
+    const sonnoPerId = new Map(son.righe.map((s) => [s.id, s]))
+    const sonnoPerCiclo = new Map<number, SleepRec>()
+    for (const r of rec.righe) {
+      const s = r.sleep_id ? sonnoPerId.get(r.sleep_id) : undefined
+      if (s) sonnoPerCiclo.set(r.cycle_id, s)
     }
 
-    const rec = await ultimiPiu<RecoveryRec>('/v2/recovery', start, (r) => String(r.cycle_id))
+    out.push('', `CICLI (${cicli.righe.length})`)
+    for (const c of cicli.righe.sort((a, b) => b.start.localeCompare(a.start))) {
+      out.push(`  ${c.id} · inizio ${hhmm(c.start)} → giorno ${giornoDelCiclo(c, sonnoPerCiclo)} · ${c.score_state ?? 'stato?'} · sforzo ${arrotonda(c.score?.strain) ?? '—'}`)
+    }
+
     out.push('', `RECUPERI (${rec.righe.length})`)
     for (const r of rec.righe) {
       out.push(`  ciclo ${r.cycle_id} · sonno ${r.sleep_id ? r.sleep_id.slice(0, 8) : '—'} · ${r.score_state ?? 'stato?'} · recupero ${r.score?.recovery_score ?? '—'} · HRV ${arrotonda(r.score?.hrv_rmssd_milli) ?? '—'}`)
     }
 
-    const son = await tutte<SleepRec>('/v2/activity/sleep', start)
     out.push('', `SONNI (${son.righe.length})`)
     for (const s of son.righe.sort((a, b) => b.end.localeCompare(a.end))) {
       const inLetto = s.score?.stage_summary?.total_in_bed_time_milli
-      out.push(`  ${s.id.slice(0, 8)} · sveglia ${hhmm(s.end)} → giorno ${giorno(s.end)} · ${s.nap ? 'pisolino' : 'notte'} · ${s.score_state ?? 'stato?'} · ore ${arrotonda(inLetto != null ? inLetto / 3_600_000 : undefined, 2) ?? '—'}`)
+      const sveglio = s.score?.stage_summary?.total_awake_time_milli ?? 0
+      out.push(`  ${s.id.slice(0, 8)} · sveglia ${hhmm(s.end)} → giorno ${giorno(s.end)} · ${s.nap ? 'pisolino' : 'notte'} · ${s.score_state ?? 'stato?'}`
+        + ` · a letto ${arrotonda(inLetto != null ? inLetto / 3_600_000 : undefined, 2) ?? '—'} · dormito ${arrotonda(inLetto != null ? (inLetto - sveglio) / 3_600_000 : undefined, 2) ?? '—'}`)
     }
   } catch (e) {
     out.push('', `ERRORE: ${e instanceof Error ? e.message : String(e)}`)
