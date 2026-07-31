@@ -23,8 +23,22 @@ export type Unit = 'kg' | 'lb'
 export interface User extends BaseRecord {
   name: string
   unit: Unit
-  /** obiettivo sedute/settimana → alimenta il Consistency Score */
+  /**
+   * Obiettivo sedute/settimana. Resta per le stime che ragionano davvero a
+   * settimane (fabbisogno, livello di attivita') e viene tenuto allineato al
+   * ciclo qui sotto.
+   */
   weeklyTarget: number
+  /**
+   * Il ciclo di allenamento vero: N sedute ogni M giorni, da una certa data.
+   *
+   * La settimana e' una griglia comoda, non la tua: 5 sedute ogni 8 giorni non
+   * stanno in sette caselle. Giudicate a settimane danno 5 e poi 4, e la
+   * continuita' si spezzava a ogni ciclo pur avendo fatto tutto.
+   */
+  cicloSedute?: number
+  cicloGiorni?: number
+  cicloInizio?: ISODate
   locale: string // es. 'it'
   /** anno di nascita → età per le zone cardio (FCmax). Opzionale. */
   birthYear?: number

@@ -229,7 +229,7 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
       {g && (
         <>
           <div className="row spread small" style={{ marginTop: 8 }}>
-            <span className="muted">Obiettivo settimana</span>
+            <span className="muted">Obiettivo ciclo <span style={{ opacity: .7 }}>· giorno {g.giorno} di {g.giorni}</span></span>
             <strong>{g.done} / {g.target}</strong>
           </div>
           <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>

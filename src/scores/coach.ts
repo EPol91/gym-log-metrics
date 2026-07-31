@@ -143,8 +143,8 @@ async function creditLine(home: HomeData, sessions: WorkoutSession[]): Promise<C
     }
   }
   const wk = home.weekGoal
-  if (wk.target > 0 && wk.done >= wk.target) return { fact: `Obiettivo settimana: ${wk.done}/${wk.target} centrato.` }
-  if (wk.target > 0) return { fact: `${wk.done}/${wk.target} sedute questa settimana.` }
+  if (wk.target > 0 && wk.done >= wk.target) return { fact: `Obiettivo del ciclo centrato: ${wk.done}/${wk.target}.` }
+  if (wk.target > 0) return { fact: `${wk.done}/${wk.target} sedute in questo ciclo, giorno ${wk.giorno} di ${wk.giorni}.` }
   if (wk.streak >= 3) return { fact: `${wk.streak} giorni di fila allenato.` }
   return null
 }
@@ -384,7 +384,7 @@ export function coachPrompt(home: HomeData, lines: CoachLine[], whoop?: WhoopDay
 Dati di oggi:
 ${facts}
 Score: Readiness ${s(home.readiness.value)}, Workout ${s(home.workout.value)}, Performance ${s(home.performance.value)}, Consistency ${s(home.consistency.value)}.
-Obiettivo settimana: ${home.weekGoal.done}/${home.weekGoal.target}, streak ${home.weekGoal.streak} giorni.
+Obiettivo del ciclo: ${home.weekGoal.done}/${home.weekGoal.target} (giorno ${home.weekGoal.giorno} di ${home.weekGoal.giorni}), streak ${home.weekGoal.streak} giorni.
 ${vitali}
 
 Scrivi max 4 frasi brevi in italiano. Distingui sempre il dato dal consiglio: i consigli vanno introdotti da "Consiglio:" e non devono mai essere imperativi né presentati come verità certe — l'atleta decide da sé. Niente motivazione generica: parla solo dei suoi numeri.`

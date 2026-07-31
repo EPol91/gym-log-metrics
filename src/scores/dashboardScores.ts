@@ -6,7 +6,7 @@ import { todayLocal, shiftDate } from '../util/date'
 import { tonnage, volume } from '../metrics/metrics'
 import { computeCardioZone } from '../metrics/cardio'
 import { computeReadiness, type LoadContext } from './readiness'
-import { computeConsistency } from './consistency'
+import { computeConsistency, cicloDi } from './consistency'
 import { computeSessionWorkoutScore } from './sessionScore'
 import { computePerformanceFromDB } from './performanceFromDB'
 import type { ScoreResult } from './types'
@@ -82,7 +82,8 @@ export interface HomeData {
   consistency: ScoreResult
   lastSession: { date: string; type: string; tonnage: number; volume: number } | null
   bodyWeight: { weight: number; delta: number | null } | null
-  weekGoal: { done: number; target: number; streak: number }
+  /** Il ciclo in corso: sedute fatte, richieste, e a che punto sei. */
+  weekGoal: { done: number; target: number; streak: number; giorno: number; giorni: number }
   /** Readiness SOLO se il check è di oggi; altrimenti null (niente dato stantìo). */
   todayReady: number | null
 }
@@ -96,9 +97,17 @@ function buildLoadContext(daily: { t: number; ton: number }[], nowMs: number, hi
 
 export async function computeHome(): Promise<HomeData> {
   const user = await db.users.get(U)
-  const weeklyTarget = user?.weeklyTarget ?? 4
   const sessions = (await db.sessions.where('userId').equals(U).toArray())
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+
+  // Il ciclo vero: N sedute ogni M giorni, non per forza una settimana.
+  const ciclo = {
+    sedute: user?.cicloSedute ?? 5,
+    giorni: user?.cicloGiorni ?? 8,
+    // Senza un'ancora i cicli si aggancerebbero a oggi e saresti sempre al
+    // "giorno 1": in mancanza della data scelta si parte dalla prima seduta.
+    inizio: user?.cicloInizio ?? sessions[0]?.date ?? todayISO(),
+  }
 
   // Tonnellaggi per seduta/giorno.
   const daily: { t: number; ton: number }[] = []
@@ -115,7 +124,7 @@ export async function computeHome(): Promise<HomeData> {
   const goalHistory = (await db.goalHistory.where('userId').equals(U).sortBy('date'))
     .map((g) => ({ date: g.date, target: g.target }))
   const consistency = sessions.length
-    ? computeConsistency(sessions.map((s) => s.date), weeklyTarget, todayISO(), 4, goalHistory)
+    ? computeConsistency(sessions.map((s) => s.date), ciclo, todayISO(), 4, goalHistory)
     : { value: null, reliability: 'insufficiente' as const, note: 'Nessun allenamento registrato.' }
 
   // Readiness = ultimo check disponibile (di seduta o fatto dalla Home) + contesto carico.
@@ -154,11 +163,14 @@ export async function computeHome(): Promise<HomeData> {
     bodyWeight = { weight: lm.weight, delta: pm ? +(lm.weight - pm.weight).toFixed(1) : null }
   }
 
-  // Obiettivo settimana: settimana di calendario, da LUNEDÌ (non 7 giorni scorrevoli:
-  // di lunedì mattina il contatore deve ripartire da zero).
-  const dow = (new Date(todayISO() + 'T00:00:00').getDay() + 6) % 7 // 0 = lunedì
-  const weekStartMs = nowMs - dow * DAY
-  const done = sessions.filter((s) => new Date(s.date + 'T00:00:00').getTime() >= weekStartMs).length
+  // Obiettivo del ciclo in corso, con i confini ancorati alla data di partenza
+  // che hai scelto: il contatore riparte quando comincia il ciclo, non di
+  // lunedi' mattina per convenzione.
+  const inCorso = cicloDi(todayISO(), ciclo)
+  const done = sessions.filter((s) => {
+    const t = new Date(s.date + 'T00:00:00').getTime()
+    return t >= inCorso.inizio && t < inCorso.fine
+  }).length
   const activeDays = [...new Set(sessions.map((s) => s.date))]
   const dayBefore = (d: string) => shiftDate(d, -1)
   let streak = 0
@@ -168,5 +180,5 @@ export async function computeHome(): Promise<HomeData> {
 
   const todayReady = lastCheckDate === todayISO() ? readiness.value : null
 
-  return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: weeklyTarget, streak }, todayReady }
+  return { readiness, workout, performance, consistency, lastSession, bodyWeight, weekGoal: { done, target: ciclo.sedute, streak, giorno: inCorso.giorno, giorni: ciclo.giorni }, todayReady }
 }

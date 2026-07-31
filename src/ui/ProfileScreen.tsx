@@ -12,6 +12,10 @@ import { CoachSettings } from './CoachSettings'
 import { TemplatesSettings } from './TemplatesSettings'
 import { parseNum } from '../util/validate'
 import { fmtRest } from '../util/format'
+import { todayLocal } from '../util/date'
+import { cicloDi } from '../scores/consistency'
+import { db } from '../db/db'
+import { LOCAL_USER_ID } from '../db/seed'
 import type { Phase } from '../db/schema'
 
 const PHASES: { key: Phase; label: string; hint: string }[] = [
@@ -113,7 +117,6 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
   const user = useLiveQuery(getUser, [])
 
   const fcWhoop = useLiveQuery(() => restingHrFromWhoop(), [])
-  const target = user?.weeklyTarget ?? 4
   const restDefault = user?.restDefaultSec ?? 90
   const REST_PRESETS = [60, 90, 120, 150, 180]
 
@@ -152,24 +155,21 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         )}
       </div>
 
-      {/* All./sett. + Recupero affiancati */}
-      <div className="row" style={{ gap: 10, alignItems: 'stretch' }}>
-        <div className="card" style={{ flex: 1, margin: 0 }}>
-          <label className="fl">All. / sett.</label>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <button onClick={() => updateUser({ weeklyTarget: Math.max(1, target - 1) })}>−</button>
-            <strong style={{ fontSize: 20 }}>{target}</strong>
-            <button onClick={() => updateUser({ weeklyTarget: Math.min(14, target + 1) })}>＋</button>
-          </div>
-          <p className="muted small" style={{ marginTop: 4 }}>alimenta il Consistency</p>
-        </div>
-        <div className="card" style={{ flex: 1, margin: 0 }}>
-          <label className="fl">Recupero</label>
-          <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
-            {REST_PRESETS.map((s) => (
-              <button key={s} className={restDefault === s ? 'chip on' : 'chip'} onClick={() => updateUser({ restDefaultSec: s })}>{fmtRest(s)}</button>
-            ))}
-          </div>
+      {/* L'obiettivo di allenamento e' un CICLO, non una settimana: 5 sedute
+          ogni 8 giorni non stanno in sette caselle, e giudicate a settimane
+          danno 5 e poi 4 — il Consistency ti bocciava mentre facevi tutto. */}
+      <CicloAllenamento
+        sedute={user?.cicloSedute ?? 5}
+        giorni={user?.cicloGiorni ?? 8}
+        inizio={user?.cicloInizio ?? null}
+      />
+
+      <div className="card">
+        <label className="fl">Recupero di default</label>
+        <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+          {REST_PRESETS.map((s) => (
+            <button key={s} className={restDefault === s ? 'chip on' : 'chip'} onClick={() => updateUser({ restDefaultSec: s })}>{fmtRest(s)}</button>
+          ))}
         </div>
       </div>
 
@@ -239,6 +239,67 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         <Section title="⬆️ Import CSV (Strong / Hevy)"><CsvImport /></Section>
         <Section title="💾 Backup dati"><BackupSettings /></Section>
       </div>
+    </div>
+  )
+}
+
+/**
+ * L'obiettivo di allenamento, nella forma in cui ti alleni davvero: N sedute
+ * ogni M giorni, da una data che scegli tu.
+ *
+ * La data serve a dare confini fissi ai cicli: senza un'ancora scivolerebbero a
+ * ogni ricalcolo e "giorno 6 di 8" non vorrebbe dire niente. Chi si allena a
+ * settimane mette 4 su 7 e non cambia nulla per lui.
+ */
+function CicloAllenamento({ sedute, giorni, inizio }: { sedute: number; giorni: number; inizio: string | null }) {
+  const oggi = todayLocal()
+  // Se non hai scelto una data, i cicli si contano dalla tua prima seduta: e'
+  // l'unica ancora che esiste davvero, e senza saresti sempre al "giorno 1".
+  const primaSeduta = useLiveQuery(async () => {
+    const s = await db.sessions.where('userId').equals(LOCAL_USER_ID).toArray()
+    return s.map((x) => x.date).sort()[0] ?? null
+  }, [])
+  const ancora = inizio ?? primaSeduta ?? oggi
+  const giornoDelCiclo = cicloDi(oggi, { sedute, giorni, inizio: ancora }).giorno
+
+  // Le sedute a settimana restano il numero che alimenta fabbisogno e livello
+  // di attivita': si tiene allineato al ciclo invece di farteli scrivere due volte.
+  const salva = (patch: { cicloSedute?: number; cicloGiorni?: number; cicloInizio?: string }) => {
+    const s = patch.cicloSedute ?? sedute
+    const g = patch.cicloGiorni ?? giorni
+    void updateUser({ ...patch, weeklyTarget: Math.max(1, Math.round((s / g) * 7)) })
+  }
+
+  const passo = (label: string, valore: number, min: number, max: number, campo: 'cicloSedute' | 'cicloGiorni') => (
+    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+      <label className="fl" style={{ display: 'block' }}>{label}</label>
+      <div className="row" style={{ gap: 6, justifyContent: 'center' }}>
+        <button style={{ padding: '8px 0', flex: 1 }} onClick={() => salva({ [campo]: Math.max(min, valore - 1) })}>−</button>
+        <strong style={{ fontSize: 20, minWidth: 28 }}>{valore}</strong>
+        <button style={{ padding: '8px 0', flex: 1 }} onClick={() => salva({ [campo]: Math.min(max, valore + 1) })}>＋</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="card">
+      <label className="fl">Obiettivo allenamento</label>
+      <div className="row" style={{ gap: 10, alignItems: 'flex-end' }}>
+        {passo('sedute', sedute, 1, 14, 'cicloSedute')}
+        <span className="muted small" style={{ paddingBottom: 10 }}>ogni</span>
+        {passo('giorni', giorni, 1, 30, 'cicloGiorni')}
+      </div>
+
+      <div className="row spread" style={{ marginTop: 12, alignItems: 'center', gap: 8 }}>
+        <span className="muted small" style={{ flex: 'none' }}>Inizio del ciclo</span>
+        <input type="date" value={ancora} style={{ flex: 1, minWidth: 0 }}
+          onChange={(e) => { if (e.target.value) salva({ cicloInizio: e.target.value }) }} />
+      </div>
+
+      <p className="muted small" style={{ marginTop: 8 }}>
+        {sedute} sedute ogni {giorni} giorni · oggi sei al giorno {giornoDelCiclo} di {giorni}.{inizio ? '' : ' Cicli contati dalla tua prima seduta.'}
+        Alimenta il Consistency Score.
+      </p>
     </div>
   )
 }
