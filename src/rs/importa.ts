@@ -135,26 +135,32 @@ async function esercizioGiusto(nomeCoach: string, muscolo: MuscleGroup) {
   const alternative = RINOMINE[nomeCoach]
   const nomi = alternative == null ? [] : Array.isArray(alternative) ? alternative : [alternative]
 
+  let scelto
   for (const n of nomi) {
-    const tuo = await findExercise(n)
-    if (tuo) {
-      // L'alias serve solo se non c'e' gia': aggiungerlo due volte non aiuta nessuno.
-      if (!tuo.aliases.some((a) => a.toLowerCase() === nomeCoach.toLowerCase())) {
-        await db.exercises.update(tuo.id, { aliases: [...tuo.aliases, nomeCoach], updatedAt: nowISO() })
-      }
-      // Il doppione creato da un import precedente non serve piu': via, ma solo
-      // se non ha storico attaccato. Un esercizio con dentro delle serie non si
-      // tocca mai, nemmeno per fare ordine.
-      const doppione = await findExercise(nomeCoach)
-      if (doppione && doppione.id !== tuo.id) {
-        const usato = await db.exerciseEntries.where('userId').equals(U).filter((e) => e.exerciseId === doppione.id).count()
-        if (usato === 0) await db.exercises.delete(doppione.id)
-      }
-      return await db.exercises.get(tuo.id) ?? tuo
-    }
+    scelto = await findExercise(n)
+    if (scelto) break
   }
-  // Nessuno dei tuoi nomi esiste: si crea col primo che hai indicato.
-  return getOrCreateExercise(nomi[0] ?? nomeCoach, muscolo)
+  // Nessuno dei tuoi nomi esiste ancora: si crea col primo che hai indicato.
+  if (!scelto) scelto = await getOrCreateExercise(nomi[0] ?? nomeCoach, muscolo)
+
+  // L'alias vale in entrambi i casi, appena creato o gia' tuo: e' quello che al
+  // prossimo import fa ritrovare questo esercizio invece di crearne un altro.
+  if (nomi.length && !scelto.aliases.some((a) => a.toLowerCase() === nomeCoach.toLowerCase())) {
+    await db.exercises.update(scelto.id, { aliases: [...scelto.aliases, nomeCoach], updatedAt: nowISO() })
+  }
+
+  // Il doppione col nome del coach, rimasto da un import precedente, non serve
+  // piu': via — ma SOLO se non ha storico attaccato. Un esercizio con dentro
+  // delle serie non si tocca mai, nemmeno per fare ordine.
+  const id = scelto.id
+  const doppione = (await db.exercises.where('userId').equals(U).toArray())
+    .find((e) => e.id !== id && e.name.toLowerCase() === nomeCoach.toLowerCase())
+  if (doppione) {
+    const usato = await db.exerciseEntries.where('userId').equals(U).filter((e) => e.exerciseId === doppione.id).count()
+    if (usato === 0) await db.exercises.delete(doppione.id)
+  }
+
+  return await db.exercises.get(id) ?? scelto
 }
 
 /**

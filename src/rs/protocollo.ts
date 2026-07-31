@@ -129,6 +129,7 @@ export const GIORNATE_RS: GiornataRs[] = [
  * Piu' nomi = si prova in ordine e vince il primo che esiste gia' da te.
  */
 export const RINOMINE: Record<string, string | string[]> = {
+  'High row convergente chest-supported': 'Bilateral Cable High Row 45°',
   'T-bar row chest-supported': 'T-Bar Row',
   'Pulley unilaterale traiettoria alta': 'High Cable Unilateral Pulley',
   'Kelso shrug su supporto': 'Kelso Shrug',
