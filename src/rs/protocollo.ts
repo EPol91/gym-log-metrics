@@ -118,14 +118,50 @@ export const GIORNATE_RS: GiornataRs[] = [
   },
 ]
 
+/**
+ * Come chiami TU gli esercizi che il coach chiama in un altro modo.
+ *
+ * Non e' solo un'etichetta: l'import punta al TUO esercizio, cosi' i carichi
+ * restano in una storia sola invece di spaccarsi in due schede. Il nome del
+ * coach resta come alias, e al prossimo aggiornamento del protocollo ritrova
+ * il tuo senza ricreare il doppione.
+ *
+ * Piu' nomi = si prova in ordine e vince il primo che esiste gia' da te.
+ */
+export const RINOMINE: Record<string, string | string[]> = {
+  'T-bar row chest-supported': 'T-Bar Row',
+  'Pulley unilaterale traiettoria alta': 'High Cable Unilateral Pulley',
+  'Kelso shrug su supporto': 'Kelso Shrug',
+  'Chest press convergente': 'Chest Press Machine',
+  'Shoulder press manubri panca 80°': 'DB Shoulder Press',
+  'Overhead cable extension': 'Vulken Overhead Extensions',
+  'Pushdown stabile': 'Vulken Pushdown',
+  'Smith squat': 'Squat Multipower',
+  'Romanian deadlift': 'RDL',
+  'Standing calf raise o calf press': 'Standing Calf Raise',
+  'Lat machine presa neutra o semi-supina': 'Lat Machine',
+  'Pulldown alla corda in massimo allungamento': 'Cable Pulldown',
+  'Chest press inclinata convergente': 'Incline DB Press',
+  'Cable fly': 'Croci ai Cavi',
+  '6A · Preacher curl unilaterale': 'Unilateral Preacher Curl',
+  '6B · Crucifix pushdown': 'Crucifix Pushdown',
+  '1A · Curl bilanciere EZ': 'Curl Bilanciere EZ',
+  '1B · French press EZ o manubri': 'French Press EZ',
+  '2A · Curl al cavo braccio dietro il tronco': 'Cable Curl - Braccio dietro il tronco',
+  '2B · Overhead rope extension': 'Vulken Overhead Extensions',
+  // Scritto "Real" nell'elenco: provo prima la grafia corretta, poi quella.
+  'Rear delt row o rear delt machine': ['Rear Delt Machine', 'Real Delt Machine'],
+  'Shrug al cavo o macchina': 'Cable Shrug',
+}
+
 export interface EsercizioRs { nome: string; muscolo: string; prescrizione: string }
-export interface SedutaRs { nome: string; tipo: string; focus: string; prehab: string; esercizi: EsercizioRs[] }
+export interface SedutaRs { nome: string; codice: string; tipo: string; focus: string; prehab: string; esercizi: EsercizioRs[] }
 
 const e = (nome: string, muscolo: string, prescrizione: string): EsercizioRs => ({ nome, muscolo, prescrizione })
 
 export const SEDUTE_RS: SedutaRs[] = [
   {
-    nome: '🦠 D1 · PULL A', tipo: 'pull', focus: 'Upper back · rear delts · bicipiti',
+    nome: '🦠 D1 · PULL A', codice: 'D1', tipo: 'pull', focus: 'Upper back · rear delts · bicipiti',
     prehab: 'Scapular pulldown o depressione scapolare al cavo — 1 serie da 10-12, RIR 4-5, rec 45-60″. Non conta come volume.',
     esercizi: [
       e('High row convergente chest-supported', 'schiena', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 150-180″'),
@@ -138,7 +174,7 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
   {
-    nome: '🦠 D2 · PUSH', tipo: 'push', focus: 'Petto · spalle · tricipiti',
+    nome: '🦠 D2 · PUSH', codice: 'D2', tipo: 'push', focus: 'Petto · spalle · tricipiti',
     prehab: 'Serratus wall slide — 1-2 serie da 8, rec 45-60″. Non conta come volume.',
     esercizi: [
       e('Pectoral machine', 'petto', '@A|B · 10-15 · RIR1-2 · rec 90-120″'),
@@ -151,7 +187,7 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
   {
-    nome: '🦠 D3 · LOWER COMPLETO', tipo: 'legs', focus: 'Quadricipiti · femorali · glutei · polpacci',
+    nome: '🦠 D3 · LOWER COMPLETO', codice: 'D3', tipo: 'legs', focus: 'Quadricipiti · femorali · glutei · polpacci',
     prehab: 'Dead bug — 1-2 serie da 6-8 per lato. Seated leg curl feeder — 1 serie da 15, RIR 4-5. Non contano come volume.',
     esercizi: [
       e('Seated leg curl', 'femorali', '@A|B|C · 8-12 · RIR2 / RIR1 / RIR1 · rec 90-120″'),
@@ -164,7 +200,7 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
   {
-    nome: '🦠 D4 · UPPER B', tipo: 'upper', focus: 'Gran dorsale · petto · richiamo braccia',
+    nome: '🦠 D4 · UPPER B', codice: 'D4', tipo: 'upper', focus: 'Gran dorsale · petto · richiamo braccia',
     prehab: 'Scapular pulldown — 1 serie da 10-12, RIR 4-5. Non conta come volume.',
     esercizi: [
       e('Lat machine presa neutra o semi-supina', 'schiena', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 150-180″'),
@@ -177,7 +213,7 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
   {
-    nome: '🦠 D5 · ARMS + BACK C', tipo: 'upper', focus: 'Braccia prioritarie · trapezi · rear delts · paravertebrali',
+    nome: '🦠 D5 · ARMS + BACK C', codice: 'D5', tipo: 'upper', focus: 'Braccia prioritarie · trapezi · rear delts · paravertebrali',
     prehab: 'Estensione toracica su supporto — 1 serie da 5-6 respirazioni. Curl e pushdown feeder — 1 serie leggera, RIR 5. Non contano come volume.',
     esercizi: [
       e('1A · Curl bilanciere EZ', 'bicipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · superset con 1B'),

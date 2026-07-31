@@ -11,8 +11,8 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { addFood, macrosFor } from '../db/diet'
-import { getOrCreateExercise } from '../db/repo'
-import { ALIMENTI_RS, GIORNATE_RS, SEDUTE_RS } from './protocollo'
+import { getOrCreateExercise, findExercise } from '../db/repo'
+import { ALIMENTI_RS, GIORNATE_RS, SEDUTE_RS, RINOMINE } from './protocollo'
 import type { DayTemplate, DayTemplateMeal, Food, Macros, MuscleGroup, WorkoutTemplate, WorkoutType } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -110,14 +110,51 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
  * 🦠 e ogni import riscrive solo quella. Se lui cambia la scheda, cambia la sua
  * riga; quello che hai scritto tu resta dov'era.
  *
- * Limite noto: la nota sta sull'esercizio, non sulla singola seduta. Se lo stesso
- * esercizio comparisse in due sedute con prescrizioni diverse, vincerebbe
- * l'ultima. Nel protocollo di adesso non succede.
+ * Lo stesso esercizio in due sedute tiene DUE righe, una per seduta: capita
+ * davvero (le Vulken Overhead Extensions stanno in D2 e in D5 con ripetizioni
+ * diverse) e tenerne una sola vorrebbe dire perdere meta' della scheda.
  */
-async function scriviPrescrizione(id: string, attuali: string | undefined, prescrizione: string): Promise<void> {
-  const tue = (attuali ?? '').split('\n').filter((r) => !r.trimStart().startsWith('🦠'))
-  const righe = [...tue.filter((r) => r.trim()), `🦠 ${prescrizione}`]
-  await db.exercises.update(id, { settings: righe.join('\n'), updatedAt: nowISO() })
+async function scriviPrescrizione(id: string, attuali: string | undefined, codice: string, prescrizione: string): Promise<void> {
+  const riga = `🦠 ${codice} · ${prescrizione}`
+  const tue = (attuali ?? '').split('\n')
+    // Via le righe del coach, ma solo quelle di QUESTA seduta: lo stesso esercizio
+    // puo' comparire in due giorni con prescrizioni diverse, e servono entrambe.
+    .filter((r) => !r.trimStart().startsWith(`🦠 ${codice} ·`))
+    .filter((r) => r.trim())
+  const altre = tue.filter((r) => r.trimStart().startsWith('🦠'))
+  const mie = tue.filter((r) => !r.trimStart().startsWith('🦠'))
+  await db.exercises.update(id, { settings: [...mie, ...altre, riga].join('\n'), updatedAt: nowISO() })
+}
+
+/**
+ * L'esercizio giusto a cui agganciare la seduta: il TUO, se lo chiami in un
+ * altro modo. Il nome del coach diventa un alias, cosi' al prossimo import lo
+ * ritrova da solo invece di ricreare il doppione.
+ */
+async function esercizioGiusto(nomeCoach: string, muscolo: MuscleGroup) {
+  const alternative = RINOMINE[nomeCoach]
+  const nomi = alternative == null ? [] : Array.isArray(alternative) ? alternative : [alternative]
+
+  for (const n of nomi) {
+    const tuo = await findExercise(n)
+    if (tuo) {
+      // L'alias serve solo se non c'e' gia': aggiungerlo due volte non aiuta nessuno.
+      if (!tuo.aliases.some((a) => a.toLowerCase() === nomeCoach.toLowerCase())) {
+        await db.exercises.update(tuo.id, { aliases: [...tuo.aliases, nomeCoach], updatedAt: nowISO() })
+      }
+      // Il doppione creato da un import precedente non serve piu': via, ma solo
+      // se non ha storico attaccato. Un esercizio con dentro delle serie non si
+      // tocca mai, nemmeno per fare ordine.
+      const doppione = await findExercise(nomeCoach)
+      if (doppione && doppione.id !== tuo.id) {
+        const usato = await db.exerciseEntries.where('userId').equals(U).filter((e) => e.exerciseId === doppione.id).count()
+        if (usato === 0) await db.exercises.delete(doppione.id)
+      }
+      return await db.exercises.get(tuo.id) ?? tuo
+    }
+  }
+  // Nessuno dei tuoi nomi esiste: si crea col primo che hai indicato.
+  return getOrCreateExercise(nomi[0] ?? nomeCoach, muscolo)
 }
 
 /**
@@ -135,8 +172,8 @@ async function sedute(): Promise<{ nomi: string[]; eserciziCreati: number }> {
     const items = []
     for (let i = 0; i < s.esercizi.length; i++) {
       const e = s.esercizi[i]
-      const ex = await getOrCreateExercise(e.nome, e.muscolo as MuscleGroup)
-      await scriviPrescrizione(ex.id, ex.settings, e.prescrizione)
+      const ex = await esercizioGiusto(e.nome, e.muscolo as MuscleGroup)
+      await scriviPrescrizione(ex.id, ex.settings, s.codice, e.prescrizione)
       items.push({ exerciseId: ex.id, order: i })
     }
     const gia = esistenti.find((t) => t.name === s.nome)
