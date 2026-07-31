@@ -113,3 +113,50 @@ export function riassunto(s: SedutaRs): string {
     .map((e) => `${e.nome}: ${e.serie.map((x) => `${x.kg}×${x.reps}`).join(', ')}`)
   return parti.join(' · ')
 }
+
+export interface GiornoCalendario {
+  date: string
+  /** nome della seduta: quella del coach se riconosciuta, altrimenti la tua */
+  nome: string
+  /** viene dal protocollo del coach */
+  delCoach: boolean
+  serie: number
+}
+
+/**
+ * Le sedute di un periodo, con dentro cosa hai fatto.
+ *
+ * Una passata sola su tutte le tabelle invece di una interrogazione per giorno:
+ * il calendario copre un mese e chiedere trenta volte le stesse cose lo
+ * renderebbe lento proprio dove deve solo apparire.
+ */
+export async function calendario(da: string, a: string): Promise<GiornoCalendario[]> {
+  const sessioni = (await db.sessions.where('userId').equals(U).toArray())
+    .filter((s) => s.date >= da && s.date <= a && s.finishedAt)
+  if (!sessioni.length) return []
+
+  const ids = new Set(sessioni.map((s) => s.id))
+  const entrate = (await db.exerciseEntries.where('userId').equals(U).toArray()).filter((e) => ids.has(e.sessionId))
+  const esercizi = await db.exercises.where('userId').equals(U).toArray()
+  const perId = new Map(esercizi.map((e) => [e.id, e.name]))
+  const sets = await db.sets.where('userId').equals(U).toArray()
+  const serieDi = new Map<string, number>()
+  for (const s of sets) serieDi.set(s.entryId, (serieDi.get(s.entryId) ?? 0) + 1)
+
+  const TIPI: Record<string, string> = {
+    push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
+    lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
+  }
+
+  return sessioni.map((s) => {
+    const mie = entrate.filter((e) => e.sessionId === s.id)
+    const nomi = mie.map((e) => perId.get(e.exerciseId) ?? '')
+    const g = riconosci(nomi)
+    return {
+      date: s.date,
+      nome: g?.nome ?? TIPI[s.type] ?? s.type,
+      delCoach: !!g,
+      serie: mie.reduce((n, e) => n + (serieDi.get(e.id) ?? 0), 0),
+    }
+  }).sort((x, y) => x.date.localeCompare(y.date))
+}

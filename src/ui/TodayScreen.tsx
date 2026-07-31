@@ -12,6 +12,7 @@ import { ScoreRing } from './anim'
 import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
 import { usePesoOggi } from './PesoOggi'
+import { CardCalendario } from './CardCalendario'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
@@ -24,7 +25,7 @@ const cella = (v: string | number, l: string) => (
   </div>
 )
 
-const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'abitudini']
+const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'calendario', 'abitudini']
 
 /**
  * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
@@ -69,6 +70,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
     allenamento: <CardAllenamento home={home} ongoing={ongoing ?? null}
       onStart={onStartWorkout} onResume={onResumeWorkout} />,
+    calendario: <CardCalendario onApri={() => onGo('health')} />,
     abitudini: <CardAbitudini onOpen={() => onGo('health')} />,
   }
 
