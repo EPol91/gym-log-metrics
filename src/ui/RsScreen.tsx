@@ -14,6 +14,7 @@ import {
   computeRs, conteggio, settimanaGiorno, setRs, resetRs, rsDay, setNotaRs,
   notaAutomatica, RS_START_DEFAULT, type RsValore,
 } from '../rs/rs'
+import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
 const ico = (d: React.ReactNode) => (
@@ -269,6 +270,50 @@ function RsImpostazioni({ onClose }: { onClose: () => void }) {
           {interruttore(chiedi, () => updateUser({ rsAskDaily: !chiedi }))}
         </div>
       </div>
+
+      <ImportProtocollo />
+    </div>
+  )
+}
+
+/**
+ * Il protocollo del coach dentro l'app: le sue quattro giornate e le sue cinque
+ * sedute, aggiunte alle tue senza toccare niente di quello che avevi.
+ * Si puo' rifare quando lui cambia qualcosa: aggiorna, non duplica.
+ */
+function ImportProtocollo() {
+  const gia = useLiveQuery(protocolloImportato, [])
+  const [busy, setBusy] = useState(false)
+  const [esito, setEsito] = useState<EsitoImport | null>(null)
+
+  return (
+    <div className="card" style={{ marginBottom: 0 }}>
+      <label className="fl">Protocollo del coach</label>
+      <p className="muted small" style={{ margin: '0 0 8px' }}>
+        4 giornate alimentari coi grammi esatti e 5 sedute con le prescrizioni. Si aggiungono
+        alle tue col 🦠 davanti: niente di tuo viene toccato.
+      </p>
+      <button className="primary" style={{ width: '100%' }} disabled={busy}
+        onClick={async () => { setBusy(true); try { setEsito(await importaProtocolloRs()) } finally { setBusy(false) } }}>
+        {busy ? 'importo…' : gia ? '↻ Aggiorna dal protocollo' : '⬇ Importa il protocollo'}
+      </button>
+
+      {esito && (
+        <div style={{ marginTop: 10 }}>
+          <p className="small" style={{ margin: 0, color: 'var(--good)' }}>
+            ✓ {esito.giornate.length} giornate · {esito.sedute.length} sedute · {esito.eserciziCreati} esercizi nuovi
+          </p>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>
+            Alimenti: {esito.alimentiCreati.length} creati, {esito.alimentiRiusati.length} già tuoi e riusati.
+          </p>
+          {esito.daCompletare.length > 0 && (
+            <p className="small" style={{ margin: '6px 0 0', color: 'var(--gold)' }}>
+              Da completare a mano ({esito.daCompletare.length}): {esito.daCompletare.join(', ')}. Sono a
+              zero apposta: un valore inventato falserebbe i totali che vanno al coach.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
