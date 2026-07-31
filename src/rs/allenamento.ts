@@ -33,31 +33,93 @@ export interface SedutaRs {
   serieTotali: number
 }
 
+interface Giornata { codice: string; nome: string; previsti: string[] }
+
+const norm = (s: string) => s.trim().toLowerCase()
+
+/** Gli esercizi di una sua giornata, con i nomi TUOI: l'import li ha rinominati. */
+function previstiDi(s: (typeof SEDUTE_RS)[number]): string[] {
+  return s.esercizi.map((e) => {
+    const r = RINOMINE[e.nome]
+    return r == null ? e.nome : Array.isArray(r) ? r[0] : r
+  })
+}
+
+/** La giornata scritta nel nome del template da cui e' partita la seduta. */
+function daTemplate(nomeTemplate: string): Giornata | null {
+  const codice = nomeTemplate.match(/\bD[1-5]\b/)?.[0]
+  const s = SEDUTE_RS.find((x) => x.codice === codice)
+  return s ? { codice: s.codice, nome: s.nome, previsti: previstiDi(s) } : null
+}
+
 /**
- * A quale giornata del coach somiglia questa seduta.
+ * A quale giornata del coach somiglia questa seduta, quando non si sa da dove
+ * e' partita.
  *
- * Si guarda quanti dei suoi esercizi ritrovi in quello che hai fatto: e' piu'
- * solido del nome della seduta, che puo' essere qualsiasi cosa, e del tipo
- * (push/pull), che da solo non distingue D4 da D5.
+ * E' una supposizione, e va trattata come tale: prima bastava un esercizio in
+ * comune e mezzo storico finiva marcato "dal coach" — leg extension e squat li
+ * fai anche nei TUOI allenamenti. Ora deve tornare da entrambe le parti: quasi
+ * tutta la sua giornata dentro la tua seduta, e quasi tutta la tua seduta dentro
+ * la sua giornata. Nel dubbio, la seduta resta tua.
  */
-function riconosci(nomiFatti: string[]): { codice: string; nome: string; previsti: string[] } | null {
-  const norm = (s: string) => s.trim().toLowerCase()
-  const fatti = new Set(nomiFatti.map(norm))
-  let migliore: { codice: string; nome: string; previsti: string[]; punti: number } | null = null
+function riconosci(nomiFatti: string[]): Giornata | null {
+  const fatti = new Set(nomiFatti.filter(Boolean).map(norm))
+  if (fatti.size < 3) return null
+  let migliore: (Giornata & { punti: number }) | null = null
 
   for (const s of SEDUTE_RS) {
-    // Il confronto va fatto sui nomi TUOI: l'import li ha rinominati, e senza la
-    // stessa traduzione qui non si riconoscerebbe mai nessuna seduta.
-    const previsti = s.esercizi.map((e) => {
-      const r = RINOMINE[e.nome]
-      return r == null ? e.nome : Array.isArray(r) ? r[0] : r
-    })
+    const previsti = previstiDi(s)
     const punti = previsti.filter((p) => fatti.has(norm(p))).length
-    if (punti > 0 && (!migliore || punti > migliore.punti)) {
+    const suoi = punti / previsti.length      // quanto della sua giornata hai fatto
+    const tuoi = punti / fatti.size           // quanto della tua seduta e' sua
+    if (punti >= 4 && suoi >= 0.7 && tuoi >= 0.7 && (!migliore || punti > migliore.punti)) {
       migliore = { codice: s.codice, nome: s.nome, previsti, punti }
     }
   }
   return migliore
+}
+
+/**
+ * La giornata del coach di questa seduta, se e' davvero sua.
+ *
+ * Il template di partenza e' una prova, i nomi degli esercizi solo un indizio:
+ * l'indizio si usa solo dove la prova manca, e mai prima che il protocollo
+ * esistesse — quello che hai fatto a luglio non puo' venire da una scheda che
+ * parte ad agosto.
+ */
+function giornataDi(sess: { srcTemplateId?: string | null; date: string }, nomi: string[], nomiTemplate: Map<string, string>, inizioRs: string | null): Giornata | null {
+  const tpl = sess.srcTemplateId ? nomiTemplate.get(sess.srcTemplateId) : undefined
+  if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl) : null
+  if (!inizioRs || sess.date < inizioRs) return null
+  return riconosci(nomi)
+}
+
+/** Il nome del template da cui e' partita la seduta: e' come la chiami tu. */
+function nomeTuo(sess: { srcTemplateId?: string | null; type: string }, nomiTemplate: Map<string, string>): string | null {
+  const tpl = sess.srcTemplateId ? nomiTemplate.get(sess.srcTemplateId) : undefined
+  return tpl && !tpl.trimStart().startsWith('🦠') ? tpl : null
+}
+
+/**
+ * Da quando il protocollo esiste dentro l'app: il giorno dell'import.
+ *
+ * Non la settimana 1 del coach — quella e' una data che scegli tu e che puo'
+ * stare nel futuro, mentre le sue sedute le stai gia' facendo. Qui serve un
+ * fatto, e il fatto e' che prima dell'import quelle schede non c'erano: tutto
+ * cio' che hai allenato prima e' roba tua.
+ */
+async function inizioProtocollo(): Promise<string | null> {
+  const u = await db.users.get(U)
+  if (u?.rsActive === false) return null
+  const suoi = (await db.templates.where('userId').equals(U).toArray())
+    .filter((t) => t.name.trimStart().startsWith('🦠'))
+    .map((t) => t.createdAt)
+    .sort()
+  return suoi.length ? suoi[0].slice(0, 10) : null
+}
+
+async function templateNames(): Promise<Map<string, string>> {
+  return new Map((await db.templates.where('userId').equals(U).toArray()).map((t) => [t.id, t.name]))
 }
 
 /** La seduta del giorno, pronta per il coach. */
@@ -90,7 +152,10 @@ export async function sedutaRs(date: string): Promise<SedutaRs | null> {
     }
   }
 
-  const g = riconosci(esercizi.map((e) => e.nome))
+  const nomiTpl = await templateNames()
+  const inizio = await inizioProtocollo()
+  const nomi = esercizi.map((e) => e.nome)
+  const g = sessioni.map((s) => giornataDi(s, nomi, nomiTpl, inizio)).find(Boolean) ?? null
   if (g) {
     const previsti = new Set(g.previsti.map((p) => p.trim().toLowerCase()))
     for (const e of esercizi) e.previsto = previsti.has(e.nome.trim().toLowerCase())
@@ -145,6 +210,8 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   const sets = await db.sets.where('userId').equals(U).toArray()
   const serieDi = new Map<string, number>()
   for (const s of sets) serieDi.set(s.entryId, (serieDi.get(s.entryId) ?? 0) + 1)
+  const nomiTpl = await templateNames()
+  const inizio = await inizioProtocollo()
 
   const TIPI: Record<string, string> = {
     push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
@@ -154,7 +221,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   return sessioni.map((s) => {
     const mie = entrate.filter((e) => e.sessionId === s.id)
     const nomi = mie.map((e) => perId.get(e.exerciseId) ?? '')
-    const g = riconosci(nomi)
+    const g = giornataDi(s, nomi, nomiTpl, inizio)
     const ora = (iso: string | null): string | null => {
       if (!iso) return null
       const d = new Date(iso)
@@ -164,7 +231,9 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
       date: s.date,
       dalle: ora(s.startedAt) ?? '',
       alle: ora(s.finishedAt),
-      nome: g?.nome ?? TIPI[s.type] ?? s.type,
+      // Se la seduta e' tua, si chiama come l'hai chiamata tu: il tipo
+      // (Legs, Push) e' l'ultima spiaggia, non il titolo che meriti.
+      nome: g?.nome ?? nomeTuo(s, nomiTpl) ?? TIPI[s.type] ?? s.type,
       delCoach: !!g,
       serie: mie.reduce((n, e) => n + (serieDi.get(e.id) ?? 0), 0),
     }

@@ -100,3 +100,53 @@ export function kcalDaCuore(m: MetricheCuore, peso: number | null, eta: number, 
     : (-55.0969 + 0.6309 * m.media + 0.1988 * peso + 0.2017 * eta) / 4.184
   return kcalMin > 0 ? Math.round(kcalMin * m.minuti) : null
 }
+
+/**
+ * Quanto scende il cuore nel minuto dopo il picco.
+ *
+ * E' l'indicatore piu' onesto di come stai messo a livello cardiaco: due
+ * persone con la stessa media possono avere recuperi opposti, e chi scende in
+ * fretta e' quello allenato. Si misura dal massimo della finestra, perche' e'
+ * li' che lo sforzo e' finito davvero — non alla fine dell'orologio.
+ *
+ * Null se dopo il picco non c'e' un minuto di letture: meglio niente che un
+ * numero costruito su tre battiti.
+ */
+export function recuperoCuore(s: SerieCuore | undefined, da?: string | null, a?: string | null, secondi = 60): { caduta: number; da: number; a: number; secondi: number } | null {
+  if (!s?.bpm?.length) return null
+  const inizio = da ? new Date(da).getTime() : -Infinity
+  const fine = a ? new Date(a).getTime() : Infinity
+
+  let iPicco = -1, picco = -1
+  for (let i = 0; i < s.bpm.length; i++) {
+    const t = istanteDi(s, i)
+    if (t < inizio || t > fine) continue
+    if (s.bpm[i] > picco) { picco = s.bpm[i]; iPicco = i }
+  }
+  if (iPicco < 0) return null
+
+  const passi = Math.round(secondi / s.step)
+  const iDopo = iPicco + passi
+  if (iDopo >= s.bpm.length || istanteDi(s, iDopo) > fine) return null
+
+  // Il minimo nella finestra dopo il picco, non il valore esatto al minuto:
+  // un battito isolato piu' alto falserebbe la lettura.
+  let minDopo = Infinity
+  for (let i = iPicco + 1; i <= iDopo; i++) minDopo = Math.min(minDopo, s.bpm[i])
+  if (!Number.isFinite(minDopo)) return null
+
+  return { caduta: picco - minDopo, da: picco, a: minDopo, secondi }
+}
+
+/** I punti della finestra, per disegnare l'andamento. */
+export function puntiCuore(s: SerieCuore | undefined, da?: string | null, a?: string | null): number[] {
+  if (!s?.bpm?.length) return []
+  const inizio = da ? new Date(da).getTime() : -Infinity
+  const fine = a ? new Date(a).getTime() : Infinity
+  const out: number[] = []
+  for (let i = 0; i < s.bpm.length; i++) {
+    const t = istanteDi(s, i)
+    if (t >= inizio && t <= fine) out.push(s.bpm[i])
+  }
+  return out
+}

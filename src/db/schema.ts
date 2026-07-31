@@ -169,6 +169,12 @@ export interface WorkoutSession extends BaseRecord {
    * si potrebbe distinguere il cuore della seduta da quello del solo cardio.
    */
   hr?: { t0: ISODateTime; step: number; bpm: number[] }
+  /**
+   * Il template da cui e''' partita la seduta. E''' l'''unica prova certa di CHI ha
+   * scritto l'''allenamento: indovinarlo dai nomi degli esercizi marcava come
+   * "del coach" sedute mie che usavano gli stessi attrezzi.
+   */
+  srcTemplateId?: ID | null
 }
 
 /** Un esercizio dentro una seduta (contiene i suoi set). */

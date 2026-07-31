@@ -209,6 +209,9 @@ export async function startFromTemplate(templateId: string, readiness: Readiness
   const tpl = await db.templates.get(templateId)
   if (!tpl) throw new Error('Template non trovato')
   const sessionId = await startSession(tpl.type, readiness)
+  // Da dove viene la seduta lo si sa solo adesso: dopo, restano gli esercizi, e
+  // quelli non dicono chi ha scritto l'allenamento.
+  await db.sessions.update(sessionId, { srcTemplateId: tpl.id })
   const ordered = [...tpl.items].sort((a, b) => a.order - b.order)
   for (const it of ordered) await addExerciseEntry(sessionId, it.exerciseId)
   return sessionId

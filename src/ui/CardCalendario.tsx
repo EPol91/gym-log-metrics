@@ -187,14 +187,16 @@ function DettaglioGiorno({ date, g, onApriSeduta }: {
         </>
       )}
 
+      {/* Il nome per intero, anche su due righe: "Squat…" e "Abducto…" non
+          dicono cosa hai fatto, ed e' l'unica cosa che questa riga deve dire. */}
       {!!sessione?.esercizi?.length && (
         <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
           {sessione.esercizi.map((e) => (
-            <div key={e.id} className="row spread" style={{ padding: '3px 0' }}>
-              <span className="small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div key={e.id} className="row spread" style={{ padding: '3px 0', alignItems: 'baseline', gap: 10 }}>
+              <span className="small" style={{ flex: '1 1 55%', minWidth: 0 }}>
                 {e.nome}
               </span>
-              <span className="muted" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+              <span className="muted" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', textAlign: 'right', flex: '0 1 auto' }}>
                 {e.sets.map((s) => `${s.weight}×${s.reps}`).join('  ')}
               </span>
             </div>
