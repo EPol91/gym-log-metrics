@@ -9,6 +9,8 @@ import { DietScreen } from './ui/DietScreen'
 import { HealthScreen } from './ui/HealthScreen'
 import { RsScreen } from './ui/RsScreen'
 import { RsGiorno } from './ui/RsGiorno'
+import { hrOnSave } from './util/heartRate'
+import { salvaLettureCuore } from './db/repo'
 import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
@@ -66,6 +68,9 @@ function AppScreens() {
   // WHOOP si aggiorna da solo all'apertura, una volta al giorno: i dati vecchi
   // fanno mentire il Coach e i Vitali proprio quando ti dimentichi di premere.
   useEffect(() => watchAutoSync(), [])
+  // Chi salva le letture della fascia lo decide qui: il modulo bluetooth non
+  // conosce il database, e cosi' resta buono anche fuori da questa app.
+  useEffect(() => { hrOnSave((id, serie) => { void salvaLettureCuore(id, serie) }) }, [])
 
   // Nuova versione: si applica da sola (i dati stanno nel DB locale, non si perde nulla).
   // Se sei in mezzo a un allenamento non interrompo: mostro un avviso e aggiorni tu.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { hrStartRecording, hrFlush } from '../util/heartRate'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -661,6 +662,15 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
   const entries = useLiveQuery(() => entriesOf(sessionId), [sessionId]) ?? []
   const exercises = useLiveQuery(allExercises, []) ?? []
   const session = useLiveQuery(() => getSession(sessionId), [sessionId])
+
+  // Il cuore si registra per TUTTA la seduta, non solo nel cardio: un
+  // allenamento coi pesi ha un costo cardiaco, e finora spariva. Parte da solo
+  // se la fascia e' collegata; se la colleghi a meta' riprende da li'.
+  useEffect(() => {
+    if (!session) return
+    hrStartRecording(sessionId, session.hr)
+    return () => { hrFlush() }
+  }, [sessionId, session?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const user = useLiveQuery(getUser, [])
   const nameOf = (id: string) => exercises.find((e) => e.id === id)?.name ?? '—'
   const [picking, setPicking] = useState(false)

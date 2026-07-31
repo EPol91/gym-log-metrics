@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { getSession } from '../db/repo'
+import { Cuore } from './Cuore'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -57,7 +59,7 @@ function NumStep({ label, value, set, step, min }: { label: string; value: numbe
   )
 }
 
-function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number; restingHr?: number; maxHr?: number }) {
+function CardioRow({ c, age, restingHr, maxHr, hrSeduta }: { c: CardioSession; age: number; restingHr?: number; maxHr?: number; hrSeduta?: { t0: string; step: number; bpm: number[] } }) {
   const [edit, setEdit] = useState(false)
   const [dur, setDur] = useState(String(c.durationMin))
   const [bpm, setBpm] = useState(c.avgBpm != null ? String(c.avgBpm) : '')
@@ -86,6 +88,8 @@ function CardioRow({ c, age, restingHr, maxHr }: { c: CardioSession; age: number
         <button className="ghost small" onClick={() => { if (confirm('Eliminare il cardio?')) deleteWithUndo('Cardio eliminato', () => deleteCardio(c.id)) }}>✕</button>
       </div>
       {z && <CardioViz bpm={c.avgBpm} pct={z.pct} zone={z.zone} />}
+      {/* Il cuore del SOLO cardio: stessa lettura della seduta, finestra diversa. */}
+      <Cuore hr={hrSeduta} da={c.startedAt} a={c.endedAt} titolo="Cuore del cardio" />
     </div>
   )
 }
@@ -95,6 +99,8 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
   open: boolean; onOpenChange: (b: boolean) => void
 }) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
+  // Le letture stanno sulla seduta: il cardio ci pesca dentro la sua finestra.
+  const seduta = useLiveQuery(() => getSession(sessionId), [sessionId])
   const user = useLiveQuery(getUser, [])
   // Media WHOOP degli ultimi 7 giorni: se c e, comanda lei.
   const fcWhoop = useLiveQuery(() => restingHrFromWhoop(), [])
@@ -184,7 +190,15 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
     if (durN == null) return
     const avgN = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
     const cal = estimateCalories({ avgHr: avgN, weightKg, age, sex: user?.sex, durationMin: durN }) ?? undefined
-    await addCardio(sessionId, { durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: cal, method, cardioType: ctype })
+    // Gli estremi del blocco: la fine e' adesso, l'inizio e' la fine meno la
+    // durata. Servono a ritagliare il cuore del SOLO cardio dentro le letture
+    // di tutta la seduta — senza, le due finestre coinciderebbero.
+    const fineCardio = new Date()
+    const inizioCardio = new Date(fineCardio.getTime() - durN * 60_000)
+    await addCardio(sessionId, {
+      durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: cal, method, cardioType: ctype,
+      startedAt: inizioCardio.toISOString(), endedAt: fineCardio.toISOString(),
+    })
     setDur(''); setBpm(''); setManual(false); setPendingMax(null)
   }
 
@@ -329,7 +343,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
                 )}
 
                 {list.length > 0 && <label className="fl">In questa seduta</label>}
-                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} />)}
+                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} />)}
               </>
             )}
           </div>

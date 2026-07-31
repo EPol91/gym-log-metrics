@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { fmtData } from '../util/format'
 import { OrarioSeduta } from './OrarioSeduta'
+import { Cuore } from './Cuore'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
@@ -117,6 +118,10 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
         <div className="row spread"><span className="muted">Volume</span><strong>{d.vol} reps</strong></div>
         <div className="row spread"><span className="muted">Tonnellaggio</span><strong>{d.ton} kg</strong></div>
       </div>
+
+      {/* Il cuore di TUTTA la seduta, cardio compreso. Quello del solo cardio
+          sta nel suo blocco: sono due domande diverse, e due riquadri. */}
+      <Cuore hr={d.session.hr} da={d.session.startedAt} a={d.session.finishedAt} titolo="Cuore della seduta" />
 
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button className={edit ? 'sel small' : 'ghost small'} onClick={() => { setEdit((v) => !v); setPicking(false) }}>{edit ? '✓ Fine modifica' : '✎ Modifica'}</button>

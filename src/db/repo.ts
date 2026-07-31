@@ -219,7 +219,7 @@ export async function deleteTemplate(id: string): Promise<Trash> {
 }
 
 // --- Cardio ---
-export interface CardioInput { durationMin: number; avgBpm?: number; maxBpm?: number; calories?: number; method?: CardioMethod; cardioType?: CardioType }
+export interface CardioInput { durationMin: number; avgBpm?: number; maxBpm?: number; calories?: number; method?: CardioMethod; cardioType?: CardioType; startedAt?: string; endedAt?: string }
 
 export async function addCardio(sessionId: string | null, inp: CardioInput): Promise<void> {
   const ts = nowISO()
@@ -231,6 +231,10 @@ export async function addCardio(sessionId: string | null, inp: CardioInput): Pro
     ...(inp.calories != null ? { calories: inp.calories } : {}),
     ...(inp.method != null ? { method: inp.method } : {}),
     ...(inp.cardioType != null ? { cardioType: inp.cardioType } : {}),
+    // Gli estremi del cardio: senza, il suo cuore non si puo' ritagliare da
+    // quello della seduta intera.
+    ...(inp.startedAt ? { startedAt: inp.startedAt } : {}),
+    ...(inp.endedAt ? { endedAt: inp.endedAt } : {}),
   }
   await db.cardio.add(c)
 }
@@ -632,4 +636,9 @@ export async function getOrCreateExercise(name: string, muscle: MuscleGroup = 'a
  */
 export async function setSessionTimes(sessionId: string, startedAt: string, finishedAt: string | null): Promise<void> {
   await db.sessions.update(sessionId, { startedAt, finishedAt, pausedSec: 0, updatedAt: nowISO() })
+}
+
+/** Scrive le letture della fascia dentro la seduta. Chiamata dal registratore. */
+export async function salvaLettureCuore(sessionId: string, serie: { t0: string; step: number; bpm: number[] }): Promise<void> {
+  await db.sessions.update(sessionId, { hr: serie, updatedAt: nowISO() })
 }

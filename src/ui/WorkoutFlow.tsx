@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { hrStopRecording } from '../util/heartRate'
 import { startSession, startFromTemplate, finishSession } from '../db/repo'
 import { StartScreen } from './StartScreen'
 import { ReadinessScreen } from './ReadinessScreen'
@@ -30,6 +31,8 @@ export function WorkoutFlow({ onExit, resumeSessionId, onSessionStarted }: {
     onSessionStarted?.(id) // persiste l'id per sopravvivere a refresh/back
   }
   async function finish() {
+    // Chiusa la seduta si smette di registrare e si scrive l ultima volta.
+    hrStopRecording()
     if (sessionId) await finishSession(sessionId)
     setStep('finish')
   }
