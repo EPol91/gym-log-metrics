@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
-import { TastoFascia } from './fascia'
+import { TastoFascia, ChiediFascia } from './fascia'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -771,6 +771,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
   return (
     <div className="col">
+      {/* La fascia si chiede all'inizio, quando puoi ancora indossarla. */}
+      <ChiediFascia sessionId={sessionId} />
+
       {/* Barra fissa in alto: Home · pallini esercizi · Recupero + durata */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
         <div className="row spread" style={{ gap: 6 }}>

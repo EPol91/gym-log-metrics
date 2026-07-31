@@ -22,6 +22,52 @@ export function useHeartRate() {
 }
 
 /**
+ * La domanda di inizio allenamento: la fascia si mette adesso, non a meta'
+ * seduta quando ti accorgi che il cuore non lo stava registrando nessuno.
+ *
+ * Non puo' collegarsi da sola: il browser apre il Bluetooth solo dopo un tocco
+ * tuo, e nessuna scorciatoia aggira quella regola. Quindi il tocco glielo si
+ * chiede una volta sola, all'inizio, quando serve.
+ */
+export function ChiediFascia({ sessionId }: { sessionId: string }) {
+  const hr = useHeartRate()
+  // Il "non stavolta" vale per QUESTA seduta: legato all'id, non al giorno,
+  // cosi' domani te lo richiede senza che nessuno debba azzerare niente.
+  // Scritto fuori dal componente perche' basta un salto al Riepilogo per
+  // smontarlo, e una domanda a cui hai gia' risposto non si ripete.
+  const chiave = `fascia-no-${sessionId}`
+  const [rifiutato, setRifiutato] = useState(() => {
+    try { return sessionStorage.getItem(chiave) === '1' } catch { return false }
+  })
+  useEffect(() => {
+    try { setRifiutato(sessionStorage.getItem(chiave) === '1') } catch { /* ignore */ }
+  }, [chiave])
+  const rifiuta = () => {
+    try { sessionStorage.setItem(chiave, '1') } catch { /* ignore */ }
+    setRifiutato(true)
+  }
+
+  if (!hr.supported || hr.connected || hr.connecting || rifiutato) return null
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1150, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="card" style={{ width: 'min(420px, calc(100% - 24px))', margin: 0, textAlign: 'center' }}>
+        <div style={{ fontSize: 34, lineHeight: 1, color: 'var(--gold)' }}>♥</div>
+        <h2 style={{ fontSize: 19, margin: '8px 0 2px' }}>Colleghi la fascia?</h2>
+        <p className="muted small" style={{ margin: 0 }}>
+          Il cuore viene registrato per tutta la seduta, cardio compreso.
+        </p>
+        {hr.error && <p className="small" style={{ color: 'var(--bad)' }}>{hr.error}</p>}
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="ghost" style={{ flex: 1 }} onClick={rifiuta}>Non stavolta</button>
+          <button className="primary" style={{ flex: 2 }} onClick={() => void hr.connect()}>Collega</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Il tasto della fascia per la barra dell'allenamento.
  *
  * Collegata mostra i battiti, che e' il motivo per cui la indossi; scollegata

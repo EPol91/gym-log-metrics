@@ -19,7 +19,7 @@ interface BleDevice {
   addEventListener(t: 'gattserverdisconnected', cb: () => void): void
   removeEventListener(t: 'gattserverdisconnected', cb: () => void): void
 }
-interface BleNavigator { bluetooth?: { requestDevice(opts: unknown): Promise<BleDevice> } }
+interface BleNavigator { bluetooth?: { requestDevice(opts: unknown): Promise<BleDevice>; getDevices?(): Promise<BleDevice[]> } }
 
 function ble(): BleNavigator['bluetooth'] | undefined {
   if (typeof navigator === 'undefined') return undefined
@@ -48,7 +48,15 @@ export async function connectHeartRate(
   const bt = ble()
   if (!bt) throw new Error('Web Bluetooth non supportato')
 
-  const device = await bt.requestDevice({ filters: [{ services: ['heart_rate'] }] })
+  // Se il telefono si ricorda gia' la tua fascia, si riaggancia quella e basta:
+  // il selettore e' un passaggio in piu' per scegliere l'unica cosa che hai
+  // addosso. Dove getDevices non c'e' (o non ha ricordi) si torna al selettore.
+  let device: BleDevice | undefined
+  try {
+    const noti = (await bt.getDevices?.()) ?? []
+    device = noti.find((d) => d.gatt != null)
+  } catch { /* niente ricordi: si chiede */ }
+  if (!device) device = await bt.requestDevice({ filters: [{ services: ['heart_rate'] }] })
   const server = await device.gatt!.connect()
   const service = await server.getPrimaryService('heart_rate')
   const ch = await service.getCharacteristic('heart_rate_measurement')
