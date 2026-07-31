@@ -203,6 +203,7 @@ export function DietScreen() {
     : null
   const t = activeType && activeType.targets.kcal > 0 ? activeType.targets : suggested
   const totals = diary?.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  const righeDelGiorno = (diary?.meals ?? []).flatMap((m) => m.entries)
   const kcalPct = t && t.kcal > 0 ? Math.min(100, (totals.kcal / t.kcal) * 100) : 0
 
   // Uscendo dalla modalità selezione azzero le spunte.
@@ -336,7 +337,18 @@ export function DietScreen() {
           </button>
           <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
         </div>
-        <div className="row" style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <div className="row" style={{ flex: 1, justifyContent: 'flex-end', gap: 6 }}>
+          {/* Svuota la giornata. Chiede conferma e resta annullabile: cancellare
+              venti righe per sbaglio e non poter tornare indietro sarebbe grave. */}
+          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Svuota giornata"
+            disabled={righeDelGiorno.length === 0}
+            onClick={async () => {
+              const n = righeDelGiorno.length
+              if (!confirm(`Svuotare la giornata? Vengono tolte tutte e ${n} le righe. I pasti restano.`)) return
+              const ids = righeDelGiorno.map((r) => r.log.id)
+              const tolte = await deleteFoodLogs(ids)
+              pushUndo(`Giornata svuotata · ${n} righe`, () => restoreFoodLogs(tolte))
+            }}>🧹</button>
           <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Obiettivi"
             onClick={() => setShowTargets(true)}>⚙</button>
         </div>
