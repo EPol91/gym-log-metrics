@@ -54,10 +54,19 @@ export function Calendario({ onClose, onApriSeduta }: {
   const [mesiIndietro, setMesiIndietro] = useState(0)
   const [scelto, setScelto] = useState<string | null>(null)
 
-  // Sei settimane per volta: piu' di cosi' non ci sta, meno non basta a capire
-  // il ritmo di un ciclo che va per otto giorni.
-  const fine = mesiIndietro === 0 ? oggi : shiftDate(oggi, -42 * mesiIndietro)
-  const da = lunedi(shiftDate(fine, -41))
+  // Un mese per volta, come un calendario vero: "sei settimane a ritroso"
+  // faceva finire lo stesso mese spezzato su due schermate.
+  const ancora = new Date(oggi + 'T00:00:00')
+  ancora.setDate(1)
+  ancora.setMonth(ancora.getMonth() - mesiIndietro)
+  const anno = ancora.getFullYear(), mese = ancora.getMonth()
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const primo = iso(ancora)
+  const ultimo = iso(new Date(anno, mese + 1, 0))
+  // La griglia parte dal lunedi e finisce alla domenica: le settimane restano
+  // intere, altrimenti i giorni ballano di colonna.
+  const da = lunedi(primo)
+  const fine = shiftDate(lunedi(ultimo), 6)
   const giorni = useLiveQuery(() => calendario(da, fine), [da, fine])
   // Un giorno puo' avere piu' sedute. Prima finivano in una mappa per data e la
   // seconda cancellava la prima: un allenamento che non compare e' peggio di un
@@ -86,9 +95,9 @@ export function Calendario({ onClose, onApriSeduta }: {
         </div>
 
         <div className="row spread" style={{ alignItems: 'center' }}>
-          <button className="chip" onClick={() => setMesiIndietro((v) => v + 1)}>‹ prima</button>
-          <span className="small">{fmtData(da).slice(0, 5)} – {fmtData(fine).slice(0, 5)}</span>
-          <button className="chip" disabled={mesiIndietro === 0} onClick={() => setMesiIndietro((v) => Math.max(0, v - 1))}>dopo ›</button>
+          <button className="chip" onClick={() => setMesiIndietro((v) => v + 1)}>‹</button>
+          <span className="small" style={{ textTransform: 'capitalize' }}>{MESI[mese]} {anno}</span>
+          <button className="chip" disabled={mesiIndietro === 0} onClick={() => setMesiIndietro((v) => Math.max(0, v - 1))}>›</button>
         </div>
 
         <div className="row" style={{ gap: 4, marginTop: 10 }}>
@@ -99,6 +108,10 @@ export function Calendario({ onClose, onApriSeduta }: {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 4 }}>
           {celle.map((d) => {
             const gg = perData.get(d) ?? []
+            // I giorni delle settimane a cavallo appartengono ad altri mesi:
+            // si vedono, ma spenti, cosi' non li scambi per questo mese.
+            const altroMese = d < primo || d > ultimo
+            const futuro = d > oggi
             // Due sedute in un giorno: il quadratino resta uno — la griglia non
             // si allarga — ma si divide, cosi' si vede che sono due e di chi sono.
             const rs = gg.some((g) => g.delCoach), mie = gg.some((g) => !g.delCoach)
@@ -114,6 +127,7 @@ export function Calendario({ onClose, onApriSeduta }: {
                   outline: d === oggi ? '2px solid var(--text)' : 'none', outlineOffset: -2,
                   boxShadow: scelto === d ? '0 0 0 2px var(--text)' : 'none',
                   position: 'relative',
+                  opacity: altroMese ? .35 : futuro ? .55 : 1,
                 }}>
                 {new Date(d + 'T00:00:00').getDate()}
                 {gg.length > 1 && (
