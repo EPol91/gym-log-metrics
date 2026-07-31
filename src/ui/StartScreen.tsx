@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
 import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
+import { PesoOggi } from './PesoOggi'
 import type { WorkoutType } from '../db/schema'
 
 const TYPES: { key: WorkoutType; label: string; hint: string }[] = [
@@ -47,6 +48,10 @@ export function StartScreen({
             style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}>✕</button>
         )}
       </div>
+
+      {/* Il peso si chiede qui, prima di cominciare: a seduta finita te ne sei
+          dimenticato, e quel giorno resta senza il dato che regge i confronti. */}
+      <PesoOggi dentro="seduta" />
 
       {/* Sempre visibile: anche con una sola palestra devi poterla vedere, rilevarla o aggiungerne altre. */}
       {gyms.length > 0 && (

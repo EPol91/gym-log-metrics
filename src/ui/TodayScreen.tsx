@@ -12,6 +12,7 @@ import { fmtOre } from '../util/format'
 import { ScoreRing } from './anim'
 import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
+import { usePesoOggi } from './PesoOggi'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
@@ -142,6 +143,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
   const [salvato, setSalvato] = useState(false)
   const [apri, setApri] = useState(false)
   const n = parseNum(w, { min: 20, max: 400 })
+  const { peso: pesoOggi, letto } = usePesoOggi()
 
   return (
     <>
@@ -151,7 +153,13 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
         {cella(peso?.delta != null ? `${peso.delta > 0 ? '+' : ''}${peso.delta}` : '—', 'vs prec.')}
       </div>
       {!apri ? (
-        <button className="chip" style={{ marginTop: 8 }} onClick={() => setApri(true)}>＋ Peso di oggi</button>
+        // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
+        // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
+        <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
+          style={{ marginTop: 8, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
+          onClick={() => setApri(true)}>
+          {pesoOggi != null ? '✓ Peso di oggi registrato' : '＋ Peso di oggi · manca'}
+        </button>
       ) : (
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
           <input inputMode="decimal" value={w} placeholder={peso ? String(peso.weight) : 'kg'}

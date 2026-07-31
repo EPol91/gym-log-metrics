@@ -5,6 +5,7 @@ import { getTodayReadiness, saveDailyReadiness } from '../db/repo'
 import { workoutPhrase } from '../util/phrases'
 import { whoopDay } from '../db/whoop'
 import { fmtOre } from '../util/format'
+import { PesoOggi } from './PesoOggi'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReadinessCheck } from '../db/schema'
 
@@ -81,6 +82,10 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
       </div>
 
       {prefilled && <p className="muted small" style={{ margin: 0 }}>Risposte di oggi già inserite: conferma o correggi.</p>}
+
+      {/* Il peso sta qui perché qui ci passi ogni giorno: e' il posto dove ricordarlo
+          costa meno. Se c'e' gia', conferma e si fa da parte. */}
+      <PesoOggi dentro="check" />
 
       {/* WHOOP propone, non decide: la tua sensazione resta l'ultima parola. */}
       {whoop && (whoop.recovery != null || whoop.sleepPerf != null) && (
