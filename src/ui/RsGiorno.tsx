@@ -83,10 +83,10 @@ export function RsGiorno() {
   }
 
   return createPortal(
-    <div style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1100, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1100, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="rs-tema" style={{
         width: 'min(520px, 100%)', background: 'var(--surface)', border: '1px solid var(--line)',
-        borderRadius: '18px 18px 0 0', padding: '16px 16px calc(20px + env(safe-area-inset-bottom, 0px))',
+        borderRadius: 18, padding: 16, margin: '0 8px',
       }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--rs)" strokeWidth="1.8" strokeLinecap="round">

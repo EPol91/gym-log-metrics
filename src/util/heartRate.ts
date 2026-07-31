@@ -78,9 +78,9 @@ export async function connectHeartRate(
 // --- Store singleton: la connessione vive fuori dai componenti React ---
 // così la fascia NON si scollega quando esci dal cardio o cambi schermata.
 export interface HeartRateState {
-  connected: boolean; connecting: boolean; bpm: number | null; avgBpm: number | null; maxBpm: number | null; deviceName: string; error: string | null
+  connected: boolean; connecting: boolean; bpm: number | null; avgBpm: number | null; maxBpm: number | null; minBpm: number | null; deviceName: string; error: string | null
 }
-let hrState: HeartRateState = { connected: false, connecting: false, bpm: null, avgBpm: null, maxBpm: null, deviceName: '', error: null }
+let hrState: HeartRateState = { connected: false, connecting: false, bpm: null, avgBpm: null, maxBpm: null, minBpm: null, deviceName: '', error: null }
 let hrHandle: HeartRateHandle | null = null
 let hrAcc = { sum: 0, count: 0 }
 const hrSubs = new Set<() => void>()
@@ -96,8 +96,9 @@ export async function hrConnect(): Promise<void> {
   try {
     hrHandle = await connectHeartRate(
       (v) => {
+        registra(v)
         hrAcc.sum += v; hrAcc.count++
-        hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count), maxBpm: Math.max(hrState.maxBpm ?? 0, v) })
+        hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count), maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v) })
       },
       () => { hrHandle = null; hrSet({ connected: false, bpm: null }) },
     )
@@ -109,4 +110,59 @@ export async function hrConnect(): Promise<void> {
 }
 
 export function hrDisconnect(): void { hrHandle?.disconnect(); hrHandle = null; hrSet({ connected: false, bpm: null }) }
-export function hrResetAvg(): void { hrAcc = { sum: 0, count: 0 }; hrSet({ avgBpm: null, maxBpm: null }) }
+export function hrResetAvg(): void { hrAcc = { sum: 0, count: 0 }; hrSet({ avgBpm: null, maxBpm: null, minBpm: null }) }
+
+// --- Registrazione per la seduta ---------------------------------------------
+//
+// La media da sola non basta: senza sapere QUANDO e' stata letta, non si puo'
+// distinguere il cuore di tutta la seduta da quello del solo cardio finale.
+// Qui si tiene una lettura ogni cinque secondi, che su novanta minuti fa circa
+// mille numeri — leggeri da salvare, abbastanza fitti da non perdere i picchi.
+
+const PASSO_SEC = 5
+
+let rec: { sessionId: string; t0: number; bpm: number[]; ultimo: number } | null = null
+let salva: ((sessionId: string, serie: { t0: string; step: number; bpm: number[] }) => void) | null = null
+let timer: number | null = null
+
+/** Chi salva le letture (il database) lo decide chi monta l'app, non questo file. */
+export function hrOnSave(fn: typeof salva): void { salva = fn }
+
+/** Comincia a registrare per questa seduta. Ripartire sulla stessa non azzera. */
+export function hrStartRecording(sessionId: string, gia?: { t0: string; step: number; bpm: number[] }): void {
+  if (rec?.sessionId === sessionId) return
+  rec = gia?.bpm?.length
+    ? { sessionId, t0: new Date(gia.t0).getTime(), bpm: [...gia.bpm], ultimo: 0 }
+    : { sessionId, t0: Date.now(), bpm: [], ultimo: 0 }
+  // Ogni trenta secondi si scrive: se l'app muore a meta' seduta non perdi tutto.
+  if (timer == null) timer = setInterval(() => hrFlush(), 30_000) as unknown as number
+}
+
+/** Scrive quello che c'e' adesso. */
+export function hrFlush(): void {
+  if (!rec || !salva || !rec.bpm.length) return
+  salva(rec.sessionId, { t0: new Date(rec.t0).toISOString(), step: PASSO_SEC, bpm: rec.bpm })
+}
+
+/** Chiude la registrazione della seduta e scrive l'ultima volta. */
+export function hrStopRecording(): void {
+  hrFlush()
+  rec = null
+  if (timer != null) { clearInterval(timer); timer = null }
+}
+
+export function hrRecordingFor(): string | null { return rec?.sessionId ?? null }
+
+/**
+ * Mette la lettura nella casella giusta secondo il tempo passato: se la fascia
+ * tace per un minuto restano buchi, e i buchi sono la verita' — riempirli
+ * inventerebbe battiti che non ci sono stati.
+ */
+function registra(v: number): void {
+  if (!rec) return
+  const i = Math.floor((Date.now() - rec.t0) / (PASSO_SEC * 1000))
+  if (i < 0) return
+  while (rec.bpm.length < i) rec.bpm.push(rec.bpm[rec.bpm.length - 1] ?? v)
+  rec.bpm[i] = v
+  rec.ultimo = v
+}

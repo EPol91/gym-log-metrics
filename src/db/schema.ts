@@ -163,6 +163,12 @@ export interface WorkoutSession extends BaseRecord {
   phaseId: ID | null
   readiness: ReadinessCheck | null
   notes: string
+  /**
+   * Le letture della fascia durante TUTTA la seduta, campionate: istante della
+   * prima, passo in secondi, battiti in fila. Senza l'orario di ogni lettura non
+   * si potrebbe distinguere il cuore della seduta da quello del solo cardio.
+   */
+  hr?: { t0: ISODateTime; step: number; bpm: number[] }
 }
 
 /** Un esercizio dentro una seduta (contiene i suoi set). */
@@ -492,6 +498,10 @@ export interface CardioSession extends BaseRecord {
   sessionId: ID | null // se collegato a un workout
   date: ISODate
   durationMin: number
+  /** Quando e' cominciato e finito: e' cio' che permette di ritagliare il cuore
+   *  del SOLO cardio dentro le letture di tutta la seduta. */
+  startedAt?: ISODateTime
+  endedAt?: ISODateTime
   avgBpm?: number
   maxBpm?: number
   calories?: number // stima teorica (Keytel)
