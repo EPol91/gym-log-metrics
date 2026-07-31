@@ -81,6 +81,19 @@ export interface RsDay extends BaseRecord {
   inviatoAt?: ISODateTime
 }
 
+/**
+ * Il check settimanale per il coach: il testo (composto e poi corretto da te),
+ * le foto e lo stato verso di lui.
+ */
+export interface RsCheck extends BaseRecord {
+  settimana: number
+  testo: string
+  stato: 'da-inviare' | 'inviato' | 'modificato'
+  inviatoAt?: ISODateTime
+  /** foto scelte da te, tenute qui finche' non partono */
+  foto: string[]
+}
+
 /** Livello di attivita quotidiana: moltiplica il metabolismo basale. */
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh'
 /** Formula per il metabolismo basale. */

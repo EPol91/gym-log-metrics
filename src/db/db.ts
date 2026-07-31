@@ -7,7 +7,7 @@ import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
   DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
-  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout, DayTemplate, RsDay,
+  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout, DayTemplate, RsDay, RsCheck,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -37,6 +37,7 @@ export class GymLogDB extends Dexie {
   whoopWorkouts!: Table<WhoopWorkout, string>
   dayTemplates!: Table<DayTemplate, string>
   rsDays!: Table<RsDay, string>
+  rsChecks!: Table<RsCheck, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -158,6 +159,12 @@ export class GymLogDB extends Dexie {
     // vorrebbe dire avere due verita' sullo stesso dato e non sapere quale vale.
     this.version(14).stores({
       rsDays: 'id, userId, date',
+    })
+
+    // v15 — il check settimanale: uno per settimana del protocollo, col testo
+    // che correggi tu, le foto e lo stato verso il coach.
+    this.version(15).stores({
+      rsChecks: 'id, userId, settimana',
     })
 
   }

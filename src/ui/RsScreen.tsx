@@ -15,6 +15,8 @@ import {
   notaAutomatica, RS_START_DEFAULT, type RsValore,
 } from '../rs/rs'
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
+import { sedutaRs } from '../rs/allenamento'
+import { numeriSettimana, testoSettimana, periodo, checkSettimana, salvaCheck, aggiungiFoto, togliFoto, settimanaCorrente } from '../rs/settimana'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
 const ico = (d: React.ReactNode) => (
@@ -34,6 +36,7 @@ export function RsScreen() {
   const user = useLiveQuery(getUser, [])
   const [date, setDate] = useState(todayLocal())
   const [impostazioni, setImpostazioni] = useState(false)
+  const [sezione, setSezione] = useState<'giornata'|'allenamento'|'settimana'>('giornata')
   const [inModifica, setInModifica] = useState<RsCampo | null>(null)
 
   const inizio = user?.rsStart ?? RS_START_DEFAULT
@@ -72,13 +75,26 @@ export function RsScreen() {
         </div>
       )}
 
-      <div className="row spread" style={{ marginTop: 2 }}>
-        <button className="chip" onClick={() => setDate(shiftDate(date, -1))}>‹ giorno prima</button>
-        <span className="small">{date === todayLocal() ? 'oggi' : fmtData(date)}</span>
-        <button className="chip" disabled={date >= todayLocal()} onClick={() => setDate(shiftDate(date, 1))}>giorno dopo ›</button>
+      {/* Tre cose diverse, tre sezioni: la giornata coi suoi campi, la seduta
+          pronta per lui, e il check di fine settimana. */}
+      <div className="row" style={{ gap: 6, marginTop: 2 }}>
+        {([['giornata', 'Giornata'], ['allenamento', 'Allenamento'], ['settimana', 'Settimana']] as const).map(([k, et]) => (
+          <button key={k} className={'chip' + (sezione === k ? ' on' : '')} style={{ flex: 1 }}
+            onClick={() => setSezione(k)}>{et}</button>
+        ))}
       </div>
 
-      {conta && (
+      {sezione === 'settimana' && <CheckSettimanale inizio={inizio} />}
+
+      {sezione !== 'settimana' && (
+        <div className="row spread" style={{ marginTop: 2 }}>
+          <button className="chip" onClick={() => setDate(shiftDate(date, -1))}>‹ giorno prima</button>
+          <span className="small">{date === todayLocal() ? 'oggi' : fmtData(date)}</span>
+          <button className="chip" disabled={date >= todayLocal()} onClick={() => setDate(shiftDate(date, 1))}>giorno dopo ›</button>
+        </div>
+      )}
+
+      {sezione === 'giornata' && conta && (
         <div className="card" style={{ marginBottom: 0 }}>
           <div className="row" style={{ gap: 8 }}>
             <span className="pallino auto" />
@@ -95,7 +111,9 @@ export function RsScreen() {
         </div>
       )}
 
-      {giornata && GRUPPI.map((g) => (
+      {sezione === 'allenamento' && <SedutaCard date={date} />}
+
+      {sezione === 'giornata' && giornata && GRUPPI.map((g) => (
         <div key={g.key}>
           <div className="row" style={{ gap: 6, margin: '12px 0 2px', color: 'var(--muted)' }}>
             {ICONE[g.key]}
@@ -314,6 +332,130 @@ function ImportProtocollo() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/** L'allenamento del giorno, nel formato del coach. */
+function SedutaCard({ date }: { date: string }) {
+  const s = useLiveQuery(() => sedutaRs(date), [date])
+  if (!s) return null
+  return (
+    <div className="card" style={{ marginBottom: 0 }}>
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <label className="fl" style={{ margin: 0 }}>Allenamento</label>
+        <span className="small" style={{ color: 'var(--gold)' }}>
+          {s.nome ?? 'seduta tua'}{s.aderenzaLogistica != null ? ` · ${s.aderenzaLogistica}%` : ''}
+        </span>
+      </div>
+      {s.esercizi.filter((e) => e.serie.length).map((e, i) => (
+        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+          <div className="row spread">
+            <span style={{ fontSize: 13.5, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {e.nome}{!e.previsto && <span className="muted" style={{ fontSize: 11 }}> · fuori scheda</span>}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+              {e.serie.map((x) => `${x.kg}×${x.reps}`).join('  ')}
+            </span>
+          </div>
+          {e.prescrizione && <div className="muted" style={{ fontSize: 10.5, marginTop: 2 }}>{e.prescrizione}</div>}
+        </div>
+      ))}
+      <p className="muted small" style={{ margin: '8px 0 0' }}>
+        {s.serieTotali} serie. Stimolo, pump, tecnica e compensi restano tuoi: li scrivi tu.
+      </p>
+    </div>
+  )
+}
+
+/** Il check settimanale: i numeri della settimana, il testo, le foto, lo stato. */
+function CheckSettimanale({ inizio }: { inizio: string }) {
+  const [n, setN] = useState(() => settimanaCorrente(inizio, todayLocal()))
+  const numeri = useLiveQuery(() => numeriSettimana(inizio, n), [inizio, n])
+  const salvato = useLiveQuery(() => checkSettimana(n), [n])
+  const [testo, setTesto] = useState<string | null>(null)
+
+  if (!numeri) return null
+  const composto = testoSettimana(n, numeri)
+  const attuale = testo ?? salvato?.testo ?? composto
+
+  const riga = (et: string, v: string) => (
+    <div className="row spread" style={{ padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+      <span className="small" style={{ flex: 1 }}>{et}</span>
+      <span style={{ fontSize: 14, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+    </div>
+  )
+
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <button className="chip" disabled={n <= 1} onClick={() => { setN(n - 1); setTesto(null) }}>
+          {n <= 1 ? '‹' : `‹ sett. ${n - 1}`}
+        </button>
+        <span className="small">Settimana {n} · {periodo(inizio, n)}</span>
+        <button className="chip" onClick={() => { setN(n + 1); setTesto(null) }}>sett. {n + 1} ›</button>
+      </div>
+
+      {salvato?.stato === 'inviato' && (
+        <div className="card" style={{ marginBottom: 0, borderColor: 'var(--good)' }}>
+          <span className="small" style={{ color: 'var(--good)' }}>✓ Inviato</span>
+        </div>
+      )}
+      {salvato?.stato === 'modificato' && (
+        <div className="card" style={{ marginBottom: 0, borderColor: 'var(--gold)' }}>
+          <p className="small" style={{ margin: 0 }}>Modificato dopo l'invio: il coach ha ancora la versione di prima.</p>
+        </div>
+      )}
+
+      <div className="card" style={{ marginBottom: 0 }}>
+        <label className="fl">La settimana, dai tuoi dati</label>
+        {riga('Peso medio', numeri.pesoMedio != null ? `${numeri.pesoMedio} kg` : '—')}
+        {riga('Variazione sulla scorsa', numeri.delta != null ? `${numeri.delta > 0 ? '+' : ''}${numeri.delta} kg` : '—')}
+        {riga('Aderenza alimentare', numeri.aderenza != null ? `${numeri.aderenza}%` : '—')}
+        {riga('Precisione sui macro', numeri.precisione != null ? `${numeri.precisione}%` : '—')}
+        {riga('Sedute', String(numeri.sedute))}
+        {riga('Passi al giorno', numeri.passiMedi != null ? numeri.passiMedi.toLocaleString('it-IT') : '—')}
+        {riga('Sonno medio', numeri.sonnoMedio != null ? `${Math.floor(numeri.sonnoMedio)}h${String(Math.round((numeri.sonnoMedio % 1) * 60)).padStart(2, '0')}` : '—')}
+        {riga('Recupero medio', numeri.recuperoMedio != null ? `${numeri.recuperoMedio}%` : '—')}
+      </div>
+
+      <div className="card" style={{ marginBottom: 0 }}>
+        <label className="fl">Testo per il coach</label>
+        <textarea rows={6} value={attuale} onChange={(e) => setTesto(e.target.value)} />
+        <div className="row" style={{ gap: 6, marginTop: 8 }}>
+          <button className="chip" onClick={() => { setTesto(composto); salvaCheck(n, composto) }}>↺ Ricomponi</button>
+          <button className="chip" onClick={() => salvaCheck(n, attuale)}>Salva</button>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 0 }}>
+        <label className="fl">Foto</label>
+        <input type="file" accept="image/*" multiple onChange={async (e) => {
+          for (const f of Array.from(e.target.files ?? [])) {
+            const dataUrl = await new Promise<string>((res) => {
+              const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(f)
+            })
+            await aggiungiFoto(n, dataUrl)
+          }
+          e.target.value = ''
+        }} />
+        {!!salvato?.foto?.length && (
+          <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
+            {salvato.foto.map((f, i) => (
+              <span key={i} style={{ position: 'relative' }}>
+                <img src={f} alt="" style={{ width: 62, height: 62, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                <button className="chip" style={{ position: 'absolute', top: -6, right: -6, padding: '2px 7px' }}
+                  onClick={() => togliFoto(n, i)}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button className="primary" style={{ width: '100%' }} disabled
+        title="Serve il collegamento al coach">
+        Invia il check — in attesa del collegamento
+      </button>
     </div>
   )
 }

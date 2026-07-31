@@ -19,6 +19,7 @@ import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
 import { statoDieta, sostituzioni } from './dieta'
+import { sedutaRs } from './allenamento'
 import type { RsDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -172,6 +173,12 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
     // precedenti sullo stesso esercizio. Se ti sei allenato e non e' successo,
     // la risposta e' No — non vuoto: il coach deve poter distinguere.
     out.perf_up = (await haPr(sedute.map((s) => s.id), tutte, date)) ? 'S' : 'N'
+    // Aderenza logistica: quanti degli esercizi previsti dalla sua giornata hai
+    // davvero fatto. Si compila solo se la seduta somiglia a una delle sue:
+    // su un allenamento tuo non c'e' niente rispetto a cui essere aderente.
+    const seduta = await sedutaRs(date)
+    if (seduta?.aderenzaLogistica != null) out.aderenza_logistica = num(seduta.aderenzaLogistica)
+    if (seduta?.nome) out.workout = seduta.nome.replace('🦠 ', '')
   }
 
   const check = (await db.readinessChecks.where('userId').equals(U).toArray()).find((c) => c.date === date)
