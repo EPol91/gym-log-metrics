@@ -78,6 +78,24 @@ async function tutte<T>(path: string, start: string, maxPagine = 60): Promise<{ 
   return { righe: out, troncato: true }
 }
 
+/**
+ * Come `tutte`, più una chiamata secca ai record più recenti SENZA filtro di data.
+ * Il ciclo di oggi non è ancora finito e il recupero appena calcolato può non
+ * rientrare in una collezione filtrata per data: chiedere esplicitamente gli
+ * ultimi costa una chiamata e toglie di mezzo il dubbio.
+ */
+async function ultimiPiu<T>(path: string, start: string, chiave: (r: T) => string): Promise<{ righe: T[]; troncato: boolean }> {
+  const base = await tutte<T>(path, start)
+  let recenti: T[] = []
+  try {
+    const r = await api<Paged<T>>(path, { limit: '10' })
+    recenti = r.records ?? []
+  } catch { /* il di più non deve far fallire il resto */ }
+  const per = new Map(base.righe.map((r) => [chiave(r), r]))
+  for (const r of recenti) per.set(chiave(r), r)
+  return { righe: [...per.values()], troncato: base.troncato }
+}
+
 // --- Traduzione -------------------------------------------------------------
 
 /** Giorno locale di un istante ISO: WHOOP ragiona in UTC, noi in giorni tuoi. */
@@ -86,9 +104,9 @@ const giorno = (iso: string): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-interface CycleRec { id: number; start: string; end?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number } }
-interface RecoveryRec { cycle_id: number; score?: { recovery_score?: number; resting_heart_rate?: number; hrv_rmssd_milli?: number; spo2_percentage?: number; skin_temp_celsius?: number } }
-interface SleepRec { id: string; start: string; end: string; nap?: boolean; score?: { respiratory_rate?: number; sleep_performance_percentage?: number; sleep_efficiency_percentage?: number; stage_summary?: { total_in_bed_time_milli?: number; total_awake_time_milli?: number } } }
+interface CycleRec { id: number; start: string; end?: string; score_state?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number } }
+interface RecoveryRec { cycle_id: number; sleep_id?: string; score_state?: string; score?: { recovery_score?: number; resting_heart_rate?: number; hrv_rmssd_milli?: number; spo2_percentage?: number; skin_temp_celsius?: number } }
+interface SleepRec { id: string; start: string; end: string; nap?: boolean; score_state?: string; score?: { respiratory_rate?: number; sleep_performance_percentage?: number; sleep_efficiency_percentage?: number; stage_summary?: { total_in_bed_time_milli?: number; total_awake_time_milli?: number } } }
 interface WorkoutRec { id: string; start: string; end: string; sport_name?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number; distance_meter?: number } }
 
 /** Toglie i campi vuoti, così un dato che non c'è non cancella quello che c'era. */
@@ -106,15 +124,13 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
   const start = new Date(Date.now() - giorni * 86400_000).toISOString()
 
   // In sequenza, non in parallelo: quattro raffiche insieme avvicinano il limite al minuto.
-  const c1 = await tutte<CycleRec>('/v2/cycle', start)
-  const r1 = await tutte<RecoveryRec>('/v2/recovery', start)
+  const c1 = await ultimiPiu<CycleRec>('/v2/cycle', start, (c) => String(c.id))
+  const r1 = await ultimiPiu<RecoveryRec>('/v2/recovery', start, (r) => String(r.cycle_id))
   const s1 = await tutte<SleepRec>('/v2/activity/sleep', start)
   const w1 = await tutte<WorkoutRec>('/v2/activity/workout', start)
   const cicli = c1.righe, recuperi = r1.righe, sonni = s1.righe, allenamenti = w1.righe
   const troncato = c1.troncato || r1.troncato || s1.troncato || w1.troncato
 
-  // Il recupero è legato al ciclo, non alla data: si aggancia lì.
-  const recPerCiclo = new Map(recuperi.map((r) => [r.cycle_id, r]))
   const perGiorno = new Map<string, Partial<WhoopDay>>()
   const prendi = (data: string) => {
     if (!perGiorno.has(data)) perGiorno.set(data, { date: data })
@@ -127,14 +143,25 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
     g.kcal = kcalDa(c.score?.kilojoule)
     g.avgHr = c.score?.average_heart_rate
     g.maxHr = c.score?.max_heart_rate
-    const r = recPerCiclo.get(c.id)
-    if (r?.score) {
-      g.recovery = r.score.recovery_score
-      g.hrv = arrotonda(r.score.hrv_rmssd_milli)
-      g.restingHr = r.score.resting_heart_rate
-      g.spo2 = arrotonda(r.score.spo2_percentage)
-      g.skinTempC = arrotonda(r.score.skin_temp_celsius)
-    }
+  }
+
+  // Il recupero appartiene alla mattina in cui ti svegli: si aggancia al sonno che
+  // lo ha prodotto, non al ciclo. Passare dal ciclo voleva dire perderlo ogni volta
+  // che WHOOP mandava il recupero prima del ciclo a cui appartiene.
+  const sonnoPerId = new Map(sonni.map((s) => [s.id, s]))
+  const cicloPerId = new Map(cicli.map((c) => [c.id, c]))
+  for (const r of recuperi) {
+    if (!r.score) continue
+    const s = r.sleep_id ? sonnoPerId.get(r.sleep_id) : undefined
+    const c = cicloPerId.get(r.cycle_id)
+    const data = s ? giorno(s.end) : c ? giorno(c.start) : null
+    if (!data) continue
+    const g = prendi(data)
+    g.recovery = r.score.recovery_score
+    g.hrv = arrotonda(r.score.hrv_rmssd_milli)
+    g.restingHr = r.score.resting_heart_rate
+    g.spo2 = arrotonda(r.score.spo2_percentage)
+    g.skinTempC = arrotonda(r.score.skin_temp_celsius)
   }
 
   // Il sonno appartiene alla mattina in cui ti svegli, non alla sera in cui vai a letto.
@@ -295,6 +322,55 @@ export function watchAutoSync(): () => void {
     window.removeEventListener('focus', prova)
   }
 }
+/**
+ * Cosa manda WHOOP, in chiaro.
+ *
+ * Quando un valore non compare le ipotesi sono due — WHOOP non l'ha ancora
+ * pubblicato, oppure l'app lo sta buttando via — e da fuori si somigliano.
+ * Questo elenca i record grezzi degli ultimi giorni con la data che l'app
+ * assegna a ciascuno: la differenza si legge in un colpo d'occhio.
+ */
+export async function whoopDiag(giorni = 3): Promise<string> {
+  const ora = new Date()
+  const hhmm = (iso: string) => {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  const out: string[] = []
+  out.push(`WHOOP · cosa arriva davvero — ultimi ${giorni} giorni`)
+  out.push(`adesso: ${hhmm(ora.toISOString())} (fuso ${-ora.getTimezoneOffset() / 60 >= 0 ? '+' : ''}${-ora.getTimezoneOffset() / 60})`)
+
+  const start = new Date(Date.now() - giorni * 86400_000).toISOString()
+  try {
+    const cicli = await ultimiPiu<CycleRec>('/v2/cycle', start, (c) => String(c.id))
+    out.push('', `CICLI (${cicli.righe.length})`)
+    for (const c of cicli.righe.sort((a, b) => b.start.localeCompare(a.start))) {
+      out.push(`  ${c.id} · inizio ${hhmm(c.start)} → giorno ${giorno(c.start)} · ${c.score_state ?? 'stato?'} · sforzo ${c.score?.strain ?? '—'}`)
+    }
+
+    const rec = await ultimiPiu<RecoveryRec>('/v2/recovery', start, (r) => String(r.cycle_id))
+    out.push('', `RECUPERI (${rec.righe.length})`)
+    for (const r of rec.righe) {
+      out.push(`  ciclo ${r.cycle_id} · sonno ${r.sleep_id ? r.sleep_id.slice(0, 8) : '—'} · ${r.score_state ?? 'stato?'} · recupero ${r.score?.recovery_score ?? '—'} · HRV ${arrotonda(r.score?.hrv_rmssd_milli) ?? '—'}`)
+    }
+
+    const son = await tutte<SleepRec>('/v2/activity/sleep', start)
+    out.push('', `SONNI (${son.righe.length})`)
+    for (const s of son.righe.sort((a, b) => b.end.localeCompare(a.end))) {
+      const inLetto = s.score?.stage_summary?.total_in_bed_time_milli
+      out.push(`  ${s.id.slice(0, 8)} · sveglia ${hhmm(s.end)} → giorno ${giorno(s.end)} · ${s.nap ? 'pisolino' : 'notte'} · ${s.score_state ?? 'stato?'} · ore ${arrotonda(inLetto != null ? inLetto / 3_600_000 : undefined, 2) ?? '—'}`)
+    }
+  } catch (e) {
+    out.push('', `ERRORE: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  out.push('', 'NEL DATABASE DELL\'APP')
+  for (const d of await whoopDaysRecent(giorni)) {
+    out.push(`  ${d.date} · recupero ${d.recovery ?? '—'} · sonno ${d.sleepHours ?? '—'} · sforzo ${d.strain ?? '—'} · HRV ${d.hrv ?? '—'}`)
+  }
+  return out.join('\n')
+}
+
 /** Cancella la copia locale: si usa quando scolleghi, per non lasciare dati orfani. */
 export async function clearWhoopData(): Promise<void> {
   await db.whoopDays.where('userId').equals(U).delete()

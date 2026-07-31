@@ -3,7 +3,7 @@ import { fmtOre } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   connectUrl, whoopStatus, whoopDisconnect, syncWhoop, whoopDaysRecent, clearWhoopData,
-  lastAutoSync,
+  lastAutoSync, whoopDiag,
   type WhoopStatus,
 } from '../db/whoop'
 
@@ -15,6 +15,7 @@ export function WhoopSettings() {
   const [stato, setStato] = useState<WhoopStatus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [esito, setEsito] = useState<string | null>(null)
+  const [diag, setDiag] = useState<string | null>(null)
   const giorni = useLiveQuery(() => whoopDaysRecent(14), [])
 
   const aggiornaStato = () => whoopStatus().then(setStato)
@@ -104,6 +105,11 @@ export function WhoopSettings() {
 
           <div className="row" style={{ gap: 6, marginTop: 10 }}>
             <button className="chip" disabled={busy === 'sync'} onClick={() => sincronizza(180)}>Scarica 6 mesi</button>
+            <button className="chip" disabled={!!busy}
+              onClick={async () => {
+                setBusy('diag'); setDiag(null)
+                try { setDiag(await whoopDiag(3)) } finally { setBusy(null) }
+              }}>{busy === 'diag' ? 'leggo…' : 'Cosa manda WHOOP'}</button>
             <button className="chip" style={{ color: '#e57373' }} disabled={!!busy}
               onClick={async () => {
                 if (!confirm('Scollegare WHOOP e cancellare i dati scaricati?')) return
@@ -119,6 +125,20 @@ export function WhoopSettings() {
       )}
 
       {esito && <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>{esito}</p>}
+
+      {diag && (
+        <div style={{ marginTop: 10 }}>
+          <pre style={{
+            margin: 0, padding: 10, borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--line)',
+            font: '11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace', color: 'var(--text)',
+            whiteSpace: 'pre', overflowX: 'auto', maxHeight: 320, overflowY: 'auto',
+          }}>{diag}</pre>
+          <div className="row" style={{ gap: 6, marginTop: 6 }}>
+            <button className="chip" onClick={() => { navigator.clipboard?.writeText(diag); setEsito('Diagnostica copiata.') }}>Copia</button>
+            <button className="chip" onClick={() => setDiag(null)}>Chiudi</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
