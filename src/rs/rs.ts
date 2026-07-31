@@ -17,7 +17,7 @@ import { getNutrition } from '../db/repo'
 import { getHabitValue, STEPS } from '../db/habits'
 import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
-import { CAMPI, DEF, type RsCampo } from './campi'
+import { CAMPI, type RsCampo } from './campi'
 import type { RsDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -158,7 +158,7 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   const tutte = await db.sessions.where('userId').equals(U).toArray()
   const sedute = tutte.filter((s) => s.date === date && s.finishedAt)
   if (sedute.length) {
-    out.workout = sedute.map((s) => s.name ?? s.type).join(' · ')
+    out.workout = sedute.map((s) => s.type).join(' · ')
     // "Aumento prestazione": un massimale stimato che supera tutti quelli
     // precedenti sullo stesso esercizio. Se ti sei allenato e non e' successo,
     // la risposta e' No — non vuoto: il coach deve poter distinguere.

@@ -55,6 +55,12 @@ export interface User extends BaseRecord {
    * dell'app e viaggiare nel backup insieme al resto.
    */
   todayCards?: string[]
+  /** 🦠RS acceso. Assente = acceso: e' il comportamento voluto, si spegne apposta. */
+  rsActive?: boolean
+  /** Data d'inizio della settimana 1 del protocollo del coach. */
+  rsStart?: ISODate
+  /** Chiedere conferma di RS al primo rientro della giornata. */
+  rsAskDaily?: boolean
 }
 
 /**
