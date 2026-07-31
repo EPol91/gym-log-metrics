@@ -1,107 +1,211 @@
-// Quando ti sei allenato, e cosa hai fatto.
+// Il calendario in cima a Oggi, al posto della mano che saluta.
 //
-// Con un ciclo di cinque sedute ogni otto giorni non lo tieni a mente, e a
-// occhio nudo nell'app non c'era da nessuna parte: c'era lo storico, che pero'
-// e' un elenco, non un colpo d'occhio.
-//
-// Chiuso: le ultime due settimane. Aperto: il mese, con il nome della seduta.
+// Un saluto occupa spazio e non dice niente. La data invece la guardi, e col
+// tocco diventa il posto dove vedi quando ti sei allenato e cosa hai fatto —
+// senza passare dallo storico, che e' un elenco e non un colpo d'occhio.
 
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { calendario } from '../rs/allenamento'
+import { createPortal } from 'react-dom'
+import { calendario, type GiornoCalendario } from '../rs/allenamento'
+import { sessionElapsedSec } from '../db/repo'
+import { volume, tonnage } from '../metrics/metrics'
+import { LOCAL_USER_ID } from '../db/seed'
+import { db } from '../db/db'
+import type { SetEntry } from '../db/schema'
 import { todayLocal, shiftDate } from '../util/date'
 import { fmtData } from '../util/format'
 
-const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
 const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+  'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
 
 /** Lunedi della settimana di una data: la griglia parte sempre da li'. */
 const lunedi = (d: string) => shiftDate(d, -((new Date(d + 'T00:00:00').getDay() + 6) % 7))
 
-export function CardCalendario({ onApri }: { onApri?: (date: string) => void }) {
-  const [aperto, setAperto] = useState(false)
+/** Il quadratino della data in cima, che apre il calendario. */
+export function DataDiOggi({ onApri }: { onApri: () => void }) {
+  const oggi = new Date()
+  return (
+    <button onClick={onApri} aria-label="Calendario"
+      style={{
+        background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 12,
+        padding: '6px 10px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.15,
+      }}>
+      <div className="muted" style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+        {['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][oggi.getDay()]}
+      </div>
+      <div style={{ fontSize: 22, color: 'var(--gold)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+        {oggi.getDate()}
+      </div>
+      <div className="muted" style={{ fontSize: 9 }}>
+        {MESI[oggi.getMonth()].slice(0, 3)} {oggi.getFullYear()}
+      </div>
+    </button>
+  )
+}
+
+/** Il calendario a tutta pagina, con il dettaglio del giorno che tocchi. */
+export function Calendario({ onClose, onApriSeduta }: {
+  onClose: () => void
+  onApriSeduta?: (sessionId: string) => void
+}) {
   const oggi = todayLocal()
-  // Chiuso guarda due settimane, aperto sei: si carica solo quello che si vede.
-  const da = lunedi(shiftDate(oggi, aperto ? -35 : -13))
-  const giorni = useLiveQuery(() => calendario(da, oggi), [da, oggi])
+  const [mesiIndietro, setMesiIndietro] = useState(0)
+  const [scelto, setScelto] = useState<string | null>(null)
+
+  // Sei settimane per volta: piu' di cosi' non ci sta, meno non basta a capire
+  // il ritmo di un ciclo che va per otto giorni.
+  const fine = mesiIndietro === 0 ? oggi : shiftDate(oggi, -42 * mesiIndietro)
+  const da = lunedi(shiftDate(fine, -41))
+  const giorni = useLiveQuery(() => calendario(da, fine), [da, fine])
   const perData = new Map((giorni ?? []).map((g) => [g.date, g]))
 
   const celle: string[] = []
-  for (let d = da; d <= oggi; d = shiftDate(d, 1)) celle.push(d)
+  for (let d = da; d <= fine; d = shiftDate(d, 1)) celle.push(d)
 
-  const quadretto = (d: string, grande: boolean) => {
-    const g = perData.get(d)
-    const colore = g ? (g.delCoach ? 'var(--rs)' : 'var(--gold)') : 'transparent'
-    return (
-      <div key={d} onClick={(e) => { e.stopPropagation(); if (g && onApri) onApri(d) }}
-        title={g ? `${fmtData(d)} · ${g.nome}` : fmtData(d)}
+  return createPortal(
+    <div onClick={onClose}
+      style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()}
         style={{
-          flex: grande ? '1 1 0' : '0 0 auto',
-          width: grande ? undefined : 14, height: grande ? 30 : 14,
-          borderRadius: 4, background: colore,
-          border: '1px solid ' + (g ? colore : 'var(--line)'),
-          display: 'grid', placeItems: 'center',
-          fontSize: 9, color: g ? '#000' : 'var(--muted)',
-          cursor: g ? 'pointer' : 'default',
-          outline: d === oggi ? '1px solid var(--text)' : 'none', outlineOffset: 1,
+          width: 'min(520px, 100%)', maxHeight: '92%', overflowY: 'auto',
+          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px 16px 0 0',
+          padding: '14px 16px calc(14px + env(safe-area-inset-bottom, 0px))',
         }}>
-        {grande ? new Date(d + 'T00:00:00').getDate() : ''}
+        <div className="row spread" style={{ alignItems: 'center', marginBottom: 10 }}>
+          <strong>Calendario</strong>
+          <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
+        </div>
+
+        <div className="row spread" style={{ alignItems: 'center' }}>
+          <button className="chip" onClick={() => setMesiIndietro((v) => v + 1)}>‹ prima</button>
+          <span className="small">{fmtData(da).slice(0, 5)} – {fmtData(fine).slice(0, 5)}</span>
+          <button className="chip" disabled={mesiIndietro === 0} onClick={() => setMesiIndietro((v) => Math.max(0, v - 1))}>dopo ›</button>
+        </div>
+
+        <div className="row" style={{ gap: 4, marginTop: 10 }}>
+          {GIORNI.map((g, i) => (
+            <span key={i} className="muted" style={{ flex: 1, textAlign: 'center', fontSize: 10 }}>{g}</span>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 4 }}>
+          {celle.map((d) => {
+            const g = perData.get(d)
+            const colore = g ? (g.delCoach ? 'var(--rs)' : 'var(--gold)') : 'transparent'
+            return (
+              <button key={d} onClick={() => setScelto(scelto === d ? null : d)}
+                style={{
+                  padding: 0, height: 38, borderRadius: 8, background: colore,
+                  border: '1px solid ' + (g ? colore : 'var(--line)'),
+                  color: g ? '#000' : 'var(--muted)', fontSize: 12,
+                  outline: d === oggi ? '2px solid var(--text)' : 'none', outlineOffset: -2,
+                  boxShadow: scelto === d ? '0 0 0 2px var(--text)' : 'none',
+                }}>
+                {new Date(d + 'T00:00:00').getDate()}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="row" style={{ gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+          <span className="row" style={{ gap: 5 }}>
+            <i style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--rs)' }} />
+            <span className="muted" style={{ fontSize: 11 }}>dal coach</span>
+          </span>
+          <span className="row" style={{ gap: 5 }}>
+            <i style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--gold)' }} />
+            <span className="muted" style={{ fontSize: 11 }}>tua</span>
+          </span>
+          <span className="row" style={{ gap: 5 }}>
+            <i style={{ width: 10, height: 10, borderRadius: 3, border: '1px solid var(--line)' }} />
+            <span className="muted" style={{ fontSize: 11 }}>riposo</span>
+          </span>
+        </div>
+
+        {scelto && <DettaglioGiorno date={scelto} g={perData.get(scelto)} onApriSeduta={onApriSeduta} />}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/** Cosa c'e' dentro la seduta di quel giorno: una lettura sola, non una per riga. */
+async function dettaglio(date: string) {
+  const s = (await db.sessions.where('userId').equals(LOCAL_USER_ID).toArray())
+    .find((x) => x.date === date && x.finishedAt)
+  if (!s) return null
+  const nomi = new Map((await db.exercises.where('userId').equals(LOCAL_USER_ID).toArray()).map((e) => [e.id, e.name]))
+  const entrate = await db.exerciseEntries.where({ sessionId: s.id }).sortBy('order')
+  const esercizi = []
+  let tutti: SetEntry[] = []
+  for (const e of entrate) {
+    const sets = await db.sets.where({ entryId: e.id }).sortBy('order')
+    tutti = tutti.concat(sets)
+    esercizi.push({ id: e.id, nome: nomi.get(e.exerciseId) ?? '—', sets })
+  }
+  return {
+    id: s.id,
+    durationMin: s.finishedAt ? Math.round(sessionElapsedSec(s) / 60) : null,
+    vol: volume(tutti), ton: tonnage(tutti), esercizi,
+  }
+}
+
+/** Cosa hai fatto quel giorno: seduta, orari, durata, volume, esercizi. */
+function DettaglioGiorno({ date, g, onApriSeduta }: {
+  date: string; g?: GiornoCalendario; onApriSeduta?: (id: string) => void
+}) {
+  const sessione = useLiveQuery(() => dettaglio(date), [date])
+
+  if (!g) {
+    return (
+      <div className="card" style={{ marginTop: 12, marginBottom: 0 }}>
+        <div className="row spread"><strong>{fmtData(date)}</strong><span className="muted small">riposo</span></div>
       </div>
     )
   }
 
   return (
-    <div onClick={() => setAperto((v) => !v)} style={{ cursor: 'pointer' }}>
-      <div className="row spread">
-        <span style={LBL}>Calendario</span>
-        <span className="muted small">≡</span>
+    <div className="card" style={{ marginTop: 12, marginBottom: 0, borderColor: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>
+      <div className="row spread" style={{ alignItems: 'baseline' }}>
+        <strong style={{ color: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>{g.nome}</strong>
+        <span className="muted small">{fmtData(date)}</span>
       </div>
 
-      {!aperto ? (
+      <div className="row spread" style={{ marginTop: 8 }}>
+        <span className="muted small">Orario</span>
+        <span className="small">{g.dalle}{g.alle ? ` – ${g.alle}` : ' · in corso'}</span>
+      </div>
+      {sessione?.durationMin != null && (
+        <div className="row spread"><span className="muted small">Durata</span><span className="small">{sessione.durationMin} min</span></div>
+      )}
+      <div className="row spread"><span className="muted small">Serie</span><span className="small">{g.serie}</span></div>
+      {sessione && (
         <>
-          <div className="row" style={{ gap: 4, marginTop: 8, flexWrap: 'nowrap' }}>
-            {celle.map((d) => quadretto(d, false))}
-          </div>
-          <div className="row" style={{ gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-            <span className="row" style={{ gap: 5 }}>
-              <i style={{ width: 9, height: 9, borderRadius: 2, background: 'var(--rs)' }} />
-              <span className="muted" style={{ fontSize: 10 }}>del coach</span>
-            </span>
-            <span className="row" style={{ gap: 5 }}>
-              <i style={{ width: 9, height: 9, borderRadius: 2, background: 'var(--gold)' }} />
-              <span className="muted" style={{ fontSize: 10 }}>tua</span>
-            </span>
-            <span className="row" style={{ gap: 5 }}>
-              <i style={{ width: 9, height: 9, borderRadius: 2, border: '1px solid var(--line)' }} />
-              <span className="muted" style={{ fontSize: 10 }}>riposo</span>
-            </span>
-          </div>
+          <div className="row spread"><span className="muted small">Volume</span><span className="small">{sessione.vol} reps</span></div>
+          <div className="row spread"><span className="muted small">Tonnellaggio</span><span className="small">{sessione.ton} kg</span></div>
         </>
-      ) : (
-        <>
-          <div className="row" style={{ gap: 4, marginTop: 8 }}>
-            {GIORNI.map((g, i) => (
-              <span key={i} className="muted" style={{ flex: 1, textAlign: 'center', fontSize: 9 }}>{g}</span>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 4 }}>
-            {celle.map((d) => quadretto(d, true))}
-          </div>
+      )}
 
-          <div style={{ marginTop: 10 }}>
-            {[...(giorni ?? [])].reverse().slice(0, 8).map((g) => (
-              <div key={g.date} onClick={(e) => { e.stopPropagation(); onApri?.(g.date) }}
-                className="row spread"
-                style={{ padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
-                <span className="small" style={{ color: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>{g.nome}</span>
-                <span className="muted" style={{ fontSize: 11 }}>
-                  {fmtData(g.date).slice(0, 5)} · {g.dalle}{g.alle ? `–${g.alle}` : ''} · {g.serie} serie
-                </span>
-              </div>
-            ))}
-            {!giorni?.length && <p className="muted small" style={{ margin: 0 }}>Nessuna seduta in queste settimane.</p>}
-          </div>
-        </>
+      {!!sessione?.esercizi?.length && (
+        <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+          {sessione.esercizi.map((e) => (
+            <div key={e.id} className="row spread" style={{ padding: '3px 0' }}>
+              <span className="small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {e.nome}
+              </span>
+              <span className="muted" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                {e.sets.map((s) => `${s.weight}×${s.reps}`).join('  ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sessione && onApriSeduta && (
+        <button className="chip" style={{ marginTop: 10 }} onClick={() => onApriSeduta(sessione.id)}>
+          Apri la seduta ›
+        </button>
       )}
     </div>
   )

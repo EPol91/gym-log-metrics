@@ -32,7 +32,9 @@ export function StartScreen({
   // Il 🦠 nel nome dice da dove viene: i suoi da una parte, i tuoi dall'altra.
   // D1…D5: l'ordine e' quello della scheda, non quello in cui sono stati creati.
   const rsTemplates = tutti.filter((t) => t.name.startsWith('🦠')).sort((a, b) => a.name.localeCompare(b.name, 'it'))
-  const templates = tutti.filter((t) => !t.name.startsWith('🦠'))
+  const miei = tutti.filter((t) => !t.name.startsWith('🦠'))
+  const templates = miei.filter((t) => !t.cardio)
+  const cardioTpl = miei.filter((t) => t.cardio)
   const [apriRs, setApriRs] = useState(true)
   const gyms = useLiveQuery(listGyms, []) ?? []
   const defaultGym = gyms.find((g) => g.isDefault) ?? gyms[0]
@@ -137,8 +139,10 @@ export function StartScreen({
       ) : (
         <div className="col" style={{ gap: 8 }}>
           {templates.map((t) => (
+            // Bordo oro come i suoi sono rossi: si distinguono a colpo d'occhio
+            // e si assomigliano nella forma, perche' fanno la stessa cosa.
             <div key={t.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--gold)', borderRadius: 12, padding: '10px 12px' }}>
               <button className="ghost" onClick={() => onTemplate(t.id)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
                 <span style={{ width: 30, height: 30, borderRadius: 8, background: '#20200f', color: 'var(--gold)', display: 'grid', placeItems: 'center', flex: 'none' }}>▶</span>
@@ -152,6 +156,31 @@ export function StartScreen({
             </div>
           ))}
         </div>
+      )}
+
+      {/* Il cardio sta per conto suo: una corsa non e' un allenamento coi pesi,
+          e vederla in mezzo alle schede fa solo confusione quando scegli. */}
+      {cardioTpl.length > 0 && (
+        <>
+          <span style={{ ...SECTION, marginTop: 12 }}>Solo cardio</span>
+          <div className="col" style={{ gap: 8 }}>
+            {cardioTpl.map((t) => (
+              <div key={t.id}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--gold)', borderRadius: 12, padding: '10px 12px' }}>
+                <button className="ghost" onClick={() => onTemplate(t.id)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: '#20200f', color: 'var(--gold)', display: 'grid', placeItems: 'center', flex: 'none' }}>♥</span>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
+                    <span className="muted small">solo cardio</span>
+                  </span>
+                </button>
+                <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
+                <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <span style={{ ...SECTION, marginTop: 12 }}>Nuova seduta vuota</span>

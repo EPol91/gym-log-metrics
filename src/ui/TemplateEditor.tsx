@@ -13,6 +13,7 @@ export function TemplateEditor({ templateId, onBack }: { templateId: string | nu
   const nameOf = (id: string) => exercises.find((e) => e.id === id)?.name ?? '—'
   const [name, setName] = useState('')
   const [type, setType] = useState<WorkoutType>('custom')
+  const [cardio, setCardio] = useState(false)
   const [items, setItems] = useState<string[]>([])
   const [picking, setPicking] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -20,7 +21,7 @@ export function TemplateEditor({ templateId, onBack }: { templateId: string | nu
   useEffect(() => {
     if (!templateId) { setLoaded(true); return } // nuovo: parte vuoto
     if (tpl && !loaded) {
-      setName(tpl.name); setType(tpl.type)
+      setName(tpl.name); setType(tpl.type); setCardio(!!tpl.cardio)
       setItems([...tpl.items].sort((a, b) => a.order - b.order).map((i) => i.exerciseId))
       setLoaded(true)
     }
@@ -33,7 +34,7 @@ export function TemplateEditor({ templateId, onBack }: { templateId: string | nu
   }
 
   async function save() {
-    const payload = { name, type, items: items.map((exerciseId, order) => ({ exerciseId, order })) }
+    const payload = { name, type, cardio, items: items.map((exerciseId, order) => ({ exerciseId, order })) }
     if (templateId) await updateTemplate(templateId, payload)
     else { const id = await createTemplate(name, type); await updateTemplate(id, payload) }
     onBack()
@@ -48,9 +49,21 @@ export function TemplateEditor({ templateId, onBack }: { templateId: string | nu
         <label className="fl">Nome</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="es. Push A" />
         <label className="fl" style={{ marginTop: 8 }}>Tipo</label>
-        <select value={type} onChange={(e) => setType(e.target.value as WorkoutType)}>
+        <select value={type} onChange={(e) => setType(e.target.value as WorkoutType)} disabled={cardio}>
           {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
+
+        {/* Un template senza esercizi puo' essere un cardio o un allenamento che
+            stai ancora costruendo: la differenza la sai solo tu. */}
+        <div className="row spread" style={{ alignItems: 'center', marginTop: 12 }}>
+          <div>
+            <div style={{ fontSize: 14 }}>Solo cardio</div>
+            <p className="muted small" style={{ margin: '2px 0 0' }}>Sta in un elenco suo, fuori dagli allenamenti.</p>
+          </div>
+          <button className={cardio ? 'chip on' : 'chip'} onClick={() => setCardio((v) => !v)}>
+            {cardio ? 'sì' : 'no'}
+          </button>
+        </div>
       </div>
 
       <div className="card">

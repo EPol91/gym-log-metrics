@@ -185,7 +185,7 @@ export async function createTemplate(name: string, type: WorkoutType = 'custom')
   return tpl.id
 }
 
-export async function updateTemplate(id: string, patch: { name?: string; type?: WorkoutType; items?: { exerciseId: string; order: number }[] }): Promise<void> {
+export async function updateTemplate(id: string, patch: { name?: string; type?: WorkoutType; cardio?: boolean; items?: { exerciseId: string; order: number }[] }): Promise<void> {
   await db.templates.update(id, { ...patch, updatedAt: nowISO() })
 }
 

@@ -12,7 +12,7 @@ import { ScoreRing } from './anim'
 import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
 import { usePesoOggi } from './PesoOggi'
-import { CardCalendario } from './CardCalendario'
+import { DataDiOggi, Calendario } from './CardCalendario'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
@@ -25,7 +25,7 @@ const cella = (v: string | number, l: string) => (
   </div>
 )
 
-const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'calendario', 'abitudini']
+const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'abitudini']
 
 /**
  * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
@@ -40,6 +40,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   const home = useLiveQuery(computeHome, [])
   const user = useLiveQuery(getUser, [])
   const ongoing = useLiveQuery(getOngoingSession, [])
+  const [calendario, setCalendario] = useState(false)
   // L'ordine dei riquadri e' una tua scelta, non uno stato temporaneo: sta nel
   // profilo, quindi resiste alla chiusura dell'app e finisce nel backup. Prima
   // viveva nella memoria di sessione e a ogni riavvio tornava quello di fabbrica.
@@ -70,7 +71,6 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
     allenamento: <CardAllenamento home={home} ongoing={ongoing ?? null}
       onStart={onStartWorkout} onResume={onResumeWorkout} />,
-    calendario: <CardCalendario onApri={() => onGo('health')} />,
     abitudini: <CardAbitudini onOpen={() => onGo('health')} />,
   }
 
@@ -79,15 +79,14 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div>
           <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
-          {/* La mano resta incollata al nome: se lo spazio finisce va a capo
-              "Emanuel 👋" insieme, mai la mano da sola su una riga sua.
-              Il corpo si stringe un po' sui telefoni stretti per restare in riga. */}
-          <h1 style={{ fontSize: 'clamp(20px, 6.4vw, 26px)' }}>
-            Ciao{' '}
-            <span style={{ whiteSpace: 'nowrap' }}>{nome ? `${nome} ` : ''}<span className="brand">👋</span></span>
-          </h1>
+          {/* Il corpo si stringe un po' sui telefoni stretti per restare in riga. */}
+          <h1 style={{ fontSize: 'clamp(20px, 6.4vw, 26px)' }}>Ciao{nome ? ` ${nome}` : ''}</h1>
           <p className="muted small" style={{ marginTop: 2 }}>{dailyPhrase()}</p>
         </div>
+        {/* La data al posto del saluto: un "👋" occupa spazio e non dice niente,
+            una data la guardi — e col tocco apre il calendario. */}
+        <div className="row" style={{ gap: 8, alignItems: 'flex-start', flex: '0 0 auto' }}>
+        <DataDiOggi onApri={() => setCalendario(true)} />
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <span className={home?.todayReady == null && vitaliOggi ? 'ring-invito' : undefined}>
@@ -97,7 +96,10 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
             {home?.todayReady == null ? 'Oggi · fai il check' : 'Oggi'}
           </div>
         </button>
+        </div>
       </div>
+
+      {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={() => { setCalendario(false); onGo('health') }} />}
 
       {home && <CoachCard home={home} />}
 

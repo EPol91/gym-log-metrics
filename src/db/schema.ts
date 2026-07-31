@@ -533,4 +533,10 @@ export interface WorkoutTemplate extends BaseRecord {
   name: string
   type: WorkoutType
   items: TemplateItem[]
+  /**
+   * Seduta di solo cardio: sta in un elenco suo, non fra gli allenamenti.
+   * Un template senza esercizi puo' essere sia un cardio sia un allenamento che
+   * stai ancora costruendo — solo tu sai quale, quindi lo dici tu.
+   */
+  cardio?: boolean
 }
