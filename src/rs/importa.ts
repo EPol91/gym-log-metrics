@@ -103,10 +103,27 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
 }
 
 /**
- * Le cinque sedute. La prescrizione del coach cambia per settimana (@A|B|C) e i
- * template dell'app ne tengono una sola: entra per esteso nel nome
- * dell'esercizio? No — resta nel template come descrizione, e il nome
- * dell'esercizio rimane pulito, altrimenti la libreria diventa illeggibile.
+ * La prescrizione del coach finisce fra le note dell'esercizio, insieme alle tue
+ * regolazioni di sellino e schienale: e' li' che guardi mentre carichi i pesi.
+ *
+ * Le tue righe non si toccano MAI: la riga del coach e' l'unica che comincia col
+ * 🦠 e ogni import riscrive solo quella. Se lui cambia la scheda, cambia la sua
+ * riga; quello che hai scritto tu resta dov'era.
+ *
+ * Limite noto: la nota sta sull'esercizio, non sulla singola seduta. Se lo stesso
+ * esercizio comparisse in due sedute con prescrizioni diverse, vincerebbe
+ * l'ultima. Nel protocollo di adesso non succede.
+ */
+async function scriviPrescrizione(id: string, attuali: string | undefined, prescrizione: string): Promise<void> {
+  const tue = (attuali ?? '').split('\n').filter((r) => !r.trimStart().startsWith('🦠'))
+  const righe = [...tue.filter((r) => r.trim()), `🦠 ${prescrizione}`]
+  await db.exercises.update(id, { settings: righe.join('\n'), updatedAt: nowISO() })
+}
+
+/**
+ * Le cinque sedute. Il template dell'app tiene l'elenco degli esercizi in ordine;
+ * ripetizioni, RIR e recupero stanno nelle note dell'esercizio, dove li leggi
+ * mentre ti alleni.
  */
 async function sedute(): Promise<{ nomi: string[]; eserciziCreati: number }> {
   const ts = nowISO()
@@ -117,7 +134,9 @@ async function sedute(): Promise<{ nomi: string[]; eserciziCreati: number }> {
   for (const s of SEDUTE_RS) {
     const items = []
     for (let i = 0; i < s.esercizi.length; i++) {
-      const ex = await getOrCreateExercise(s.esercizi[i].nome, s.esercizi[i].muscolo as MuscleGroup)
+      const e = s.esercizi[i]
+      const ex = await getOrCreateExercise(e.nome, e.muscolo as MuscleGroup)
+      await scriviPrescrizione(ex.id, ex.settings, e.prescrizione)
       items.push({ exerciseId: ex.id, order: i })
     }
     const gia = esistenti.find((t) => t.name === s.nome)
