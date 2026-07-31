@@ -65,16 +65,19 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
   const modelliEsistenti = await db.dayTemplates.where('userId').equals(U).toArray()
   const fatte: string[] = []
 
-  for (const g of GIORNATE_RS) {
-    // 1. obiettivi calorici, accanto ai tuoi
+  // L'ordine delle sue giornate lo decide il protocollo, non l'ordine in cui
+  // sono state create: LOW ON, LOW OFF, HIGH ON, HIGH OFF. Vale anche quando si
+  // aggiorna, altrimenti al secondo import tornano sparse.
+  const primoPosto = Math.max(0, ...tipiEsistenti.filter((t) => !t.name.startsWith('🦠')).map((t) => t.order + 1))
+  for (const [i, g] of GIORNATE_RS.entries()) {
+    const posto = primoPosto + i
     const tipo = tipiEsistenti.find((t) => t.key === g.key)
     if (tipo) {
-      await db.dayTypes.update(tipo.id, { name: g.nome, targets: g.targets, manual: true, updatedAt: ts })
+      await db.dayTypes.update(tipo.id, { name: g.nome, targets: g.targets, manual: true, order: posto, updatedAt: ts })
     } else {
       await db.dayTypes.add({
         id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-        key: g.key, name: g.nome, targets: g.targets, manual: true,
-        order: tipiEsistenti.length + fatte.length,
+        key: g.key, name: g.nome, targets: g.targets, manual: true, order: posto,
       })
     }
 

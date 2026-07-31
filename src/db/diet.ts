@@ -423,9 +423,19 @@ export async function mealCountOn(mealName: string, date: string): Promise<numbe
 
 // --- Giornate tipo -----------------------------------------------------------
 
+/** L'ordine con cui il coach le elenca: si legge cosi' anche qui. */
+const ORDINE_RS = ['🦠 LOW ON', '🦠 LOW OFF', '🦠 HIGH ON', '🦠 HIGH OFF']
+
 export function listDayTemplates() {
   return db.dayTemplates.where('userId').equals(U).toArray()
-    .then((r) => r.sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.name.localeCompare(b.name, 'it')))
+    .then((r) => r.sort((a, b) => {
+      // Le giornate del coach restano nell'ordine del protocollo (LOW ON, LOW
+      // OFF, HIGH ON, HIGH OFF) invece di ballare secondo l'ultimo uso.
+      const rsA = a.name.startsWith('🦠'), rsB = b.name.startsWith('🦠')
+      if (rsA !== rsB) return rsA ? 1 : -1
+      if (rsA && rsB) return ORDINE_RS.indexOf(a.name) - ORDINE_RS.indexOf(b.name)
+      return (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.name.localeCompare(b.name, 'it')
+    }))
 }
 
 /** Fotografa una giornata intera - pasti, ordine e righe - e la salva come modello. */

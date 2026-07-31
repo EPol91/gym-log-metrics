@@ -30,7 +30,8 @@ export function StartScreen({
   const [geoMsg, setGeoMsg] = useState<string | null>(null)
   const tutti = useLiveQuery(listTemplates, []) ?? []
   // Il 🦠 nel nome dice da dove viene: i suoi da una parte, i tuoi dall'altra.
-  const rsTemplates = tutti.filter((t) => t.name.startsWith('🦠'))
+  // D1…D5: l'ordine e' quello della scheda, non quello in cui sono stati creati.
+  const rsTemplates = tutti.filter((t) => t.name.startsWith('🦠')).sort((a, b) => a.name.localeCompare(b.name, 'it'))
   const templates = tutti.filter((t) => !t.name.startsWith('🦠'))
   const [apriRs, setApriRs] = useState(true)
   const gyms = useLiveQuery(listGyms, []) ?? []
