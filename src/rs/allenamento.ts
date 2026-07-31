@@ -173,6 +173,8 @@ export function riassunto(s: SedutaRs): string {
 }
 
 export interface GiornoCalendario {
+  /** la seduta: in un giorno ce ne puo' essere piu' di una */
+  id: string
   date: string
   /** orario registrato dall app, correggibile a mano dal dettaglio seduta */
   dalle: string
@@ -221,6 +223,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
       return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     }
     return {
+      id: s.id,
       date: s.date,
       dalle: ora(s.startedAt) ?? '',
       alle: ora(s.finishedAt),
@@ -230,5 +233,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
       delCoach: !!g,
       serie: mie.reduce((n, e) => n + (serieDi.get(e.id) ?? 0), 0),
     }
-  }).sort((x, y) => x.date.localeCompare(y.date))
+  })// Dentro lo stesso giorno contano gli orari: la prima seduta e' quella
+  // della mattina, non quella che capita per prima nel database.
+  .sort((x, y) => x.date.localeCompare(y.date) || x.dalle.localeCompare(y.dalle))
 }

@@ -59,7 +59,14 @@ export function Calendario({ onClose, onApriSeduta }: {
   const fine = mesiIndietro === 0 ? oggi : shiftDate(oggi, -42 * mesiIndietro)
   const da = lunedi(shiftDate(fine, -41))
   const giorni = useLiveQuery(() => calendario(da, fine), [da, fine])
-  const perData = new Map((giorni ?? []).map((g) => [g.date, g]))
+  // Un giorno puo' avere piu' sedute. Prima finivano in una mappa per data e la
+  // seconda cancellava la prima: un allenamento che non compare e' peggio di un
+  // allenamento scritto male.
+  const perData = new Map<string, GiornoCalendario[]>()
+  for (const g of giorni ?? []) {
+    const lista = perData.get(g.date)
+    if (lista) lista.push(g); else perData.set(g.date, [g])
+  }
 
   const celle: string[] = []
   for (let d = da; d <= fine; d = shiftDate(d, 1)) celle.push(d)
@@ -91,18 +98,30 @@ export function Calendario({ onClose, onApriSeduta }: {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 4 }}>
           {celle.map((d) => {
-            const g = perData.get(d)
-            const colore = g ? (g.delCoach ? 'var(--rs)' : 'var(--gold)') : 'transparent'
+            const gg = perData.get(d) ?? []
+            // Due sedute in un giorno: il quadratino resta uno — la griglia non
+            // si allarga — ma si divide, cosi' si vede che sono due e di chi sono.
+            const rs = gg.some((g) => g.delCoach), mie = gg.some((g) => !g.delCoach)
+            const sfondo = !gg.length ? 'transparent'
+              : rs && mie ? 'linear-gradient(135deg, var(--rs) 0 50%, var(--gold) 50% 100%)'
+              : rs ? 'var(--rs)' : 'var(--gold)'
             return (
               <button key={d} onClick={() => setScelto(scelto === d ? null : d)}
                 style={{
-                  padding: 0, height: 38, borderRadius: 8, background: colore,
-                  border: '1px solid ' + (g ? colore : 'var(--line)'),
-                  color: g ? '#000' : 'var(--muted)', fontSize: 12,
+                  padding: 0, height: 38, borderRadius: 8, background: sfondo,
+                  border: '1px solid ' + (gg.length ? (rs && !mie ? 'var(--rs)' : 'var(--gold)') : 'var(--line)'),
+                  color: gg.length ? '#000' : 'var(--muted)', fontSize: 12,
                   outline: d === oggi ? '2px solid var(--text)' : 'none', outlineOffset: -2,
                   boxShadow: scelto === d ? '0 0 0 2px var(--text)' : 'none',
+                  position: 'relative',
                 }}>
                 {new Date(d + 'T00:00:00').getDate()}
+                {gg.length > 1 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 3, fontSize: 9, fontWeight: 700,
+                    lineHeight: 1, color: '#000', opacity: .75,
+                  }}>×{gg.length}</span>
+                )}
               </button>
             )
           })}
@@ -123,41 +142,47 @@ export function Calendario({ onClose, onApriSeduta }: {
           </span>
         </div>
 
-        {scelto && <DettaglioGiorno date={scelto} g={perData.get(scelto)} onApriSeduta={onApriSeduta} />}
+        {scelto && <DettaglioGiorno date={scelto} gg={perData.get(scelto) ?? []} onApriSeduta={onApriSeduta} />}
       </div>
     </div>,
     document.body,
   )
 }
 
-/** Cosa c'e' dentro la seduta di quel giorno: una lettura sola, non una per riga. */
+/** Cosa c'e' dentro le sedute di quel giorno: una lettura sola, non una per riga. */
 async function dettaglio(date: string) {
-  const s = (await db.sessions.where('userId').equals(LOCAL_USER_ID).toArray())
-    .find((x) => x.date === date && x.finishedAt)
-  if (!s) return null
+  const sedute = (await db.sessions.where('userId').equals(LOCAL_USER_ID).toArray())
+    .filter((x) => x.date === date && x.finishedAt)
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+  if (!sedute.length) return []
   const nomi = new Map((await db.exercises.where('userId').equals(LOCAL_USER_ID).toArray()).map((e) => [e.id, e.name]))
-  const entrate = await db.exerciseEntries.where({ sessionId: s.id }).sortBy('order')
-  const esercizi = []
-  let tutti: SetEntry[] = []
-  for (const e of entrate) {
-    const sets = await db.sets.where({ entryId: e.id }).sortBy('order')
-    tutti = tutti.concat(sets)
-    esercizi.push({ id: e.id, nome: nomi.get(e.exerciseId) ?? '—', sets })
+
+  const out = []
+  for (const s of sedute) {
+    const entrate = await db.exerciseEntries.where({ sessionId: s.id }).sortBy('order')
+    const esercizi = []
+    let tutti: SetEntry[] = []
+    for (const e of entrate) {
+      const sets = await db.sets.where({ entryId: e.id }).sortBy('order')
+      tutti = tutti.concat(sets)
+      esercizi.push({ id: e.id, nome: nomi.get(e.exerciseId) ?? '—', sets })
+    }
+    out.push({
+      id: s.id,
+      durationMin: s.finishedAt ? Math.round(sessionElapsedSec(s) / 60) : null,
+      vol: volume(tutti), ton: tonnage(tutti), esercizi,
+    })
   }
-  return {
-    id: s.id,
-    durationMin: s.finishedAt ? Math.round(sessionElapsedSec(s) / 60) : null,
-    vol: volume(tutti), ton: tonnage(tutti), esercizi,
-  }
+  return out
 }
 
-/** Cosa hai fatto quel giorno: seduta, orari, durata, volume, esercizi. */
-function DettaglioGiorno({ date, g, onApriSeduta }: {
-  date: string; g?: GiornoCalendario; onApriSeduta?: (id: string) => void
+/** Cosa hai fatto quel giorno: tutte le sedute, non solo la prima. */
+function DettaglioGiorno({ date, gg, onApriSeduta }: {
+  date: string; gg: GiornoCalendario[]; onApriSeduta?: (id: string) => void
 }) {
-  const sessione = useLiveQuery(() => dettaglio(date), [date])
+  const sessioni = useLiveQuery(() => dettaglio(date), [date]) ?? []
 
-  if (!g) {
+  if (!gg.length) {
     return (
       <div className="card" style={{ marginTop: 12, marginBottom: 0 }}>
         <div className="row spread"><strong>{fmtData(date)}</strong><span className="muted small">riposo</span></div>
@@ -166,10 +191,26 @@ function DettaglioGiorno({ date, g, onApriSeduta }: {
   }
 
   return (
+    <>
+      {gg.map((g, i) => (
+        <SedutaDelGiorno key={g.id} date={date} g={g} sessione={sessioni.find((s) => s.id === g.id)}
+          numero={gg.length > 1 ? `${i + 1}ª di ${gg.length}` : null} onApriSeduta={onApriSeduta} />
+      ))}
+    </>
+  )
+}
+
+function SedutaDelGiorno({ date, g, sessione, numero, onApriSeduta }: {
+  date: string; g: GiornoCalendario; numero: string | null
+  sessione?: { id: string; durationMin: number | null; vol: number; ton: number; esercizi: { id: string; nome: string; sets: SetEntry[] }[] }
+  onApriSeduta?: (id: string) => void
+}) {
+  return (
     <div className="card" style={{ marginTop: 12, marginBottom: 0, borderColor: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>
       <div className="row spread" style={{ alignItems: 'baseline' }}>
         <strong style={{ color: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>{g.nome}</strong>
-        <span className="muted small">{fmtData(date)}</span>
+        {/* Con due allenamenti in un giorno serve sapere quale stai guardando. */}
+        <span className="muted small">{numero ? `${numero} · ` : ''}{fmtData(date)}</span>
       </div>
 
       <div className="row spread" style={{ marginTop: 8 }}>
