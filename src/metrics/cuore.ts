@@ -62,7 +62,9 @@ export function metricheCuore(
   const dentro: number[] = []
   for (let i = 0; i < s.bpm.length; i++) {
     const t = istanteDi(s, i)
-    if (t >= inizio && t <= fine) dentro.push(s.bpm[i])
+    // Lo zero non e' un battito: e' la fascia che taceva, e non deve entrare
+    // in nessuna media.
+    if (t >= inizio && t <= fine && s.bpm[i] > 0) dentro.push(s.bpm[i])
   }
   if (!dentro.length) return null
 
@@ -132,7 +134,7 @@ export function recuperoCuore(s: SerieCuore | undefined, da?: string | null, a?:
   // Il minimo nella finestra dopo il picco, non il valore esatto al minuto:
   // un battito isolato piu' alto falserebbe la lettura.
   let minDopo = Infinity
-  for (let i = iPicco + 1; i <= iDopo; i++) minDopo = Math.min(minDopo, s.bpm[i])
+  for (let i = iPicco + 1; i <= iDopo; i++) if (s.bpm[i] > 0) minDopo = Math.min(minDopo, s.bpm[i])
   if (!Number.isFinite(minDopo)) return null
 
   return { caduta: picco - minDopo, da: picco, a: minDopo, secondi }
@@ -146,7 +148,7 @@ export function puntiCuore(s: SerieCuore | undefined, da?: string | null, a?: st
   const out: number[] = []
   for (let i = 0; i < s.bpm.length; i++) {
     const t = istanteDi(s, i)
-    if (t >= inizio && t <= fine) out.push(s.bpm[i])
+    if (t >= inizio && t <= fine && s.bpm[i] > 0) out.push(s.bpm[i])
   }
   return out
 }

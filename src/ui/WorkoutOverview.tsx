@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Cuore } from './Cuore'
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { entriesOf, setsOf, allExercises, getSession, cardioOf, sessionElapsedSec } from '../db/repo'
@@ -154,6 +155,9 @@ export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
           ))}
         </div>
       )}
+
+      {/* Il cuore mentre ti alleni, non solo a cose fatte. */}
+      <Cuore hr={d.session?.hr} da={d.session?.startedAt} a={d.session?.finishedAt ?? null} titolo="Cuore della seduta" />
 
       {d.session?.notes && (
         <div className="card">

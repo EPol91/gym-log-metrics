@@ -72,12 +72,11 @@ function AppScreens() {
   // conosce il database, e cosi' resta buono anche fuori da questa app.
   useEffect(() => { hrOnSave((id, serie) => { void salvaLettureCuore(id, serie) }) }, [])
 
-  // Nuova versione: si applica da sola (i dati stanno nel DB locale, non si perde nulla).
-  // Se sei in mezzo a un allenamento non interrompo: mostro un avviso e aggiorni tu.
+  // Nuova versione: NON si applica mai da sola. Applicarla ricarica la pagina, e
+  // ricaricare mentre stai usando l'app — dieta a meta', calendario aperto — e'
+  // esattamente il "si e' rinfrescato tutto da solo" che non deve piu' succedere.
+  // Arriva l'avviso, aggiorni quando ti va bene tu.
   useEffect(() => onUpdateReady(setUpdateReady), [])
-  useEffect(() => {
-    if (updateReady && !navRef.current.workingOut) applyPwaUpdate()
-  }, [updateReady])
 
   // History: ogni navigazione "in profondità" fa pushState; il Back del telefono torna indietro
   // dentro l'app invece di uscire. Refresh: ripristina l'ultimo stato salvato.
@@ -138,6 +137,9 @@ function AppScreens() {
   return (
     <div className="app">
       <RsGiorno />
+      {/* L'avviso sta in tutte le schermate, non solo nell'allenamento: prima
+          fuori di li' l'aggiornamento si prendeva da solo il diritto di ricaricare. */}
+      {updateReady && <UpdateBanner />}
       <div className="screen" key={nav.tab}>
         {nav.tab === 'today' && (
           <TodayScreen

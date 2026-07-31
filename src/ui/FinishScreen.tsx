@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Cuore } from './Cuore'
 import { finishCue } from '../util/sound'
 import { db } from '../db/db'
 import { sessionElapsedSec } from '../db/repo'
@@ -34,7 +35,7 @@ async function sessionStats(sessionId: string) {
     return { durationMin: c.durationMin, avgBpm: c.avgBpm, zone: z }
   })
 
-  return { exercises: entries.length, setCount: sets.length, vol: volume(sets), ton: tonnage(sets), score, cardio, durationMin }
+  return { exercises: entries.length, setCount: sets.length, vol: volume(sets), ton: tonnage(sets), score, cardio, durationMin, session }
 }
 
 export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome: () => void }) {
@@ -64,6 +65,8 @@ export function FinishScreen({ sessionId, onHome }: { sessionId: string; onHome:
             <span className="tag">{stats.score.reliability}</span>
           </div>
           {stats.score.note && <p className="muted small" style={{ marginTop: -6 }}>{stats.score.note}</p>}
+          {/* Quanto ti e' costata davvero: il cuore, subito, non nello storico. */}
+          <Cuore hr={stats.session?.hr} da={stats.session?.startedAt} a={stats.session?.finishedAt ?? null} titolo="Cuore della seduta" />
           <div className="card">
             {stats.durationMin != null && <div className="row spread"><span className="muted">Durata</span><strong>{stats.durationMin} min</strong></div>}
             <div className="row spread"><span className="muted">Esercizi</span><strong>{stats.exercises}</strong></div>

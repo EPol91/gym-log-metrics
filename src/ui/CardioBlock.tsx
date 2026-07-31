@@ -10,23 +10,11 @@ import { computeCardioZone } from '../metrics/cardio'
 import { estimateCalories } from '../util/calories'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
-import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg } from '../util/heartRate'
+import { useHeartRate } from './fascia'
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
 import type { CardioMethod, CardioType, CardioSession, CardioPreset } from '../db/schema'
 
-/** Live BPM da fascia Bluetooth. La connessione vive in un singleton (heartRate.ts):
- *  resta attiva anche uscendo dal cardio/cambiando schermata. Qui ci si limita a leggerlo. */
-function useHeartRate() {
-  const [, force] = useState(0)
-  useEffect(() => hrSubscribe(() => force((x) => x + 1)), [])
-  const s = hrGetState()
-  return {
-    supported: isHeartRateSupported(),
-    connected: s.connected, connecting: s.connecting, bpm: s.bpm, avgBpm: s.avgBpm, maxBpm: s.maxBpm, deviceName: s.deviceName, error: s.error,
-    connect: hrConnect, disconnect: hrDisconnect, resetAvg: hrResetAvg,
-  }
-}
 
 const TYPE_LABEL: Record<CardioType, string> = {
   corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',

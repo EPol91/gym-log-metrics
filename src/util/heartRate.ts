@@ -162,7 +162,11 @@ function registra(v: number): void {
   if (!rec) return
   const i = Math.floor((Date.now() - rec.t0) / (PASSO_SEC * 1000))
   if (i < 0) return
-  while (rec.bpm.length < i) rec.bpm.push(rec.bpm[rec.bpm.length - 1] ?? v)
+  // Le caselle saltate restano vuote, segnate con 0: nessun cuore batte a zero,
+  // e chi legge sa che li' la fascia taceva. Riempirle con l'ultimo battito
+  // buono — come faceva prima, al contrario di quanto diceva questo commento —
+  // inventa minuti interi di sforzo che non hai fatto.
+  while (rec.bpm.length < i) rec.bpm.push(0)
   rec.bpm[i] = v
   rec.ultimo = v
 }

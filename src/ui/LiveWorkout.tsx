@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
+import { TastoFascia } from './fascia'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -738,6 +739,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
           </span>
           <span className="row" style={{ gap: 6, alignItems: 'center', flex: 'none' }}>
             <button className="ghost small" style={{ padding: '8px 10px' }} onClick={() => setCardioOpen(true)} aria-label="Cardio">🏃</button>
+            <TastoFascia />
             {rest == null && <button className="ghost small" style={{ padding: '8px 10px' }} onClick={() => startRest(restDefault, null)} aria-label="Recupero">⏱</button>}
             {session && <WorkoutClock startedAt={session.startedAt} pausedSec={session.pausedSec} />}
           </span>
