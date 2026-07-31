@@ -53,45 +53,38 @@ function daTemplate(nomeTemplate: string): Giornata | null {
 }
 
 /**
- * A quale giornata del coach somiglia questa seduta, quando non si sa da dove
- * e' partita.
+ * Le sedute vecchie non dicono da dove sono partite: per quelle si guarda se la
+ * lista degli esercizi e' ESATTAMENTE una delle sue giornate — tutti i suoi,
+ * nessuno in piu'.
  *
- * E' una supposizione, e va trattata come tale: prima bastava un esercizio in
- * comune e mezzo storico finiva marcato "dal coach" — leg extension e squat li
- * fai anche nei TUOI allenamenti. Ora deve tornare da entrambe le parti: quasi
- * tutta la sua giornata dentro la tua seduta, e quasi tutta la tua seduta dentro
- * la sua giornata. Nel dubbio, la seduta resta tua.
+ * Non e' una somiglianza, e' un'impronta. La somiglianza l'ho gia' provata e
+ * sbagliava: bastava un esercizio in comune, e leg extension e squat li fai
+ * anche negli allenamenti tuoi. Se manca o avanza qualcosa, la seduta e' tua.
  */
-function riconosci(nomiFatti: string[]): Giornata | null {
+function impronta(nomiFatti: string[]): Giornata | null {
   const fatti = new Set(nomiFatti.filter(Boolean).map(norm))
-  if (fatti.size < 3) return null
-  let migliore: (Giornata & { punti: number }) | null = null
-
+  if (!fatti.size) return null
   for (const s of SEDUTE_RS) {
     const previsti = previstiDi(s)
-    const punti = previsti.filter((p) => fatti.has(norm(p))).length
-    const suoi = punti / previsti.length      // quanto della sua giornata hai fatto
-    const tuoi = punti / fatti.size           // quanto della tua seduta e' sua
-    if (punti >= 4 && suoi >= 0.7 && tuoi >= 0.7 && (!migliore || punti > migliore.punti)) {
-      migliore = { codice: s.codice, nome: s.nome, previsti, punti }
-    }
+    const suoi = new Set(previsti.map(norm))
+    if (suoi.size !== fatti.size) continue
+    if ([...suoi].every((p) => fatti.has(p))) return { codice: s.codice, nome: s.nome, previsti }
   }
-  return migliore
+  return null
 }
 
 /**
  * La giornata del coach di questa seduta, se e' davvero sua.
  *
- * Il template di partenza e' una prova, i nomi degli esercizi solo un indizio:
- * l'indizio si usa solo dove la prova manca, e mai prima che il protocollo
- * esistesse — quello che hai fatto a luglio non puo' venire da una scheda che
- * parte ad agosto.
+ * Il template di partenza e' una prova; l'impronta degli esercizi vale solo
+ * dove la prova manca, e mai prima del giorno in cui il protocollo e' entrato
+ * nell'app. Tutto il resto e' tuo.
  */
 function giornataDi(sess: { srcTemplateId?: string | null; date: string }, nomi: string[], nomiTemplate: Map<string, string>, inizioRs: string | null): Giornata | null {
   const tpl = sess.srcTemplateId ? nomiTemplate.get(sess.srcTemplateId) : undefined
   if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl) : null
   if (!inizioRs || sess.date < inizioRs) return null
-  return riconosci(nomi)
+  return impronta(nomi)
 }
 
 /** Il nome del template da cui e' partita la seduta: e' come la chiami tu. */
