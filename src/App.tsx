@@ -7,6 +7,7 @@ import { TodayScreen } from './ui/TodayScreen'
 import { TrainScreen } from './ui/TrainScreen'
 import { DietScreen } from './ui/DietScreen'
 import { HealthScreen } from './ui/HealthScreen'
+import { RsScreen } from './ui/RsScreen'
 import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
@@ -147,6 +148,7 @@ function AppScreens() {
             onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
         {nav.tab === 'food' && <DietScreen />}
         {nav.tab === 'health' && <HealthScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
+        {nav.tab === 'rs' && <RsScreen />}
         {nav.tab === 'profile' && (
           <ProfileScreen
             onEditTemplate={(id) => push({ editTemplate: id })}

@@ -197,6 +197,8 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
     const inLetto = s.score?.stage_summary?.total_in_bed_time_milli
     const sveglio = s.score?.stage_summary?.total_awake_time_milli ?? 0
     if (inLetto != null) g.sleepHours = arrotonda((inLetto - sveglio) / 3_600_000, 2)
+    g.sleepStart = s.start
+    g.sleepEnd = s.end
     g.sleepPerf = arrotonda(s.score?.sleep_performance_percentage, 0)
     g.sleepEfficiency = arrotonda(s.score?.sleep_efficiency_percentage, 0)
     g.respiratoryRate = arrotonda(s.score?.respiratory_rate)

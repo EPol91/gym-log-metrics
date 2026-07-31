@@ -57,6 +57,24 @@ export interface User extends BaseRecord {
   todayCards?: string[]
 }
 
+/**
+ * Una giornata di 🦠RS.
+ *
+ * Dentro ci stanno SOLO i valori che hai scritto tu: il resto si ricalcola dai
+ * tuoi dati a ogni apertura. Salvare anche i valori automatici significherebbe
+ * avere due verita' sullo stesso dato, e non sapere piu' quale guardare.
+ */
+export interface RsDay extends BaseRecord {
+  date: ISODate
+  /** I campi corretti a mano: vincono sul calcolo finche' non li rimetti in automatico. */
+  overrides: Record<string, string>
+  /** La riga che aggiungi tu alla nota composta dai fatti. */
+  nota?: string
+  /** Stato verso il coach. Serve dal passo dell'invio, ma nasce con la riga. */
+  stato?: 'da-inviare' | 'inviato' | 'modificato'
+  inviatoAt?: ISODateTime
+}
+
 /** Livello di attivita quotidiana: moltiplica il metabolismo basale. */
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh'
 /** Formula per il metabolismo basale. */
@@ -406,6 +424,9 @@ export interface WhoopDay extends BaseRecord {
   /** 0-100 */
   sleepPerf?: number
   sleepHours?: number
+  /** Quando sei andato a letto e quando ti sei svegliato: il coach li chiede. */
+  sleepStart?: ISODateTime
+  sleepEnd?: ISODateTime
   sleepEfficiency?: number
   respiratoryRate?: number
   /** 0-21 */

@@ -7,7 +7,7 @@ import type {
   User, Gym, Exercise, WorkoutSession, ExerciseEntry, SetEntry,
   BodyMeasurement, NutritionContext, CardioSession, TrainingPhase, WorkoutTemplate, CardioPreset,
   DailyReadiness, WeeklyGoalChange, Food, FoodLog, SavedMeal, DayType, Meal,
-  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout, DayTemplate,
+  Habit, HabitEntry, Recipe, WhoopDay, WhoopWorkout, DayTemplate, RsDay,
 } from './schema'
 
 export class GymLogDB extends Dexie {
@@ -36,6 +36,7 @@ export class GymLogDB extends Dexie {
   whoopDays!: Table<WhoopDay, string>
   whoopWorkouts!: Table<WhoopWorkout, string>
   dayTemplates!: Table<DayTemplate, string>
+  rsDays!: Table<RsDay, string>
 
   constructor() {
     super('gym-log-metrics')
@@ -150,6 +151,13 @@ export class GymLogDB extends Dexie {
     // vede niente di diverso.
     this.version(13).stores({
       dayTemplates: 'id, userId, name, lastUsedAt',
+    })
+
+    // v14 — 🦠RS: una riga per giornata, con dentro SOLO i valori scritti da te.
+    // Il resto si ricalcola dai tuoi dati: salvare anche i valori automatici
+    // vorrebbe dire avere due verita' sullo stesso dato e non sapere quale vale.
+    this.version(14).stores({
+      rsDays: 'id, userId, date',
     })
 
   }

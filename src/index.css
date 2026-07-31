@@ -13,8 +13,26 @@
   --carb: #FFC63D;
   --prot: #2ecc71;
   --fat: #e74c3c;
+  /* 🦠RS parla la lingua del coach: la sua palette, presa dalla sua app. */
+  --rs: #E1251B;
   color-scheme: dark;
 }
+
+/* Dentro RS l'oro lascia il posto al rosso: e' il segnale che quello che vedi
+   non resta qui, va a lui. Ribaltare le variabili tinge tutti i componenti
+   senza doverne riscrivere nemmeno uno. */
+.rs-tema {
+  --surface: #191919;
+  --surface-2: #1F1F1F;
+  --line: #2A2A2A;
+  --text: #F0F0F0;
+  --muted: #6E6E6E;
+  --gold: var(--rs);
+  --gold-dim: #FF4444;
+  --gold-bg: #2a0e0c;
+  --good: #4ADE80;
+}
+.rs-tema button.primary { color: #fff; }
 
 * { box-sizing: border-box; }
 
@@ -178,4 +196,15 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 }
 .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active { color: var(--gold); }
+/* 🦠RS: senza etichetta occupa meno spazio, e da acceso e' rosso come il coach —
+   l'unico punto dell'app che non e' oro, perche' quella roba non e' tua. */
+.tab-rs { flex: 0 0 46px; }
+.tab-rs.active { color: var(--rs); }
+
+/* Da dove arriva un valore di RS, in un pallino: pieno = calcolato dall'app,
+   bianco = scritto da te, tratteggiato = ancora da compilare. */
+.pallino { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; display: inline-block; }
+.pallino.auto { background: var(--gold); }
+.pallino.mio { background: var(--text); }
+.pallino.vuoto { background: transparent; border: 1px dashed #4a4a4a; width: 8px; height: 8px; }
 .tab-icon { line-height: 0; display: block; }
