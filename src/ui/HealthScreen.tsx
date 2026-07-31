@@ -4,7 +4,7 @@ import { HistoryScreen } from './HistoryScreen'
 import { AnalyticsScreen } from './AnalyticsScreen'
 import { HabitsScreen } from './HabitsScreen'
 import { usePersistedState } from '../util/persist'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { computeHome } from '../scores/dashboardScores'
 import { ScoreRing } from './anim'
 import { ScoreDetail } from './ScoreDetail'
@@ -25,8 +25,11 @@ const TABS: { key: Sub; label: string }[] = [
  * Salute: come stai andando, non come stai adesso. Qui vive tutto ciò che si
  * guarda nel tempo — la regola che tiene separata questa schermata da Oggi.
  */
-export function HealthScreen({ onReopen }: { onReopen?: (id: string) => void }) {
+export function HealthScreen({ onReopen, apriSeduta }: { onReopen?: (id: string) => void; apriSeduta?: string | null }) {
   const [sub, setSub] = usePersistedState<Sub>('health-sub', 'vitali')
+  // Se arrivi qui per vedere una seduta, la scheda giusta e' lo Storico — non
+  // quella che avevi aperto l'ultima volta.
+  useEffect(() => { if (apriSeduta) setSub('history') }, [apriSeduta]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="col" style={{ gap: 10 }}>
@@ -40,7 +43,7 @@ export function HealthScreen({ onReopen }: { onReopen?: (id: string) => void }) 
       {sub === 'body' && <BodyScreen />}
       {sub === 'habits' && <HabitsScreen />}
       {sub === 'analytics' && <Analisi />}
-      {sub === 'history' && <HistoryScreen onReopen={onReopen} />}
+      {sub === 'history' && <HistoryScreen onReopen={onReopen} apri={apriSeduta} />}
     </div>
   )
 }

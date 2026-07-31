@@ -23,8 +23,8 @@ import { watchAutoSync } from './db/whoop'
 import { UndoToast } from './ui/UndoToast'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
-type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean }
-const DEFAULT_NAV: Nav = { tab: 'today', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false }
+type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean; seduta: string | null }
+const DEFAULT_NAV: Nav = { tab: 'today', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false, seduta: null }
 
 // Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
 // aggiornare ricarica la pagina, quindi decidi tu quando.
@@ -146,7 +146,8 @@ function AppScreens() {
             onStartWorkout={() => push({ workingOut: true, resumeId: null })}
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
             onOpenCheck={() => push({ check: true })}
-            onGo={(dove) => push({ tab: dove })}
+            onGo={(dove) => push({ tab: dove, seduta: null })}
+            onApriSeduta={(id) => push({ tab: 'health', seduta: id })}
           />
         )}
         {nav.tab === 'train' && (nav.exercise
@@ -156,7 +157,7 @@ function AppScreens() {
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
             onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
         {nav.tab === 'food' && <DietScreen />}
-        {nav.tab === 'health' && <HealthScreen onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
+        {nav.tab === 'health' && <HealthScreen apriSeduta={nav.seduta} onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
         {nav.tab === 'rs' && <RsScreen />}
         {nav.tab === 'profile' && (
           <ProfileScreen
@@ -165,7 +166,7 @@ function AppScreens() {
           />
         )}
       </div>
-      <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null, exerciseNew: false })} />
+      <Nav tab={nav.tab} onChange={(t) => push({ tab: t, exercise: null, exerciseNew: false, seduta: null })} />
     </div>
   )
 }

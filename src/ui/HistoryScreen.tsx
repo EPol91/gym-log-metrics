@@ -10,8 +10,10 @@ const TYPE_LABEL: Record<string, string> = {
   lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
 }
 
-export function HistoryScreen({ onReopen }: { onReopen?: (id: string) => void }) {
-  const [selected, setSelected] = useState<string | null>(null)
+export function HistoryScreen({ onReopen, apri }: { onReopen?: (id: string) => void; apri?: string | null }) {
+  // Arrivando dal calendario si apre gia' sulla seduta che hai toccato:
+  // "apri la seduta" deve portarti a QUELLA seduta, non a un elenco.
+  const [selected, setSelected] = useState<string | null>(apri ?? null)
   const [filter, setFilter] = useState<string | null>(null)
   const list = useLiveQuery(computeHistory, [])
 

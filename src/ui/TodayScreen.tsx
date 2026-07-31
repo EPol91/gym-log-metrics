@@ -31,11 +31,13 @@ const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'abitudi
  * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
  * in Salute. I riquadri si riordinano tenendoli premuti, come le righe della dieta.
  */
-export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo }: {
+export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo, onApriSeduta }: {
   onStartWorkout: () => void
   onResumeWorkout: (id: string) => void
   onOpenCheck: () => void
   onGo: (dove: 'food' | 'health' | 'train') => void
+  /** "Apri la seduta" dal calendario: porta allo Storico, su QUELLA seduta. */
+  onApriSeduta: (sessionId: string) => void
 }) {
   const home = useLiveQuery(computeHome, [])
   const user = useLiveQuery(getUser, [])
@@ -99,7 +101,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         </div>
       </div>
 
-      {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={() => { setCalendario(false); onGo('health') }} />}
+      {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={(id) => { setCalendario(false); onApriSeduta(id) }} />}
 
       {home && <CoachCard home={home} />}
 
