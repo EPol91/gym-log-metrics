@@ -20,6 +20,7 @@ import { DayCalendar } from './DayCalendar'
 import { usePersistedState } from '../util/persist'
 import { shiftDate } from '../util/date'
 import type { DiaryEntry, DiaryMeal } from '../db/diet'
+import type { DayType } from '../db/schema'
 
 const shift = shiftDate
 const labelFor = (iso: string) => {
@@ -341,15 +342,10 @@ export function DietScreen() {
         </div>
       </div>
 
-      {/* Tipo giornata: sono tre, stanno in riga senza scorrere */}
-      <div className="row" style={{ gap: 6, justifyContent: 'center' }}>
-        {dayTypes.map((d) => (
-          <button key={d.id} className={nutri?.dayType === d.key ? 'chip on' : 'chip'}
-            onClick={() => upsertNutrition(date, { dayType: nutri?.dayType === d.key ? null : d.key as never })}>
-            {d.name}
-          </button>
-        ))}
-      </div>
+      {/* Tipo giornata: due tendine separate, la tua e quella del coach. Tutte in
+          fila diventavano sette voci e non si capiva piu' in quale mondo eri. */}
+      <TendineGiornata dayTypes={dayTypes} scelta={nutri?.dayType ?? null}
+        onScegli={(key) => upsertNutrition(date, { dayType: key as never })} />
 
       {/* Riepilogo macro */}
       <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
@@ -579,5 +575,53 @@ function RipetiIeri({ mealId, mealName, date, onDone }: {
       onClick={async () => onDone(await repeatMealFrom(mealId, ieri))}>
       ⟲ Ripeti ieri ({quante})
     </button>
+  )
+}
+
+/**
+ * Le giornate tipo in due tendine: le tue e quelle del coach.
+ *
+ * Non e' estetica: sono due mondi diversi e sceglierne una sbagliata falsa
+ * gli obiettivi di tutto il giorno. Tenendole separate sai sempre da quale
+ * elenco stai pescando, e quella del coach si riconosce dal rosso.
+ */
+function TendineGiornata({ dayTypes, scelta, onScegli }: {
+  dayTypes: DayType[]; scelta: string | null; onScegli: (key: string | null) => void
+}) {
+  const rs = dayTypes.filter((d) => d.name.startsWith('🦠'))
+  const mie = dayTypes.filter((d) => !d.name.startsWith('🦠'))
+  const attiva = dayTypes.find((d) => d.key === scelta) ?? null
+
+  const tendina = (voci: DayType[], etichetta: string, colore: string) => {
+    if (!voci.length) return null
+    const sceltaQui = voci.some((v) => v.key === scelta)
+    return (
+      <label style={{ flex: 1, minWidth: 0, display: 'block' }}>
+        <span className="muted" style={{ fontSize: 10, letterSpacing: '.06em', display: 'block', marginBottom: 3 }}>{etichetta}</span>
+        <select value={sceltaQui ? scelta! : ''} onChange={(e) => onScegli(e.target.value || null)}
+          style={{
+            padding: '8px 10px', fontSize: 13,
+            borderColor: sceltaQui ? colore : 'var(--line)',
+            color: sceltaQui ? colore : 'var(--muted)',
+          }}>
+          <option value="">—</option>
+          {voci.map((d) => <option key={d.id} value={d.key}>{d.name}</option>)}
+        </select>
+      </label>
+    )
+  }
+
+  return (
+    <>
+      <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+        {tendina(mie, 'LE TUE', 'var(--gold)')}
+        {tendina(rs, '🦠 RS · DAL COACH', 'var(--rs)')}
+      </div>
+      {attiva && attiva.targets.kcal > 0 && (
+        <p className="muted small" style={{ margin: '4px 0 0', textAlign: 'center' }}>
+          {attiva.name} · {attiva.targets.kcal} kcal — C: {attiva.targets.carbs}, P: {attiva.targets.protein}, G: {attiva.targets.fat}
+        </p>
+      )}
+    </>
   )
 }

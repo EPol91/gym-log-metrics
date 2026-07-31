@@ -28,7 +28,11 @@ export function StartScreen({
   const [editId, setEditId] = useState<string | 'new' | null>(null)
   const [locating, setLocating] = useState(false)
   const [geoMsg, setGeoMsg] = useState<string | null>(null)
-  const templates = useLiveQuery(listTemplates, []) ?? []
+  const tutti = useLiveQuery(listTemplates, []) ?? []
+  // Il 🦠 nel nome dice da dove viene: i suoi da una parte, i tuoi dall'altra.
+  const rsTemplates = tutti.filter((t) => t.name.startsWith('🦠'))
+  const templates = tutti.filter((t) => !t.name.startsWith('🦠'))
+  const [apriRs, setApriRs] = useState(true)
   const gyms = useLiveQuery(listGyms, []) ?? []
   const defaultGym = gyms.find((g) => g.isDefault) ?? gyms[0]
 
@@ -92,6 +96,35 @@ export function StartScreen({
             </p>
           )}
         </div>
+      )}
+
+      {/* Due elenchi separati, non una fila sola: i tuoi template e quelli del
+          coach non si mescolano, cosi' sai sempre da dove stai partendo. */}
+      {rsTemplates.length > 0 && (
+        <>
+          <button className="row spread" onClick={() => setApriRs((v) => !v)}
+            style={{ marginTop: 8, width: '100%', background: 'none', border: 'none', padding: 0 }}>
+            <span style={{ ...SECTION, color: 'var(--rs)' }}>🦠 RS · dal coach</span>
+            <span className="muted small">{apriRs ? '▾' : `${rsTemplates.length} ›`}</span>
+          </button>
+          {apriRs && (
+            <div className="col" style={{ gap: 8 }}>
+              {rsTemplates.map((t) => (
+                <div key={t.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--rs)', borderRadius: 12, padding: '10px 12px' }}>
+                  <button className="ghost" onClick={() => onTemplate(t.id)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: '#2a0e0c', color: 'var(--rs)', display: 'grid', placeItems: 'center', flex: 'none' }}>▶</span>
+                    <span>
+                      <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
+                      <span className="muted small">{t.items.length} esercizi · protocollo</span>
+                    </span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <div className="row spread" style={{ marginTop: 8 }}>
