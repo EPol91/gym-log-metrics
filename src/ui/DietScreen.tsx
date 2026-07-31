@@ -21,6 +21,7 @@ import { usePersistedState } from '../util/persist'
 import { shiftDate } from '../util/date'
 import type { DiaryEntry, DiaryMeal } from '../db/diet'
 import type { DayType } from '../db/schema'
+import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 
 const shift = shiftDate
 const labelFor = (iso: string) => {
@@ -62,7 +63,7 @@ const HOLD_MS = 450
  * Riga alimento: tap per aprire la scheda, swipe a sinistra per eliminare,
  * pressione prolungata per sollevarla e spostarla dentro al pasto.
  */
-function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress, lifted, offsetY }: {
+function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress, lifted, offsetY, rs }: {
   e: DiaryEntry
   selectMode: boolean
   selected: boolean
@@ -72,6 +73,8 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
   onPress?: (ev: React.PointerEvent<HTMLDivElement>) => void
   lifted?: boolean
   offsetY?: number
+  /** Modalita' coach: la spunta dice "mangiato davvero", ed e' l'unica cosa che va a lui. */
+  rs?: { spuntata: boolean; dalPiano: boolean; sostituita: boolean; onSpunta: () => void }
 }) {
   const [dx, setDx] = useState(0)
   const start = useRef<number | null>(null)
@@ -122,10 +125,20 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
             display: 'grid', placeItems: 'center', fontSize: 13,
           }}>{selected ? '✓' : ''}</span>
         )}
+        {rs && (
+          <span onClick={(ev) => { ev.stopPropagation(); rs.onSpunta() }}
+            style={{
+              width: 22, height: 22, flex: 'none', borderRadius: '50%',
+              border: '1.5px solid ' + (rs.spuntata ? 'var(--rs)' : 'var(--line)'),
+              background: rs.spuntata ? 'var(--rs)' : 'transparent', color: '#fff',
+              display: 'grid', placeItems: 'center', fontSize: 12,
+            }}>{rs.spuntata ? '✓' : ''}</span>
+        )}
         {isRecipe && <span style={{ flex: 'none', width: 2, alignSelf: 'stretch', background: 'var(--gold)', borderRadius: 2 }} />}
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
             {isRecipe ? '📖 ' : ''}{e.food.name}
+            {rs?.sostituita && <span style={{ color: 'var(--rs)', fontSize: 11 }}> · sostituito</span>}
           </span>
           <span className="muted" style={{ fontSize: 11 }}>
             {e.food.brand ? `${e.food.brand} · ` : ''}{quantita}
@@ -204,6 +217,7 @@ export function DietScreen() {
   const t = activeType && activeType.targets.kcal > 0 ? activeType.targets : suggested
   const totals = diary?.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   const righeDelGiorno = (diary?.meals ?? []).flatMap((m) => m.entries)
+  const statoRs = useLiveQuery(() => statoDieta(date), [date])
   const kcalPct = t && t.kcal > 0 ? Math.min(100, (totals.kcal / t.kcal) * 100) : 0
 
   // Uscendo dalla modalità selezione azzero le spunte.
@@ -359,6 +373,10 @@ export function DietScreen() {
       <TendineGiornata dayTypes={dayTypes} scelta={nutri?.dayType ?? null}
         onScegli={(key) => upsertNutrition(date, { dayType: key as never })} />
 
+      {/* Quanto del piano hai onorato, e quanto ci sei andato vicino. Solo se la
+          giornata segue il coach: senza piano, non c'e' niente da misurare. */}
+      <BarraRs date={date} onTuttoSeguito={(ids) => spuntaTutte(ids, true)} />
+
       {/* Riepilogo macro */}
       <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
         <div className="row" style={{ gap: 12, alignItems: 'center' }}>
@@ -486,7 +504,13 @@ export function DietScreen() {
                 onPress={pressToDrag(m.meal.id, e.log.id, (ids) => reorderLogs(m.meal.id, ids))}
                 onToggle={() => setSelected((s) => { const n = new Set(s); n.has(e.log.id) ? n.delete(e.log.id) : n.add(e.log.id); return n })}
                 onOpen={() => { if (skipClick.current) { skipClick.current = false; return } setEditEntry(e) }}
-                onDelete={() => removeEntries([e.log.id])} />
+                onDelete={() => removeEntries([e.log.id])}
+                rs={statoRs?.attiva ? {
+                  spuntata: !!e.log.rsDone,
+                  dalPiano: !!e.log.rsPlanned,
+                  sostituita: !!e.log.rsPlanned && !!e.log.rsPlanned.nome && e.log.rsPlanned.nome !== e.food.name,
+                  onSpunta: () => spunta(e.log.id, !e.log.rsDone),
+                } : undefined} />
             )
           })}
 
@@ -635,5 +659,51 @@ function TendineGiornata({ dayTypes, scelta, onScegli }: {
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * La barra del coach: quanto del piano hai onorato e quanto ci sei andato vicino.
+ *
+ * Due numeri diversi apposta. L'aderenza dice se hai seguito il piano — e una
+ * sostituzione conta come seguito. La precisione dice quanto i macro tornano:
+ * patate al posto del riso non ti rendono meno preciso se i numeri combaciano.
+ */
+function BarraRs({ date, onTuttoSeguito }: { date: string; onTuttoSeguito: (ids: string[]) => void }) {
+  const s = useLiveQuery(() => statoDieta(date), [date])
+  if (!s?.attiva) return null
+
+  const numero = (v: number | null, etichetta: string, sotto: string) => (
+    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+      <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--rs)', fontVariantNumeric: 'tabular-nums' }}>
+        {v == null ? '—' : `${v}%`}
+      </div>
+      <div className="muted" style={{ fontSize: 10 }}>{etichetta}</div>
+      <div className="muted" style={{ fontSize: 9 }}>{sotto}</div>
+    </div>
+  )
+
+  const daSpuntare = s.righe.filter((r) => !r.spuntata).map((r) => r.log.id)
+
+  return (
+    <div className="card" style={{ padding: '10px 12px', marginBottom: 0, borderColor: 'var(--rs)' }}>
+      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+        {numero(s.aderenza, 'aderenza', `${s.pianoOnorato}/${s.pianoTotale} voci`)}
+        {numero(s.precisione, 'precisione', 'sui macro')}
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--rs)', fontVariantNumeric: 'tabular-nums' }}>
+            {Math.round(s.versoIlCoach.kcal)}
+          </div>
+          <div className="muted" style={{ fontSize: 10 }}>al coach</div>
+          <div className="muted" style={{ fontSize: 9 }}>tu {Math.round(s.tuoi.kcal)}</div>
+        </div>
+      </div>
+      {daSpuntare.length > 0 && (
+        <button className="chip" style={{ marginTop: 8, width: '100%' }}
+          onClick={() => onTuttoSeguito(daSpuntare)}>
+          ✓ Tutto seguito ({daSpuntare.length} righe)
+        </button>
+      )}
+    </div>
   )
 }

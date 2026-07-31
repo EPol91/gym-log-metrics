@@ -18,6 +18,7 @@ import { getHabitValue, STEPS } from '../db/habits'
 import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
+import { statoDieta, sostituzioni } from './dieta'
 import type { RsDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -126,8 +127,11 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   const misura = await db.bodyMeasurements.where('date').equals(date).filter((m) => m.userId === U).first()
   out.peso = num(misura?.weight, 1)
 
-  const diario = await computeDiary(date)
-  const t = diario.totals
+  // Quando segui una giornata del coach, a lui va SOLO quello che hai spuntato:
+  // il tuo diario resta pieno, il suo conteggio conta il mangiato. Fuori dal
+  // piano vale il diario intero, che e' l'unica cosa che esiste.
+  const stato = await statoDieta(date)
+  const t = stato.attiva ? stato.versoIlCoach : (await computeDiary(date)).totals
   const haCibo = t.kcal > 0
   out.kcal = haCibo ? num(t.kcal) : null
   out.cho = haCibo ? num(t.carbs) : null
@@ -138,9 +142,14 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   out.acqua = num(nutri?.water, 1)
   out.sale = num(nutri?.salt, 1)
 
-  // La precisione ha senso solo se hai detto che giornata segui: senza piano non
-  // c'e' niente rispetto a cui essere precisi.
-  if (haCibo && nutri?.dayType) {
+  if (stato.attiva) {
+    // Precisione e pasti extra escono dalle spunte: e' la tua idea, ed e' il
+    // modo piu' onesto — una sostituzione non ti rende meno preciso se i macro
+    // tornano, e un'aggiunta fuori piano e' un pasto extra per definizione.
+    if (stato.precisione != null) out.precisione = num(stato.precisione)
+    out.pasti_extra = num(stato.pastiExtra)
+  } else if (haCibo && nutri?.dayType) {
+    // Giornata tua: la precisione si misura comunque contro i tuoi obiettivi.
     const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
     if (tipo) out.precisione = num(precisione(t, tipo.targets))
   }
@@ -261,6 +270,11 @@ export async function notaAutomatica(date: string): Promise<string> {
     const h = Math.floor(ore), m = Math.round((ore - h) * 60)
     pezzi.push(`Sonno ${h}h${String(m).padStart(2, '0')}`)
   }
+  // Le sostituzioni vanno dette: il coach quella cosa la deve vedere, e' un dato
+  // utile e non una macchia. "Riso → patate" spiega meta' dei numeri del giorno.
+  const cambi = await sostituzioni(date)
+  if (cambi.length) pezzi.push(`Sostituito ${cambi.join(', ')}`)
+
   const w = await whoopDay(date)
   if (w?.recovery != null) pezzi.push(`recupero ${w.recovery}%`)
   return pezzi.join('. ') + (pezzi.length ? '.' : '')

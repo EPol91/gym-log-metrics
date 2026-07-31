@@ -319,6 +319,19 @@ export interface FoodLog extends BaseRecord {
   macrosSnapshot?: Macros
   /** riga-ricetta: nome di allora, così la riga resta leggibile anche se la ricetta sparisce */
   nameSnapshot?: string
+
+  // --- 🦠RS ---------------------------------------------------------------
+  /**
+   * Questa riga viene dal piano del coach: nome e grammi come li ha prescritti.
+   * Se l'alimento poi cambia (riso → patate) qui resta scritto cosa c'era,
+   * perche' una sostituzione e' piano seguito, non piano disatteso.
+   */
+  rsPlanned?: { nome: string; g: number }
+  /**
+   * Spuntata: mangiata davvero. Solo le righe spuntate finiscono nei totali che
+   * vanno al coach; nel TUO diario conta tutto, spuntato o no.
+   */
+  rsDone?: boolean
 }
 
 /**

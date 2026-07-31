@@ -482,6 +482,9 @@ export async function applyDayTemplate(
 
   const base = sostituisci ? 0 : (await mealsOfDate(date)).length
   const creati: string[] = []
+  // Le giornate del coach segnano da dove viene ogni riga: e' quello che poi
+  // distingue "piano" da "fuori piano" quando si tirano le somme per lui.
+  const dalCoach = t.name.startsWith('🦠')
   for (const m of [...t.meals].sort((a, b) => a.order - b.order)) {
     const mealId = newId()
     await db.meals.add({ id: mealId, userId: U, createdAt: ts, updatedAt: ts, date, name: m.name, order: base + m.order })
@@ -490,6 +493,7 @@ export async function applyDayTemplate(
       date, mealId, foodId: it.foodId, grams: it.grams, order: i,
       ...(it.recipeId ? { recipeId: it.recipeId, nameSnapshot: it.nameSnapshot, macrosSnapshot: it.macrosSnapshot } : {}),
       ...(it.portions != null ? { portions: it.portions } : {}),
+      ...(dalCoach ? { rsPlanned: { nome: it.nameSnapshot ?? '', g: it.grams } } : {}),
     }))
     if (righe.length) await db.foodLogs.bulkAdd(righe)
     creati.push(...righe.map((r) => r.id))
