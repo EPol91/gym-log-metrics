@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   listDayTemplates, saveDayAsTemplate, applyDayTemplate, deleteDayTemplate,
@@ -81,7 +82,7 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
                   <strong style={{ fontSize: 15 }}>{t.name}</strong>
                   <span className="muted small" style={{ display: 'block' }}>
                     {t.meals.length} pasti · {righe} righe
-                    {t.lastUsedAt ? ` · usata il ${t.lastUsedAt.slice(0, 10)}` : ''}
+                    {t.lastUsedAt ? ` · usata il ${fmtData(t.lastUsedAt)}` : ''}
                   </span>
                 </span>
                 <button className="chip on" style={{ flex: 'none' }} disabled={busy}

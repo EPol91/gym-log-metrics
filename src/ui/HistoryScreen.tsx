@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHistory } from '../scores/dashboardScores'
 import { ScoreRing } from './anim'
@@ -41,7 +42,7 @@ export function HistoryScreen({ onReopen }: { onReopen?: (id: string) => void })
           <button className="card" style={{ textAlign: 'left', width: '100%' }} key={s.id} onClick={() => setSelected(s.id)}>
             <div className="row spread">
               <strong>{TYPE_LABEL[s.type] ?? s.type}</strong>
-              <span className="muted small">{s.date}{!s.finished ? ' · in corso' : ''} ›</span>
+              <span className="muted small">{fmtData(s.date)}{!s.finished ? ' · in corso' : ''} ›</span>
             </div>
             <div className="row spread" style={{ marginTop: 8, alignItems: 'center' }}>
               <div style={{ flex: 1 }}>

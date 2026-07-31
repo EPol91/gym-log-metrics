@@ -6,6 +6,19 @@ export function fmtOre(h?: number): string {
   return `${Math.floor(tot / 60)}h ${String(tot % 60).padStart(2, '0')}`
 }
 
+/**
+ * Data come si scrive qui: 31.07.2026.
+ *
+ * Dentro l'app le date restano in formato ISO (2026-07-31) perche' si ordinano
+ * da sole e non lasciano dubbi fra giorno e mese: quello e' il magazzino.
+ * Questa e' la vetrina, e va usata OVUNQUE una data finisca sotto gli occhi.
+ */
+export function fmtData(iso?: string | null): string {
+  if (!iso) return '—'
+  const [a, m, g] = iso.slice(0, 10).split('-')
+  return g && m && a ? `${g}.${m}.${a}` : iso
+}
+
 export function fmtRest(sec: number): string {
   if (sec % 60 === 0) return `${sec / 60}min`
   if (sec < 60) return `${sec}s`

@@ -5,6 +5,7 @@
 // inventarlo: sono giudizi, e un giudizio finto e' peggio di una casella vuota.
 
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser, updateUser } from '../db/repo'
 import { todayLocal, shiftDate } from '../util/date'
@@ -52,7 +53,7 @@ export function RsScreen() {
           <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH · COACH</p>
           <h1>🦠RS</h1>
           <p className="muted small" style={{ marginTop: 2 }}>
-            {sg.settimana < 1 ? `Il protocollo inizia il ${inizio}` : sg.label}
+            {sg.settimana < 1 ? `Il protocollo inizia il ${fmtData(inizio)}` : sg.label}
           </p>
         </div>
         <button className="ghost" aria-label="Impostazioni RS" onClick={() => setImpostazioni(true)}
@@ -72,7 +73,7 @@ export function RsScreen() {
 
       <div className="row spread" style={{ marginTop: 2 }}>
         <button className="chip" onClick={() => setDate(shiftDate(date, -1))}>‹ giorno prima</button>
-        <span className="small">{date === todayLocal() ? 'oggi' : date}</span>
+        <span className="small">{date === todayLocal() ? 'oggi' : fmtData(date)}</span>
         <button className="chip" disabled={date >= todayLocal()} onClick={() => setDate(shiftDate(date, 1))}>giorno dopo ›</button>
       </div>
 

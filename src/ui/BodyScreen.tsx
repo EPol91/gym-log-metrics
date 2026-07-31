@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { usePersistedState } from '../util/persist'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listMeasurements, deleteMeasurement, upsertMeasurement, getUser, todayISO } from '../db/repo'
@@ -19,7 +20,7 @@ function MeasureRow({ m }: { m: BodyMeasurement }) {
     const wn = parseNum(w, { min: 20, max: 400 })
     return (
       <div style={{ padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
-        <div className="muted small" style={{ marginBottom: 6 }}>{m.date}</div>
+        <div className="muted small" style={{ marginBottom: 6 }}>{fmtData(m.date)}</div>
         <div className="row" style={{ gap: 8 }}>
           <div style={{ flex: 1 }}><label className="fl">Peso (kg)</label><input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} /></div>
           <div style={{ flex: 1 }}><label className="fl">% grasso</label><input inputMode="decimal" value={bf} onChange={(e) => setBf(e.target.value)} /></div>
@@ -38,7 +39,7 @@ function MeasureRow({ m }: { m: BodyMeasurement }) {
   }
   return (
     <div onClick={() => setEd(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
-      <span className="muted small" style={{ flex: '0 0 84px', fontVariantNumeric: 'tabular-nums' }}>{m.date}</span>
+      <span className="muted small" style={{ flex: '0 0 84px', fontVariantNumeric: 'tabular-nums' }}>{fmtData(m.date)}</span>
       <span style={{ flex: 1 }}>{m.weight} kg{m.bodyFat != null ? ` · ${m.bodyFat}%` : ''}</span>
       <span className="muted small" style={{ flex: 'none' }}>✎</span>
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseDetail } from '../scores/exerciseStats'
 import { updateExercise } from '../db/repo'
@@ -76,7 +77,7 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
         <div className="card" style={{ margin: 0 }}>
           <div className="muted small">PR (e1RM)<Info text="e1RM = massimo su 1 ripetizione STIMATO dai tuoi set (formula Epley: peso × (1 + reps/30)). Permette di confrontare serie con reps diverse. PR = il tuo record." /></div>
           <div className="score"><span className="val">{d.prE1rm || '—'}</span><span className="muted small">kg</span></div>
-          {d.prDate && <div className="muted small">il {d.prDate}</div>}
+          {d.prDate && <div className="muted small">il {fmtData(d.prDate)}</div>}
         </div>
         <div className="card" style={{ margin: 0 }}>
           <div className="muted small">Trend e1RM<Info align="right" text="Variazione % della forza stimata (e1RM) dalla prima all'ultima seduta di questo esercizio. Verde = in crescita, rosso = in calo." /></div>
@@ -106,7 +107,7 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
         <div className="muted small" style={{ marginBottom: 6 }}>Ultime sedute</div>
         {[...d.points].reverse().map((p, i) => (
           <div className="setline" key={i}>
-            <span className="muted small">{p.date}</span>
+            <span className="muted small">{fmtData(p.date)}</span>
             <span>{p.topWeight}kg × {p.topReps} · e1RM {p.bestE1rm}</span>
             <span className="muted small">{TYPE_LABEL[p.type] ?? p.type}</span>
           </div>
@@ -116,8 +117,8 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
       <AiInsight
         label="Analizza questo esercizio"
         buildPrompt={() => {
-          const rows = d.points.map((p) => `${p.date}: ${p.topWeight}kg×${p.topReps} (e1RM ${p.bestE1rm}), vol ${p.volume}, ${p.type}`).join('\n')
-          return `Esercizio: ${d.name} (${d.muscle}).\nPR e1RM: ${d.prE1rm} kg${d.prDate ? ` il ${d.prDate}` : ''}.\nTrend e1RM: ${d.trendPct.toFixed(1)}% su ${d.points.length} sedute.\nStorico sedute:\n${rows}\n\nInterpreta l'andamento di questo esercizio: progresso, stallo o regresso? Suggerimenti concreti. Se i dati sono pochi, dillo.`
+          const rows = d.points.map((p) => `${fmtData(p.date)}: ${p.topWeight}kg×${p.topReps} (e1RM ${p.bestE1rm}), vol ${p.volume}, ${p.type}`).join('\n')
+          return `Esercizio: ${d.name} (${d.muscle}).\nPR e1RM: ${d.prE1rm} kg${d.prDate ? ` il ${fmtData(d.prDate)}` : ''}.\nTrend e1RM: ${d.trendPct.toFixed(1)}% su ${d.points.length} sedute.\nStorico sedute:\n${rows}\n\nInterpreta l'andamento di questo esercizio: progresso, stallo o regresso? Suggerimenti concreti. Se i dati sono pochi, dillo.`
         }}
       />
     </div>

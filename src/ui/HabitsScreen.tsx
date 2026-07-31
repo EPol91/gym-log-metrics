@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
 
@@ -42,7 +43,7 @@ export function HabitsScreen() {
               <div style={{ height: '100%', width: `${oggi}%`, background: 'var(--gold)', borderRadius: 999, transition: 'width .3s' }} />
             </div>
             <p className="muted small" style={{ marginTop: 6, marginBottom: 0, textAlign: 'center' }}>
-              <strong style={{ color: 'var(--text)' }}>{ultimo.value.toLocaleString('it-IT')}</strong> passi il {ultimo.date}
+              <strong style={{ color: 'var(--text)' }}>{ultimo.value.toLocaleString('it-IT')}</strong> passi il {fmtData(ultimo.date)}
               {ultimo.source === 'manual' ? ' · inseriti a mano' : ' · da Health Connect'}
             </p>
           </div>
@@ -62,7 +63,7 @@ export function HabitsScreen() {
           <div className="card" style={{ marginTop: 0 }}>
             {recent.map((r) => (
               <div key={r.id} className="row spread small" style={{ padding: '5px 0' }}>
-                <span className="muted">{r.date}</span>
+                <span className="muted">{fmtData(r.date)}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: r.value >= target ? 'var(--good)' : 'var(--text)' }}>
                   {r.value.toLocaleString('it-IT')}
                 </span>

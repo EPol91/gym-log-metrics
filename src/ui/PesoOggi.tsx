@@ -7,6 +7,7 @@
 // Regola: avvisi, mai muri. Nessuna finestra che ti sbarra la strada.
 
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
@@ -94,7 +95,7 @@ export function PesoOggi({ dentro }: { dentro: 'check' | 'seduta' }) {
         {dentro === 'seduta'
           ? 'Consiglio: pesati adesso, prima di allenarti. Se salti, la seduta parte lo stesso — resta senza peso nel confronto.'
           : ultimo
-            ? `L'ultimo è del ${ultimo.date}: ${ultimo.weight} kg.`
+            ? `L'ultimo è del ${fmtData(ultimo.date)}: ${ultimo.weight} kg.`
             : 'Non hai ancora registrato nessun peso.'}
       </p>
       {dentro === 'seduta' && (

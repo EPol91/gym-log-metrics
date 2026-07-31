@@ -7,7 +7,7 @@ import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop } fr
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
-import { fmtOre } from '../util/format'
+import { fmtOre, fmtData } from '../util/format'
 import { ScoreRing } from './anim'
 import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
@@ -228,7 +228,7 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
       )}
       {home?.lastSession && (
         <div className="muted small" style={{ marginTop: 6 }}>
-          Ultima: {home.lastSession.type} · {home.lastSession.date}
+          Ultima: {home.lastSession.type} · {fmtData(home.lastSession.date)}
         </div>
       )}
       {ongoing ? (
@@ -291,7 +291,7 @@ function VitaliAssenti() {
     <div style={{ marginTop: 8 }}>
       <p className="muted small" style={{ margin: 0 }}>
         {conDati
-          ? `WHOOP non ha ancora i dati di oggi. Ultimo giorno con dati: ${conDati.date}.`
+          ? `WHOOP non ha ancora i dati di oggi. Ultimo giorno con dati: ${fmtData(conDati.date)}.`
           : 'Nessun dato scaricato da WHOOP.'}
       </p>
       <button className="chip" style={{ marginTop: 8 }} disabled={busy}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { fmtData } from '../util/format'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
@@ -101,7 +102,7 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
             {TYPE_LABEL[d.session.type] ?? d.session.type} <span className="muted small">✎</span>
           </h1>
         )}
-        <span className="muted small">{d.session.date}{!d.session.finishedAt ? ' · in corso' : ''}</span>
+        <span className="muted small">{fmtData(d.session.date)}{!d.session.finishedAt ? ' · in corso' : ''}</span>
       </div>
 
       <div className="card score">

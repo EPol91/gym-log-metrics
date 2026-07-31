@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fmtOre } from '../util/format'
+import { fmtOre, fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   connectUrl, whoopStatus, whoopDisconnect, syncWhoop, whoopDaysRecent, clearWhoopData,
@@ -96,10 +96,10 @@ export function WhoopSettings() {
             </p>
           )}
 
-          {ultimo && <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>Ultima giornata: {ultimo.date}</p>}
+          {ultimo && <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>Ultima giornata: {fmtData(ultimo.date)}</p>}
           {lastAutoSync() && (
             <p className="muted small" style={{ marginTop: 2, marginBottom: 0 }}>
-              Aggiornato da solo il {lastAutoSync()!.slice(0, 10)} alle {lastAutoSync()!.slice(11, 16)}
+              Aggiornato da solo il {fmtData(lastAutoSync())} alle {lastAutoSync()!.slice(11, 16)}
             </p>
           )}
 
