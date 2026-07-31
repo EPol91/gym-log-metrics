@@ -61,6 +61,12 @@ export interface User extends BaseRecord {
   rsStart?: ISODate
   /** Chiedere conferma di RS al primo rientro della giornata. */
   rsAskDaily?: boolean
+  /**
+   * Schermo acceso durante l'allenamento. Non e' comodita': col telefono in
+   * standby Android sospende la pagina e la fascia smette di consegnare
+   * battiti — meta' seduta senza cuore registrato. Default acceso.
+   */
+  schermoAcceso?: boolean
 }
 
 /**

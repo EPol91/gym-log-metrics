@@ -6,7 +6,7 @@
 // partiva mai — il registratore c'era, il modo di accenderlo no.
 
 import { useEffect, useState } from 'react'
-import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg } from '../util/heartRate'
+import { isHeartRateSupported, hrSubscribe, hrGetState, hrConnect, hrDisconnect, hrResetAvg, hrReconnectKnown } from '../util/heartRate'
 
 export function useHeartRate() {
   const [, force] = useState(0)
@@ -14,7 +14,7 @@ export function useHeartRate() {
   const s = hrGetState()
   return {
     supported: isHeartRateSupported(),
-    connected: s.connected, connecting: s.connecting,
+    connected: s.connected, connecting: s.connecting, retrying: s.retrying,
     bpm: s.bpm, avgBpm: s.avgBpm, maxBpm: s.maxBpm, minBpm: s.minBpm,
     deviceName: s.deviceName, error: s.error,
     connect: hrConnect, disconnect: hrDisconnect, resetAvg: hrResetAvg,
@@ -35,6 +35,11 @@ export function ChiediFascia({ sessionId }: { sessionId: string }) {
   // cosi' domani te lo richiede senza che nessuno debba azzerare niente.
   // Scritto fuori dal componente perche' basta un salto al Riepilogo per
   // smontarlo, e una domanda a cui hai gia' risposto non si ripete.
+  // Dopo un ricarico la connessione muore ma il permesso resta: si riattacca
+  // da sola, senza selettore e senza domande. La finestra esce solo se non
+  // c'e' niente da riattaccare.
+  useEffect(() => { void hrReconnectKnown() }, [sessionId])
+
   const chiave = `fascia-no-${sessionId}`
   const [rifiutato, setRifiutato] = useState(() => {
     try { return sessionStorage.getItem(chiave) === '1' } catch { return false }
@@ -47,7 +52,7 @@ export function ChiediFascia({ sessionId }: { sessionId: string }) {
     setRifiutato(true)
   }
 
-  if (!hr.supported || hr.connected || hr.connecting || rifiutato) return null
+  if (!hr.supported || hr.connected || hr.connecting || hr.retrying || rifiutato) return null
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1150, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -86,8 +91,8 @@ export function TastoFascia() {
           padding: '8px 10px', whiteSpace: 'nowrap',
           ...(hr.connected ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}),
         }}
-        onClick={() => { if (hr.connected || hr.connecting) setAperto(true); else void hr.connect() }}>
-        {hr.connecting ? '♥…' : hr.connected ? `♥ ${hr.bpm ?? '—'}` : '♥'}
+        onClick={() => { if (hr.connected || hr.connecting || hr.retrying) setAperto(true); else void hr.connect() }}>
+        {hr.connecting ? '♥…' : hr.connected ? `♥ ${hr.bpm ?? '—'}` : hr.retrying ? '♥ ⟳' : '♥'}
       </button>
 
       {aperto && (
@@ -96,7 +101,7 @@ export function TastoFascia() {
           <div className="card" style={{ width: 'min(420px, calc(100% - 24px))', margin: 0 }} onClick={(e) => e.stopPropagation()}>
             <div className="row spread">
               <strong>{hr.deviceName || 'Fascia'}</strong>
-              <span className="muted small">{hr.connected ? 'collegata' : 'in collegamento…'}</span>
+              <span className="muted small">{hr.connected ? 'collegata' : hr.retrying ? 'segnale perso · riaggancio…' : 'in collegamento…'}</span>
             </div>
             <div className="row spread" style={{ marginTop: 10, alignItems: 'baseline' }}>
               <span style={{ fontSize: 34, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{hr.bpm ?? '—'}</span>

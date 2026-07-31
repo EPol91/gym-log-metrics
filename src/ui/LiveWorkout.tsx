@@ -14,6 +14,7 @@ import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
 import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from '../util/voice'
 import { useWallTick } from '../util/useWallClock'
+import { useWakeLock } from '../util/wakeLock'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
 import { ExercisePicker } from './ExercisePicker'
@@ -22,13 +23,51 @@ import type { ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
-// Stato del timer tenuto FUORI dal componente: cambiando esercizio la card si rimonta,
-// ma il recupero deve continuare a scorrere (lo store vive nel parent).
-export interface RestState { endAt: number; total: number; running: boolean; pausedLeft: number; fired: boolean }
+// Stato del timer tenuto FUORI dai componenti.
+//
+// Prima viveva nella schermata di allenamento: bastava andare al Riepilogo per
+// smontarla, e il recupero moriva li'. Ora sta in un modulo e viene scritto
+// anche su sessionStorage, cosi' regge sia il giro al Riepilogo sia un ricarico
+// della pagina — i secondi si contano sull'orario reale, non su un componente
+// che puo' sparire.
+export interface RestState {
+  endAt: number; total: number; running: boolean; pausedLeft: number; fired: boolean
+  /** su quale esercizio/serie sta correndo: serve per scrivere il recupero sulla serie */
+  exId?: string | null; setId?: string | null
+}
+
+const restCache = new Map<string, { current: RestState | null }>()
+const restKey = (sessionId: string) => `rest-${sessionId}`
+
+function leggiRecupero(sessionId: string): RestState | null {
+  try {
+    const s = sessionStorage.getItem(restKey(sessionId))
+    if (!s) return null
+    const st = JSON.parse(s) as RestState
+    // Un recupero finito da piu' di dieci minuti e' roba di ieri, non si riapre.
+    if (!st.running && st.pausedLeft <= 0) return null
+    if (st.running && Date.now() - st.endAt > 10 * 60_000) return null
+    return st
+  } catch { return null }
+}
+
+export function salvaRecupero(sessionId: string, st: RestState | null): void {
+  try {
+    if (st) sessionStorage.setItem(restKey(sessionId), JSON.stringify(st))
+    else sessionStorage.removeItem(restKey(sessionId))
+  } catch { /* ignore */ }
+}
+
+/** Lo store del recupero di questa seduta: sopravvive allo smontaggio. */
+function storeRecupero(sessionId: string): { current: RestState | null } {
+  let s = restCache.get(sessionId)
+  if (!s) { s = { current: leggiRecupero(sessionId) }; restCache.set(sessionId, s) }
+  return s
+}
 
 // --- Timer recupero: tap su un preset e parte quel recupero ---
-function RestTimer({ defaultSec, presets, store, onPick, onClose }: {
-  defaultSec: number; presets: number[]; store: { current: RestState | null }
+function RestTimer({ defaultSec, presets, store, sessionId, onPick, onClose }: {
+  defaultSec: number; presets: number[]; store: { current: RestState | null }; sessionId: string
   onPick: (sec: number) => void; onClose: () => void
 }) {
   if (!store.current) store.current = { endAt: Date.now() + defaultSec * 1000, total: defaultSec, running: true, pausedLeft: defaultSec, fired: false }
@@ -38,9 +77,13 @@ function RestTimer({ defaultSec, presets, store, onPick, onClose }: {
   const [pausedLeft, setPausedLeftState] = useState(st.pausedLeft)
   const [, force] = useState(0)
   // Ogni set scrive anche nello store, così il valore sopravvive al rimontaggio.
-  const setTotal = (v: number) => { st.total = v; setTotalState(v) }
-  const setRunning = (v: boolean) => { st.running = v; setRunningState(v) }
-  const setPausedLeft = (v: number) => { st.pausedLeft = v; setPausedLeftState(v) }
+  const setTotal = (v: number) => { st.total = v; setTotalState(v); salvaRecupero(sessionId, st) }
+  const setRunning = (v: boolean) => { st.running = v; setRunningState(v); salvaRecupero(sessionId, st) }
+  const setPausedLeft = (v: number) => { st.pausedLeft = v; setPausedLeftState(v); salvaRecupero(sessionId, st) }
+
+  // Scritto anche a ogni secondo: se la pagina si ricarica di colpo, il
+  // recupero riparte da dov'era invece che da zero.
+  useEffect(() => { salvaRecupero(sessionId, st) })
 
   useWallTick(running)
   // Secondi rimasti calcolati sull'orario reale → il recupero non si ferma uscendo dall'app.
@@ -726,11 +769,17 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
     return () => { hrFlush() }
   }, [sessionId, session?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const user = useLiveQuery(getUser, [])
+  // Schermo acceso mentre ti alleni: col telefono in standby Android sospende
+  // la pagina, il Bluetooth smette di consegnare e la registrazione si buca.
+  // Riagganciarsi da soli non serve a niente se e' tutto in pausa.
+  useWakeLock(user?.schermoAcceso !== false)
   const nameOf = (id: string) => exercises.find((e) => e.id === id)?.name ?? '—'
   const [picking, setPicking] = useState(false)
-  const [rest, setRest] = useState<number | null>(null)
-  const [restExId, setRestExId] = useState<string | null>(null)
-  const [restSetId, setRestSetId] = useState<string | null>(null)
+  // Rientrando dal Riepilogo il recupero dev'essere ancora li' dov'era.
+  const ripreso = storeRecupero(sessionId).current
+  const [rest, setRest] = useState<number | null>(ripreso?.total ?? null)
+  const [restExId, setRestExId] = useState<string | null>(ripreso?.exId ?? null)
+  const [restSetId, setRestSetId] = useState<string | null>(ripreso?.setId ?? null)
   const [restNonce, setRestNonce] = useState(0)
   const [notesOpen, setNotesOpen] = useState(false)
   // Esercizio corrente (vista a focus): persistito per-sessione → il refresh non ti riporta al primo.
@@ -761,10 +810,12 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
-  // Store del timer: sopravvive al cambio esercizio (la card si rimonta, il recupero no).
-  const restStore = useRef<RestState | null>(null)
+  // Store del timer: vive nel modulo, quindi regge sia il cambio esercizio sia
+  // il giro al Riepilogo, che smonta tutta questa schermata.
+  const restStore = storeRecupero(sessionId)
   const startRest = (sec: number, exId: string | null, setId?: string) => {
-    restStore.current = null // nuovo recupero → timer nuovo
+    restStore.current = { endAt: Date.now() + sec * 1000, total: sec, running: true, pausedLeft: sec, fired: false, exId, setId: setId ?? null }
+    salvaRecupero(sessionId, restStore.current)
     setRest(sec); setRestExId(exId); setRestSetId(setId ?? null); setRestNonce((n) => n + 1)
   }
   const restPresets = rest != null
@@ -773,9 +824,9 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
   // Un solo timer, mostrato dentro il blocco corrente (singolo o superset).
   const restNode = rest != null ? (
-    <RestTimer key={restNonce} defaultSec={rest} presets={restPresets} store={restStore}
+    <RestTimer key={restNonce} defaultSec={rest} presets={restPresets} store={restStore} sessionId={sessionId}
       onPick={(s) => { if (restExId) setExerciseRest(restExId, s); if (restSetId) updateSet(restSetId, { restSec: s }) }}
-      onClose={() => { restStore.current = null; setRest(null) }} />
+      onClose={() => { restStore.current = null; salvaRecupero(sessionId, null); setRest(null) }} />
   ) : null
 
   return (
@@ -836,12 +887,19 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
       {notesOpen ? (
         <div className="card">
-          <label className="fl">Note seduta</label>
+          {/* Aperte, si richiudono: prima non c'era nessun modo di farlo e
+              restavano li' per tutta la seduta. */}
+          <div className="row spread" style={{ alignItems: 'baseline' }}>
+            <label className="fl" style={{ margin: 0 }}>Note seduta</label>
+            <button className="ghost small" aria-label="Chiudi le note" onClick={() => setNotesOpen(false)}>✕</button>
+          </div>
           <textarea defaultValue={session?.notes ?? ''} rows={3} style={{ width: '100%' }}
             onBlur={(e) => updateSessionNotes(sessionId, e.target.value)} />
         </div>
       ) : (
-        <button className="ghost" onClick={() => setNotesOpen(true)}>＋ Note seduta</button>
+        <button className="ghost" onClick={() => setNotesOpen(true)}>
+          {session?.notes?.trim() ? '✎ Note seduta' : '＋ Note seduta'}
+        </button>
       )}
 
       <button className="fab primary" onClick={finishAll}>Fine allenamento</button>

@@ -5,7 +5,7 @@ import { Cuore } from './Cuore'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { cardioOf, deleteSession, finishSession, reopenSession, sessionElapsedSec, setSessionType, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
+import { cardioOf, deleteSession, finishSession, reopenSession, sessionElapsedSec, setSessionType, setSessionSource, addSet, updateSet, deleteSet, addExerciseEntry, deleteExerciseEntry } from '../db/repo'
 import { computeSessionWorkoutScore } from '../scores/sessionScore'
 import { computeCardioZone } from '../metrics/cardio'
 import { LOCAL_USER_ID } from '../db/seed'
@@ -67,6 +67,10 @@ async function load(sessionId: string) {
     allSets = allSets.concat(sets)
     items.push({ entryId: e.id, name: exNames.get(e.exerciseId) ?? '—', sets })
   }
+  // Da quale scheda viene: e' il nome vero della seduta, e decide anche il
+  // colore nel calendario. "Pull" e' il tipo, non come si chiama.
+  const templates = await db.templates.where('userId').equals(LOCAL_USER_ID).toArray()
+  const sorgente = session.srcTemplateId ? templates.find((t) => t.id === session.srcTemplateId) ?? null : null
   const cardioRows = await cardioOf(sessionId)
   const user = await db.users.get(LOCAL_USER_ID)
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
@@ -78,7 +82,7 @@ async function load(sessionId: string) {
   const durationMin = session.startedAt && session.finishedAt
     ? Math.round(sessionElapsedSec(session) / 60)
     : null
-  return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets), durationMin }
+  return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets), durationMin, templates, sorgente }
 }
 
 export function SessionDetail({ sessionId, onBack, onReopen }: {
@@ -100,11 +104,23 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
             {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
           </select>
         ) : (
-          <h1 style={{ cursor: 'pointer' }} onClick={() => setEditType(true)}>
-            {TYPE_LABEL[d.session.type] ?? d.session.type} <span className="muted small">✎</span>
+          <h1 style={{ cursor: 'pointer', color: d.sorgente?.name.trimStart().startsWith('🦠') ? 'var(--rs)' : undefined }}
+            onClick={() => setEditType(true)}>
+            {d.sorgente?.name ?? TYPE_LABEL[d.session.type] ?? d.session.type} <span className="muted small">✎</span>
           </h1>
         )}
         <span className="muted small">{fmtData(d.session.date)}{!d.session.finishedAt ? ' · in corso' : ''}</span>
+      </div>
+
+      {/* Da quale scheda viene. Le sedute nuove se lo scrivono da sole, le
+          vecchie no: qui lo correggi tu, e il calendario si adegua. */}
+      <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
+        <span className="muted small" style={{ flex: 'none' }}>Da quale scheda</span>
+        <select value={d.session.srcTemplateId ?? ''} style={{ flex: 1, minWidth: 0, fontSize: 13, padding: '7px 6px' }}
+          onChange={(e) => setSessionSource(sessionId, e.target.value || null)}>
+          <option value="">Mia — nessuna scheda</option>
+          {d.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
       </div>
 
       <div className="card score">

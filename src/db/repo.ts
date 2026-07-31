@@ -75,6 +75,16 @@ export async function setSessionType(sessionId: string, type: WorkoutType): Prom
   await db.sessions.update(sessionId, { type, updatedAt: nowISO() })
 }
 
+/**
+ * Da quale scheda viene questa seduta: lo dici tu.
+ *
+ * Le sedute nuove se lo scrivono da sole all'avvio, ma quelle vecchie no, e
+ * indovinarlo dagli esercizi ha gia' sbagliato abbastanza. null = e' tua.
+ */
+export async function setSessionSource(sessionId: string, templateId: string | null): Promise<void> {
+  await db.sessions.update(sessionId, { srcTemplateId: templateId, updatedAt: nowISO() })
+}
+
 /** Elimina una seduta e tutto il suo contenuto (esercizi, set, cardio). */
 export async function deleteSession(sessionId: string): Promise<Trash> {
   const session = await db.sessions.get(sessionId)

@@ -37,26 +37,39 @@ function parseHeartRate(dv: DataView): number {
 }
 
 /**
- * Apre il selettore fascia (richiede un gesto utente), si connette e avvia le notifiche BPM.
+ * La fascia che il telefono si ricorda gia'.
+ *
+ * Il permesso Bluetooth si da' una volta sola: da li' in poi l'app puo'
+ * riattaccarsi a QUEL dispositivo quante volte vuole, senza selettore e senza
+ * un tocco tuo. E' questo che permette di riagganciare da soli quando il
+ * segnale cade — e senza, meta' seduta resta senza battiti.
+ */
+export async function knownHeartRateDevice(): Promise<BleDevice | null> {
+  const bt = ble()
+  if (!bt?.getDevices) return null
+  try {
+    const noti = await bt.getDevices()
+    return noti.find((d) => d.gatt != null) ?? null
+  } catch { return null }
+}
+
+/** Apre il selettore (serve un gesto tuo) e restituisce la fascia scelta. */
+export async function pickHeartRateDevice(): Promise<BleDevice> {
+  const bt = ble()
+  if (!bt) throw new Error('Web Bluetooth non supportato')
+  return bt.requestDevice({ filters: [{ services: ['heart_rate'] }] })
+}
+
+/**
+ * Attacca le notifiche BPM a una fascia gia' scelta.
  * @param onBpm chiamata a ogni battito ricevuto
  * @param onDisconnect chiamata se la fascia si disconnette da sola
  */
 export async function connectHeartRate(
+  device: BleDevice,
   onBpm: (bpm: number) => void,
   onDisconnect?: () => void,
 ): Promise<HeartRateHandle> {
-  const bt = ble()
-  if (!bt) throw new Error('Web Bluetooth non supportato')
-
-  // Se il telefono si ricorda gia' la tua fascia, si riaggancia quella e basta:
-  // il selettore e' un passaggio in piu' per scegliere l'unica cosa che hai
-  // addosso. Dove getDevices non c'e' (o non ha ricordi) si torna al selettore.
-  let device: BleDevice | undefined
-  try {
-    const noti = (await bt.getDevices?.()) ?? []
-    device = noti.find((d) => d.gatt != null)
-  } catch { /* niente ricordi: si chiede */ }
-  if (!device) device = await bt.requestDevice({ filters: [{ services: ['heart_rate'] }] })
   const server = await device.gatt!.connect()
   const service = await server.getPrimaryService('heart_rate')
   const ch = await service.getCharacteristic('heart_rate_measurement')
@@ -86,38 +99,106 @@ export async function connectHeartRate(
 // --- Store singleton: la connessione vive fuori dai componenti React ---
 // così la fascia NON si scollega quando esci dal cardio o cambi schermata.
 export interface HeartRateState {
-  connected: boolean; connecting: boolean; bpm: number | null; avgBpm: number | null; maxBpm: number | null; minBpm: number | null; deviceName: string; error: string | null
+  connected: boolean; connecting: boolean
+  /** il segnale e' caduto e si sta riprovando da soli */
+  retrying: boolean
+  bpm: number | null; avgBpm: number | null; maxBpm: number | null; minBpm: number | null; deviceName: string; error: string | null
 }
-let hrState: HeartRateState = { connected: false, connecting: false, bpm: null, avgBpm: null, maxBpm: null, minBpm: null, deviceName: '', error: null }
+let hrState: HeartRateState = { connected: false, connecting: false, retrying: false, bpm: null, avgBpm: null, maxBpm: null, minBpm: null, deviceName: '', error: null }
 let hrHandle: HeartRateHandle | null = null
 let hrAcc = { sum: 0, count: 0 }
 const hrSubs = new Set<() => void>()
+// La fascia di questa sessione: si ricorda per poterla riagganciare da soli.
+let hrDevice: BleDevice | null = null
+let hrRetry: number | null = null
+// Staccata da te o caduta da sola? Solo nel secondo caso si riprova: se hai
+// premuto Scollega, riattaccarsi ogni tre secondi sarebbe una molestia.
+let hrVoluto = false
+
+const RIPROVA_MS = 3000
 
 function hrSet(patch: Partial<HeartRateState>) { hrState = { ...hrState, ...patch }; hrSubs.forEach((f) => f()) }
 
 export function hrSubscribe(cb: () => void): () => void { hrSubs.add(cb); return () => { hrSubs.delete(cb) } }
 export function hrGetState(): HeartRateState { return hrState }
 
+function onBattito(v: number) {
+  registra(v)
+  hrAcc.sum += v; hrAcc.count++
+  hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count), maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v) })
+}
+
+/** Il segnale e' caduto: si riprova da soli finche' non torna. */
+function onPerso() {
+  hrHandle = null
+  hrSet({ connected: false, bpm: null, retrying: !hrVoluto })
+  if (!hrVoluto) riprova()
+}
+
+function riprova() {
+  if (hrRetry != null || !hrDevice) return
+  hrRetry = setInterval(async () => {
+    if (hrVoluto || !hrDevice) { fermaRiprove(); return }
+    // Si riprova anche con l'app in secondo piano: cambiare canzone su Spotify
+    // non e' un motivo per smettere di registrare il cuore. Il telefono i
+    // tentativi li rallenta comunque da solo.
+    try {
+      hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
+      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null })
+      fermaRiprove()
+    } catch { /* ancora fuori portata: si riprova fra tre secondi */ }
+  }, RIPROVA_MS) as unknown as number
+}
+
+function fermaRiprove() {
+  if (hrRetry != null) { clearInterval(hrRetry); hrRetry = null }
+}
+
+/** Collega la fascia. Il selettore si apre solo se il telefono non ne conosce gia' una. */
 export async function hrConnect(): Promise<void> {
   if (hrState.connecting || hrState.connected) return
   hrSet({ connecting: true, error: null })
   try {
-    hrHandle = await connectHeartRate(
-      (v) => {
-        registra(v)
-        hrAcc.sum += v; hrAcc.count++
-        hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count), maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v) })
-      },
-      () => { hrHandle = null; hrSet({ connected: false, bpm: null }) },
-    )
-    hrSet({ connected: true, connecting: false, deviceName: hrHandle.deviceName })
+    hrVoluto = false
+    hrDevice = (await knownHeartRateDevice()) ?? (await pickHeartRateDevice())
+    hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
+    hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
   } catch (e) {
     const msg = (e as Error)?.message ?? ''
     hrSet({ connecting: false, error: /cancel/i.test(msg) ? null : 'Connessione fascia fallita.' })
   }
 }
 
-export function hrDisconnect(): void { hrHandle?.disconnect(); hrHandle = null; hrSet({ connected: false, bpm: null }) }
+/**
+ * Collegamento silenzioso: solo se il telefono conosce gia' la fascia.
+ *
+ * Serve dopo un ricarico della pagina, dove la connessione muore ma il permesso
+ * resta: riattacca senza chiederti niente. Se non c'e' niente da riattaccare
+ * non fa nulla e non disturba.
+ */
+export async function hrReconnectKnown(): Promise<boolean> {
+  if (hrState.connected || hrState.connecting) return true
+  const d = await knownHeartRateDevice()
+  if (!d) return false
+  hrSet({ connecting: true, error: null })
+  try {
+    hrVoluto = false
+    hrDevice = d
+    hrHandle = await connectHeartRate(d, onBattito, onPerso)
+    hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
+    return true
+  } catch {
+    hrSet({ connecting: false })
+    return false
+  }
+}
+
+export function hrDisconnect(): void {
+  hrVoluto = true
+  fermaRiprove()
+  hrHandle?.disconnect(); hrHandle = null; hrDevice = null
+  hrSet({ connected: false, retrying: false, bpm: null })
+}
 export function hrResetAvg(): void { hrAcc = { sum: 0, count: 0 }; hrSet({ avgBpm: null, maxBpm: null, minBpm: null }) }
 
 // --- Registrazione per la seduta ---------------------------------------------
@@ -142,9 +223,20 @@ export function hrStartRecording(sessionId: string, gia?: { t0: string; step: nu
   rec = gia?.bpm?.length
     ? { sessionId, t0: new Date(gia.t0).getTime(), bpm: [...gia.bpm], ultimo: 0 }
     : { sessionId, t0: Date.now(), bpm: [], ultimo: 0 }
-  // Ogni trenta secondi si scrive: se l'app muore a meta' seduta non perdi tutto.
-  if (timer == null) timer = setInterval(() => hrFlush(), 30_000) as unknown as number
+  // Ogni cinque secondi si scrive. Erano trenta, e un aggiornamento che ricarica
+  // la pagina si portava via mezzo minuto di battiti: scrivere un array di
+  // numeri costa niente, perderli costa una seduta.
+  if (timer == null) timer = setInterval(() => hrFlush(), 5_000) as unknown as number
+  // E comunque un'ultima volta prima che la pagina se ne vada: pagehide e'
+  // l'unico evento che Android garantisce quando chiude o ricarica.
+  if (typeof window !== 'undefined' && !attaccatoAllaChiusura) {
+    window.addEventListener('pagehide', hrFlush)
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hrFlush() })
+    attaccatoAllaChiusura = true
+  }
 }
+
+let attaccatoAllaChiusura = false
 
 /** Scrive quello che c'e' adesso. */
 export function hrFlush(): void {

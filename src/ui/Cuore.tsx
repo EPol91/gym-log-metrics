@@ -43,7 +43,13 @@ export function Cuore({ hr, da, a, titolo }: {
     <div className="card">
       <div className="row spread" style={{ alignItems: 'baseline' }}>
         <label className="fl" style={{ margin: 0 }}>♥ {titolo}</label>
-        <span className="muted small">{m.minuti} min · {m.letture} letture</span>
+        {/* Quanto della seduta ha davvero un battito. Sotto il 90% lo si dice
+            in chiaro: una media su meta' allenamento non e' la tua media. */}
+        <span className="muted small">
+          {m.copertura < 90 && m.minutiFinestra > m.minuti
+            ? `${m.minuti} min su ${m.minutiFinestra} · ${m.copertura}%`
+            : `${m.minuti} min · ${m.letture} letture`}
+        </span>
       </div>
 
       <div className="row" style={{ marginTop: 8 }}>

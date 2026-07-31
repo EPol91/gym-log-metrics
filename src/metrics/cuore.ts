@@ -28,8 +28,12 @@ export interface MetricheCuore {
   zone: Record<CardioZone, number>
   /** la zona in cui hai passato piu' tempo */
   zonaPrevalente: CardioZone | null
-  /** quanto e' durata la finestra, in minuti */
+  /** minuti di battiti veri: i buchi non contano */
   minuti: number
+  /** quanto e' durata la finestra, buchi compresi */
+  minutiFinestra: number
+  /** quanta parte della finestra ha davvero un battito, in percentuale */
+  copertura: number
   letture: number
 }
 
@@ -60,8 +64,10 @@ export function metricheCuore(
   const fine = a ? new Date(a).getTime() : Infinity
 
   const dentro: number[] = []
+  let tutte = 0                     // caselle dentro la finestra, buchi compresi
   for (let i = 0; i < s.bpm.length; i++) {
     const t = istanteDi(s, i)
+    if (t >= inizio && t <= fine) tutte++
     // Lo zero non e' un battito: e' la fascia che taceva, e non deve entrare
     // in nessuna media.
     if (t >= inizio && t <= fine && s.bpm[i] > 0) dentro.push(s.bpm[i])
@@ -87,6 +93,10 @@ export function metricheCuore(
     zone,
     zonaPrevalente: prevalente ? (Number(prevalente[0]) as CardioZone) : null,
     minuti: Math.round((dentro.length * s.step) / 60),
+    minutiFinestra: Math.round((tutte * s.step) / 60),
+    // Se la fascia cade, questo e' il numero che te lo dice: meglio saperlo
+    // che fidarsi di una media calcolata su meta' seduta.
+    copertura: tutte ? Math.round((dentro.length / tutte) * 100) : 0,
     letture: dentro.length,
   }
 }
