@@ -562,6 +562,7 @@ async function addMealRestore(meal: { id: string; date: string; name: string; or
 
 /** Scheda di modifica di una riga già nel diario: stessa scheda dell'aggiunta. */
 function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClose: () => void; onDelete: () => void }) {
+  const [sostituendo, setSostituendo] = useState(false)
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -583,6 +584,31 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
           <strong>Modifica</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
+
+        {/* Riga del piano: qui si sostituisce. Non e' "cancella e riscrivi" —
+            la voce resta onorata, e al coach vanno i macro di quello che hai
+            mangiato davvero invece di quelli del cibo che non hai toccato. */}
+        {entry.log.rsPlanned && (
+          <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
+            <div className="row spread" style={{ alignItems: 'center' }}>
+              <span className="small">
+                {entry.log.rsPlanned.nome && entry.log.rsPlanned.nome !== entry.food.name
+                  ? <>Al posto di <strong>{entry.log.rsPlanned.nome}</strong></>
+                  : 'Riga del piano del coach'}
+              </span>
+              <button className="chip" style={{ borderColor: 'var(--rs)', color: 'var(--rs)' }}
+                onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
+            </div>
+          </div>
+        )}
+        {sostituendo && (
+          <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"
+            onClose={() => setSostituendo(false)}
+            sostituisciLog={{
+              id: entry.log.id,
+              onFatto: () => { setSostituendo(false); onClose() },
+            }} />
+        )}
         <FoodSheet food={entry.food} grams={entry.log.grams} mode="edit"
           onConfirm={async (g) => { await updateFoodLog(entry.log.id, { grams: g }); onClose() }}
           onDeleteLog={onDelete}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } from '../db/diet'
 import { listRecipesRanked, computeRecipe } from '../db/recipes'
+import { sostituisci } from '../rs/dieta'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
 import { BarcodeScanner, isScanSupported } from './BarcodeScanner'
 import { useScanner } from './useScanner'
@@ -12,7 +13,11 @@ import type { Food, Recipe } from '../db/schema'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; mealId: string; mealName: string; onClose: () => void }) {
+export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: {
+  date: string; mealId: string; mealName: string; onClose: () => void
+  /** 🦠RS: invece di aggiungere una riga, cambia l'alimento di quella indicata. */
+  sostituisciLog?: { id: string; onFatto: () => void }
+}) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
   const [chosen, setChosen] = useState<Food | null>(null)
@@ -68,6 +73,14 @@ export function FoodPicker({ date, mealId, mealName, onClose }: { date: string; 
 
   async function add(grams: number) {
     if (!chosen) return
+    // In sostituzione la riga esiste gia': si cambia il suo alimento invece di
+    // crearne un'altra, cosi' resta agganciata a cosa aveva prescritto il coach
+    // e continua a valere come voce del piano onorata.
+    if (sostituisciLog) {
+      await sostituisci(sostituisciLog.id, chosen.id, grams)
+      sostituisciLog.onFatto()
+      return
+    }
     await addFoodLog(date, mealId, chosen.id, grams)
     onClose()
   }

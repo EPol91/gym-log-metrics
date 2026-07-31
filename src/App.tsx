@@ -8,6 +8,7 @@ import { TrainScreen } from './ui/TrainScreen'
 import { DietScreen } from './ui/DietScreen'
 import { HealthScreen } from './ui/HealthScreen'
 import { RsScreen } from './ui/RsScreen'
+import { RsGiorno } from './ui/RsGiorno'
 import { ProfileScreen } from './ui/ProfileScreen'
 import { WorkoutFlow } from './ui/WorkoutFlow'
 import { AnalyticsScreen } from './ui/AnalyticsScreen'
@@ -131,6 +132,7 @@ function AppScreens() {
 
   return (
     <div className="app">
+      <RsGiorno />
       <div className="screen" key={nav.tab}>
         {nav.tab === 'today' && (
           <TodayScreen
