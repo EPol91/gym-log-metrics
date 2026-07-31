@@ -91,6 +91,10 @@ interface RecoveryRec { cycle_id: number; score?: { recovery_score?: number; res
 interface SleepRec { id: string; start: string; end: string; nap?: boolean; score?: { respiratory_rate?: number; sleep_performance_percentage?: number; sleep_efficiency_percentage?: number; stage_summary?: { total_in_bed_time_milli?: number; total_awake_time_milli?: number } } }
 interface WorkoutRec { id: string; start: string; end: string; sport_name?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number; distance_meter?: number } }
 
+/** Toglie i campi vuoti, così un dato che non c'è non cancella quello che c'era. */
+const senzaVuoti = <T extends object>(o: T): Partial<T> =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>
+
 const kcalDa = (kj?: number) => (kj != null ? Math.round(kj / 4.184) : undefined)
 const arrotonda = (v: number | undefined, d = 1) => (v != null ? Math.round(v * 10 ** d) / 10 ** d : undefined)
 
@@ -153,7 +157,10 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
     const vecchia = perData.get(data)
     righe.push({
       ...(vecchia ?? { id: newId(), userId: U, createdAt: ts }),
-      ...val, date: data, userId: U, updatedAt: ts, syncedAt: ts,
+      // Solo i campi davvero arrivati: una sincronizzazione fatta mentre WHOOP
+      // ha ancora mezza giornata da elaborare non deve cancellare quello che
+      // era gia' qui. I vuoti si sovrascriverebbero sopra i pieni.
+      ...senzaVuoti(val), date: data, userId: U, updatedAt: ts, syncedAt: ts,
     } as WhoopDay)
   }
   if (righe.length) await db.whoopDays.bulkPut(righe)
@@ -225,8 +232,6 @@ export async function restingHrFromWhoop(giorni = 7): Promise<number | null> {
  * apertura senza disturbare. Senza questo, i dati sono vecchi proprio nei
  * giorni in cui ti dimentichi di premere Aggiorna.
  */
-const AUTO_KEY = 'whoop-auto'
-
 const AUTO_AT = 'whoop-auto-at'
 const AUTO_TRY = 'whoop-auto-try'
 
@@ -235,29 +240,32 @@ export function lastAutoSync(): string | null {
   return localStorage.getItem(AUTO_AT)
 }
 
-/** La giornata di oggi è già arrivata con dentro qualcosa di utile? */
+/**
+ * La giornata di oggi è arrivata intera?
+ * Il metro è il recupero, non il sonno: WHOOP pubblica il sonno appena ti alzi
+ * e il recupero più tardi. Accontentarsi del sonno voleva dire fermarsi alle
+ * sei del mattino con recupero, sforzo e HRV ancora vuoti per tutto il giorno.
+ */
 async function oggiCompleto(): Promise<boolean> {
   const d = await whoopDay()
-  return !!d && (d.recovery != null || d.sleepHours != null || d.strain != null)
+  return d?.recovery != null
 }
 
 /**
- * Sincronizza da sola. Si ferma per oggi SOLO quando i dati di oggi sono
- * arrivati davvero: WHOOP elabora la notte con i suoi tempi, e segnare
- * "fatto" alle sette del mattino significava non riprovare piu fino a domani,
- * lasciando il lavoro a te.
+ * Sincronizza da sola, al ritorno nell'app.
  *
- * Finche mancano, riprova a ogni ritorno nell app, non piu di una volta ogni
- * quarto d ora: abbastanza per non accorgersene, poco per non tempestare WHOOP.
+ * Due ritmi, non un interruttore "fatto per oggi": finché il recupero di oggi
+ * manca riprova ogni quarto d'ora, perché è lì che i dati stanno ancora
+ * arrivando; quando c'è rallenta a ogni tre ore, quel tanto che basta a tenere
+ * fresco lo sforzo, che invece cresce per tutta la giornata.
  */
-const ATTESA_MS = 15 * 60_000
+const ATTESA_INCOMPLETO = 15 * 60_000
+const ATTESA_COMPLETO = 3 * 60 * 60_000
 
 export async function autoSyncWhoop(): Promise<boolean> {
-  const oggi = todayLocal()
-  if (localStorage.getItem(AUTO_KEY) === oggi && await oggiCompleto()) return false
-
+  const attesa = (await oggiCompleto()) ? ATTESA_COMPLETO : ATTESA_INCOMPLETO
   const ultimoTentativo = Number(localStorage.getItem(AUTO_TRY) ?? 0)
-  if (Date.now() - ultimoTentativo < ATTESA_MS) return false
+  if (Date.now() - ultimoTentativo < attesa) return false
   localStorage.setItem(AUTO_TRY, String(Date.now()))
 
   const st = await whoopStatus()
@@ -265,8 +273,6 @@ export async function autoSyncWhoop(): Promise<boolean> {
   try {
     await syncWhoop(14)
     localStorage.setItem(AUTO_AT, nowISO())
-    // "Fatto per oggi" solo se oggi c'è davvero: altrimenti si riprova.
-    if (await oggiCompleto()) localStorage.setItem(AUTO_KEY, oggi)
     return true
   } catch {
     // Niente rumore: e' un aggiornamento di cortesia, non un'azione che hai chiesto.
