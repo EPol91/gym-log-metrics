@@ -378,6 +378,7 @@ export async function updateUser(
     restingHr?: number; hrMaxMeasured?: number; heightCm?: number; restDefaultSec?: number
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
     activityLevel?: ActivityLevel; bmrFormula?: BmrFormula; coachBlocks?: CoachBlock[]
+    todayCards?: string[]
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

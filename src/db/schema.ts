@@ -49,6 +49,12 @@ export interface User extends BaseRecord {
   /** target giornalieri opzionali per il contesto nutrizione */
   waterTarget?: number
   saltTarget?: number
+  /**
+   * Ordine dei riquadri in Oggi. Sta qui e non nella memoria di sessione perche'
+   * e' una scelta tua, non uno stato temporaneo: deve sopravvivere alla chiusura
+   * dell'app e viaggiare nel backup insieme al resto.
+   */
+  todayCards?: string[]
 }
 
 /** Livello di attivita quotidiana: moltiplica il metabolismo basale. */

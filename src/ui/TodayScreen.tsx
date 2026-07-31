@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
-import { getUser, getOngoingSession, upsertMeasurement, todayISO } from '../db/repo'
+import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser } from '../db/repo'
 import { computeDiary, todayDiet } from '../db/diet'
 import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
-import { usePersistedState } from '../util/persist'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre } from '../util/format'
@@ -40,7 +39,11 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   const home = useLiveQuery(computeHome, [])
   const user = useLiveQuery(getUser, [])
   const ongoing = useLiveQuery(getOngoingSession, [])
-  const [ordine, setOrdine] = usePersistedState<string[]>('today-cards', ORDINE_DEFAULT)
+  // L'ordine dei riquadri e' una tua scelta, non uno stato temporaneo: sta nel
+  // profilo, quindi resiste alla chiusura dell'app e finisce nel backup. Prima
+  // viveva nella memoria di sessione e a ogni riavvio tornava quello di fabbrica.
+  const ordine = user?.todayCards ?? ORDINE_DEFAULT
+  const setOrdine = (ids: string[]) => { void updateUser({ todayCards: ids }) }
   // Se WHOOP ha già i dati di stanotte il check è mezzo compilato: l'anello
   // respira per farsi notare, senza allungare la riga sotto.
   const vitali = useLiveQuery(() => whoopDay(), [])
