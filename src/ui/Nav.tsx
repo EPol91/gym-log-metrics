@@ -41,7 +41,7 @@ export function Nav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void })
     { key: 'train', label: 'Allena' },
     { key: 'food', label: 'Cibo' },
     { key: 'health', label: 'Salute' },
-    { key: 'rs', label: '' },
+    { key: 'rs', label: 'RS' },
     { key: 'profile', label: 'Profilo' },
   ]
   return (

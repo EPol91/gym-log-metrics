@@ -196,9 +196,8 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 }
 .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active { color: var(--gold); }
-/* 🦠RS: senza etichetta occupa meno spazio, e da acceso e' rosso come il coach —
-   l'unico punto dell'app che non e' oro, perche' quella roba non e' tua. */
-.tab-rs { flex: 0 0 46px; }
+/* 🦠RS: da acceso e' rosso come il coach — l'unico punto dell'app che non e'
+   oro, perche' quella roba non resta qui. */
 .tab-rs.active { color: var(--rs); }
 
 /* Da dove arriva un valore di RS, in un pallino: pieno = calcolato dall'app,
