@@ -116,6 +116,9 @@ export function riassunto(s: SedutaRs): string {
 
 export interface GiornoCalendario {
   date: string
+  /** orario registrato dall app, correggibile a mano dal dettaglio seduta */
+  dalle: string
+  alle: string | null
   /** nome della seduta: quella del coach se riconosciuta, altrimenti la tua */
   nome: string
   /** viene dal protocollo del coach */
@@ -152,8 +155,15 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
     const mie = entrate.filter((e) => e.sessionId === s.id)
     const nomi = mie.map((e) => perId.get(e.exerciseId) ?? '')
     const g = riconosci(nomi)
+    const ora = (iso: string | null): string | null => {
+      if (!iso) return null
+      const d = new Date(iso)
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    }
     return {
       date: s.date,
+      dalle: ora(s.startedAt) ?? '',
+      alle: ora(s.finishedAt),
       nome: g?.nome ?? TIPI[s.type] ?? s.type,
       delCoach: !!g,
       serie: mie.reduce((n, e) => n + (serieDi.get(e.id) ?? 0), 0),

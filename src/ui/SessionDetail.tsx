@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { fmtData } from '../util/format'
+import { OrarioSeduta } from './OrarioSeduta'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
@@ -112,7 +113,7 @@ export function SessionDetail({ sessionId, onBack, onReopen }: {
       </div>
 
       <div className="card">
-        {d.durationMin != null && <div className="row spread"><span className="muted">Durata</span><strong>{d.durationMin} min</strong></div>}
+        <OrarioSeduta sessionId={d.session.id} startedAt={d.session.startedAt} finishedAt={d.session.finishedAt} />
         <div className="row spread"><span className="muted">Volume</span><strong>{d.vol} reps</strong></div>
         <div className="row spread"><span className="muted">Tonnellaggio</span><strong>{d.ton} kg</strong></div>
       </div>

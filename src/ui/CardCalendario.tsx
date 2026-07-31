@@ -94,7 +94,9 @@ export function CardCalendario({ onApri }: { onApri?: (date: string) => void }) 
                 className="row spread"
                 style={{ padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
                 <span className="small" style={{ color: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>{g.nome}</span>
-                <span className="muted" style={{ fontSize: 11 }}>{fmtData(g.date).slice(0, 5)} · {g.serie} serie</span>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  {fmtData(g.date).slice(0, 5)} · {g.dalle}{g.alle ? `–${g.alle}` : ''} · {g.serie} serie
+                </span>
               </div>
             ))}
             {!giorni?.length && <p className="muted small" style={{ margin: 0 }}>Nessuna seduta in queste settimane.</p>}

@@ -618,3 +618,18 @@ export async function getOrCreateExercise(name: string, muscle: MuscleGroup = 'a
   await db.exercises.add(e)
   return e
 }
+
+/**
+ * Corregge a mano l'orario di inizio e fine di una seduta.
+ *
+ * L'app li registra da sola, ma capita di far partire il cronometro tardi o di
+ * chiudere la seduta mentre sei ancora in doccia: senza poterli correggere, la
+ * durata resta sbagliata per sempre e con lei ogni confronto.
+ *
+ * `pausedSec` torna a zero: se dichiari tu l'intervallo, quello E' la durata —
+ * tenere anche le pause vecchie darebbe un totale che non torna con gli orari
+ * scritti sopra.
+ */
+export async function setSessionTimes(sessionId: string, startedAt: string, finishedAt: string | null): Promise<void> {
+  await db.sessions.update(sessionId, { startedAt, finishedAt, pausedSec: 0, updatedAt: nowISO() })
+}
