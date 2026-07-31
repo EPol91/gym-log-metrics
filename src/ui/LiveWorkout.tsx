@@ -167,6 +167,44 @@ function StepCard({ label, value, onSet, onStep, placeholder = '—', info }: {
 
 const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '7px 2px', borderTop: '1px solid var(--line)', fontVariantNumeric: 'tabular-nums' } as const
 
+// --- Back off -----------------------------------------------------------------
+//
+// Scarichi del 20% e continui. Il conto e' banale, ma farlo a mente fra una
+// serie e l'altra e' il momento in cui ti sbagli.
+
+const BACK_OFF = 0.8
+
+/** Il -20%, arrotondato a mezzo chilo: 87,5 diventa 70, non 70,000001. */
+const scarico = (kg: number) => Math.round(kg * BACK_OFF * 2) / 2
+
+/**
+ * Da che carico si scala.
+ *
+ * L'ultima serie di LAVORO di oggi: il riscaldamento non e' il riferimento di
+ * niente. Se oggi non hai ancora registrato nulla vale l'ultima volta che hai
+ * fatto questo esercizio, e in mancanza anche di quella il numero che hai nel
+ * campo — cosi' il tasto funziona sempre, ma non inventa mai un carico.
+ */
+function baseScarico(sets: SetEntry[], ultima: SetEntry | null, campo: string): number | null {
+  const lavoro = [...sets].reverse().find((s) => !s.isWarmup)
+  if (lavoro) return lavoro.weight
+  if (ultima) return ultima.weight
+  const n = parseNum(campo, { min: 0 })
+  return n && n > 0 ? n : null
+}
+
+/** Il tasto: dice sempre da quale carico sta scalando, cosi' non devi fidarti. */
+function TastoScarico({ base, onSet }: { base: number | null; onSet: (kg: string) => void }) {
+  if (base == null) return null
+  return (
+    <button className="ghost" style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+      onClick={() => onSet(String(scarico(base)))}
+      aria-label={`Back off: -20% da ${base} kg`}>
+      −20% <span className="muted" style={{ fontSize: 10 }}>da {base}</span>
+    </button>
+  )
+}
+
 /** Data breve "22 lug" — nello storico la colonna deve restare stretta e su una riga. */
 function shortDate(iso: string): string {
   const [, m, d] = iso.split('-')
@@ -406,9 +444,10 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       {/* Barra recupero (sotto le card, come nel mockup) */}
       {restNode}
 
-      {/* Voce + riscaldamento */}
+      {/* Voce + riscaldamento + back off */}
       <div className="row" style={{ gap: 6, alignItems: 'flex-start' }}>
         <button className={warmup ? 'sel' : 'ghost'} style={{ flex: '0 0 auto' }} onClick={() => setWarmup((v) => !v)}>Risc.</button>
+        <TastoScarico base={baseScarico(sets, hint, w)} onSet={setW} />
         <div style={{ flex: 1 }}><VoiceButton onFill={fillFromVoice} /></div>
       </div>
 
@@ -519,7 +558,12 @@ function GroupExercise({ entry, name, values, onChange, prev }: {
 
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
         <div style={{ flex: 1 }}>
-          <label className="fl">kg</label>
+          {/* Nel superset lo spazio e' quello che e': il tasto sta appeso
+              all'etichetta del kg, non aggiunge una riga al giro. */}
+          <div className="row spread" style={{ alignItems: 'baseline', gap: 4 }}>
+            <label className="fl" style={{ margin: 0 }}>kg</label>
+            <TastoScarico base={baseScarico(sets, prev, values.w)} onSet={(kg) => onChange({ ...values, w: kg })} />
+          </div>
           <input inputMode="decimal" value={values.w} onChange={(e) => onChange({ ...values, w: e.target.value })}
             style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
         </div>
