@@ -133,15 +133,23 @@ function VoiceButton({ onFill }: { onFill: (f: VoiceSet) => void }) {
     )
   }
 
+  // Solo il microfono: la scritta occupava una riga intera per una cosa che si
+  // capisce dall'icona. Lo spazio liberato resta libero per i tasti nuovi.
   return (
-    <div style={{ marginTop: 8 }}>
-      <button className={listening ? 'sel' : 'ghost'} style={{ width: '100%' }} onClick={toggle}>
-        {listening ? '● In ascolto… tocca per fermare' : '🎤 Detta la serie'}
-        <Info text="Dillo così: «100 per 8» oppure «102,5 per 6 RIR 2». Aggiungi «riscaldamento» per marcarla. La voce riempie i campi: controlli e premi Aggiungi set." />
+    <>
+      <button className={listening ? 'sel' : 'ghost'} style={{ flex: '0 0 auto', padding: '10px 12px' }}
+        onClick={toggle} aria-label={listening ? 'Sto ascoltando, tocca per fermare' : 'Detta la serie'}>
+        {listening ? '●' : '🎤'}
       </button>
-      {heard ? <p className="muted small" style={{ marginTop: 4 }}>Sentito: “{heard}”</p>
-        : listening && <p className="muted small" style={{ marginTop: 4 }}>Es: «100 per 8 RIR 2»</p>}
-    </div>
+      {/* Quello che ha capito va detto: e' l'unico modo per accorgerti che ha
+          sentito 30 invece di 13. Va a capo da sola, non stringe i tasti. */}
+      {(heard || listening) && (
+        <p className="muted small" style={{ flexBasis: '100%', margin: '2px 0 0' }}>
+          {heard ? `Sentito: “${heard}”` : 'Es: «100 per 8 RIR 2»'}
+          <Info text="Dillo così: «100 per 8» oppure «102,5 per 6 RIR 2». Aggiungi «riscaldamento» per marcarla. La voce riempie i campi: controlli e premi Registra serie." />
+        </p>
+      )}
+    </>
   )
 }
 
@@ -444,11 +452,12 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       {/* Barra recupero (sotto le card, come nel mockup) */}
       {restNode}
 
-      {/* Voce + riscaldamento + back off */}
-      <div className="row" style={{ gap: 6, alignItems: 'flex-start' }}>
+      {/* Riscaldamento · back off · voce. Tasti piccoli in fila: il resto della
+          riga resta libero per quello che verra' dopo. */}
+      <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className={warmup ? 'sel' : 'ghost'} style={{ flex: '0 0 auto' }} onClick={() => setWarmup((v) => !v)}>Risc.</button>
         <TastoScarico base={baseScarico(sets, hint, w)} onSet={setW} />
-        <div style={{ flex: 1 }}><VoiceButton onFill={fillFromVoice} /></div>
+        <VoiceButton onFill={fillFromVoice} />
       </div>
 
       {/* Registra serie */}
