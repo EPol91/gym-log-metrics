@@ -23,14 +23,20 @@ const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
 /** Lunedi della settimana di una data: la griglia parte sempre da li'. */
 const lunedi = (d: string) => shiftDate(d, -((new Date(d + 'T00:00:00').getDay() + 6) % 7))
 
-/** Il quadratino della data in cima, che apre il calendario. */
-export function DataDiOggi({ onApri }: { onApri: () => void }) {
+/**
+ * Il quadratino della data in cima, che apre il calendario.
+ *
+ * `altezza` lo fa combaciare con l'anello del check che gli sta accanto:
+ * lasciato alla sua misura restava corto e sembrava appeso in alto.
+ */
+export function DataDiOggi({ onApri, altezza }: { onApri: () => void; altezza?: number }) {
   const oggi = new Date()
   return (
     <button onClick={onApri} aria-label="Calendario"
       style={{
         background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 12,
         padding: '6px 10px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.15,
+        ...(altezza ? { height: altezza, display: 'grid', alignContent: 'center' } : {}),
       }}>
       <div className="muted" style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase' }}>
         {['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][oggi.getDay()]}

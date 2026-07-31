@@ -15,6 +15,9 @@ import { usePesoOggi } from './PesoOggi'
 import { DataDiOggi, Calendario } from './CardCalendario'
 import { useEffect } from 'react'
 
+// L'anello del check: la data accanto si misura su questo.
+const ANELLO = 82
+
 const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
 const NUM: React.CSSProperties = { color: 'var(--gold)', fontSize: 19, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }
 
@@ -87,12 +90,14 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         </div>
         {/* La data al posto del saluto: un "👋" occupa spazio e non dice niente,
             una data la guardi — e col tocco apre il calendario. */}
+        {/* La data alta quanto l'anello: cosi' i due riquadri combaciano invece
+            di stare uno alto e uno basso. */}
         <div className="row" style={{ gap: 8, alignItems: 'flex-start', flex: '0 0 auto' }}>
-        <DataDiOggi onApri={() => setCalendario(true)} />
+        <DataDiOggi onApri={() => setCalendario(true)} altezza={ANELLO} />
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <span className={home?.todayReady == null && vitaliOggi ? 'ring-invito' : undefined}>
-            <ScoreRing value={home?.todayReady ?? null} size={82} />
+            <ScoreRing value={home?.todayReady ?? null} size={ANELLO} />
           </span>
           <div className="small" style={{ marginTop: 1, letterSpacing: '.04em', color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
             {home?.todayReady == null ? 'Oggi · fai il check' : 'Oggi'}
