@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
-import { passiDisponibili, permessoPassiConcesso, chiediPermessoPassi, sincronizzaPassi } from '../util/passi'
+import { statoPassi, chiediPermessoPassi, sincronizzaPassi, type StatoPassi } from '../util/passi'
 
 const SECTION: React.CSSProperties = {
   fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)',
@@ -89,43 +89,54 @@ export function HabitsScreen() {
  * di nessun tasto.
  */
 function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
-  const [stato, setStato] = useState<'controllo' | 'assente' | 'daCollegare' | 'collegato'>('controllo')
+  const [stato, setStato] = useState<StatoPassi | 'controllo'>('controllo')
   const [esito, setEsito] = useState<string | null>(null)
   const [lavoro, setLavoro] = useState(false)
 
-  useEffect(() => {
-    let vivo = true
-    void (async () => {
-      const ok = await passiDisponibili()
-      if (!vivo) return
-      if (!ok) { setStato('assente'); return }
-      setStato((await permessoPassiConcesso()) ? 'collegato' : 'daCollegare')
-    })()
-    return () => { vivo = false }
-  }, [])
+  const controlla = async () => { setStato(await statoPassi()) }
+  useEffect(() => { void controlla() }, [])
 
-  // Collegato: i giorni si aggiornano da soli a ogni apertura, senza toccare niente.
+  // Collegato: i giorni si aggiornano da soli a ogni apertura.
   useEffect(() => {
-    if (stato !== 'collegato') return
-    void sincronizzaPassi(14)
+    if (typeof stato === 'object' && stato.stato === 'collegato') void sincronizzaPassi(14)
   }, [stato])
 
-  if (stato === 'controllo') return null
+  // Nessun ramo muto: anche mentre controlla, la riga c'e' e lo dice. Prima, se
+  // il ponte col nativo non rispondeva, qui non compariva proprio niente.
+  if (stato === 'controllo') {
+    return <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>Controllo Health Connect…</p>
+  }
 
-  if (stato === 'assente') {
+  if (stato.stato === 'fuoriDallApp') {
     return (
       <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
         {senzaDati ? 'Nessun dato ancora. ' : ''}
         I passi automatici arrivano da <strong style={{ color: 'var(--text)' }}>Health Connect</strong>, che esiste solo
-        nell'app installata: dal browser quel dato non e' raggiungibile — WHOOP non lo espone nella sua API.
-        L'obiettivo e i valori a mano funzionano lo stesso.
+        nell'app installata: dal browser quel dato non è raggiungibile — WHOOP non lo espone nella sua API.
       </p>
+    )
+  }
+
+  if (stato.stato === 'assente') {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <p className="muted small" style={{ margin: 0 }}>
+          Health Connect non risponde: <strong style={{ color: 'var(--text)' }}>{stato.motivo}</strong>
+        </p>
+        <p className="muted small" style={{ margin: '4px 0 8px' }}>
+          Su Android 14+ è già nel telefono: Impostazioni → Sicurezza e privacy → Altre impostazioni → Health Connect.
+          Sui più vecchi si installa dal Play Store.
+        </p>
+        <button className="chip" disabled={lavoro} onClick={async () => {
+          setLavoro(true); try { await controlla() } finally { setLavoro(false) }
+        }}>{lavoro ? 'Riprovo…' : 'Riprova'}</button>
+      </div>
     )
   }
 
   return (
     <div style={{ marginTop: 12 }}>
-      {stato === 'daCollegare' ? (
+      {stato.stato === 'daCollegare' ? (
         <>
           <p className="muted small" style={{ margin: '0 0 8px' }}>
             I passi possono arrivare da soli da Health Connect. Serve il tuo permesso, una volta.
@@ -134,11 +145,12 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
             onClick={async () => {
               setLavoro(true)
               try {
-                if (await chiediPermessoPassi()) {
-                  setStato('collegato')
+                const r = await chiediPermessoPassi()
+                if (r.ok) {
+                  setStato({ stato: 'collegato' })
                   const n = await sincronizzaPassi(30)
                   setEsito(n ? `${n} giornate recuperate.` : 'Collegato: i passi arriveranno col prossimo aggiornamento.')
-                } else setEsito('Permesso non concesso.')
+                } else setEsito(r.motivo ?? 'Permesso non concesso.')
               } finally { setLavoro(false) }
             }}>
             {lavoro ? 'Collego…' : 'Collega i passi'}

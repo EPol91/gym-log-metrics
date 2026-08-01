@@ -103,7 +103,9 @@ export function WhoopSettings() {
             </p>
           )}
 
-          <div className="row" style={{ gap: 6, marginTop: 10 }}>
+          {/* Tre tasti su una riga sola non ci stanno su un telefono: "Scollega"
+              finiva mezzo fuori dallo schermo. Vanno a capo. */}
+          <div className="row wrap" style={{ gap: 6, marginTop: 10 }}>
             <button className="chip" disabled={busy === 'sync'} onClick={() => sincronizza(180)}>Scarica 6 mesi</button>
             <button className="chip" disabled={!!busy}
               onClick={async () => {

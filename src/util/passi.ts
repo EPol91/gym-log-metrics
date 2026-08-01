@@ -21,41 +21,78 @@ interface Health {
   }): Promise<{ aggregatedData: { startDate: string; endDate: string; value: number }[] }>
 }
 
+/**
+ * Una promessa che non puo' restare appesa per sempre.
+ *
+ * Se il ponte col nativo non risponde, senza questo la schermata resta a
+ * guardare il vuoto: e' successo davvero, e non si capiva niente perche' non
+ * compariva nemmeno un messaggio.
+ */
+function conTempo<T>(p: Promise<T>, ms: number, motivo: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, no) => setTimeout(() => no(new Error(motivo)), ms)),
+  ])
+}
+
 let plugin: Health | null = null
 async function health(): Promise<Health | null> {
   if (!isNativo()) return null
   if (plugin) return plugin
+  const mod = await conTempo(import('capacitor-health'), 6000, 'Il modulo Health non si e\' caricato.')
+  plugin = (mod as unknown as { Health: Health }).Health
+  if (!plugin?.isHealthAvailable) throw new Error('Il ponte con Health Connect non risponde.')
+  return plugin
+}
+
+/** Perche' i passi non si possono leggere: da mostrare, non da nascondere. */
+export type StatoPassi =
+  | { stato: 'fuoriDallApp' }
+  | { stato: 'assente'; motivo: string }
+  | { stato: 'daCollegare' }
+  | { stato: 'collegato' }
+
+/**
+ * A che punto siamo con i passi.
+ *
+ * Ogni ramo dice qualcosa: "non si puo'" con il motivo, oppure "manca il
+ * permesso", oppure "tutto a posto". Il silenzio non e' fra le risposte
+ * possibili — era il difetto di prima.
+ */
+export async function statoPassi(): Promise<StatoPassi> {
+  if (!isNativo()) return { stato: 'fuoriDallApp' }
   try {
-    const mod = await import('capacitor-health')
-    plugin = (mod as unknown as { Health: Health }).Health
-    return plugin
-  } catch { return null }
+    const h = await health()
+    if (!h) return { stato: 'assente', motivo: 'Plugin non disponibile.' }
+    const d = await conTempo(h.isHealthAvailable(), 6000, 'Health Connect non ha risposto.')
+    if (!d.available) return { stato: 'assente', motivo: 'Health Connect non e\' installato o non e\' attivo su questo telefono.' }
+    const p = await conTempo(h.checkHealthPermissions({ permissions: ['READ_STEPS'] }), 6000, 'Controllo permessi non riuscito.')
+    return p.permissions?.includes('READ_STEPS') ? { stato: 'collegato' } : { stato: 'daCollegare' }
+  } catch (e) {
+    return { stato: 'assente', motivo: (e as Error)?.message ?? 'Errore sconosciuto.' }
+  }
 }
 
 /** C'e' Health Connect su questo telefono? Fuori dall'app installata: no. */
 export async function passiDisponibili(): Promise<boolean> {
-  const h = await health()
-  if (!h) return false
-  try { return (await h.isHealthAvailable()).available } catch { return false }
+  const s = await statoPassi()
+  return s.stato === 'daCollegare' || s.stato === 'collegato'
 }
 
 /** Chiede il permesso di leggere i passi. Va chiamato da un tocco tuo. */
-export async function chiediPermessoPassi(): Promise<boolean> {
-  const h = await health()
-  if (!h) return false
+export async function chiediPermessoPassi(): Promise<{ ok: boolean; motivo?: string }> {
   try {
-    const r = await h.requestHealthPermissions({ permissions: ['READ_STEPS'] })
-    return r.permissions.includes('READ_STEPS')
-  } catch { return false }
+    const h = await health()
+    if (!h) return { ok: false, motivo: 'Plugin non disponibile.' }
+    const r = await conTempo(h.requestHealthPermissions({ permissions: ['READ_STEPS'] }), 60_000, 'Nessuna risposta dalla schermata dei permessi.')
+    return r.permissions?.includes('READ_STEPS')
+      ? { ok: true }
+      : { ok: false, motivo: 'Permesso non concesso.' }
+  } catch (e) { return { ok: false, motivo: (e as Error)?.message } }
 }
 
 export async function permessoPassiConcesso(): Promise<boolean> {
-  const h = await health()
-  if (!h) return false
-  try {
-    const r = await h.checkHealthPermissions({ permissions: ['READ_STEPS'] })
-    return r.permissions.includes('READ_STEPS')
-  } catch { return false }
+  return (await statoPassi()).stato === 'collegato'
 }
 
 /**
