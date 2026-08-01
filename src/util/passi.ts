@@ -24,7 +24,7 @@ interface Health {
     dataOrigins?: string[]
   }): Promise<{ aggregatedData: { startDate: string; endDate: string; value: number }[] }>
   queryRecords(r: { startDate: string; endDate: string; dataType: 'steps' }): Promise<{
-    records: { startDate: string; value: number; sourceBundleId: string; sourceName: string }[]
+    records: { startDate: string; endDate?: string; value: number; sourceBundleId: string; sourceName: string }[]
   }>
 }
 
@@ -163,43 +163,71 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
   const fine = new Date(aISO + 'T23:59:59')
 
   /**
-   * Un giorno alla volta, con gli estremi decisi QUI.
+   * A che giornata appartiene un record: quella dove sta il grosso della sua
+   * durata, cioe' il suo punto di mezzo.
    *
-   * Le due strade precedenti sbagliavano tutte e due, e per lo stesso motivo:
-   * mi fidavo degli orari che il plugin mette sui dati. Prima il suo
-   * raggruppamento tagliava le giornate dove voleva lui; poi, sommando i record
-   * a mano, quelli che cominciano a mezzanotte finivano sul giorno prima — il
-   * 30 luglio faceva 15.859, cioe' esattamente 7.085 + 8.774, i suoi passi piu'
-   * quelli del 31.
+   * Serve perche' il WHOOP marca il totale del giorno con l'ora in cui e'
+   * COMINCIATA la sua giornata fisiologica, cioe' quando vai a dormire. Nei
+   * dati veri:
+   *   inizio 30/07 01:57 → 7.085 passi = il 30 luglio
+   *   inizio 30/07 23:57 → 8.774 passi = il 31 luglio
+   * Guardando l'inizio, gli 8.774 del 31 finivano sul 30 — che infatti faceva
+   * 15.859, la somma dei due. E' lo stesso scarto dei cicli WHOOP: la giornata
+   * comincia col sonno, non a mezzanotte.
    *
-   * Cosi' non si interpreta piu' niente: si chiede "quanti passi fra questa
-   * mezzanotte e la prossima", e la risposta e' un numero solo. Trenta domande
-   * invece di una, ma su un archivio locale non si sentono — e i giorni
-   * combaciano con quello che vedi nell'app di chi li conta.
+   * Il punto di mezzo risolve entrambi i casi senza regole speciali: un record
+   * lungo un giorno cade nella giornata che copre davvero, uno breve del
+   * telefono resta dov'e' — mezzogiorno di un record di trenta secondi e'
+   * ancora mezzogiorno.
    */
-  const giorni: { date: string; passi: number }[] = []
-  for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
-    const apertura = new Date(g.getFullYear(), g.getMonth(), g.getDate(), 0, 0, 0, 0)
-    const chiusura = new Date(g.getFullYear(), g.getMonth(), g.getDate() + 1, 0, 0, 0, 0)
-    try {
-      const r = await conTempo(h.queryAggregated({
-        startDate: apertura.toISOString(),
-        endDate: chiusura.toISOString(),
-        dataType: 'steps',
-        bucket: 'day',
-        ...(sorgente ? { dataOrigins: [sorgente] } : {}),
-      }), 15_000, 'La lettura dei passi non ha risposto.')
-      // Della risposta si prende solo il VALORE: la data e' quella che ho chiesto io.
-      const passi = (r.aggregatedData ?? []).reduce((s, x) => s + (x.value || 0), 0)
-      // Si registra anche uno zero: un giorno che oggi non ha passi ma ieri
-      // aveva un valore sbagliato deve essere corretto, non lasciato li'.
-      giorni.push({ date: giornoLocale(apertura.toISOString()), passi: Math.round(passi) })
-    } catch (e) {
-      // Un giorno che non risponde non deve far cadere gli altri ventinove.
-      if (giorni.length === 0 && g.getTime() >= fine.getTime()) throw e
+  const giornoDelRecord = (x: { startDate: string; endDate?: string; value: number }): string => {
+    const a = new Date(x.startDate).getTime()
+    const b = x.endDate ? new Date(x.endDate).getTime() : a
+    const durataOre = (b - a) / 3_600_000
+
+    // Rete di sicurezza: se il record non ha una durata (fine assente o uguale
+    // all'inizio) ma porta il totale di una giornata, e' un totale marcato
+    // all'inizio della giornata WHOOP. Segnato di sera, appartiene al giorno
+    // dopo — la stessa regola dei cicli. Un record breve del telefono, che vale
+    // qualche decina di passi, resta dov'e'.
+    if (durataOre < 0.02 && x.value >= 1000) {
+      const d = new Date(a)
+      if (d.getHours() >= 18) d.setDate(d.getDate() + 1)
+      return giornoLocale(d.toISOString())
     }
+    return giornoLocale(new Date(a + (b - a) / 2).toISOString())
   }
-  if (giorni.some((x) => x.passi > 0)) return giorni
+
+  if (h.queryRecords) {
+    try {
+      // Si guarda un giorno piu' in la' e uno piu' indietro: un record puo'
+      // cominciare fuori dalla finestra e appartenere a un giorno dentro.
+      const largo = (d: Date, giorni: number) => new Date(d.getTime() + giorni * 86_400_000)
+      const r = await conTempo(h.queryRecords({
+        startDate: largo(inizio, -1).toISOString(),
+        endDate: largo(fine, 1).toISOString(),
+        dataType: 'steps',
+      }), 25_000, 'La lettura dei passi non ha risposto.')
+
+      const per = new Map<string, number>()
+      for (const x of r.records ?? []) {
+        if (sorgente && x.sourceBundleId !== sorgente) continue
+        const g = giornoDelRecord(x)
+        if (g < daISO || g > aISO) continue
+        per.set(g, (per.get(g) ?? 0) + (x.value || 0))
+      }
+      if (per.size) {
+        // Anche i giorni rimasti a zero: servono a correggere un valore vecchio
+        // sbagliato invece di lasciarlo li'.
+        const out: { date: string; passi: number }[] = []
+        for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
+          const d = giornoLocale(new Date(g.getFullYear(), g.getMonth(), g.getDate(), 12).toISOString())
+          out.push({ date: d, passi: Math.round(per.get(d) ?? 0) })
+        }
+        return out
+      }
+    } catch { /* niente record: si prova l'aggregato qui sotto */ }
+  }
 
   // Ripiego, se nessun giorno ha risposto: una sola domanda su tutto il periodo.
   // Un errore di lettura non va nascosto dietro un "nessun passo trovato":
@@ -311,7 +339,7 @@ export async function diagnosticaPassi(giorni = 3): Promise<string> {
     const rec = r.records ?? []
     righe.push(`record: ${rec.length}`)
     for (const x of rec.slice(0, 12)) {
-      righe.push(`  ${x.startDate} = ${x.value} [${x.sourceBundleId}]`)
+      righe.push(`  ${x.startDate} → ${x.endDate ?? '(fine assente)'} = ${x.value} [${x.sourceBundleId}]`)
     }
     if (rec.length > 12) righe.push(`  …e altri ${rec.length - 12}`)
   } catch (e) { righe.push(`record: ${(e as Error)?.message}`) }
