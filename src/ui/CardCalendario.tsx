@@ -120,15 +120,22 @@ export function Calendario({ onClose, onApriSeduta }: {
             const futuro = d > oggi
             // Due sedute in un giorno: il quadratino resta uno — la griglia non
             // si allarga — ma si divide, cosi' si vede che sono due e di chi sono.
-            const rs = gg.some((g) => g.delCoach), mie = gg.some((g) => !g.delCoach)
-            const sfondo = !gg.length ? 'transparent'
-              : rs && mie ? 'linear-gradient(135deg, var(--rs) 0 50%, var(--gold) 50% 100%)'
-              : rs ? 'var(--rs)' : 'var(--gold)'
+            const rs = gg.some((g) => g.delCoach)
+            const cardio = gg.some((g) => g.soloCardio && !g.delCoach)
+            const mie = gg.some((g) => !g.delCoach && !g.soloCardio)
+            // Con due sedute diverse nello stesso giorno il quadratino si divide.
+            const tinte: string[] = []
+            if (rs) tinte.push('var(--rs)')
+            if (mie) tinte.push('var(--gold)')
+            if (cardio) tinte.push('var(--cardio)')
+            const sfondo = !tinte.length ? 'transparent'
+              : tinte.length === 1 ? tinte[0]
+              : `linear-gradient(135deg, ${tinte[0]} 0 50%, ${tinte[1]} 50% 100%)`
             return (
               <button key={d} onClick={() => setScelto(scelto === d ? null : d)}
                 style={{
                   padding: 0, height: 38, borderRadius: 8, background: sfondo,
-                  border: '1px solid ' + (gg.length ? (rs && !mie ? 'var(--rs)' : 'var(--gold)') : 'var(--line)'),
+                  border: '1px solid ' + (tinte.length ? tinte[0] : 'var(--line)'),
                   color: gg.length ? '#000' : 'var(--muted)', fontSize: 12,
                   outline: d === oggi ? '2px solid var(--text)' : 'none', outlineOffset: -2,
                   boxShadow: scelto === d ? '0 0 0 2px var(--text)' : 'none',
@@ -155,6 +162,10 @@ export function Calendario({ onClose, onApriSeduta }: {
           <span className="row" style={{ gap: 5 }}>
             <i style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--gold)' }} />
             <span className="muted" style={{ fontSize: 11 }}>tua</span>
+          </span>
+          <span className="row" style={{ gap: 5 }}>
+            <i style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--cardio)' }} />
+            <span className="muted" style={{ fontSize: 11 }}>cardio</span>
           </span>
           <span className="row" style={{ gap: 5 }}>
             <i style={{ width: 10, height: 10, borderRadius: 3, border: '1px solid var(--line)' }} />
@@ -196,6 +207,9 @@ async function dettaglio(date: string) {
   return out
 }
 
+/** Di chi e' la seduta, in un colore: tuo, del coach, o una corsa. */
+const colore = (g: GiornoCalendario) => g.delCoach ? 'var(--rs)' : g.soloCardio ? 'var(--cardio)' : 'var(--gold)'
+
 /** Cosa hai fatto quel giorno: tutte le sedute, non solo la prima. */
 function DettaglioGiorno({ date, gg, onApriSeduta }: {
   date: string; gg: GiornoCalendario[]; onApriSeduta?: (id: string) => void
@@ -226,9 +240,9 @@ function SedutaDelGiorno({ date, g, sessione, numero, onApriSeduta }: {
   onApriSeduta?: (id: string) => void
 }) {
   return (
-    <div className="card" style={{ marginTop: 12, marginBottom: 0, borderColor: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>
+    <div className="card" style={{ marginTop: 12, marginBottom: 0, borderColor: colore(g) }}>
       <div className="row spread" style={{ alignItems: 'baseline' }}>
-        <strong style={{ color: g.delCoach ? 'var(--rs)' : 'var(--gold)' }}>{g.nome}</strong>
+        <strong style={{ color: colore(g) }}>{g.nome}</strong>
         {/* Con due allenamenti in un giorno serve sapere quale stai guardando. */}
         <span className="muted small">{numero ? `${numero} · ` : ''}{fmtData(date)}</span>
       </div>

@@ -168,14 +168,16 @@ export function StartScreen({
           e vederla in mezzo alle schede fa solo confusione quando scegli. */}
       {cardioTpl.length > 0 && (
         <>
-          <span style={{ ...SECTION, marginTop: 12 }}>Solo cardio</span>
+          {/* Azzurro: oro sono i tuoi allenamenti, rosso quelli del coach. Una
+              corsa non e' ne' l'uno ne' l'altro, e si vede al primo sguardo. */}
+          <span style={{ ...SECTION, marginTop: 12, color: 'var(--cardio)' }}>Solo cardio</span>
           <div className="col" style={{ gap: 8 }}>
             {cardioTpl.map((t) => (
               <div key={t.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--gold)', borderRadius: 12, padding: '10px 12px' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--cardio)', borderRadius: 12, padding: '10px 12px' }}>
                 <button className="ghost" onClick={() => onTemplate(t.id)}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, background: '#20200f', color: 'var(--gold)', display: 'grid', placeItems: 'center', flex: 'none' }}>♥</span>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--cardio-bg)', color: 'var(--cardio)', display: 'grid', placeItems: 'center', flex: 'none' }}>♥</span>
                   <span>
                     <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
                     <span className="muted small">solo cardio</span>

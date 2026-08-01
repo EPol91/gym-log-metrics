@@ -15,6 +15,10 @@
   --fat: #e74c3c;
   /* 🦠RS parla la lingua del coach: la sua palette, presa dalla sua app. */
   --rs: #E1251B;
+  /* Il cardio ha un colore suo: oro = tuo, rosso = del coach, azzurro = corsa.
+     Tre cose diverse meritano tre colori, non due su tre. */
+  --cardio: #4fc3f7;
+  --cardio-bg: #0d1f28;
   color-scheme: dark;
 }
 

@@ -115,6 +115,12 @@ async function templateNames(): Promise<Map<string, string>> {
   return new Map((await db.templates.where('userId').equals(U).toArray()).map((t) => [t.id, t.name]))
 }
 
+/** Quali template sono "solo cardio": lo decidi tu dalla scheda. */
+async function templateCardio(): Promise<Set<string>> {
+  const t = await db.templates.where('userId').equals(U).toArray()
+  return new Set(t.filter((x) => x.cardio).map((x) => x.id))
+}
+
 /** La seduta del giorno, pronta per il coach. */
 export async function sedutaRs(date: string): Promise<SedutaRs | null> {
   const sessioni = (await db.sessions.where('userId').equals(U).toArray())
@@ -183,6 +189,8 @@ export interface GiornoCalendario {
   nome: string
   /** viene dal protocollo del coach */
   delCoach: boolean
+  /** seduta di solo cardio: non e' un allenamento coi pesi, e si vede */
+  soloCardio: boolean
   serie: number
 }
 
@@ -207,6 +215,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   for (const s of sets) serieDi.set(s.entryId, (serieDi.get(s.entryId) ?? 0) + 1)
   const nomiTpl = await templateNames()
   const inizio = await inizioProtocollo()
+  const soloCardio = await templateCardio()
 
   const TIPI: Record<string, string> = {
     push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
@@ -231,6 +240,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
       // (Legs, Push) e' l'ultima spiaggia, non il titolo che meriti.
       nome: g?.nome ?? nomeTuo(s, nomiTpl) ?? TIPI[s.type] ?? s.type,
       delCoach: !!g,
+      soloCardio: !!s.srcTemplateId && soloCardio.has(s.srcTemplateId),
       serie: mie.reduce((n, e) => n + (serieDi.get(e.id) ?? 0), 0),
     }
   })// Dentro lo stesso giorno contano gli orari: la prima seduta e' quella
