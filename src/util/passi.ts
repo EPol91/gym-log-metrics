@@ -158,8 +158,17 @@ export async function leggiPassi(daISO: string, aISO: string): Promise<{ date: s
       dataType: 'steps',
       bucket: 'day',
     }), 15_000, 'La lettura dei passi non ha risposto.')
+    // La data si legge in ORA LOCALE, non in UTC. La giornata di Health Connect
+    // comincia a mezzanotte qui, che in UTC sono le 22 del giorno prima:
+    // convertendo, ogni giornata finiva scritta un giorno indietro — e i passi
+    // di oggi comparivano su ieri.
+    const giornoLocale = (iso: string) => {
+      const d = new Date(iso)
+      const due = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
+    }
     return (r.aggregatedData ?? [])
-      .map((x) => ({ date: new Date(x.startDate).toISOString().slice(0, 10), passi: Math.round(x.value) }))
+      .map((x) => ({ date: giornoLocale(x.startDate), passi: Math.round(x.value) }))
       .filter((x) => x.passi > 0)
   }
 }
