@@ -93,21 +93,19 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
   const [esito, setEsito] = useState<string | null>(null)
   const [lavoro, setLavoro] = useState(false)
 
-  const controlla = async () => { setStato(await statoPassi()) }
+  const controlla = async () => {
+    setStato('controllo')
+    try { setStato(await statoPassi()) }
+    catch (e) { setStato({ stato: 'assente', motivo: (e as Error)?.message ?? 'controllo fallito' }) }
+  }
   useEffect(() => { void controlla() }, [])
 
-  // Collegato: i giorni si aggiornano da soli a ogni apertura.
   useEffect(() => {
     if (typeof stato === 'object' && stato.stato === 'collegato') void sincronizzaPassi(14)
   }, [stato])
 
-  // Nessun ramo muto: anche mentre controlla, la riga c'e' e lo dice. Prima, se
-  // il ponte col nativo non rispondeva, qui non compariva proprio niente.
-  if (stato === 'controllo') {
-    return <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>Controllo Health Connect…</p>
-  }
-
-  if (stato.stato === 'fuoriDallApp') {
+  // Fuori dall'app installata non c'e' niente da collegare: si spiega e basta.
+  if (typeof stato === 'object' && stato.stato === 'fuoriDallApp') {
     return (
       <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
         {senzaDati ? 'Nessun dato ancora. ' : ''}
@@ -117,33 +115,31 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
     )
   }
 
-  if (stato.stato === 'assente') {
-    return (
-      <div style={{ marginTop: 12 }}>
-        <p className="muted small" style={{ margin: 0 }}>
-          Health Connect non risponde: <strong style={{ color: 'var(--text)' }}>{stato.motivo}</strong>
-        </p>
-        <p className="muted small" style={{ margin: '4px 0 8px' }}>
-          Su Android 14+ è già nel telefono: Impostazioni → Sicurezza e privacy → Altre impostazioni → Health Connect.
-          Sui più vecchi si installa dal Play Store.
-        </p>
-        <button className="chip" disabled={lavoro} onClick={async () => {
-          setLavoro(true); try { await controlla() } finally { setLavoro(false) }
-        }}>{lavoro ? 'Riprovo…' : 'Riprova'}</button>
-      </div>
-    )
-  }
+  const collegato = typeof stato === 'object' && stato.stato === 'collegato'
+  // Il tasto NON dipende dal controllo. Il controllo e' rimasto appeso davvero,
+  // e con lui appesa restava tutta la sezione: chiedere il permesso e' l'unica
+  // cosa che conta, e deve poter partire lo stesso.
+  const nota = stato === 'controllo'
+    ? 'Controllo Health Connect…'
+    : stato.stato === 'assente' ? `Health Connect non risponde: ${stato.motivo}` : null
 
   return (
     <div style={{ marginTop: 12 }}>
-      {stato.stato === 'daCollegare' ? (
+      {collegato ? (
+        <div className="row spread" style={{ alignItems: 'center' }}>
+          <span className="muted small">Passi da Health Connect · attivi</span>
+          <button className="chip" disabled={lavoro} onClick={async () => {
+            setLavoro(true)
+            try { const n = await sincronizzaPassi(30); setEsito(n ? `${n} giornate aggiornate.` : 'Nessun passo trovato.') }
+            finally { setLavoro(false) }
+          }}>{lavoro ? '…' : '↻'}</button>
+        </div>
+      ) : (
         <>
-          <p className="muted small" style={{ margin: '0 0 8px' }}>
-            I passi possono arrivare da soli da Health Connect. Serve il tuo permesso, una volta.
-          </p>
+          {nota && <p className="muted small" style={{ margin: '0 0 8px' }}>{nota}</p>}
           <button className="primary" style={{ width: '100%' }} disabled={lavoro}
             onClick={async () => {
-              setLavoro(true)
+              setLavoro(true); setEsito(null)
               try {
                 const r = await chiediPermessoPassi()
                 if (r.ok) {
@@ -153,20 +149,14 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
                 } else setEsito(r.motivo ?? 'Permesso non concesso.')
               } finally { setLavoro(false) }
             }}>
-            {lavoro ? 'Collego…' : 'Collega i passi'}
+            {lavoro ? 'Chiedo il permesso…' : 'Collega i passi'}
+          </button>
+          <button className="chip" style={{ marginTop: 8 }} disabled={lavoro} onClick={() => void controlla()}>
+            Ricontrolla
           </button>
         </>
-      ) : (
-        <div className="row spread" style={{ alignItems: 'center' }}>
-          <span className="muted small">Passi da Health Connect · attivi</span>
-          <button className="chip" disabled={lavoro} onClick={async () => {
-            setLavoro(true)
-            try { const n = await sincronizzaPassi(30); setEsito(n ? `${n} giornate aggiornate.` : 'Nessun passo trovato.') }
-            finally { setLavoro(false) }
-          }}>{lavoro ? '…' : '↻'}</button>
-        </div>
       )}
-      {esito && <p className="muted small" style={{ margin: '6px 0 0' }}>{esito}</p>}
+      {esito && <p className="muted small" style={{ margin: '8px 0 0' }}>{esito}</p>}
     </div>
   )
 }
