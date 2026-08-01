@@ -63,10 +63,20 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   // Se un domani si aggiungono riquadri, quelli nuovi entrano in coda invece di sparire.
   const chiavi = [...ordine.filter((k) => ORDINE_DEFAULT.includes(k)), ...ORDINE_DEFAULT.filter((k) => !ordine.includes(k))]
 
+// Passi e Corpo stanno in mezza riga: sono due numeri e una barra, e a tutta
+  // larghezza sprecavano schermo. Affiancandoli si vedono insieme senza
+  // scorrere. Gli altri riquadri restano interi, perche' dentro hanno piu' roba.
+  const META = ['abitudini', 'corpo']
+
   const card = (key: string, corpo: React.ReactNode) => (
     <div key={key} className="card" data-drag-id={key}
       onPointerDown={press('today', key)}
-      style={{ padding: '11px 12px', marginBottom: 0, ...liftStyle('today', key) }}>
+      style={{
+        padding: '11px 12px', marginBottom: 0,
+        flex: META.includes(key) ? '1 1 calc(50% - 4px)' : '1 1 100%',
+        minWidth: 0,
+        ...liftStyle('today', key),
+      }}>
       {corpo}
     </div>
   )
@@ -116,7 +126,11 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         <span className="muted small">tieni premuto per riordinare</span>
       </div>
 
-      {inDragOrder('today', chiavi, (k) => k).map((k) => card(k, contenuto[k]))}
+      {/* I riquadri scorrono in fila e vanno a capo: due da meta' larghezza
+          finiscono affiancati, gli altri prendono la riga intera. */}
+      <div className="row wrap" style={{ gap: 8, alignItems: 'stretch' }}>
+        {inDragOrder('today', chiavi, (k) => k).map((k) => card(k, contenuto[k]))}
+      </div>
     </div>
   )
 }
@@ -187,9 +201,16 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
   return (
     <>
       <div className="row spread"><span style={LBL}>Corpo</span><span className="muted small">≡</span></div>
-      <div className="row" style={{ marginTop: 8 }}>
-        {cella(peso ? `${peso.weight}` : '—', 'kg')}
-        {cella(peso?.delta != null ? `${peso.delta > 0 ? '+' : ''}${peso.delta}` : '—', 'vs prec.')}
+      {/* A meta' larghezza due colonne stanno strette: il peso resta grande e la
+          variazione gli si mette accanto piccola — e' un contorno, non il dato. */}
+      <div className="row" style={{ marginTop: 8, gap: 6, alignItems: 'baseline', justifyContent: 'center' }}>
+        <span style={{ ...NUM, fontSize: 24 }}>{peso ? peso.weight : '—'}</span>
+        <span className="muted" style={{ fontSize: 10 }}>kg</span>
+        {peso?.delta != null && (
+          <span className="muted" style={{ fontSize: 11, marginLeft: 2 }}>
+            {peso.delta > 0 ? '+' : ''}{peso.delta}
+          </span>
+        )}
       </div>
       {!apri ? (
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
@@ -197,7 +218,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
         <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
           style={{ marginTop: 8, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
           onClick={() => setApri(true)}>
-          {pesoOggi != null ? '✓ Peso di oggi registrato' : '＋ Peso di oggi · manca'}
+          {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
         </button>
       ) : (
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
@@ -287,11 +308,11 @@ function CardAbitudini({ onOpen }: { onOpen: () => void }) {
   return (
     <>
       <div className="row spread"><span style={LBL}>Abitudini</span><span className="muted small">≡</span></div>
-      <div className="row spread small" style={{ marginTop: 8 }}>
-        <span>Passi</span>
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {oggi ? fatti.toLocaleString('it-IT') : '—'} <span className="muted">/ {target.toLocaleString('it-IT')}</span>
-        </span>
+      {/* A meta' larghezza "1.330 / 10.000" su una riga sola si stringe troppo:
+          il numero di oggi resta grande, l'obiettivo va sotto. */}
+      <div style={{ marginTop: 8, textAlign: 'center' }}>
+        <span style={{ ...NUM, fontSize: 24 }}>{oggi ? fatti.toLocaleString('it-IT') : '—'}</span>
+        <div className="muted" style={{ fontSize: 10 }}>di {target.toLocaleString('it-IT')} passi</div>
       </div>
       <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
         <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%` }} />
@@ -301,7 +322,7 @@ function CardAbitudini({ onOpen }: { onOpen: () => void }) {
           I passi arriveranno da Health Connect con l'app Android.
         </p>
       )}
-      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Abitudini ›</button>
+      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Dettagli ›</button>
     </>
   )
 }
