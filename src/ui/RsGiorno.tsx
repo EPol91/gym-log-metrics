@@ -23,6 +23,8 @@ import type { DayType } from '../db/schema'
 
 const U = LOCAL_USER_ID
 const CHIESTO = 'rs-chiesto'
+/** Prima di quest'ora la giornata non e' cominciata: la domanda aspetta. */
+const ORA_MINIMA = 7
 
 /** Oggi la domanda e' gia' stata fatta? Una volta al giorno, non una a ogni apertura. */
 const giaChiesto = (giorno: string) => localStorage.getItem(CHIESTO) === giorno
@@ -42,6 +44,10 @@ export function RsGiorno() {
       if (document.visibilityState !== 'visible') return
       const oggi = todayLocal()
       setGiorno(oggi)
+      // Mezzanotte e' un cambio di data, non l'inizio della tua giornata: a
+      // quell'ora sei ancora sveglio e la domanda arriverebbe addosso alla sera
+      // prima. Aspetta la mattina.
+      if (new Date().getHours() < ORA_MINIMA) return
       // Riaprendo si riparte puliti: il messaggio della volta prima resterebbe
       // li' e terrebbe spento il tasto di conferma.
       if (!giaChiesto(oggi)) { setEsito(null); setScelta(null); setAperto(true) }
