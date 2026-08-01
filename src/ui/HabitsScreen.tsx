@@ -56,6 +56,14 @@ export function HabitsScreen() {
             quando vai a dormire: durante il giorno, in Health Connect, di suo
             non c'e' niente. Dirlo evita di far cercare un dato che non esiste
             ancora — e di dare la colpa all'app. */}
+        {/* Oggi non e' il dato del WHOOP: e' quello del dispositivo che ti stava
+            addosso. Va detto, altrimenti domani il numero cambia e sembra un errore. */}
+        {ultimo && ultimo.date === todayLocal() && (
+          <p className="muted small" style={{ margin: '8px 0 0' }}>
+            Oggi è il conteggio del dispositivo che avevi addosso: il WHOOP lo sostituisce a fine giornata.
+          </p>
+        )}
+
         {ultimo && ultimo.date !== todayLocal() && (
           <p className="muted small" style={{ margin: '8px 0 0' }}>
             Oggi non c'è ancora: il WHOOP scrive il totale della giornata quando la chiude, col sonno.
