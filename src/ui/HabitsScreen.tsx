@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
+import { todayLocal } from '../util/date'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
 import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, diagnosticaPassi, sorgentiPassi, type StatoPassi, type SorgentePassi } from '../util/passi'
@@ -50,6 +51,17 @@ export function HabitsScreen() {
             </p>
           </div>
         ) : null}
+
+        {/* Il WHOOP scrive il totale di una giornata quando la CHIUDE, cioe'
+            quando vai a dormire: durante il giorno, in Health Connect, di suo
+            non c'e' niente. Dirlo evita di far cercare un dato che non esiste
+            ancora — e di dare la colpa all'app. */}
+        {ultimo && ultimo.date !== todayLocal() && (
+          <p className="muted small" style={{ margin: '8px 0 0' }}>
+            Oggi non c'è ancora: il WHOOP scrive il totale della giornata quando la chiude, col sonno.
+            L'ultimo è del {fmtData(ultimo.date)}.
+          </p>
+        )}
 
         {/* Health Connect esiste solo dentro l'app installata: dal browser
             questa porta non c'e' proprio, e prometterla sarebbe una bugia. */}
