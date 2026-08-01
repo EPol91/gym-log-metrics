@@ -156,7 +156,9 @@ function giornoLocale(iso: string): string {
   return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
 }
 
-export async function leggiPassi(daISO: string, aISO: string, sorgente?: string): Promise<{ date: string; passi: number }[]> {
+export interface GiornoPassi { date: string; passi: number; da?: string }
+
+export async function leggiPassi(daISO: string, aISO: string, sorgente?: string): Promise<GiornoPassi[]> {
   const h = await health()
   if (!h) return []
   const inizio = new Date(daISO + 'T00:00:00')
@@ -234,12 +236,19 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
        * raddoppia. Stanotte il WHOOP arriva e prende il suo posto.
        */
       const oggi = giornoLocale(new Date().toISOString())
-      const valore = (g: string): number => {
+      /** Il valore della giornata E chi l'ha contata: al grafico serve sapere
+       *  quali barre vengono dal WHOOP e quali da un ripiego. */
+      const valore = (g: string): { passi: number; da?: string } => {
         const perGiorno = per.get(g)
-        if (!perGiorno) return 0
-        if (g === oggi) return Math.max(...perGiorno.values(), 0)
-        if (sorgente) return perGiorno.get(sorgente) ?? 0
-        return Math.max(...perGiorno.values(), 0)
+        if (!perGiorno) return { passi: 0 }
+        const migliore = () => {
+          let quale: string | undefined, quanto = 0
+          for (const [k, v] of perGiorno) if (v > quanto) { quanto = v; quale = k }
+          return { passi: quanto, ...(quale ? { da: quale } : {}) }
+        }
+        if (g === oggi) return migliore()
+        if (sorgente) return { passi: perGiorno.get(sorgente) ?? 0, da: sorgente }
+        return migliore()
       }
       if (per.size) {
         // Anche i giorni rimasti a zero: servono a correggere un valore vecchio
@@ -247,7 +256,8 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
         const out: { date: string; passi: number }[] = []
         for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
           const d = giornoLocale(new Date(g.getFullYear(), g.getMonth(), g.getDate(), 12).toISOString())
-          out.push({ date: d, passi: Math.round(valore(d)) })
+          const v = valore(d)
+          out.push({ date: d, passi: Math.round(v.passi), ...(v.da ? { da: v.da } : {}) })
         }
         return out
       }
@@ -299,7 +309,12 @@ export async function sincronizzaPassi(giorni = 7): Promise<number> {
   const { getHabitValue } = await import('../db/habits')
   let scritti = 0
   for (const r of righe) {
-    if (r.passi > 0) { await setHabitValue(STEPS, r.date, r.passi, 'healthConnect'); scritti++; continue }
+    if (r.passi > 0) {
+      // 'whoop' o 'healthConnect': il grafico mostra solo le barre del WHOOP, e
+      // senza questa distinzione non potrebbe saperlo.
+      await setHabitValue(STEPS, r.date, r.passi, /whoop/i.test(r.da ?? '') ? 'whoop' : 'healthConnect')
+      scritti++; continue
+    }
     // Zero: si corregge solo se quel giorno era stato scritto in automatico.
     // Un valore messo da te non lo cancella nessuno.
     const gia = await getHabitValue(STEPS, r.date)

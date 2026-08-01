@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
 import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, diagnosticaPassi, sorgentiPassi, type StatoPassi, type SorgentePassi } from '../util/passi'
 import { getUser, updateUser } from '../db/repo'
+import { GraficoPassi } from './GraficoPassi'
 
 const SECTION: React.CSSProperties = {
   fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)',
@@ -75,6 +76,8 @@ export function HabitsScreen() {
             questa porta non c'e' proprio, e prometterla sarebbe una bugia. */}
         <PassiHealthConnect senzaDati={!ultimo} />
       </div>
+
+      <GraficoPassi />
 
       {/* Storico: compare solo quando c'è qualcosa da mostrare. */}
       {recent && recent.length > 1 && (
