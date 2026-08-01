@@ -163,30 +163,45 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
   const fine = new Date(aISO + 'T23:59:59')
 
   /**
-   * I record uno per uno, sommati per giornata QUI.
+   * Un giorno alla volta, con gli estremi decisi QUI.
    *
-   * Il raggruppamento del plugin non taglia le giornate a mezzanotte italiana:
-   * i totali di sette giorni combaciavano al passo con l'app WHOOP, ma i
-   * singoli giorni no — i passi dopo mezzanotte finivano su quello prima. Chi
-   * si allena fino alle undici di sera se ne accorge subito.
+   * Le due strade precedenti sbagliavano tutte e due, e per lo stesso motivo:
+   * mi fidavo degli orari che il plugin mette sui dati. Prima il suo
+   * raggruppamento tagliava le giornate dove voleva lui; poi, sommando i record
+   * a mano, quelli che cominciano a mezzanotte finivano sul giorno prima — il
+   * 30 luglio faceva 15.859, cioe' esattamente 7.085 + 8.774, i suoi passi piu'
+   * quelli del 31.
+   *
+   * Cosi' non si interpreta piu' niente: si chiede "quanti passi fra questa
+   * mezzanotte e la prossima", e la risposta e' un numero solo. Trenta domande
+   * invece di una, ma su un archivio locale non si sentono — e i giorni
+   * combaciano con quello che vedi nell'app di chi li conta.
    */
-  if (h.queryRecords) {
+  const giorni: { date: string; passi: number }[] = []
+  for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
+    const apertura = new Date(g.getFullYear(), g.getMonth(), g.getDate(), 0, 0, 0, 0)
+    const chiusura = new Date(g.getFullYear(), g.getMonth(), g.getDate() + 1, 0, 0, 0, 0)
     try {
-      const r = await conTempo(
-        h.queryRecords({ startDate: inizio.toISOString(), endDate: fine.toISOString(), dataType: 'steps' }),
-        20_000, 'La lettura dei passi non ha risposto.',
-      )
-      const per = new Map<string, number>()
-      for (const x of r.records ?? []) {
-        if (sorgente && x.sourceBundleId !== sorgente) continue
-        const g = giornoLocale(x.startDate)
-        per.set(g, (per.get(g) ?? 0) + Math.round(x.value))
-      }
-      const righe = [...per.entries()].map(([date, passi]) => ({ date, passi })).filter((x) => x.passi > 0)
-      if (righe.length) return righe.sort((a, b) => a.date.localeCompare(b.date))
-      // Nessun record: si prova comunque la strada aggregata qui sotto.
-    } catch { /* il plugin non sa dare i record: si continua con l'aggregato */ }
+      const r = await conTempo(h.queryAggregated({
+        startDate: apertura.toISOString(),
+        endDate: chiusura.toISOString(),
+        dataType: 'steps',
+        bucket: 'day',
+        ...(sorgente ? { dataOrigins: [sorgente] } : {}),
+      }), 15_000, 'La lettura dei passi non ha risposto.')
+      // Della risposta si prende solo il VALORE: la data e' quella che ho chiesto io.
+      const passi = (r.aggregatedData ?? []).reduce((s, x) => s + (x.value || 0), 0)
+      // Si registra anche uno zero: un giorno che oggi non ha passi ma ieri
+      // aveva un valore sbagliato deve essere corretto, non lasciato li'.
+      giorni.push({ date: giornoLocale(apertura.toISOString()), passi: Math.round(passi) })
+    } catch (e) {
+      // Un giorno che non risponde non deve far cadere gli altri ventinove.
+      if (giorni.length === 0 && g.getTime() >= fine.getTime()) throw e
+    }
   }
+  if (giorni.some((x) => x.passi > 0)) return giorni
+
+  // Ripiego, se nessun giorno ha risposto: una sola domanda su tutto il periodo.
   // Un errore di lettura non va nascosto dietro un "nessun passo trovato":
   // sono due cose diverse, e confonderle fa perdere tempo a tutti e due.
   {
@@ -228,8 +243,16 @@ export async function sincronizzaPassi(giorni = 7): Promise<number> {
   const righe = await leggiPassi(da, a, sorgente)
   if (!righe.length) return 0
   await ensureHabits()
-  for (const r of righe) await setHabitValue(STEPS, r.date, r.passi, 'healthConnect')
-  return righe.length
+  const { getHabitValue } = await import('../db/habits')
+  let scritti = 0
+  for (const r of righe) {
+    if (r.passi > 0) { await setHabitValue(STEPS, r.date, r.passi, 'healthConnect'); scritti++; continue }
+    // Zero: si corregge solo se quel giorno era stato scritto in automatico.
+    // Un valore messo da te non lo cancella nessuno.
+    const gia = await getHabitValue(STEPS, r.date)
+    if (gia && gia.source !== 'manual' && gia.value !== 0) await setHabitValue(STEPS, r.date, 0, 'healthConnect')
+  }
+  return scritti
 }
 
 /** Un'app che scrive passi in Health Connect. */
