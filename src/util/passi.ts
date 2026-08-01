@@ -213,12 +213,33 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
         dataType: 'steps',
       }), 25_000, 'La lettura dei passi non ha risposto.')
 
-      const per = new Map<string, number>()
+      // Per giorno E per sorgente: oggi serve sapere chi ha contato di piu'.
+      const per = new Map<string, Map<string, number>>()
       for (const x of r.records ?? []) {
-        if (sorgente && x.sourceBundleId !== sorgente) continue
         const g = giornoDelRecord(x)
         if (g < daISO || g > aISO) continue
-        per.set(g, (per.get(g) ?? 0) + (x.value || 0))
+        const perGiorno = per.get(g) ?? new Map<string, number>()
+        perGiorno.set(x.sourceBundleId, (perGiorno.get(x.sourceBundleId) ?? 0) + (x.value || 0))
+        per.set(g, perGiorno)
+      }
+
+      /**
+       * Il valore di una giornata.
+       *
+       * Nei giorni passati comanda il WHOOP — o la sorgente che hai scelto — e
+       * basta: e' il dato definitivo. OGGI il WHOOP non ha ancora scritto
+       * niente, perche' chiude la giornata col sonno: allora vale il MASSIMO
+       * fra le sorgenti, cioe' quella che ti stava addosso davvero. Non la
+       * somma: orologio e telefono contano gli stessi passi, sommarli li
+       * raddoppia. Stanotte il WHOOP arriva e prende il suo posto.
+       */
+      const oggi = giornoLocale(new Date().toISOString())
+      const valore = (g: string): number => {
+        const perGiorno = per.get(g)
+        if (!perGiorno) return 0
+        if (g === oggi) return Math.max(...perGiorno.values(), 0)
+        if (sorgente) return perGiorno.get(sorgente) ?? 0
+        return Math.max(...perGiorno.values(), 0)
       }
       if (per.size) {
         // Anche i giorni rimasti a zero: servono a correggere un valore vecchio
@@ -226,7 +247,7 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
         const out: { date: string; passi: number }[] = []
         for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
           const d = giornoLocale(new Date(g.getFullYear(), g.getMonth(), g.getDate(), 12).toISOString())
-          out.push({ date: d, passi: Math.round(per.get(d) ?? 0) })
+          out.push({ date: d, passi: Math.round(valore(d)) })
         }
         return out
       }
@@ -247,8 +268,8 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
       // sommati fanno un numero che non esiste da nessuna parte.
       ...(sorgente ? { dataOrigins: [sorgente] } : {}),
     }), 15_000, 'La lettura dei passi non ha risposto.')
-    // Ripiego: il raggruppamento del plugin. La data si legge comunque in ora
-    // locale — in UTC ogni giornata finiva scritta un giorno indietro.
+    // Ripiego, usato solo se i record non arrivano. La data si legge comunque
+    // in ora locale: in UTC ogni giornata finiva scritta un giorno indietro.
     return (r.aggregatedData ?? [])
       .map((x) => ({ date: giornoLocale(x.startDate), passi: Math.round(x.value) }))
       .filter((x) => x.passi > 0)
