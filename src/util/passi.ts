@@ -20,7 +20,12 @@ interface Health {
   requestHealthPermissions(p: { permissions: string[] }): Promise<{ permissions: Record<string, boolean>[] }>
   queryAggregated(r: {
     startDate: string; endDate: string; dataType: 'steps' | 'calories' | 'distance'; bucket: string
+    /** se valorizzato, si legge SOLO da queste app */
+    dataOrigins?: string[]
   }): Promise<{ aggregatedData: { startDate: string; endDate: string; value: number }[] }>
+  queryRecords(r: { startDate: string; endDate: string; dataType: 'steps' }): Promise<{
+    records: { startDate: string; value: number; sourceBundleId: string; sourceName: string }[]
+  }>
 }
 
 /**
@@ -144,7 +149,7 @@ export async function permessoPassiConcesso(): Promise<boolean> {
  * Un giorno alla volta, non un totale unico: serve a riempire lo storico, e un
  * totale di sette giorni non si puo' spalmare all'indietro senza inventare.
  */
-export async function leggiPassi(daISO: string, aISO: string): Promise<{ date: string; passi: number }[]> {
+export async function leggiPassi(daISO: string, aISO: string, sorgente?: string): Promise<{ date: string; passi: number }[]> {
   const h = await health()
   if (!h) return []
   const inizio = new Date(daISO + 'T00:00:00')
@@ -157,6 +162,10 @@ export async function leggiPassi(daISO: string, aISO: string): Promise<{ date: s
       endDate: fine.toISOString(),
       dataType: 'steps',
       bucket: 'day',
+      // Con una sorgente scelta si legge solo la sua: Health Connect somma
+      // tutte le app che scrivono passi, e due conteggi dello stesso giorno
+      // sommati fanno un numero che non esiste da nessuna parte.
+      ...(sorgente ? { dataOrigins: [sorgente] } : {}),
     }), 15_000, 'La lettura dei passi non ha risposto.')
     // La data si legge in ORA LOCALE, non in UTC. La giornata di Health Connect
     // comincia a mezzanotte qui, che in UTC sono le 22 del giorno prima:
@@ -185,11 +194,45 @@ export async function sincronizzaPassi(giorni = 7): Promise<number> {
   if (!(await permessoPassiConcesso())) return 0
   const { setHabitValue, STEPS, ensureHabits } = await import('../db/habits')
   const { todayLocal, shiftDate } = await import('./date')
+  const { getUser } = await import('../db/repo')
   const a = todayLocal()
   const da = shiftDate(a, -(giorni - 1))
-  const righe = await leggiPassi(da, a)
+  // La sorgente scelta nel profilo, se c'e': altrimenti tutte sommate.
+  const sorgente = (await getUser())?.passiSorgente
+  const righe = await leggiPassi(da, a, sorgente)
   if (!righe.length) return 0
   await ensureHabits()
   for (const r of righe) await setHabitValue(STEPS, r.date, r.passi, 'healthConnect')
   return righe.length
+}
+
+/** Un'app che scrive passi in Health Connect. */
+export interface SorgentePassi { id: string; nome: string; passi: number }
+
+/**
+ * Chi ha scritto i passi degli ultimi giorni.
+ *
+ * I nomi tecnici delle app non si indovinano: se sbagliassi il nome del WHOOP
+ * leggeresti zero passi senza capire perche'. Qui si chiede a Health Connect
+ * chi c'e' davvero, e si mostrano i nomi veri con quanto ha scritto ciascuno —
+ * cosi' la scelta si fa guardando i numeri.
+ */
+export async function sorgentiPassi(giorni = 7): Promise<SorgentePassi[]> {
+  const h = await health()
+  if (!h?.queryRecords) return []
+  const a = new Date()
+  const da = new Date(a.getTime() - giorni * 86_400_000)
+  const r = await conTempo(
+    h.queryRecords({ startDate: da.toISOString(), endDate: a.toISOString(), dataType: 'steps' }),
+    15_000, 'Non riesco a vedere chi scrive i passi.',
+  )
+  const per = new Map<string, SorgentePassi>()
+  for (const x of r.records ?? []) {
+    const id = x.sourceBundleId
+    if (!id) continue
+    const gia = per.get(id)
+    if (gia) gia.passi += Math.round(x.value)
+    else per.set(id, { id, nome: x.sourceName?.trim() || id, passi: Math.round(x.value) })
+  }
+  return [...per.values()].sort((p, q) => q.passi - p.passi)
 }

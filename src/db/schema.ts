@@ -39,6 +39,13 @@ export interface User extends BaseRecord {
   cicloSedute?: number
   cicloGiorni?: number
   cicloInizio?: ISODate
+  /**
+   * Da quale app leggere i passi (il suo nome tecnico in Health Connect).
+   * Vuoto = tutte sommate. Serve a far combaciare i numeri con quelli che vedi
+   * nell app di chi li conta: Health Connect somma tutte le sorgenti, e due
+   * conteggi diversi dello stesso giorno non si possono sommare senza mentire.
+   */
+  passiSorgente?: string
   locale: string // es. 'it'
   /** anno di nascita → età per le zone cardio (FCmax). Opzionale. */
   birthYear?: number

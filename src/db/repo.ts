@@ -396,6 +396,10 @@ export async function updateUser(
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
     activityLevel?: ActivityLevel; bmrFormula?: BmrFormula; coachBlocks?: CoachBlock[]
     todayCards?: string[]; rsActive?: boolean; rsStart?: string; rsAskDaily?: boolean
+    cicloSedute?: number; cicloGiorni?: number; cicloInizio?: string
+    /** da quale app leggere i passi; undefined = tutte sommate */
+    passiSorgente?: string
+    schermoAcceso?: boolean
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
-import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, type StatoPassi } from '../util/passi'
+import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, sorgentiPassi, type StatoPassi, type SorgentePassi } from '../util/passi'
+import { getUser, updateUser } from '../db/repo'
 
 const SECTION: React.CSSProperties = {
   fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)',
@@ -126,6 +127,7 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
   return (
     <div style={{ marginTop: 12 }}>
       {collegato ? (
+        <>
         <div className="row spread" style={{ alignItems: 'center' }}>
           <span className="muted small">Passi da Health Connect · attivi</span>
           <button className="chip" disabled={lavoro} onClick={async () => {
@@ -135,6 +137,8 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
             finally { setLavoro(false) }
           }}>{lavoro ? '…' : '↻'}</button>
         </div>
+        <SceltaSorgente onCambio={(n) => setEsito(n)} />
+        </>
       ) : (
         <>
           {nota && <p className="muted small" style={{ margin: '0 0 8px' }}>{nota}</p>}
@@ -162,6 +166,76 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
         </>
       )}
       {esito && <p className="muted small" style={{ margin: '8px 0 0' }}>{esito}</p>}
+    </div>
+  )
+}
+
+/**
+ * Da quale app leggere i passi.
+ *
+ * Health Connect somma tutte le app che scrivono passi: se il telefono conta i
+ * suoi e il WHOOP i suoi, il totale non corrisponde a nessuno dei due — ed e'
+ * esattamente il motivo per cui i numeri non combaciavano. Qui si sceglie una
+ * sorgente sola, e i nomi non li invento: li chiedo a Health Connect.
+ */
+function SceltaSorgente({ onCambio }: { onCambio: (msg: string) => void }) {
+  const [lista, setLista] = useState<SorgentePassi[] | null>(null)
+  const [scelta, setScelta] = useState<string | undefined>(undefined)
+  const [apri, setApri] = useState(false)
+  const [lavoro, setLavoro] = useState(false)
+
+  useEffect(() => { void getUser().then((u) => setScelta(u?.passiSorgente)) }, [])
+
+  const carica = async () => {
+    setLavoro(true)
+    try { setLista(await sorgentiPassi(7)) }
+    catch (e) { onCambio((e as Error)?.message ?? 'Non riesco a vedere le sorgenti.') }
+    finally { setLavoro(false) }
+  }
+
+  const scegli = async (id?: string) => {
+    setLavoro(true)
+    try {
+      await updateUser({ passiSorgente: id })
+      setScelta(id)
+      const n = await sincronizzaPassi(30)
+      onCambio(n ? `${n} giornate rilette da ${id ? lista?.find((x) => x.id === id)?.nome ?? id : 'tutte le sorgenti'}.` : 'Nessun passo da quella sorgente.')
+    } catch (e) { onCambio((e as Error)?.message ?? 'Non riuscito.') }
+    finally { setLavoro(false) }
+  }
+
+  const nomeScelto = scelta ? (lista?.find((x) => x.id === scelta)?.nome ?? scelta) : 'tutte le sorgenti'
+
+  if (!apri) {
+    return (
+      <button className="chip" style={{ marginTop: 8 }} disabled={lavoro}
+        onClick={() => { setApri(true); if (!lista) void carica() }}>
+        Sorgente: {nomeScelto} ›
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <p className="muted small" style={{ margin: '0 0 6px' }}>
+        Chi scrive i passi, negli ultimi 7 giorni. Sceglierne una sola fa combaciare i numeri con la sua app.
+      </p>
+      {lavoro && !lista && <p className="muted small" style={{ margin: 0 }}>Guardo chi scrive…</p>}
+      <div className="row wrap" style={{ gap: 6 }}>
+        <button className={'chip' + (scelta ? '' : ' on')} disabled={lavoro} onClick={() => void scegli(undefined)}>
+          Tutte
+        </button>
+        {(lista ?? []).map((s) => (
+          <button key={s.id} className={'chip' + (scelta === s.id ? ' on' : '')} disabled={lavoro}
+            onClick={() => void scegli(s.id)}>
+            {s.nome} <span className="muted">· {s.passi.toLocaleString('it-IT')}</span>
+          </button>
+        ))}
+      </div>
+      {lista && lista.length === 0 && (
+        <p className="muted small" style={{ margin: '6px 0 0' }}>Nessuna app ha scritto passi negli ultimi 7 giorni.</p>
+      )}
+      <button className="chip" style={{ marginTop: 6 }} onClick={() => setApri(false)}>Chiudi</button>
     </div>
   )
 }
