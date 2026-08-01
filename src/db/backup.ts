@@ -28,12 +28,35 @@ const NOMI: Record<string, string> = {
 }
 const nome = (t: string) => NOMI[t] ?? t
 
+/**
+ * Le poche cose che NON stanno nel database.
+ *
+ * Il collegamento WHOOP e' la piu' importante: il codice del dispositivo e'
+ * quello che il Worker riconosce per darti i tuoi dati, e senza, su un telefono
+ * nuovo dovresti rifare tutto l'accesso a WHOOP. I dati gia' scaricati sarebbero
+ * salvi lo stesso — ma "salvi lo stesso" non e' quello che ti ho promesso.
+ *
+ * Fuori restano di proposito le cose che valgono per oggi e basta (la domanda RS
+ * gia' fatta, la scheda aperta l'ultima volta): rimetterle in piedi non
+ * ripristina niente, semmai riporta indietro uno stato che non ti serve.
+ */
+const CHIAVI_FUORI = [
+  'whoop-device',        // chi sei per il Worker WHOOP: senza, tocca ricollegare
+  'whoop-auto-at',       // quando e' andata l'ultima sincronizzazione
+  'whoop-auto-try',
+  'etp:recipe-seed:v1',  // ricettario gia' installato
+  'gymlog.ai.apiKey',    // la tua chiave AI: e' tua e sta nel tuo file
+  'gymlog.ai.coachHome',
+]
+
 export interface BackupFile {
   format: 'gymlog-backup'
-  /** 1 = elenco fisso di tabelle (vecchio). 2 = tutte le tabelle del database. */
-  version: 1 | 2
+  /** 1 = elenco fisso di tabelle. 2 = tutte le tabelle. 3 = + preferenze fuori dal DB. */
+  version: 1 | 2 | 3
   exportedAt: string
   data: Record<string, unknown[]>
+  /** Le chiavi che vivono fuori dal database (vedi CHIAVI_FUORI). */
+  preferenze?: Record<string, string>
 }
 
 /** Raccoglie tutti i dati in un oggetto backup. */
@@ -42,7 +65,11 @@ export async function exportAll(): Promise<BackupFile> {
   for (const t of tabelle()) {
     data[t] = await db.table(t).toArray()
   }
-  return { format: 'gymlog-backup', version: 2, exportedAt: nowISO(), data }
+  const preferenze: Record<string, string> = {}
+  for (const k of CHIAVI_FUORI) {
+    try { const v = localStorage.getItem(k); if (v != null) preferenze[k] = v } catch { /* storage assente */ }
+  }
+  return { format: 'gymlog-backup', version: 3, exportedAt: nowISO(), data, preferenze }
 }
 
 /** Cosa contiene un backup, senza importarlo: serve a guardare prima di agire. */
@@ -106,6 +133,15 @@ export async function importBackup(json: string, modo: 'unisci' | 'sostituisci' 
     dettaglio.push({ tabella: nome(t), righe: rows.length })
   }
 
+  // Le preferenze fuori dal database: solo quelle previste, mai chiavi arbitrarie
+  // che arrivano da un file.
+  let preferenze = 0
+  for (const k of CHIAVI_FUORI) {
+    const v = parsed.preferenze?.[k]
+    if (typeof v !== 'string') continue
+    try { localStorage.setItem(k, v); preferenze++ } catch { /* storage assente */ }
+  }
+
   if (!dettaglio.length) {
     return { ok: false, message: 'Il file non conteneva nessun dato riconoscibile.', dettaglio, ignorate }
   }
@@ -113,7 +149,7 @@ export async function importBackup(json: string, modo: 'unisci' | 'sostituisci' 
   const totale = dettaglio.reduce((s, d) => s + d.righe, 0)
   return {
     ok: true,
-    message: `${totale} record in ${dettaglio.length} tabelle.`,
+    message: `${totale} record in ${dettaglio.length} tabelle${preferenze ? `, piu' ${preferenze} preferenze (WHOOP compreso)` : ''}.`,
     dettaglio: [...dettaglio].sort((a, b) => b.righe - a.righe),
     ignorate,
   }
