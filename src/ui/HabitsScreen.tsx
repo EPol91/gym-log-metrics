@@ -130,7 +130,8 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
           <span className="muted small">Passi da Health Connect · attivi</span>
           <button className="chip" disabled={lavoro} onClick={async () => {
             setLavoro(true)
-            try { const n = await sincronizzaPassi(30); setEsito(n ? `${n} giornate aggiornate.` : 'Nessun passo trovato.') }
+            try { const n = await sincronizzaPassi(30); setEsito(n ? `${n} giornate aggiornate.` : 'Nessun passo trovato in Health Connect.') }
+            catch (e) { setEsito((e as Error)?.message ?? 'Lettura non riuscita.') }
             finally { setLavoro(false) }
           }}>{lavoro ? '…' : '↻'}</button>
         </div>
@@ -145,9 +146,10 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
                 if (r.ok) {
                   setStato({ stato: 'collegato' })
                   const n = await sincronizzaPassi(30)
-                  setEsito(n ? `${n} giornate recuperate.` : 'Collegato: i passi arriveranno col prossimo aggiornamento.')
+                  setEsito(n ? `${n} giornate recuperate.` : 'Collegato, ma Health Connect non ha ancora passi da darmi.')
                 } else setEsito(r.motivo ?? 'Permesso non concesso.')
-              } finally { setLavoro(false) }
+              } catch (e) { setEsito((e as Error)?.message ?? 'Non riuscito.') }
+              finally { setLavoro(false) }
             }}>
             {lavoro ? 'Chiedo il permesso…' : 'Collega i passi'}
           </button>

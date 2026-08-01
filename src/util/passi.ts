@@ -14,8 +14,10 @@ import { isNativo } from './fasciaNativa'
 
 interface Health {
   isHealthAvailable(): Promise<{ available: boolean }>
-  checkHealthPermissions(p: { permissions: string[] }): Promise<{ permissions: string[] }>
-  requestHealthPermissions(p: { permissions: string[] }): Promise<{ permissions: string[] }>
+  // La risposta e' un elenco di coppie permesso -> concesso, non di nomi:
+  // trattarla come un elenco di stringhe faceva fallire ogni controllo.
+  checkHealthPermissions(p: { permissions: string[] }): Promise<{ permissions: Record<string, boolean>[] }>
+  requestHealthPermissions(p: { permissions: string[] }): Promise<{ permissions: Record<string, boolean>[] }>
   queryAggregated(r: {
     startDate: string; endDate: string; dataType: 'steps' | 'calories' | 'distance'; bucket: string
   }): Promise<{ aggregatedData: { startDate: string; endDate: string; value: number }[] }>
@@ -77,6 +79,15 @@ export function diagnosticaPonte(): string {
   ].join(' · ')
 }
 
+/** Il permesso c'e'? La risposta puo' arrivare come elenco di coppie o come
+ *  singolo oggetto, a seconda della versione del plugin: si accettano entrambe. */
+function concesso(r: { permissions?: unknown } | undefined, chiave: string): boolean {
+  const p = r?.permissions as unknown
+  if (Array.isArray(p)) return p.some((x) => (x as Record<string, boolean>)?.[chiave] === true)
+  if (p && typeof p === 'object') return (p as Record<string, boolean>)[chiave] === true
+  return false
+}
+
 /** Perche' i passi non si possono leggere: da mostrare, non da nascondere. */
 export type StatoPassi =
   | { stato: 'fuoriDallApp' }
@@ -99,7 +110,7 @@ export async function statoPassi(): Promise<StatoPassi> {
     const d = await conTempo(h.isHealthAvailable(), 6000, 'Health Connect non ha risposto.')
     if (!d.available) return { stato: 'assente', motivo: 'Health Connect non e\' installato o non e\' attivo su questo telefono.' }
     const p = await conTempo(h.checkHealthPermissions({ permissions: ['READ_STEPS'] }), 6000, 'Controllo permessi non riuscito.')
-    return p.permissions?.includes('READ_STEPS') ? { stato: 'collegato' } : { stato: 'daCollegare' }
+    return concesso(p, 'READ_STEPS') ? { stato: 'collegato' } : { stato: 'daCollegare' }
   } catch (e) {
     return { stato: 'assente', motivo: (e as Error)?.message ?? 'Errore sconosciuto.' }
   }
@@ -117,7 +128,7 @@ export async function chiediPermessoPassi(): Promise<{ ok: boolean; motivo?: str
     const h = await health()
     if (!h) return { ok: false, motivo: 'Plugin non disponibile.' }
     const r = await conTempo(h.requestHealthPermissions({ permissions: ['READ_STEPS'] }), 60_000, 'Nessuna risposta dalla schermata dei permessi.')
-    return r.permissions?.includes('READ_STEPS')
+    return concesso(r, 'READ_STEPS')
       ? { ok: true }
       : { ok: false, motivo: 'Permesso non concesso.' }
   } catch (e) { return { ok: false, motivo: (e as Error)?.message } }
@@ -138,17 +149,19 @@ export async function leggiPassi(daISO: string, aISO: string): Promise<{ date: s
   if (!h) return []
   const inizio = new Date(daISO + 'T00:00:00')
   const fine = new Date(aISO + 'T23:59:59')
-  try {
-    const r = await h.queryAggregated({
+  // Un errore di lettura non va nascosto dietro un "nessun passo trovato":
+  // sono due cose diverse, e confonderle fa perdere tempo a tutti e due.
+  {
+    const r = await conTempo(h.queryAggregated({
       startDate: inizio.toISOString(),
       endDate: fine.toISOString(),
       dataType: 'steps',
       bucket: 'day',
-    })
+    }), 15_000, 'La lettura dei passi non ha risposto.')
     return (r.aggregatedData ?? [])
       .map((x) => ({ date: new Date(x.startDate).toISOString().slice(0, 10), passi: Math.round(x.value) }))
       .filter((x) => x.passi > 0)
-  } catch { return [] }
+  }
 }
 
 /**
