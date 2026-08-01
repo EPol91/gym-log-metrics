@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
+import { passiDisponibili, permessoPassiConcesso, chiediPermessoPassi, sincronizzaPassi } from '../util/passi'
 
 const SECTION: React.CSSProperties = {
   fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)',
@@ -47,13 +48,11 @@ export function HabitsScreen() {
               {ultimo.source === 'manual' ? ' · inseriti a mano' : ' · da Health Connect'}
             </p>
           </div>
-        ) : (
-          <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
-            Nessun dato ancora. I passi arriveranno da <strong style={{ color: 'var(--text)' }}>Health Connect</strong> quando
-            l'app girerà come applicazione Android: il tuo Whoop ci scrive già, con un paio di giorni di ritardo.
-            L'obiettivo puoi fissarlo fin d'ora.
-          </p>
-        )}
+        ) : null}
+
+        {/* Health Connect esiste solo dentro l'app installata: dal browser
+            questa porta non c'e' proprio, e prometterla sarebbe una bugia. */}
+        <PassiHealthConnect senzaDati={!ultimo} />
       </div>
 
       {/* Storico: compare solo quando c'è qualcosa da mostrare. */}
@@ -77,6 +76,85 @@ export function HabitsScreen() {
         Qui arriveranno anche i check-in ricorrenti e le altre abitudini: per ora c'è quello che
         possiamo davvero misurare.
       </p>
+    </div>
+  )
+}
+
+/**
+ * Il collegamento ai passi del telefono.
+ *
+ * Nell'app installata legge da Health Connect — dove finiscono i passi contati
+ * dal telefono e quelli che ci scrive il WHOOP. Nel browser non compare nessun
+ * tasto: quella porta non esiste, e un tasto che non puo' funzionare e' peggio
+ * di nessun tasto.
+ */
+function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
+  const [stato, setStato] = useState<'controllo' | 'assente' | 'daCollegare' | 'collegato'>('controllo')
+  const [esito, setEsito] = useState<string | null>(null)
+  const [lavoro, setLavoro] = useState(false)
+
+  useEffect(() => {
+    let vivo = true
+    void (async () => {
+      const ok = await passiDisponibili()
+      if (!vivo) return
+      if (!ok) { setStato('assente'); return }
+      setStato((await permessoPassiConcesso()) ? 'collegato' : 'daCollegare')
+    })()
+    return () => { vivo = false }
+  }, [])
+
+  // Collegato: i giorni si aggiornano da soli a ogni apertura, senza toccare niente.
+  useEffect(() => {
+    if (stato !== 'collegato') return
+    void sincronizzaPassi(14)
+  }, [stato])
+
+  if (stato === 'controllo') return null
+
+  if (stato === 'assente') {
+    return (
+      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
+        {senzaDati ? 'Nessun dato ancora. ' : ''}
+        I passi automatici arrivano da <strong style={{ color: 'var(--text)' }}>Health Connect</strong>, che esiste solo
+        nell'app installata: dal browser quel dato non e' raggiungibile — WHOOP non lo espone nella sua API.
+        L'obiettivo e i valori a mano funzionano lo stesso.
+      </p>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {stato === 'daCollegare' ? (
+        <>
+          <p className="muted small" style={{ margin: '0 0 8px' }}>
+            I passi possono arrivare da soli da Health Connect. Serve il tuo permesso, una volta.
+          </p>
+          <button className="primary" style={{ width: '100%' }} disabled={lavoro}
+            onClick={async () => {
+              setLavoro(true)
+              try {
+                if (await chiediPermessoPassi()) {
+                  setStato('collegato')
+                  const n = await sincronizzaPassi(30)
+                  setEsito(n ? `${n} giornate recuperate.` : 'Collegato: i passi arriveranno col prossimo aggiornamento.')
+                } else setEsito('Permesso non concesso.')
+              } finally { setLavoro(false) }
+            }}>
+            {lavoro ? 'Collego…' : 'Collega i passi'}
+          </button>
+        </>
+      ) : (
+        <div className="row spread" style={{ alignItems: 'center' }}>
+          <span className="muted small">Passi da Health Connect · attivi</span>
+          <button className="chip" disabled={lavoro} onClick={async () => {
+            setLavoro(true)
+            try { const n = await sincronizzaPassi(30); setEsito(n ? `${n} giornate aggiornate.` : 'Nessun passo trovato.') }
+            finally { setLavoro(false) }
+          }}>{lavoro ? '…' : '↻'}</button>
+        </div>
+      )}
+      {esito && <p className="muted small" style={{ margin: '6px 0 0' }}>{esito}</p>}
     </div>
   )
 }

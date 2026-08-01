@@ -1,0 +1,14 @@
+{
+  "appId": "app.etphealth.gym",
+  "appName": "ETP HEALTH",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://epol91.github.io/gym-log-metrics/",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "backgroundColor": "#0b0b0b"
+}

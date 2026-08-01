@@ -8,3 +8,14 @@ dist-ssr
 
 # Documenti/strategia: NON pubblicare nel repo
 docs/
+
+# --- app Android ---
+# Il progetto si versiona, i prodotti della compilazione no.
+android/.gradle
+android/local.properties
+android/app/build
+android/build
+android/capacitor-cordova-android-plugins
+*.apk
+android-icon/anteprima-*.png
+android-icon/dentro-apk-*.png

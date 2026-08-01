@@ -8,15 +8,22 @@
     "build": "tsc -b && vite build",
     "icons": "node scripts/gen-icons.mjs",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android": "npm run build && cap sync android && cd android && gradlew.bat assembleDebug && node ../scripts/copia-apk.mjs",
+    "android:icone": "node scripts/gen-android-icons.mjs && node scripts/verifica-icona.mjs"
   },
   "dependencies": {
+    "@capacitor-community/bluetooth-le": "^8.2.0",
+    "capacitor-health": "^8.1.2",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

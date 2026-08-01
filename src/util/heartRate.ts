@@ -1,3 +1,5 @@
+import { isNativo, connettiNativo } from './fasciaNativa'
+
 // Live BPM via Web Bluetooth — standard Heart Rate Service (0x180D / 0x2A37).
 // Solo browser che supportano Web Bluetooth (Android Chrome, desktop Chrome). iOS/Safari: non supportato.
 // Nessun cloud, nessun account: connessione diretta locale alla fascia.
@@ -27,7 +29,9 @@ function ble(): BleNavigator['bluetooth'] | undefined {
 }
 
 export function isHeartRateSupported(): boolean {
-  return ble() != null
+  // Nel guscio nativo Web Bluetooth non esiste, ma la fascia si collega lo
+  // stesso passando dal plugin: dire "non supportato" li' sarebbe una bugia.
+  return ble() != null || isNativo()
 }
 
 /** Parsing della misura FC (spec Bluetooth): flag bit0 = valore a 16 bit. */
@@ -136,14 +140,16 @@ function onPerso() {
 }
 
 function riprova() {
-  if (hrRetry != null || !hrDevice) return
+  if (hrRetry != null || (!hrDevice && !isNativo())) return
   hrRetry = setInterval(async () => {
-    if (hrVoluto || !hrDevice) { fermaRiprove(); return }
+    if (hrVoluto || (!hrDevice && !isNativo())) { fermaRiprove(); return }
     // Si riprova anche con l'app in secondo piano: cambiare canzone su Spotify
     // non e' un motivo per smettere di registrare il cuore. Il telefono i
     // tentativi li rallenta comunque da solo.
     try {
-      hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
+      hrHandle = isNativo() || !hrDevice
+        ? await connettiNativo(onBattito, onPerso, true)
+        : await connectHeartRate(hrDevice, onBattito, onPerso)
       hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null })
       fermaRiprove()
     } catch { /* ancora fuori portata: si riprova fra tre secondi */ }
@@ -160,8 +166,14 @@ export async function hrConnect(): Promise<void> {
   hrSet({ connecting: true, error: null })
   try {
     hrVoluto = false
-    hrDevice = (await knownHeartRateDevice()) ?? (await pickHeartRateDevice())
-    hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
+    if (isNativo()) {
+      // Dentro l'app installata il collegamento passa dal plugin nativo.
+      hrHandle = await connettiNativo(onBattito, onPerso)
+      hrDevice = null
+    } else {
+      hrDevice = (await knownHeartRateDevice()) ?? (await pickHeartRateDevice())
+      hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
+    }
     hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
   } catch (e) {
     const msg = (e as Error)?.message ?? ''
@@ -178,6 +190,15 @@ export async function hrConnect(): Promise<void> {
  */
 export async function hrReconnectKnown(): Promise<boolean> {
   if (hrState.connected || hrState.connecting) return true
+  if (isNativo()) {
+    hrSet({ connecting: true, error: null })
+    try {
+      hrVoluto = false
+      hrHandle = await connettiNativo(onBattito, onPerso, true)
+      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
+      return true
+    } catch { hrSet({ connecting: false }); return false }
+  }
   const d = await knownHeartRateDevice()
   if (!d) return false
   hrSet({ connecting: true, error: null })

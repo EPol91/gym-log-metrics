@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Il riquadro scuro del logo, tinta unita: qualunque maschera Android
+         ritagli (cerchio, quadrato stondato, goccia) taglia solo colore, mai
+         una lettera. Stesso colore della PWA. -->
+    <color name="ic_launcher_background">#141418</color>
+</resources>

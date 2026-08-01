@@ -1,0 +1,18 @@
+<!--
+  Il livello davanti dell'icona Android.
+
+  Android non mostra mai l'icona intera: la ritaglia con una maschera che cambia
+  da telefono a telefono (cerchio, quadrato stondato, goccia). Tutto cio' che
+  conta deve stare dentro il cerchio sicuro centrale, che e' il 66% del lato —
+  qui 288px su 432. Fuori di li' e' terra di nessuno: e' esattamente da li' che
+  "i bordi sputano dentro il logo".
+
+  Sfondo e riquadro non stanno qui: sono il livello dietro, tinta unita, cosi'
+  qualunque maschera taglia solo colore pieno e mai una lettera.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <text x="216" y="208" font-family="Georgia, 'Times New Roman', serif" font-size="92" font-weight="700"
+        text-anchor="middle" fill="#d4af37" letter-spacing="3">ETP</text>
+  <text x="216" y="249" font-family="Inter, system-ui, Arial, sans-serif" font-size="29" font-weight="400"
+        text-anchor="middle" fill="#f2f2f2" letter-spacing="10">HEALTH</text>
+</svg>
