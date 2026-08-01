@@ -171,6 +171,19 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
 }
 
 /**
+ * Il nome di una sorgente, in leggibile. "com.whoop.android" e "SM-S948B" sono
+ * nomi tecnici: dicono poco quando devi scegliere al volo.
+ */
+function leggibile(s: SorgentePassi): string {
+  const id = s.id.toLowerCase()
+  if (id.includes('whoop')) return 'WHOOP'
+  if (id.includes('samsung') || id.includes('shealth') || /^sm-/i.test(s.nome)) return 'Telefono'
+  if (id.includes('fitbit')) return 'Fitbit'
+  if (id.includes('garmin')) return 'Garmin'
+  return s.nome
+}
+
+/**
  * Da quale app leggere i passi.
  *
  * Health Connect somma tutte le app che scrivono passi: se il telefono conta i
@@ -199,12 +212,15 @@ function SceltaSorgente({ onCambio }: { onCambio: (msg: string) => void }) {
       await updateUser({ passiSorgente: id })
       setScelta(id)
       const n = await sincronizzaPassi(30)
-      onCambio(n ? `${n} giornate rilette da ${id ? lista?.find((x) => x.id === id)?.nome ?? id : 'tutte le sorgenti'}.` : 'Nessun passo da quella sorgente.')
+      const t = id ? lista?.find((x) => x.id === id) : undefined
+      onCambio(n ? `${n} giornate rilette da ${t ? leggibile(t) : id ?? 'tutte le sorgenti'}.` : 'Nessun passo da quella sorgente.')
     } catch (e) { onCambio((e as Error)?.message ?? 'Non riuscito.') }
     finally { setLavoro(false) }
   }
 
-  const nomeScelto = scelta ? (lista?.find((x) => x.id === scelta)?.nome ?? scelta) : 'tutte le sorgenti'
+  const nomeScelto = scelta
+    ? (() => { const t = lista?.find((x) => x.id === scelta); return t ? leggibile(t) : scelta })()
+    : 'tutte le sorgenti'
 
   if (!apri) {
     return (
@@ -228,7 +244,7 @@ function SceltaSorgente({ onCambio }: { onCambio: (msg: string) => void }) {
         {(lista ?? []).map((s) => (
           <button key={s.id} className={'chip' + (scelta === s.id ? ' on' : '')} disabled={lavoro}
             onClick={() => void scegli(s.id)}>
-            {s.nome} <span className="muted">· {s.passi.toLocaleString('it-IT')}</span>
+            {leggibile(s)} <span className="muted">· {s.passi.toLocaleString('it-IT')}</span>
           </button>
         ))}
       </div>

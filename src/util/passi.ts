@@ -149,11 +149,44 @@ export async function permessoPassiConcesso(): Promise<boolean> {
  * Un giorno alla volta, non un totale unico: serve a riempire lo storico, e un
  * totale di sette giorni non si puo' spalmare all'indietro senza inventare.
  */
+/** Il giorno di calendario di un istante, in ora locale. */
+function giornoLocale(iso: string): string {
+  const d = new Date(iso)
+  const due = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
+}
+
 export async function leggiPassi(daISO: string, aISO: string, sorgente?: string): Promise<{ date: string; passi: number }[]> {
   const h = await health()
   if (!h) return []
   const inizio = new Date(daISO + 'T00:00:00')
   const fine = new Date(aISO + 'T23:59:59')
+
+  /**
+   * I record uno per uno, sommati per giornata QUI.
+   *
+   * Il raggruppamento del plugin non taglia le giornate a mezzanotte italiana:
+   * i totali di sette giorni combaciavano al passo con l'app WHOOP, ma i
+   * singoli giorni no — i passi dopo mezzanotte finivano su quello prima. Chi
+   * si allena fino alle undici di sera se ne accorge subito.
+   */
+  if (h.queryRecords) {
+    try {
+      const r = await conTempo(
+        h.queryRecords({ startDate: inizio.toISOString(), endDate: fine.toISOString(), dataType: 'steps' }),
+        20_000, 'La lettura dei passi non ha risposto.',
+      )
+      const per = new Map<string, number>()
+      for (const x of r.records ?? []) {
+        if (sorgente && x.sourceBundleId !== sorgente) continue
+        const g = giornoLocale(x.startDate)
+        per.set(g, (per.get(g) ?? 0) + Math.round(x.value))
+      }
+      const righe = [...per.entries()].map(([date, passi]) => ({ date, passi })).filter((x) => x.passi > 0)
+      if (righe.length) return righe.sort((a, b) => a.date.localeCompare(b.date))
+      // Nessun record: si prova comunque la strada aggregata qui sotto.
+    } catch { /* il plugin non sa dare i record: si continua con l'aggregato */ }
+  }
   // Un errore di lettura non va nascosto dietro un "nessun passo trovato":
   // sono due cose diverse, e confonderle fa perdere tempo a tutti e due.
   {
@@ -167,15 +200,8 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
       // sommati fanno un numero che non esiste da nessuna parte.
       ...(sorgente ? { dataOrigins: [sorgente] } : {}),
     }), 15_000, 'La lettura dei passi non ha risposto.')
-    // La data si legge in ORA LOCALE, non in UTC. La giornata di Health Connect
-    // comincia a mezzanotte qui, che in UTC sono le 22 del giorno prima:
-    // convertendo, ogni giornata finiva scritta un giorno indietro — e i passi
-    // di oggi comparivano su ieri.
-    const giornoLocale = (iso: string) => {
-      const d = new Date(iso)
-      const due = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
-    }
+    // Ripiego: il raggruppamento del plugin. La data si legge comunque in ora
+    // locale — in UTC ogni giornata finiva scritta un giorno indietro.
     return (r.aggregatedData ?? [])
       .map((x) => ({ date: giornoLocale(x.startDate), passi: Math.round(x.value) }))
       .filter((x) => x.passi > 0)
