@@ -285,3 +285,49 @@ export async function sorgentiPassi(giorni = 7): Promise<SorgentePassi[]> {
   }
   return [...per.values()].sort((p, q) => q.passi - p.passi)
 }
+
+/**
+ * I dati grezzi, come arrivano davvero da Health Connect.
+ *
+ * Tre tentativi sbagliati di fila sono nati tutti dalla stessa cosa: ho
+ * ipotizzato che forma avessero gli orari invece di guardarli. Questo li
+ * stampa senza toccarli — la stringa esatta, il valore, chi l'ha scritto — e
+ * accanto mette cosa restituisce l'aggregato per la stessa giornata. Con questi
+ * due numeri davanti non c'e' piu' niente da indovinare.
+ */
+export async function diagnosticaPassi(giorni = 3): Promise<string> {
+  const h = await health()
+  if (!h) return 'Plugin non disponibile.'
+  const righe: string[] = []
+  const oggi = new Date()
+  const da = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() - (giorni - 1), 0, 0, 0, 0)
+  const a = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 1, 0, 0, 0, 0)
+
+  righe.push(`fuso locale: UTC${-new Date().getTimezoneOffset() / 60 >= 0 ? '+' : ''}${-new Date().getTimezoneOffset() / 60}`)
+  righe.push(`chiesto: ${da.toISOString()} → ${a.toISOString()}`)
+
+  try {
+    const r = await conTempo(h.queryRecords({ startDate: da.toISOString(), endDate: a.toISOString(), dataType: 'steps' }), 20_000, 'record: nessuna risposta')
+    const rec = r.records ?? []
+    righe.push(`record: ${rec.length}`)
+    for (const x of rec.slice(0, 12)) {
+      righe.push(`  ${x.startDate} = ${x.value} [${x.sourceBundleId}]`)
+    }
+    if (rec.length > 12) righe.push(`  …e altri ${rec.length - 12}`)
+  } catch (e) { righe.push(`record: ${(e as Error)?.message}`) }
+
+  // Lo stesso giorno, chiesto all'aggregato: se i due numeri non combaciano,
+  // il problema e' come il plugin ritaglia le giornate.
+  for (let i = 0; i < giorni; i++) {
+    const g0 = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() - i, 0, 0, 0, 0)
+    const g1 = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() - i + 1, 0, 0, 0, 0)
+    try {
+      const r = await conTempo(h.queryAggregated({
+        startDate: g0.toISOString(), endDate: g1.toISOString(), dataType: 'steps', bucket: 'day',
+      }), 15_000, 'aggregato: nessuna risposta')
+      const dettaglio = (r.aggregatedData ?? []).map((x) => `${x.startDate}→${x.endDate}=${Math.round(x.value)}`).join(' | ')
+      righe.push(`agg ${giornoLocale(g0.toISOString())}: ${dettaglio || 'vuoto'}`)
+    } catch (e) { righe.push(`agg ${giornoLocale(g0.toISOString())}: ${(e as Error)?.message}`) }
+  }
+  return righe.join('\n')
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
-import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, sorgentiPassi, type StatoPassi, type SorgentePassi } from '../util/passi'
+import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, diagnosticaPassi, sorgentiPassi, type StatoPassi, type SorgentePassi } from '../util/passi'
 import { getUser, updateUser } from '../db/repo'
 
 const SECTION: React.CSSProperties = {
@@ -138,6 +138,15 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
           }}>{lavoro ? '…' : '↻'}</button>
         </div>
         <SceltaSorgente onCambio={(n) => setEsito(n)} />
+        <button className="chip" style={{ marginTop: 6 }} disabled={lavoro} onClick={async () => {
+          setLavoro(true); setEsito('Leggo i dati grezzi…')
+          try {
+            const t = await diagnosticaPassi(3)
+            setEsito(t)
+            try { await navigator.clipboard?.writeText(t) } catch { /* niente appunti: resta a schermo */ }
+          } catch (e) { setEsito((e as Error)?.message ?? 'non riuscito') }
+          finally { setLavoro(false) }
+        }}>Dati grezzi (copia)</button>
         </>
       ) : (
         <>
@@ -165,7 +174,7 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
           </div>
         </>
       )}
-      {esito && <p className="muted small" style={{ margin: '8px 0 0' }}>{esito}</p>}
+      {esito && <p className="muted small" style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{esito}</p>}
     </div>
   )
 }
