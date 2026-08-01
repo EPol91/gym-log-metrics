@@ -1,3 +1,5 @@
+html[data-nativo="1"] { --sicuro-basso: 0px; }
+
 :root {
   --bg: #0b0b0b;
   --surface: #141414;
@@ -19,6 +21,9 @@
      Tre cose diverse meritano tre colori, non due su tre. */
   --cardio: #4fc3f7;
   --cardio-bg: #0d1f28;
+  /* Lo spazio della barra di sistema in basso. Nel guscio nativo vale zero:
+     li' ci pensa l'activity, e sommarli faceva un centimetro di vuoto. */
+  --sicuro-basso: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
 }
 
@@ -194,7 +199,7 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 0;
   width: min(520px, 100%);
   display: flex; background: var(--surface); border-top: 1px solid var(--line);
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 8px calc(6px + var(--sicuro-basso));
 }
 .tab {
   flex: 1; min-width: 0; background: transparent; border: none; border-radius: 10px;

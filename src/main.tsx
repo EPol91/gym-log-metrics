@@ -5,6 +5,12 @@ import App from './App.tsx'
 import { initPwaUpdate } from './util/pwaUpdate'
 import { initViewportVars } from './util/viewport'
 
+// Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
+// se le compensasse anche la pagina, il margine finirebbe contato due volte
+// — ed e' esattamente il centimetro morto sotto la barra dei tab.
+if ((globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) {
+  document.documentElement.dataset.nativo = '1'
+}
 initViewportVars() // le modali stanno sopra la tastiera
 initPwaUpdate() // controlla e applica gli aggiornamenti da solo
 
