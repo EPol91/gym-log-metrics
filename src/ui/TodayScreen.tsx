@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
 import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser } from '../db/repo'
 import { computeDiary, todayDiet } from '../db/diet'
-import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop } from '../db/whoop'
+import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
@@ -127,10 +127,27 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
   const d = useLiveQuery(() => whoopDay(), [])
   const w = useLiveQuery(() => whoopWorkoutsOf(todayISO()), [])
   const ha = d && (d.recovery != null || d.sleepHours != null || d.strain != null)
+  const [sync, setSync] = useState(false)
+  const [quando, setQuando] = useState<string | null>(lastAutoSync())
 
   return (
     <>
-      <div className="row spread"><span style={LBL}>Vitali · WHOOP</span><span className="muted small">≡</span></div>
+      <div className="row spread">
+        <span style={LBL}>Vitali · WHOOP</span>
+        {/* Aggiornare da qui: il WHOOP chiude la notte quando gli pare, e andare
+            a cercare il tasto nel Profilo per un dato che stai guardando adesso
+            e' un giro inutile. */}
+        <span className="row" style={{ gap: 8, alignItems: 'center', flex: 'none' }}>
+          <button className="chip" style={{ padding: '2px 9px', fontSize: 12 }} disabled={sync}
+            aria-label="Aggiorna i dati WHOOP"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={async () => {
+              setSync(true)
+              try { await syncWhoop(3) } finally { setSync(false); setQuando(lastAutoSync()) }
+            }}>{sync ? '…' : '↻'}</button>
+          <span className="muted small">≡</span>
+        </span>
+      </div>
       {ha ? (
         <>
           <div className="row" style={{ marginTop: 8 }}>
@@ -143,6 +160,13 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
             <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
               {w.map((x) => x.sport ?? 'Attività').join(' · ')} registrati dal WHOOP
             </div>
+          )}
+          {/* Quando sono stati presi: senza, un recupero fermo a ieri sembra
+              quello di stanotte. */}
+          {quando && (
+            <p className="muted small" style={{ margin: '8px 0 0' }}>
+              Aggiornati il {fmtData(quando)} alle {quando.slice(11, 16)}
+            </p>
           )}
           <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Andamento ›</button>
         </>
