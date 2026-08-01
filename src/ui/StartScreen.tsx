@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym } from '../db/repo'
+import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym, updateTemplate } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
 import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
 import { PesoOggi } from './PesoOggi'
@@ -151,6 +151,12 @@ export function StartScreen({
                   <span className="muted small">{t.items.length} esercizi</span>
                 </span>
               </button>
+              {/* Lo spostamento nel cardio si fa da qui, dove il problema si
+                  vede: l'interruttore stava dentro l'editor della scheda, e una
+                  scheda di corsa restava in mezzo agli allenamenti finche' non
+                  andavi a cercarlo. */}
+              <button className="ghost small" aria-label={`Sposta ${t.name} in Solo cardio`}
+                onClick={() => updateTemplate(t.id, { cardio: true })}>♥</button>
               <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
               <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
             </div>
@@ -175,6 +181,8 @@ export function StartScreen({
                     <span className="muted small">solo cardio</span>
                   </span>
                 </button>
+                <button className="ghost small" aria-label={`Riporta ${t.name} fra gli allenamenti`}
+                  onClick={() => updateTemplate(t.id, { cardio: false })}>⤴</button>
                 <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
                 <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
               </div>

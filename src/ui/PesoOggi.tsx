@@ -76,7 +76,7 @@ export function PesoOggi({ dentro }: { dentro: 'check' | 'seduta' }) {
   }
 
   return (
-    <div className="card ring-invito" style={{ borderColor: 'var(--gold)', borderRadius: 14, marginBottom: 0, display: 'block' }}>
+    <div className="card invito-bordo" style={{ borderColor: 'var(--gold)', borderRadius: 14, marginBottom: 0, display: 'block' }}>
       <div className="row spread" style={{ alignItems: 'center' }}>
         <label className="fl" style={{ margin: 0, color: dentro === 'seduta' ? 'var(--gold)' : undefined }}>
           {dentro === 'seduta' ? '⚖️ Peso di oggi non registrato' : '⚖️ Peso di oggi'}

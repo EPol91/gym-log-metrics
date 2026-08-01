@@ -68,6 +68,9 @@
 /* Il check di oggi è pronto da compilare: l'anello respira per farsi notare.
    Un alone lento, non un lampeggio: deve chiamare l'occhio, non tirarlo. */
 .ring-invito { display: inline-block; border-radius: 50%; line-height: 0; animation: invito 2.4s ease-in-out infinite; }
+/* Stesso richiamo, ma per un riquadro con dentro del testo: niente line-height 0
+   ne display inline-block — su un paragrafo facevano accavallare le righe. */
+.invito-bordo { animation: invito 2.4s ease-in-out infinite; }
 @keyframes invito {
   0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
   45% { box-shadow: 0 0 0 7px rgba(212, 175, 55, .14); }
