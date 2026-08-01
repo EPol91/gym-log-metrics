@@ -38,7 +38,8 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   onStartWorkout: () => void
   onResumeWorkout: (id: string) => void
   onOpenCheck: () => void
-  onGo: (dove: 'food' | 'health' | 'train') => void
+  /**  = quale scheda di Salute aprire: 'vitali', 'habits', … */
+  onGo: (dove: 'food' | 'health' | 'train', sezione?: string) => void
   /** "Apri la seduta" dal calendario: porta allo Storico, su QUELLA seduta. */
   onApriSeduta: (sessionId: string) => void
 }) {
@@ -71,12 +72,12 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   )
 
   const contenuto: Record<string, React.ReactNode> = {
-    vitali: <CardVitali onOpen={() => onGo('health')} />,
+    vitali: <CardVitali onOpen={() => onGo('health', 'vitali')} />,
     corpo: <CardCorpo peso={home?.bodyWeight ?? null} />,
     nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
     allenamento: <CardAllenamento home={home} ongoing={ongoing ?? null}
       onStart={onStartWorkout} onResume={onResumeWorkout} />,
-    abitudini: <CardAbitudini onOpen={() => onGo('health')} />,
+    abitudini: <CardAbitudini onOpen={() => onGo('health', 'habits')} />,
   }
 
   return (

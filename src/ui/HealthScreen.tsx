@@ -25,11 +25,21 @@ const TABS: { key: Sub; label: string }[] = [
  * Salute: come stai andando, non come stai adesso. Qui vive tutto ciò che si
  * guarda nel tempo — la regola che tiene separata questa schermata da Oggi.
  */
-export function HealthScreen({ onReopen, apriSeduta }: { onReopen?: (id: string) => void; apriSeduta?: string | null }) {
+export function HealthScreen({ onReopen, apriSeduta, vai, vaiNonce }: {
+  onReopen?: (id: string) => void; apriSeduta?: string | null
+  /** La scheda da aprire: chi ti manda qui sa quale vuole. */
+  vai?: string | null; vaiNonce?: number
+}) {
   const [sub, setSub] = usePersistedState<Sub>('health-sub', 'vitali')
   // Se arrivi qui per vedere una seduta, la scheda giusta e' lo Storico — non
   // quella che avevi aperto l'ultima volta.
   useEffect(() => { if (apriSeduta) setSub('history') }, [apriSeduta]) // eslint-disable-line react-hooks/exhaustive-deps
+  // "Andamento" dai Vitali deve portare ai Vitali, non all'ultima scheda che
+  // avevi aperto — che dopo un giro nello storico era lo storico. Il nonce fa
+  // valere anche la stessa richiesta ripetuta.
+  useEffect(() => {
+    if (vai && TABS.some((t) => t.key === vai)) setSub(vai as Sub)
+  }, [vai, vaiNonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="col" style={{ gap: 10 }}>
