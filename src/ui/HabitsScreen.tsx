@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { STEPS, ensureHabits, getHabit, adjustHabitTarget, recentHabitEntries } from '../db/habits'
-import { statoPassi, chiediPermessoPassi, sincronizzaPassi, type StatoPassi } from '../util/passi'
+import { statoPassi, chiediPermessoPassi, sincronizzaPassi, diagnosticaPonte, type StatoPassi } from '../util/passi'
 
 const SECTION: React.CSSProperties = {
   fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)',
@@ -151,9 +151,12 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
             }}>
             {lavoro ? 'Chiedo il permesso…' : 'Collega i passi'}
           </button>
-          <button className="chip" style={{ marginTop: 8 }} disabled={lavoro} onClick={() => void controlla()}>
-            Ricontrolla
-          </button>
+          <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
+            <button className="chip" disabled={lavoro} onClick={() => void controlla()}>Ricontrolla</button>
+            {/* Quando non funziona, serve sapere COSA vede la pagina del ponte
+                nativo: senza, si tira a indovinare. */}
+            <button className="chip" onClick={() => setEsito(diagnosticaPonte())}>Diagnostica</button>
+          </div>
         </>
       )}
       {esito && <p className="muted small" style={{ margin: '8px 0 0' }}>{esito}</p>}

@@ -36,13 +36,45 @@ function conTempo<T>(p: Promise<T>, ms: number, motivo: string): Promise<T> {
 }
 
 let plugin: Health | null = null
+
+/**
+ * Il plugin, preso dal ponte che il guscio inietta nella pagina.
+ *
+ * L'app carica il sito da remoto, e nella pagina finiscono DUE Capacitor:
+ * quello iniettato dal guscio — l'unico davvero collegato al nativo — e quello
+ * dentro il nostro pacchetto. Passando dal secondo le chiamate partivano e non
+ * tornava mai niente: la schermata restava su "Chiedo il permesso…" per
+ * sempre. Prima si prova quello iniettato.
+ */
 async function health(): Promise<Health | null> {
   if (!isNativo()) return null
   if (plugin) return plugin
-  const mod = await conTempo(import('capacitor-health'), 6000, 'Il modulo Health non si e\' caricato.')
+
+  const cap = (globalThis as unknown as { Capacitor?: { Plugins?: Record<string, Health> } }).Capacitor
+  const dalGuscio = cap?.Plugins?.HealthPlugin
+  if (dalGuscio?.isHealthAvailable) { plugin = dalGuscio; return plugin }
+
+  // Ripiego: la copia dentro il pacchetto.
+  const mod = await conTempo(import('capacitor-health'), 6000, "Il modulo Health non si e' caricato.")
   plugin = (mod as unknown as { Health: Health }).Health
   if (!plugin?.isHealthAvailable) throw new Error('Il ponte con Health Connect non risponde.')
   return plugin
+}
+
+/** Cosa vede la pagina del ponte nativo: serve a capire, non a indovinare. */
+export function diagnosticaPonte(): string {
+  const g = globalThis as unknown as {
+    Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string; Plugins?: Record<string, unknown> }
+  }
+  const cap = g.Capacitor
+  if (!cap) return 'Nessun Capacitor nella pagina.'
+  const nomi = Object.keys(cap.Plugins ?? {})
+  return [
+    `piattaforma: ${cap.getPlatform?.() ?? '?'}`,
+    `nativo: ${cap.isNativePlatform?.() ?? '?'}`,
+    `plugin visibili: ${nomi.length ? nomi.join(', ') : 'nessuno'}`,
+    `HealthPlugin: ${cap.Plugins?.HealthPlugin ? 'presente' : 'assente'}`,
+  ].join(' · ')
 }
 
 /** Perche' i passi non si possono leggere: da mostrare, non da nascondere. */
