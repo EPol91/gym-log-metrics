@@ -180,21 +180,25 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
    * telefono resta dov'e' — mezzogiorno di un record di trenta secondi e'
    * ancora mezzogiorno.
    */
-  const giornoDelRecord = (x: { startDate: string; endDate?: string; value: number }): string => {
+  const giornoDelRecord = (x: { startDate: string; endDate?: string; value: number; sourceBundleId: string }): string => {
     const a = new Date(x.startDate).getTime()
     const b = x.endDate ? new Date(x.endDate).getTime() : a
-    const durataOre = (b - a) / 3_600_000
 
-    // Rete di sicurezza: se il record non ha una durata (fine assente o uguale
-    // all'inizio) ma porta il totale di una giornata, e' un totale marcato
-    // all'inizio della giornata WHOOP. Segnato di sera, appartiene al giorno
-    // dopo — la stessa regola dei cicli. Un record breve del telefono, che vale
-    // qualche decina di passi, resta dov'e'.
-    if (durataOre < 0.02 && x.value >= 1000) {
+    // Chi ha scritto il record, non quanto vale.
+    //
+    // Il WHOOP tiene UN totale per giornata e lo marca quando quella giornata
+    // e' cominciata per lui: l'addormentamento. Segnato di sera, appartiene al
+    // giorno dopo — la stessa regola dei suoi cicli. Prima decidevo in base al
+    // valore (sopra i mille passi lo trattavo da totale): il totale di OGGI, che
+    // a meta' pomeriggio vale poche centinaia, finiva incollato a ieri sera.
+    if (/whoop/i.test(x.sourceBundleId)) {
       const d = new Date(a)
       if (d.getHours() >= 18) d.setDate(d.getDate() + 1)
       return giornoLocale(d.toISOString())
     }
+
+    // Gli altri scrivono tanti record brevi all'ora vera: vale il punto di mezzo,
+    // che per un record di trenta secondi e' il momento stesso.
     return giornoLocale(new Date(a + (b - a) / 2).toISOString())
   }
 
