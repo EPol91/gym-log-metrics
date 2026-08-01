@@ -11,11 +11,20 @@ import { Resvg } from '@resvg/resvg-js'
 
 const L = 432
 const fgFile = readFileSync(new URL('../android-icon/foreground.svg', import.meta.url), 'utf8')
-const marchio = fgFile
+const grezzo = fgFile
   .replace(/<!--[\s\S]*?-->/g, '')
   .replace(/<\?xml[^>]*\?>/, '')
   .replace(/<svg[^>]*>/, '')
   .replace('</svg>', '')
+
+// Si controlla l'icona che finisce DAVVERO nell'APK: quella centrata
+// sull'inchiostro, come la genera gen-android-icons. Verificarne un'altra
+// sarebbe un controllo che non protegge niente.
+const involucro = (d) => `<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${L}" viewBox="0 0 ${L} ${L}">${d}</svg>`
+const bbGrezzo = new Resvg(Buffer.from(involucro(grezzo)), { fitTo: { mode: 'width', value: L } }).getBBox()
+const spostaX = (L / 2 - (bbGrezzo.x + bbGrezzo.width / 2)).toFixed(2)
+const spostaY = (L / 2 - (bbGrezzo.y + bbGrezzo.height / 2)).toFixed(2)
+const marchio = `<g transform="translate(${spostaX}, ${spostaY})">${grezzo}</g>`
 
 // Le maschere che Android applica sul serio.
 const MASCHERE = {
