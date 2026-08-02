@@ -381,6 +381,9 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
   )
 }
 
+/** I tasti secondari: stretti quanto basta a starci tutti in fila. */
+const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
+
 function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
   entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; sessionId: string; restSec: number
   pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
@@ -460,26 +463,28 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
         <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
       </div>
 
-      {/* Controlli secondari */}
-      <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className={showHist ? 'chip on' : 'chip'} onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
+      {/* Controlli secondari: una riga sola. A capo occupavano due righe di
+          schermo per sei icone; qui restano in fila e, se proprio non ci stanno,
+          scorrono di lato. */}
+      <div className="row" style={{ gap: 5, justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <button className={showHist ? 'chip on' : 'chip'} style={MINI} onClick={() => setShowHist((v) => !v)} aria-label="Storico">📊</button>
         {/* Due taccuini diversi: quello che ha prescritto lui e quello che hai
             capito tu della macchina. In un campo solo, per rileggere l'altezza
             del sellino toccava scorrere mezza scheda del coach. */}
-        <button className={showSettings ? 'chip on' : 'chip'} onClick={() => { setShowSettings((v) => !v); setShowCoach(false) }}
+        <button className={showSettings ? 'chip on' : 'chip'} style={MINI} onClick={() => { setShowSettings((v) => !v); setShowCoach(false) }}
           aria-label="Le tue regolazioni">⚙</button>
         {righeCoach.length > 0 && (
-          <button className={showCoach ? 'chip on' : 'chip'} onClick={() => { setShowCoach((v) => !v); setShowSettings(false) }}
+          <button className={showCoach ? 'chip on' : 'chip'} style={MINI} onClick={() => { setShowCoach((v) => !v); setShowSettings(false) }}
             aria-label="La scheda del coach">🦠</button>
         )}
         {/* L'inclinazione dello schienale: «panca a 80°» regolata a occhio non e'
             lo stesso esercizio della settimana prima. */}
-        <button className={inclinazione != null ? 'chip on' : 'chip'} onClick={() => setInclina(true)}
+        <button className={inclinazione != null ? 'chip on' : 'chip'} style={MINI} onClick={() => setInclina(true)}
           aria-label="Misura l'inclinazione">📐{inclinazione != null ? ` ${inclinazione}°` : ''}</button>
-        {onGroup && <button className="chip" onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
-        <button className="chip" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
-        <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
-        <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
+        {onGroup && <button className="chip" style={MINI} onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
+        <button className="chip" style={MINI} disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)} aria-label="Sposta su">↑</button>
+        <button className="chip" style={MINI} disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)} aria-label="Sposta giù">↓</button>
+        <button className="chip" style={MINI} aria-label="Rimuovi esercizio" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
       </div>
       {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
       {!showSettings && mieNote && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {mieNote}</div>}
