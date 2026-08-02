@@ -41,6 +41,8 @@ export interface SessionSummary {
   sets: number
   cardio: CardioSummary[]
   score: number | null
+  /** il nome della scheda da cui viene, se c'e': e' come la chiami tu */
+  scheda?: string
 }
 
 /** Storico sedute, più recenti prima. */
@@ -67,7 +69,11 @@ export async function computeHistory(): Promise<SessionSummary[]> {
       }
     })
     const score = s.finishedAt ? (await computeSessionWorkoutScore(s.id)).value : null
+    // Il nome della scheda batte il tipo: nel dettaglio si legge «🦠 D2 · PUSH»
+    // e nella lista «Push», e sembravano due sedute diverse.
+    const scheda = s.srcTemplateId ? (await db.templates.get(s.srcTemplateId))?.name : undefined
     out.push({
+      ...(scheda ? { scheda } : {}),
       id: s.id, date: s.date, type: s.type, finished: !!s.finishedAt,
       tonnage: tonnage(sets), volume: volume(sets), exercises: entries, sets: sets.length, cardio, score,
     })

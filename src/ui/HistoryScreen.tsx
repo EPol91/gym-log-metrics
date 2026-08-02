@@ -43,7 +43,9 @@ export function HistoryScreen({ onReopen, apri }: { onReopen?: (id: string) => v
         shown.map((s) => (
           <button className="card" style={{ textAlign: 'left', width: '100%' }} key={s.id} onClick={() => setSelected(s.id)}>
             <div className="row spread">
-              <strong>{TYPE_LABEL[s.type] ?? s.type}</strong>
+              <strong style={{ color: s.scheda?.trimStart().startsWith('🦠') ? 'var(--rs)' : undefined }}>
+                {s.scheda ?? TYPE_LABEL[s.type] ?? s.type}
+              </strong>
               <span className="muted small">{fmtData(s.date)}{!s.finished ? ' · in corso' : ''} ›</span>
             </div>
             <div className="row spread" style={{ marginTop: 8, alignItems: 'center' }}>
