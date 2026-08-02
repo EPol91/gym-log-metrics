@@ -28,27 +28,36 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   const [msg, setMsg] = useState<string | null>(null)
   const [fatte, setFatte] = useState(0)
   const [totale, setTotale] = useState(0)
+  /** Quale slide stai guardando a schermo intero. */
+  const [grande, setGrande] = useState<number | null>(null)
 
-  // Si ridisegna a ogni cambio di formato o di firma: sono pochi decimi di
-  // secondo e vedere subito il risultato vale piu' di un tasto «rigenera».
+  // Si ridisegna a ogni cambio di formato o di firma. Le anteprime compaiono
+  // una alla volta, appena la slide e' pronta: su una ricetta con la foto ci
+  // vogliono diversi secondi, e guardare un pannello fermo sembra un guasto.
   useEffect(() => {
     let vivo = true
-    setBusy(true); setFatte(0); setTotale(0)
+    const nati: string[] = []
+    setBusy(true); setFatte(0); setTotale(0); setGrande(null)
+    setUrls((vecchi) => { vecchi.forEach(URL.revokeObjectURL); return [] })
+    setBlobs([])
+
     const mappa = new Map(foods.map((f) => [f.id, f]))
     slideRicetta(recipe, calc, mappa, formato, chi.trim() || 'ETP HEALTH',
-      (n, tot) => { if (vivo) { setFatte(n); setTotale(tot) } })
-      .then((bs) => {
+      (n, tot, appena) => {
         if (!vivo) return
-        setBlobs(bs)
-        setUrls((vecchi) => { vecchi.forEach(URL.revokeObjectURL); return bs.map((b) => URL.createObjectURL(b)) })
+        setFatte(n); setTotale(tot)
+        const u = URL.createObjectURL(appena)
+        nati.push(u)
+        setUrls((p) => [...p, u])
       })
+      .then((bs) => { if (vivo) setBlobs(bs) })
       .catch((e) => vivo && setMsg((e as Error)?.message ?? 'Non sono riuscito a disegnarle.'))
       .finally(() => vivo && setBusy(false))
-    return () => { vivo = false }
-  }, [recipe, calc, foods, formato, chi])
 
-  // Gli URL creati qui vanno liberati: sono immagini da qualche mega l'una.
-  useEffect(() => () => { urls.forEach(URL.revokeObjectURL) }, [urls])
+    // Se cambi formato a meta' strada, le immagini gia' create vanno liberate:
+    // sono qualche mega l'una.
+    return () => { vivo = false; nati.forEach(URL.revokeObjectURL) }
+  }, [recipe, calc, foods, formato, chi])
 
   const nomeFile = (i: number) =>
     `${recipe.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricetta'}-${i + 1}.png`
@@ -68,6 +77,31 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
       if (/cancel|abort|annull/i.test(t)) return
       setMsg(t || 'Non ci sono riuscito.')
     }
+  }
+
+  // A schermo intero: l'anteprima da 148 px serve a contarle, non a leggerle.
+  // Le frecce restano ai lati perche' su un telefono il dito e' li'.
+  if (grande != null && urls[grande]) {
+    return createPortal(
+      <div onClick={() => setGrande(null)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1100, background: '#000',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+        <img src={urls[grande]} alt={`Slide ${grande + 1}`}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
+
+        <div className="row spread" onClick={(e) => e.stopPropagation()}
+          style={{ position: 'absolute', left: 12, right: 12, bottom: 'calc(18px + var(--sicuro-basso))', alignItems: 'center' }}>
+          <button className="chip" disabled={grande === 0} onClick={() => setGrande(grande - 1)}>‹</button>
+          <span className="muted small">{grande + 1} di {urls.length}</span>
+          <button className="chip" disabled={grande === urls.length - 1} onClick={() => setGrande(grande + 1)}>›</button>
+        </div>
+        <button className="ghost" onClick={() => setGrande(null)}
+          style={{ position: 'absolute', top: 'calc(12px + var(--vvtop, 0px))', right: 12, width: 40, height: 40, padding: 0, display: 'grid', placeItems: 'center' }}>✕</button>
+      </div>,
+      document.body,
+    )
   }
 
   return createPortal(
@@ -121,10 +155,10 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           )}
           <div className="row" style={{ gap: 8, flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 4 }}>
             {urls.map((u, i) => (
-              <img key={u} src={u} alt={`Slide ${i + 1}`}
+              <img key={u} src={u} alt={`Slide ${i + 1}`} onClick={() => setGrande(i)}
                 style={{
                   width: formato === 'post' ? 148 : 118, flex: 'none', borderRadius: 10,
-                  border: '1px solid var(--line)', display: 'block',
+                  border: '1px solid var(--line)', display: 'block', cursor: 'pointer',
                 }} />
             ))}
           </div>

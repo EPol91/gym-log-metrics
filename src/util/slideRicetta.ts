@@ -426,7 +426,7 @@ const PER_SLIDE: Record<Formato, number> = { post: 5, storia: 6 }
  */
 export async function slideRicetta(
   r: Recipe, calc: RecipeCalc, foods: Map<string, Food>, f: Formato, chi: string,
-  avanzamento?: (fatte: number, totale: number) => void,
+  avanzamento?: (fatte: number, totale: number, appena: Blob) => void,
 ): Promise<Blob[]> {
   // Quante saranno si sa prima di disegnarle: serve per dire «3 di 5» invece di
   // un'attesa muta. Il conto e' lo stesso che si ripete sotto.
@@ -434,12 +434,18 @@ export async function slideRicetta(
   const fetteTot = Math.ceil(passiTot / PER_SLIDE[f])
   const totale = 2 + ((r.groups ?? []).some((g) => g.items.length) ? 1 : 0) + fetteTot
   let fatte = 0
-  // Dopo ogni slide si lascia un respiro alla pagina: senza, il disegno occupa
-  // il filo fino in fondo e la percentuale si vedrebbe solo alla fine, quando
-  // non serve piu' a niente.
-  const segna = async () => {
-    avanzamento?.(++fatte, totale)
-    await new Promise((res) => setTimeout(res, 0))
+  /**
+   * Segna una slide fatta e lascia che la pagina si ridisegni davvero.
+   *
+   * Un `setTimeout(0)` non basta: rimette in coda il lavoro ma non garantisce
+   * un fotogramma, e su una ricetta con foto il disegno tiene occupato il filo
+   * per secondi — la barra restava ferma e arrivava al 100% tutta insieme.
+   * Aspettare un fotogramma vero, e poi cedere ancora, e' l'unico modo di
+   * vedere il numero salire mentre lavora.
+   */
+  const segna = async (appena: Blob) => {
+    avanzamento?.(++fatte, totale, appena)
+    await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)))
   }
 
   const m = (r.mode === 'servings' ? calc.perServing : calc.per100) ?? calc.totals
@@ -448,16 +454,17 @@ export async function slideRicetta(
     : `${Math.round(m.kcal)} kcal per 100 g · C ${num(m.carbs)} P ${num(m.protein)} G ${num(m.fat)}`
 
   const out: Blob[] = []
-  out.push(await copertina(f, r, sotto, chi)); await segna()
-  out.push(await macro(f, r, calc, chi)); await segna()
-  if ((r.groups ?? []).some((g) => g.items.length)) { out.push(await ingredienti(f, r, foods, chi)); await segna() }
+  const aggiungi = async (b: Blob) => { out.push(b); await segna(b) }
+
+  await aggiungi(await copertina(f, r, sotto, chi))
+  await aggiungi(await macro(f, r, calc, chi))
+  if ((r.groups ?? []).some((g) => g.items.length)) await aggiungi(await ingredienti(f, r, foods, chi))
 
   const passi = r.steps ?? []
   const n = PER_SLIDE[f]
   for (let i = 0; i < fetteTot; i++) {
     const di = fetteTot > 1 ? ` · ${i + 1} di ${fetteTot}` : ''
-    out.push(await procedimento(f, r, chi, passi.slice(i * n, i * n + n), i * n, di))
-    await segna()
+    await aggiungi(await procedimento(f, r, chi, passi.slice(i * n, i * n + n), i * n, di))
   }
   return out
 }
