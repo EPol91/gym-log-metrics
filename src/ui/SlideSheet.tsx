@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { slideRicetta, type Formato } from '../util/slideRicetta'
+import { condividi, inGalleria, nativo } from '../util/condividi'
 import type { Food, Recipe } from '../db/schema'
 import type { RecipeCalc } from '../db/recipes'
 
@@ -25,14 +26,17 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   const [blobs, setBlobs] = useState<Blob[]>([])
   const [busy, setBusy] = useState(true)
   const [msg, setMsg] = useState<string | null>(null)
+  const [fatte, setFatte] = useState(0)
+  const [totale, setTotale] = useState(0)
 
   // Si ridisegna a ogni cambio di formato o di firma: sono pochi decimi di
   // secondo e vedere subito il risultato vale piu' di un tasto «rigenera».
   useEffect(() => {
     let vivo = true
-    setBusy(true)
+    setBusy(true); setFatte(0); setTotale(0)
     const mappa = new Map(foods.map((f) => [f.id, f]))
-    slideRicetta(recipe, calc, mappa, formato, chi.trim() || 'ETP HEALTH')
+    slideRicetta(recipe, calc, mappa, formato, chi.trim() || 'ETP HEALTH',
+      (n, tot) => { if (vivo) { setFatte(n); setTotale(tot) } })
       .then((bs) => {
         if (!vivo) return
         setBlobs(bs)
@@ -49,24 +53,21 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   const nomeFile = (i: number) =>
     `${recipe.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricetta'}-${i + 1}.png`
 
-  async function condividi() {
-    const files = blobs.map((b, i) => new File([b], nomeFile(i), { type: 'image/png' }))
-    // canShare va chiesto con i file veri: alcuni telefoni condividono testo ma non immagini.
-    if (navigator.canShare?.({ files })) {
-      try { await navigator.share({ files, title: recipe.name }) } catch { /* annullato */ }
-      return
-    }
-    scarica()
-  }
+  const files = () => blobs.map((b, i) => ({ nome: nomeFile(i), blob: b }))
 
-  function scarica() {
-    urls.forEach((u, i) => {
-      const a = document.createElement('a')
-      a.href = u
-      a.download = nomeFile(i)
-      a.click()
-    })
-    setMsg('Salvate: le trovi nei download.')
+  async function esci(cosa: 'condividi' | 'galleria') {
+    setMsg(null)
+    try {
+      if (cosa === 'condividi') { await condividi(files(), recipe.name); return }
+      const dove = await inGalleria(files())
+      setMsg(dove === 'download' ? 'Scaricate.' : `Salvate in galleria, album «${dove}».`)
+    } catch (e) {
+      // Se il menu viene chiuso col dito Android risponde con un errore: non e'
+      // un guasto, e dirgli che qualcosa e' andato storto sarebbe una bugia.
+      const t = (e as Error)?.message ?? ''
+      if (/cancel|abort|annull/i.test(t)) return
+      setMsg(t || 'Non ci sono riuscito.')
+    }
   }
 
   return createPortal(
@@ -102,7 +103,22 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
         {msg && <p className="muted small" style={{ margin: '8px 0 0' }}>{msg}</p>}
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginTop: 10 }}>
-          {busy && <p className="muted small">Disegno le slide…</p>}
+          {busy && (
+            <div style={{ marginBottom: 8 }}>
+              <div className="row spread">
+                <span className="muted small">Disegno le slide…</span>
+                <span className="muted small" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {totale ? `${fatte} di ${totale} · ${Math.round((fatte / totale) * 100)}%` : ''}
+                </span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: 'var(--line)', marginTop: 5 }}>
+                <div style={{
+                  height: '100%', borderRadius: 2, background: 'var(--gold)',
+                  width: `${totale ? (fatte / totale) * 100 : 0}%`, transition: 'width .15s',
+                }} />
+              </div>
+            </div>
+          )}
           <div className="row" style={{ gap: 8, flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 4 }}>
             {urls.map((u, i) => (
               <img key={u} src={u} alt={`Slide ${i + 1}`}
@@ -115,10 +131,12 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
         </div>
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
-          <button className="primary" style={{ flex: 1 }} disabled={busy || !blobs.length} onClick={condividi}>
+          <button className="primary" style={{ flex: 1 }} disabled={busy || !blobs.length} onClick={() => esci('condividi')}>
             Condividi ({blobs.length})
           </button>
-          <button className="chip" disabled={busy || !blobs.length} onClick={scarica}>Salva</button>
+          <button className="chip" disabled={busy || !blobs.length} onClick={() => esci('galleria')}>
+            {nativo() ? 'Galleria' : 'Salva'}
+          </button>
         </div>
       </div>
     </div>,
