@@ -46,6 +46,12 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
       note: existing.note, timeMin: existing.timeMin, tags: existing.tags ? [...existing.tags] : undefined,
     })
     setStepsText(existing.steps.join('\n'))
+    // Anche il campo delle porzioni, che vive come testo a parte: restava al 6
+    // di partenza, cosi' riaprendo una ricetta da 1 porzione ne trovavi 6.
+    if (existing.servings != null) {
+      setPorzioni(String(existing.servings))
+      ultimoValido.current = existing.servings
+    }
     setLoaded(true)
   }, [existing, loaded])
 
