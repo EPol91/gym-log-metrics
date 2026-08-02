@@ -41,6 +41,51 @@ const TECNICO = "'JetBrains Mono', ui-monospace, 'Courier New', monospace"
 /** Un passo del procedimento non numerato: e' il tuo timbro, resta com'e'. */
 const TIMBRO = /^enjoy/i
 
+export type Lingua = 'it' | 'en'
+
+/**
+ * Le parole fisse delle slide. Sono sempre le stesse, quindi stanno qui e non
+ * costano una chiamata: l'AI serve solo per il testo scritto da te.
+ */
+const P = {
+  it: {
+    ricetta: 'ricetta',
+    perPorzione: 'per porzione',
+    per100: 'per 100 g',
+    carb: 'Carboidrati', prot: 'Proteine', fat: 'Grassi',
+    ripartizione: 'ripartizione calorica · % sulle kcal',
+    ingredienti: 'ingredienti',
+    porzioni: 'porzioni',
+    procedimento: 'procedimento',
+    di: 'di',
+    resa: 'resa',
+    luna: "l'una",
+    aPorzione: 'kcal a porzione',
+    per100kcal: 'kcal per 100 g',
+  },
+  en: {
+    ricetta: 'recipe',
+    perPorzione: 'per serving',
+    per100: 'per 100 g',
+    carb: 'Carbs', prot: 'Protein', fat: 'Fat',
+    ripartizione: 'calorie split · % of kcal',
+    ingredienti: 'ingredients',
+    porzioni: 'servings',
+    procedimento: 'method',
+    di: 'of',
+    resa: 'yield',
+    luna: 'each',
+    aPorzione: 'kcal per serving',
+    per100kcal: 'kcal per 100 g',
+  },
+} as const
+
+/** Pizzico e «qb» hanno un nome anche in inglese, e non e' una traduzione a caso. */
+const QTA: Record<Lingua, Record<string, string>> = {
+  it: { pizzico: 'pizzico', qb: 'qb' },
+  en: { pizzico: 'a pinch', qb: 'to taste' },
+}
+
 interface Ctx {
   ctx: CanvasRenderingContext2D
   f: Formato
@@ -172,10 +217,11 @@ function linea(k: Ctx, y: number) {
   k.ctx.fillRect(k.x, y, W - k.x * 2, 1)
 }
 
-/** Numero con la virgola italiana e senza decimali inutili. */
-const num = (n: number, dec = 1) => {
+/** Numero senza decimali inutili, col separatore della lingua scelta. */
+const num = (n: number, dec = 1, l: Lingua = 'it') => {
   const v = Math.round(n * 10 ** dec) / 10 ** dec
-  return (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(dec)).replace('.', ',')
+  const t = Number.isInteger(v) ? v.toFixed(0) : v.toFixed(dec)
+  return l === 'it' ? t.replace('.', ',') : t
 }
 
 async function png(k: Ctx): Promise<Blob> {
@@ -189,7 +235,7 @@ async function png(k: Ctx): Promise<Blob> {
  * Senza foto la slide non salta: resta il titolo su fondo scuro, che e'
  * comunque una copertina — solo piu' sobria.
  */
-async function copertina(f: Formato, r: Recipe, sotto: string, chi: string): Promise<Blob> {
+async function copertina(f: Formato, r: Recipe, sotto: string, chi: string, l: Lingua): Promise<Blob> {
   const k = nuova(f)
   const { ctx } = k
 
@@ -221,7 +267,7 @@ async function copertina(f: Formato, r: Recipe, sotto: string, chi: string): Pro
   const altezza = rsTitolo.length * p * 1.1 + rsSotto.length * 46 + 66
 
   let y = k.giu - altezza
-  etichetta(k, 'ricetta', y)
+  etichetta(k, P[l].ricetta, y)
   y += 42
   ctx.font = `600 ${p}px ${TITOLO}`
   ctx.fillStyle = C.testo
@@ -236,7 +282,7 @@ async function copertina(f: Formato, r: Recipe, sotto: string, chi: string): Pro
 }
 
 /** I macro: il numero grande, i tre valori, la ripartizione delle calorie. */
-async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Promise<Blob> {
+async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string, l: Lingua): Promise<Blob> {
   const k = nuova(f)
   const { ctx } = k
   const porzioni = r.mode === 'servings'
@@ -244,7 +290,7 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
 
   centrato(k, (off) => {
   let y = k.su + 40 + off
-  y = etichetta(k, porzioni ? 'per porzione' : 'per 100 g', y)
+  y = etichetta(k, porzioni ? P[l].perPorzione : P[l].per100, y)
   y = titolo(k, r.name, y + 78, 92)
 
   // Le calorie sono il numero che si guarda per primo: prendono il posto che meritano.
@@ -263,9 +309,9 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
 
   // Ordine C, P, G: lo stesso di tutta l'app, cosi' i numeri si confrontano a colpo d'occhio.
   const voci: [string, number, string][] = [
-    ['Carboidrati', m.carbs, C.carb],
-    ['Proteine', m.protein, C.prot],
-    ['Grassi', m.fat, C.fat],
+    [P[l].carb, m.carbs, C.carb],
+    [P[l].prot, m.protein, C.prot],
+    [P[l].fat, m.fat, C.fat],
   ]
   for (const [nome, v, col] of voci) {
     ctx.font = `400 46px ${CORPO}`
@@ -273,7 +319,7 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
     ctx.fillText(nome, k.x, y)
     ctx.font = `500 46px ${TECNICO}`
     ctx.fillStyle = col
-    const t = `${num(v)} g`
+    const t = `${num(v, 1, l)} g`
     ctx.fillText(t, W - k.x - ctx.measureText(t).width, y)
     y += 86
   }
@@ -285,7 +331,7 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
   // La ripartizione: due ricette con le stesse calorie possono essere due cose diverse.
   const kc = { c: m.carbs * 4, p: m.protein * 4, g: m.fat * 9 }
   const tot = kc.c + kc.p + kc.g || 1
-  y = etichetta(k, 'ripartizione calorica · % sulle kcal', y)
+  y = etichetta(k, P[l].ripartizione, y)
   y += 34
   const larg = W - k.x * 2
   const parti: [number, string][] = [[kc.c / tot, C.carb], [kc.p / tot, C.prot], [kc.g / tot, C.fat]]
@@ -315,7 +361,7 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
   ctx.font = `500 28px ${TECNICO}`
   ctx.fillStyle = C.muto
   ctx.letterSpacing = '4px'
-  const peso = pesoPorzione(r, calc)
+  const peso = pesoPorzione(r, calc, l)
   ctx.fillText(peso.toUpperCase(), k.x, y)
   ctx.letterSpacing = '0px'
   return y
@@ -326,11 +372,11 @@ async function macro(f: Formato, r: Recipe, calc: RecipeCalc, chi: string): Prom
 }
 
 /** Ingredienti, per sezione. Pizzico e «qb» restano parole, non diventano numeri. */
-async function ingredienti(f: Formato, r: Recipe, foods: Map<string, Food>, chi: string): Promise<Blob> {
+async function ingredienti(f: Formato, r: Recipe, foods: Map<string, Food>, chi: string, l: Lingua): Promise<Blob> {
   const k = nuova(f)
   const { ctx } = k
 
-  const testa = r.mode === 'servings' ? `ingredienti · ${r.servings ?? 1} porzioni` : 'ingredienti'
+  const testa = r.mode === 'servings' ? `${P[l].ingredienti} · ${r.servings ?? 1} ${P[l].porzioni}` : P[l].ingredienti
   const gruppi = (r.groups ?? []).filter((g) => g.items.length)
   const solo = gruppi.length === 1
   // Quante righe ci stanno: se sono tante si stringe tutto invece di uscire dal bordo.
@@ -351,7 +397,7 @@ async function ingredienti(f: Formato, r: Recipe, foods: Map<string, Food>, chi:
     }
     for (const it of g.items) {
       const nome = foods.get(it.foodId)?.name ?? 'alimento'
-      const q = it.qta ?? `${num(it.grams, 0)} g`
+      const q = it.qta ? QTA[l][it.qta] : `${num(it.grams, 0, l)} g`
       ctx.font = `500 ${Math.round(corpo * 0.92)}px ${TECNICO}`
       const wq = ctx.measureText(q).width
       ctx.fillStyle = it.qta ? C.muto : C.oro
@@ -373,14 +419,14 @@ async function ingredienti(f: Formato, r: Recipe, foods: Map<string, Food>, chi:
 }
 
 /** Il procedimento, spezzato su piu' slide: meglio due slide che un testo minuscolo. */
-async function procedimento(f: Formato, r: Recipe, chi: string, parte: string[], da: number, di: string): Promise<Blob> {
+async function procedimento(f: Formato, r: Recipe, chi: string, parte: string[], da: number, di: string, l: Lingua): Promise<Blob> {
   const k = nuova(f)
   const { ctx } = k
 
   const maxTesto = W - k.x * 2 - 96
 
   centrato(k, (off) => {
-  let y = etichetta(k, `procedimento${di}`, k.su + 40 + off)
+  let y = etichetta(k, `${P[l].procedimento}${di}`, k.su + 40 + off)
   y = titolo(k, r.name, y + 78, 92)
   y += 96
 
@@ -410,11 +456,11 @@ async function procedimento(f: Formato, r: Recipe, chi: string, parte: string[],
 
 // --- Messa insieme ----------------------------------------------------------
 
-function pesoPorzione(r: Recipe, calc: RecipeCalc): string {
-  if (r.mode === 'grams') return `resa ${num(r.yieldG ?? 0, 0)} g`
+function pesoPorzione(r: Recipe, calc: RecipeCalc, l: Lingua): string {
+  if (r.mode === 'grams') return `${P[l].resa} ${num(r.yieldG ?? 0, 0, l)} g`
   const n = Math.max(1, r.servings ?? 1)
   const base = (Number(r.yieldG) || 0) > 0 ? Number(r.yieldG) : calc.rawG
-  return `${n} porzioni · ~${num(base / n, 0)} g l'una`
+  return `${n} ${P[l].porzioni} · ~${num(base / n, 0, l)} g ${P[l].luna}`
 }
 
 /** Quanti passi per slide: pochi e leggibili invece di tanti e piccoli. */
@@ -425,7 +471,7 @@ const PER_SLIDE: Record<Formato, number> = { post: 5, storia: 6 }
  * Chi le usa decide se condividerle o salvarle: qui si disegna e basta.
  */
 export async function slideRicetta(
-  r: Recipe, calc: RecipeCalc, foods: Map<string, Food>, f: Formato, chi: string,
+  r: Recipe, calc: RecipeCalc, foods: Map<string, Food>, f: Formato, chi: string, l: Lingua = 'it',
   avanzamento?: (fatte: number, totale: number, appena: Blob) => void,
 ): Promise<Blob[]> {
   // Quante saranno si sa prima di disegnarle: serve per dire «3 di 5» invece di
@@ -459,21 +505,21 @@ export async function slideRicetta(
 
   const m = (r.mode === 'servings' ? calc.perServing : calc.per100) ?? calc.totals
   const sotto = r.mode === 'servings'
-    ? `${Math.round(m.kcal)} kcal a porzione · C ${num(m.carbs)} P ${num(m.protein)} G ${num(m.fat)}`
-    : `${Math.round(m.kcal)} kcal per 100 g · C ${num(m.carbs)} P ${num(m.protein)} G ${num(m.fat)}`
+    ? `${Math.round(m.kcal)} ${P[l].aPorzione} · C ${num(m.carbs, 1, l)} P ${num(m.protein, 1, l)} G ${num(m.fat, 1, l)}`
+    : `${Math.round(m.kcal)} ${P[l].per100kcal} · C ${num(m.carbs, 1, l)} P ${num(m.protein, 1, l)} G ${num(m.fat, 1, l)}`
 
   const out: Blob[] = []
   const aggiungi = async (b: Blob) => { out.push(b); await segna(b) }
 
-  await aggiungi(await copertina(f, r, sotto, chi))
-  await aggiungi(await macro(f, r, calc, chi))
-  if ((r.groups ?? []).some((g) => g.items.length)) await aggiungi(await ingredienti(f, r, foods, chi))
+  await aggiungi(await copertina(f, r, sotto, chi, l))
+  await aggiungi(await macro(f, r, calc, chi, l))
+  if ((r.groups ?? []).some((g) => g.items.length)) await aggiungi(await ingredienti(f, r, foods, chi, l))
 
   const passi = r.steps ?? []
   const n = PER_SLIDE[f]
   for (let i = 0; i < fetteTot; i++) {
-    const di = fetteTot > 1 ? ` · ${i + 1} di ${fetteTot}` : ''
-    await aggiungi(await procedimento(f, r, chi, passi.slice(i * n, i * n + n), i * n, di))
+    const di = fetteTot > 1 ? ` · ${i + 1} ${P[l].di} ${fetteTot}` : ''
+    await aggiungi(await procedimento(f, r, chi, passi.slice(i * n, i * n + n), i * n, di, l))
   }
   return out
 }

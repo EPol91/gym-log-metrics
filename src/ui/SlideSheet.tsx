@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { slideRicetta, type Formato } from '../util/slideRicetta'
+import { slideRicetta, type Formato, type Lingua } from '../util/slideRicetta'
 import { condividi, inGalleria, nativo } from '../util/condividi'
+import { traduciRicetta, haChiaveAI } from '../util/traduciRicetta'
 import type { Food, Recipe } from '../db/schema'
 import type { RecipeCalc } from '../db/recipes'
 
 const CHI = 'etp:ig-handle'
+const LINGUA = 'etp:slide-lingua'
 
 /**
  * Le slide della ricetta, pronte per Instagram.
@@ -21,6 +23,11 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   onClose: () => void
 }) {
   const [formato, setFormato] = useState<Formato>('post')
+  const [lingua, setLingua] = useState<Lingua>(() => (localStorage.getItem(LINGUA) === 'en' ? 'en' : 'it'))
+  // Il testo tradotto vive qui, non nella ricetta: le slide in inglese non
+  // devono cambiare quello che hai scritto tu.
+  const [tradotto, setTradotto] = useState<{ ricetta: Recipe; nomi: Map<string, string> } | null>(null)
+  const [traducendo, setTraducendo] = useState(false)
   const [chi, setChi] = useState(() => localStorage.getItem(CHI) ?? '')
   const [urls, setUrls] = useState<string[]>([])
   const [blobs, setBlobs] = useState<Blob[]>([])
@@ -41,8 +48,13 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
     setUrls((vecchi) => { vecchi.forEach(URL.revokeObjectURL); return [] })
     setBlobs([])
 
-    const mappa = new Map(foods.map((f) => [f.id, f]))
-    slideRicetta(recipe, calc, mappa, formato, chi.trim() || 'ETP HEALTH',
+    // Con la traduzione pronta si disegna quella; senza, la ricetta com'e'.
+    const usata = tradotto?.ricetta ?? recipe
+    const mappa = tradotto
+      ? new Map(foods.map((f) => [f.id, { ...f, name: tradotto.nomi.get(f.id) ?? f.name }]))
+      : new Map(foods.map((f) => [f.id, f]))
+
+    slideRicetta(usata, calc, mappa, formato, chi.trim() || 'ETP HEALTH', lingua,
       (n, tot, appena) => {
         if (!vivo) return
         const u = URL.createObjectURL(appena)
@@ -59,7 +71,18 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
     // Se cambi formato a meta' strada, le immagini gia' create vanno liberate:
     // sono qualche mega l'una.
     return () => { vivo = false; nati.forEach(URL.revokeObjectURL) }
-  }, [recipe, calc, foods, formato, chi])
+  }, [recipe, calc, foods, formato, chi, lingua, tradotto])
+
+  /** Traduce il testo scritto da te. Le etichette cambiano da sole con la lingua. */
+  async function traduci() {
+    setTraducendo(true); setMsg(null)
+    try {
+      const nomi = new Map(foods.map((f) => [f.id, f.name]))
+      setTradotto(await traduciRicetta(recipe, nomi, lingua))
+    } catch (e) {
+      setMsg((e as Error)?.message ?? 'Traduzione non riuscita.')
+    } finally { setTraducendo(false) }
+  }
 
   const nomeFile = (i: number) =>
     `${recipe.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricetta'}-${i + 1}.png`
@@ -124,6 +147,27 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           <button className={formato === 'post' ? 'chip on' : 'chip'} style={{ flex: 1 }} onClick={() => setFormato('post')}>Post 4:5</button>
           <button className={formato === 'storia' ? 'chip on' : 'chip'} style={{ flex: 1 }} onClick={() => setFormato('storia')}>Storia 9:16</button>
         </div>
+
+        {/* Lingua: le etichette cambiano subito e gratis. Il testo tuo — titolo,
+            alimenti, passi — resta com'e' finche' non chiedi la traduzione. */}
+        <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+          <button className={lingua === 'it' ? 'chip on' : 'chip'} style={{ flex: 1 }}
+            onClick={() => { setLingua('it'); localStorage.setItem(LINGUA, 'it'); setTradotto(null) }}>Italiano</button>
+          <button className={lingua === 'en' ? 'chip on' : 'chip'} style={{ flex: 1 }}
+            onClick={() => { setLingua('en'); localStorage.setItem(LINGUA, 'en'); setTradotto(null) }}>English</button>
+        </div>
+        <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+          <button className="chip" style={{ flex: 1 }} disabled={traducendo || busy || !haChiaveAI()}
+            onClick={tradotto ? () => setTradotto(null) : traduci}>
+            {traducendo ? 'Traduco…' : tradotto ? 'Torna al testo tuo' : `Traduci il testo con AI`}
+          </button>
+        </div>
+        {!haChiaveAI() && (
+          <p className="muted small" style={{ margin: '6px 0 0' }}>
+            Le etichette cambiano lingua da sole. Per tradurre anche titolo, ingredienti e
+            passi serve la chiave AI in Profilo.
+          </p>
+        )}
 
         {/* La chiocciola la mette l'app: un nome senza non sembra un profilo. */}
         <label className="fl" style={{ marginTop: 10 }}>Nome Instagram</label>
