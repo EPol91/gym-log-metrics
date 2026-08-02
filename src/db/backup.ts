@@ -48,6 +48,7 @@ const CHIAVI_FUORI = [
   'gymlog.ai.apiKey',    // la tua chiave AI: e' tua e sta nel tuo file
   'gymlog.ai.coachHome',
   'gymlog.ai.consumo',   // quanto hai speso finora: ripartire da zero mentirebbe
+  'gymlog.ai.memoria',   // didascalie e traduzioni gia' pagate
   'etp:ig-handle',       // la firma delle slide
   'etp:slide-lingua',
 ]

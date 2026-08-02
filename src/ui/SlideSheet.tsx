@@ -4,11 +4,33 @@ import { slideRicetta, type Formato, type Lingua } from '../util/slideRicetta'
 import { condividi, inGalleria, nativo } from '../util/condividi'
 import { traduciRicetta, haChiaveAI } from '../util/traduciRicetta'
 import { didascaliaPost, type Didascalia } from '../util/didascalia'
+import { ricorda, ricordo, type Ricordo } from '../util/memoriaAI'
 import type { Food, Recipe } from '../db/schema'
 import type { RecipeCalc } from '../db/recipes'
 
 const CHI = 'etp:ig-handle'
 const LINGUA = 'etp:slide-lingua'
+
+/**
+ * Rimette insieme la ricetta tradotta da quello che era stato tenuto da parte.
+ * Le sezioni tornano al loro posto scorrendo solo quelle con ingredienti, nello
+ * stesso ordine in cui erano state mandate a tradurre.
+ */
+function ricostruisci(r: Recipe, t: NonNullable<Ricordo['traduzione']>): { ricetta: Recipe; nomi: Map<string, string> } {
+  const pieni = (r.groups ?? []).filter((g) => g.items.length)
+  return {
+    ricetta: {
+      ...r,
+      name: t.nome || r.name,
+      steps: t.passi?.length ? t.passi : r.steps,
+      groups: (r.groups ?? []).map((g) => {
+        const pos = pieni.indexOf(g)
+        return pos < 0 ? g : { ...g, name: t.sezioni?.[pos] ?? g.name }
+      }),
+    },
+    nomi: new Map(t.nomi ?? []),
+  }
+}
 
 /**
  * Le slide della ricetta, pronte per Instagram.
@@ -31,6 +53,17 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   const [traducendo, setTraducendo] = useState(false)
   const [dida, setDida] = useState<Didascalia | null>(null)
   const [scrivendo, setScrivendo] = useState(false)
+  /** vero se il testo AI in memoria e' stato scritto su una versione precedente */
+  const [vecchio, setVecchio] = useState(false)
+
+  // Quello che l'AI ha gia' scritto torna su da solo, per questa ricetta e per
+  // questa lingua: riaprire il pannello non deve costare un'altra chiamata.
+  useEffect(() => {
+    const r = ricordo(recipe.id, lingua)
+    setDida(r?.didascalia ?? null)
+    setVecchio(!!r && !!r.ricettaAl && r.ricettaAl !== recipe.updatedAt)
+    setTradotto(r?.traduzione ? ricostruisci(recipe, r.traduzione) : null)
+  }, [recipe.id, recipe.updatedAt, lingua]) // eslint-disable-line react-hooks/exhaustive-deps
   const [chi, setChi] = useState(() => localStorage.getItem(CHI) ?? '')
   const [urls, setUrls] = useState<string[]>([])
   const [blobs, setBlobs] = useState<Blob[]>([])
@@ -80,10 +113,14 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   async function scriviDidascalia() {
     setScrivendo(true); setMsg(null)
     try {
+      // Il risultato resta in memoria fra un'apertura e l'altra: pagarlo di
+      // nuovo solo perche' hai chiuso il pannello non ha senso.
       const nomi = (recipe.groups ?? []).flatMap((g) => g.items
         .map((it) => tradotto?.nomi.get(it.foodId) ?? foods.find((f) => f.id === it.foodId)?.name)
         .filter((x): x is string => !!x))
-      setDida(await didascaliaPost(tradotto?.ricetta ?? recipe, calc, nomi, lingua))
+      const d = await didascaliaPost(tradotto?.ricetta ?? recipe, calc, nomi, lingua)
+      setDida(d)
+      ricorda(recipe.id, lingua, { didascalia: d, ricettaAl: recipe.updatedAt })
     } catch (e) {
       setMsg((e as Error)?.message ?? 'Didascalia non riuscita.')
     } finally { setScrivendo(false) }
@@ -99,7 +136,19 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
     setTraducendo(true); setMsg(null)
     try {
       const nomi = new Map(foods.map((f) => [f.id, f.name]))
-      setTradotto(await traduciRicetta(recipe, nomi, lingua))
+      const t = await traduciRicetta(recipe, nomi, lingua)
+      setTradotto(t)
+      // Si tiene solo il testo, non la ricetta intera: dentro c'e' la foto, e
+      // una copia della foto per lingua riempirebbe lo spazio per niente.
+      ricorda(recipe.id, lingua, {
+        traduzione: {
+          nome: t.ricetta.name,
+          sezioni: (t.ricetta.groups ?? []).filter((g) => g.items.length).map((g) => g.name),
+          passi: t.ricetta.steps,
+          nomi: [...t.nomi],
+        },
+        ricettaAl: recipe.updatedAt,
+      })
     } catch (e) {
       setMsg((e as Error)?.message ?? 'Traduzione non riuscita.')
     } finally { setTraducendo(false) }
@@ -178,9 +227,9 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
             alimenti, passi — resta com'e' finche' non chiedi la traduzione. */}
         <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
           <button className={lingua === 'it' ? 'chip on' : 'chip'} style={{ flex: 1 }}
-            onClick={() => { setLingua('it'); localStorage.setItem(LINGUA, 'it'); setTradotto(null) }}>Italiano</button>
+            onClick={() => { setLingua('it'); localStorage.setItem(LINGUA, 'it') }}>Italiano</button>
           <button className={lingua === 'en' ? 'chip on' : 'chip'} style={{ flex: 1 }}
-            onClick={() => { setLingua('en'); localStorage.setItem(LINGUA, 'en'); setTradotto(null) }}>English</button>
+            onClick={() => { setLingua('en'); localStorage.setItem(LINGUA, 'en') }}>English</button>
         </div>
         <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
           <button className="chip" style={{ flex: 1 }} disabled={traducendo || busy || !haChiaveAI()}
@@ -189,9 +238,15 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           </button>
           <button className="chip" style={{ flex: 1 }} disabled={scrivendo || busy || !haChiaveAI()}
             onClick={scriviDidascalia}>
-            {scrivendo ? 'Scrivo…' : dida ? 'Riscrivi didascalia' : 'Didascalia'}
+            {scrivendo ? 'Scrivo…' : !dida ? 'Didascalia' : vecchio ? 'Aggiorna didascalia' : 'Riscrivi didascalia'}
           </button>
         </div>
+
+        {vecchio && (
+          <p className="muted small" style={{ margin: '6px 0 0' }}>
+            Hai modificato la ricetta dopo che l’AI ha scritto: il testo qui sotto è quello di prima.
+          </p>
+        )}
 
         {/* La didascalia: il testo, gli hashtag e chi taggare, ognuno copiabile
             da solo — sotto il post si incollano in momenti diversi. */}
@@ -199,7 +254,13 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           <div className="card" style={{ marginTop: 8, padding: 12 }}>
             <div className="row spread" style={{ alignItems: 'center' }}>
               <span className="muted small">Didascalia</span>
-              <button className="chip" style={{ padding: '3px 10px' }} onClick={() => copia(dida.testo)}>Copia</button>
+              <span className="row" style={{ gap: 6 }}>
+                <button className="chip" style={{ padding: '3px 10px' }} onClick={() => copia(dida.testo)}>Copia</button>
+                <button className="chip" style={{ padding: '3px 10px', color: 'var(--muted)' }}
+                  /* butta solo la didascalia: la traduzione, se c'e', resta */
+                  onClick={() => { ricorda(recipe.id, lingua, { didascalia: undefined }); setDida(null); setVecchio(false) }}
+                  aria-label="Butta la didascalia">✕</button>
+              </span>
             </div>
             <p className="small" style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{dida.testo}</p>
 
