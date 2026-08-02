@@ -164,6 +164,11 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
 
+        {/* Tutto quello che sta fra il titolo e i due tasti scorre. Con la
+            didascalia fuori da qui il pannello cresceva oltre lo schermo e il
+            fondo — anteprime e tasti — restava tagliato via, senza scroll. */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+
         <div className="row" style={{ gap: 6 }}>
           <button className={formato === 'post' ? 'chip on' : 'chip'} style={{ flex: 1 }} onClick={() => setFormato('post')}>Post 4:5</button>
           <button className={formato === 'storia' ? 'chip on' : 'chip'} style={{ flex: 1 }} onClick={() => setFormato('storia')}>Storia 9:16</button>
@@ -244,7 +249,7 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
         )}
         {msg && <p className="muted small" style={{ margin: '8px 0 0' }}>{msg}</p>}
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginTop: 10 }}>
+        <div style={{ marginTop: 10 }}>
           {busy && (
             <div style={{ marginBottom: 8 }}>
               <div className="row spread">
@@ -270,6 +275,8 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
                 }} />
             ))}
           </div>
+        </div>
+
         </div>
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
