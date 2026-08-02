@@ -445,12 +445,16 @@ export async function slideRicetta(
    */
   const segna = async (appena: Blob) => {
     avanzamento?.(++fatte, totale, appena)
-    // In gara con un ritardo: a schermo spento o con l'app in secondo piano il
-    // fotogramma non arriva mai, e senza la gara il disegno resterebbe fermo li'.
-    await Promise.race([
-      new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))),
+    // Due pause, non una: la prima lascia arrivare il fotogramma, la seconda
+    // lascia che venga davvero disegnato prima di rimettersi a lavorare.
+    // In gara con un ritardo perche' a schermo spento il fotogramma non arriva
+    // mai e senza la gara il disegno resterebbe fermo li'.
+    const frame = () => Promise.race([
+      new Promise((res) => requestAnimationFrame(res)),
       new Promise((res) => setTimeout(res, 120)),
     ])
+    await frame()
+    await frame()
   }
 
   const m = (r.mode === 'servings' ? calc.perServing : calc.per100) ?? calc.totals

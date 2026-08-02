@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { slideRicetta, type Formato } from '../util/slideRicetta'
 import { condividi, inGalleria, nativo } from '../util/condividi'
 import type { Food, Recipe } from '../db/schema'
@@ -45,10 +45,12 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
     slideRicetta(recipe, calc, mappa, formato, chi.trim() || 'ETP HEALTH',
       (n, tot, appena) => {
         if (!vivo) return
-        setFatte(n); setTotale(tot)
         const u = URL.createObjectURL(appena)
         nati.push(u)
-        setUrls((p) => [...p, u])
+        // flushSync: senza, React rimanda il ridisegno alla fine del lavoro e
+        // la barra resta a zero per tutti i secondi che ci vogliono — poi
+        // compare tutto insieme. E' la stessa cura del trascinamento.
+        flushSync(() => { setFatte(n); setTotale(tot); setUrls((p) => [...p, u]) })
       })
       .then((bs) => { if (vivo) setBlobs(bs) })
       .catch((e) => vivo && setMsg((e as Error)?.message ?? 'Non sono riuscito a disegnarle.'))
