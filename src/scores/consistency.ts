@@ -96,18 +96,32 @@ export function computeConsistency(
   // 3. Streak (15%): cicli CHIUSI consecutivi a obiettivo, all'indietro, cap 8.
   // Il ciclo in corso non entra: e' ancora aperto, e bocciarlo a meta' strada
   // vorrebbe dire azzerare la striscia ogni volta che ne comincia uno.
-  const tutte = sessionDates.map(toDate)
+  const tutte = sessionDates.map(toDate).sort((a, b) => a - b)
+
+  // Quanti cicli chiusi ESISTONO davvero: dalla prima seduta (o dall'inizio che
+  // hai impostato) a oggi. Dividere sempre per otto vorrebbe dire chiedere otto
+  // cicli di storia a un'app appena installata: la striscia resterebbe bassa per
+  // due mesi qualunque cosa tu faccia, e quel 15% sarebbe una tassa sul tempo.
+  const daQuando = ciclo.inizio ? toDate(ciclo.inizio) : (tutte[0] ?? corrente.inizio)
+  const chiusi = Math.max(0, Math.floor((corrente.inizio - daQuando) / (giorniCiclo * DAY)))
+  const disponibili = Math.min(8, chiusi)
+
   let streakCicli = 0
-  for (let k = 1; k <= 8; k++) {
+  for (let k = 1; k <= disponibili; k++) {
     const lo = corrente.inizio - k * giorniCiclo * DAY
     const hi = lo + giorniCiclo * DAY
     const count = tutte.filter((t) => t >= lo && t < hi).length
     if (count >= targetAt(lo)) streakCicli++
     else break
   }
-  const streak = streakCicli / 8
+  const streak = disponibili > 0 ? streakCicli / disponibili : null
 
-  const value = 100 * (0.6 * adherence + 0.25 * regularity + 0.15 * streak)
+  // Senza nemmeno un ciclo chiuso la continuita' non si puo' giudicare: il suo
+  // peso va sulle due parti misurabili invece di valere zero. Con otto cicli
+  // alle spalle si torna esattamente al conto di prima.
+  const value = streak == null
+    ? 100 * ((0.6 * adherence + 0.25 * regularity) / 0.85)
+    : 100 * (0.6 * adherence + 0.25 * regularity + 0.15 * streak)
 
   // Affidabilità ALTA (matematica sulle date); provvisorio solo con pochissimo storico.
   const reliability: ScoreResult['reliability'] = inWindow.length >= 2 ? 'alta' : 'media'
@@ -121,13 +135,18 @@ export function computeConsistency(
     parts: [
       { label: 'Aderenza', value: Math.round(adherence * 100), weight: 0.6 },
       { label: 'Regolarità', value: Math.round(regularity * 100), weight: 0.25 },
-      { label: 'Continuità', value: Math.round(streak * 100), weight: 0.15 },
+      ...(streak == null ? [] : [{ label: 'Continuità', value: Math.round(streak * 100), weight: 0.15 }]),
     ],
     facts: [
       { label: `Sedute in ${windowCicli} cicli`, value: `${fatte} su ${targetSum}` },
       { label: 'Ciclo in corso', value: `${cicli[cicli.length - 1].count} su ${perCiclo} · giorno ${corrente.giorno} di ${giorniCiclo}` },
       { label: 'Pausa più lunga', value: inWindow.length >= 2 ? `${Math.round(maxGapDays)} giorni` : '—' },
-      { label: 'Cicli a obiettivo', value: `${streakCicli} di fila` },
+      {
+        label: 'Cicli a obiettivo',
+        value: disponibili > 0
+          ? `${streakCicli} di fila su ${disponibili} chiusi`
+          : 'nessun ciclo ancora chiuso',
+      },
       ...(goalChangedInWindow
         ? [{ label: 'Obiettivo per ciclo', value: cicli.map((c) => c.target).join(' → ') }]
         : []),

@@ -19,6 +19,15 @@ export function fmtData(iso?: string | null): string {
   return g && m && a ? `${g}.${m}.${a}` : iso
 }
 
+/** Data e ora di un istante salvato: «02.08.2026 · 17.50». */
+export function fmtDataOra(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return fmtData(iso)
+  const due = (n: number) => String(n).padStart(2, '0')
+  return `${due(d.getDate())}.${due(d.getMonth() + 1)}.${d.getFullYear()} · ${due(d.getHours())}.${due(d.getMinutes())}`
+}
+
 export function fmtRest(sec: number): string {
   if (sec % 60 === 0) return `${sec / 60}min`
   if (sec < 60) return `${sec}s`

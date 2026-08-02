@@ -6,6 +6,7 @@
 // traduzione vive il tempo di disegnare le immagini.
 
 import { getApiKey } from '../ai/aiEngine'
+import { segnaConsumo } from '../ai/consumo'
 import type { Recipe } from '../db/schema'
 
 const API_URL = 'https://api.anthropic.com/v1/messages'
@@ -69,6 +70,7 @@ export async function traduciRicetta(
   if (!res.ok) throw new Error(res.status === 401 ? 'Chiave AI non valida.' : `AI: errore ${res.status}.`)
 
   const data = await res.json()
+  segnaConsumo('slide', data?.usage)
   const grezzo: string = data?.content?.[0]?.text ?? ''
   // Se il modello incornicia il JSON, si prende quello che sta fra le graffe.
   const dentro = grezzo.slice(grezzo.indexOf('{'), grezzo.lastIndexOf('}') + 1)

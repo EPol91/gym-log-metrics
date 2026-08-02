@@ -2,6 +2,8 @@
 // Oggi: chiave utente (BYOK) + provider diretto Claude. Domani: si innesta un ServerProxyProvider
 // per i clienti paganti, senza toccare il resto dell'app.
 
+import { segnaConsumo } from './consumo'
+
 const MODEL = 'claude-opus-4-8'
 const KEY_STORAGE = 'gymlog.ai.apiKey'
 
@@ -81,6 +83,7 @@ export class DirectClaudeProvider implements AIProvider {
     })
     if (!res.ok) throw new Error(`API ${res.status}`)
     const data = await res.json()
+    segnaConsumo('coach', data?.usage)
     return data?.content?.[0]?.text ?? ''
   }
 }
