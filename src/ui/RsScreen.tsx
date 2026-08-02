@@ -136,6 +136,23 @@ export function RsScreen() {
   )
 }
 
+/**
+ * Il valore come si legge.
+ *
+ * Al coach le ore di sonno servono in decimale — è il formato del suo foglio —
+ * ma «6.89» non è un tempo che dica niente a chi lo guarda: sono 6h53. Si
+ * spedisce il numero, si mostra l'orario.
+ */
+function leggibile(campo: RsCampo, valore: string | undefined): string {
+  if (!valore) return '—'
+  if (campo !== 'durata_sonno') return valore
+  const ore = Number(valore)
+  if (!Number.isFinite(ore) || ore <= 0) return valore
+  const h = Math.floor(ore)
+  const m = Math.round((ore - h) * 60)
+  return m === 60 ? `${h + 1}h00` : `${h}h${String(m).padStart(2, '0')}`
+}
+
 /** Una riga: etichetta, valore, e da dove arriva. Si tocca per correggerla. */
 function Riga({ campo, v, date, aperto, onApri }: {
   campo: RsCampo; v: RsValore; date: string; aperto: boolean; onApri: () => void
@@ -155,7 +172,7 @@ function Riga({ campo, v, date, aperto, onApri }: {
         </span>
         {v.fonte === 'mio' && <span className="muted" style={{ fontSize: 10 }}>corretto</span>}
         <span style={{ fontSize: 15, color: colore, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 70 }}>
-          {v.valore ?? '—'}
+          {leggibile(campo, v.valore)}
         </span>
       </div>
 
