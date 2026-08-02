@@ -1,3 +1,4 @@
+import { useHoldDrag } from './useHoldDrag'
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoods } from '../db/diet'
@@ -36,6 +37,32 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
   // Ultimo numero valido digitato: e a questo che si torna se lasci il campo vuoto,
   // senza dipendere da quale versione della bozza vede il gestore.
   const ultimoValido = useRef(6)
+
+  /**
+   * Riordino a pressione prolungata, lo stesso della dieta.
+   *
+   * Le sezioni e le righe non hanno un id proprio: si usa la posizione, che
+   * durante il trascinamento non cambia — l'ordine nuovo si scrive solo quando
+   * lasci il dito.
+   */
+  const { press, inDragOrder, liftStyle } = useHoldDrag((gruppo, ids) => {
+    if (gruppo === 'sez') {
+      setGroups((gs) => ids.map((id) => gs[Number(id)]).filter(Boolean))
+      return
+    }
+    const gi = Number(gruppo)
+    setGroups((gs) => gs.map((x, i) => (i === gi
+      ? { ...x, items: ids.map((id) => x.items[Number(id.split(':')[1])]).filter(Boolean) }
+      : x)))
+  })
+
+  // Su un campo o un tasto il tocco serve a quello: il trascinamento parte dal
+  // resto della riga, altrimenti scrivere i grammi solleverebbe l'ingrediente.
+  const prendi = (gruppo: string, id: string) => (ev: React.PointerEvent<HTMLElement>) => {
+    const t = ev.target as HTMLElement
+    if (t.closest('input, button, textarea, select')) return
+    press(gruppo, id)(ev)
+  }
 
   // Si carica una volta sola: la query è reattiva e riscriverebbe sopra le tue modifiche.
   useEffect(() => {
@@ -162,8 +189,9 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
           <button className="chip" onClick={() => setGroups((g) => [...g, { name: 'Nuova sezione', items: [] }])}>＋ Sezione</button>
         </div>
 
-        {d.groups.map((g, gi) => (
-          <div key={gi} style={{ marginTop: gi === 0 ? 0 : 14 }}>
+        {inDragOrder('sez', d.groups.map((g, gi) => ({ g, gi })), (x) => String(x.gi)).map(({ g, gi }) => (
+          <div key={gi} data-drag-id={String(gi)} onPointerDown={prendi('sez', String(gi))}
+            style={{ marginTop: gi === 0 ? 0 : 14, ...liftStyle('sez', String(gi)) }}>
             <div className="row" style={{ gap: 6, marginBottom: 3 }}>
               <input value={g.name} placeholder="Nome della sezione"
                 onChange={(e) => setGroups((gs) => gs.map((x, i) => (i === gi ? { ...x, name: e.target.value } : x)))}
@@ -175,8 +203,10 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
             </div>
             <div style={{ height: 1, background: 'linear-gradient(90deg, var(--gold-dim), transparent)', marginBottom: 4 }} />
 
-            {g.items.map((it, ii) => (
-              <div key={ii} className="row" style={{ gap: 6, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+            {inDragOrder(String(gi), g.items.map((it, ii) => ({ it, ii })), (x) => gi + ':' + x.ii).map(({ it, ii }) => (
+              <div key={ii} className="row" data-drag-id={gi + ':' + ii}
+                onPointerDown={prendi(String(gi), gi + ':' + ii)}
+                style={{ gap: 6, padding: '6px 0', borderBottom: '1px solid var(--line)', ...liftStyle(String(gi), gi + ':' + ii) }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {foodName(it.foodId) ?? <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
                 </span>
