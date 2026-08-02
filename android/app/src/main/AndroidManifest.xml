@@ -49,6 +49,22 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Quello che l'app usa davvero, niente di piu'. Nel browser questi
+         permessi li chiedeva Chrome; dentro il guscio vanno dichiarati qui,
+         altrimenti la funzione c'e' ma non parte e sembra rotta. -->
+    <!-- Codice a barre degli alimenti -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Promemoria e fine recupero -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Vibrazione: ultimi secondi del recupero, riordino dei riquadri -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Schermo acceso durante l'allenamento: col telefono in standby il
+         Bluetooth smette di consegnare battiti -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Rilevamento della palestra piu' vicina, solo quando lo chiedi tu -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- I passi: si legge e basta, nessuna scrittura e niente che esca dal telefono. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
 
