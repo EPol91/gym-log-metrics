@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
 import { TastoFascia, ChiediFascia } from './fascia'
 import { Inclinometro } from './Inclinometro'
+import { Dischi } from './Dischi'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -401,6 +402,7 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
   const [showSettings, setShowSettings] = useState(false)
   const [showCoach, setShowCoach] = useState(false)
   const [inclina, setInclina] = useState(false)
+  const [dischi, setDischi] = useState(false)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
@@ -481,6 +483,9 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
             lo stesso esercizio della settimana prima. */}
         <button className={inclinazione != null ? 'chip on' : 'chip'} style={MINI} onClick={() => setInclina(true)}
           aria-label="Misura l'inclinazione">📐{inclinazione != null ? ` ${inclinazione}°` : ''}</button>
+        {/* I dischi da caricare: 82,5 kg col bilanciere da 20 sono 31,25 per
+            lato, e farlo a mente fra due serie e' come si sbaglia carico. */}
+        <button className="chip" style={MINI} onClick={() => setDischi(true)} aria-label="Che dischi caricare">⚖</button>
         {onGroup && <button className="chip" style={MINI} onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
         <button className="chip" style={MINI} disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)} aria-label="Sposta su">↑</button>
         <button className="chip" style={MINI} disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)} aria-label="Sposta giù">↓</button>
@@ -504,6 +509,7 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
         </div>
       )}
       {showHist && <HistoryPanel history={history} />}
+      {dischi && <Dischi peso={parseNum(w, { min: 0, max: 1000 }) ?? 0} onClose={() => setDischi(false)} />}
       {inclina && (
         <Inclinometro valore={inclinazione}
           onSalva={(g) => setExerciseInclinazione(entry.exerciseId, g)}

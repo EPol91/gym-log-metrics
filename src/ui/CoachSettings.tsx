@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser, updateUser } from '../db/repo'
 import { COACH_BLOCKS_DEFAULT } from '../scores/coach'
+import { PROMEMORIA, attivo, accendi, promemoriaDisponibili } from '../util/promemoria'
 import type { CoachBlock } from '../db/schema'
 
 const BLOCCHI: { key: CoachBlock; nome: string; cosa: string }[] = [
@@ -18,6 +20,7 @@ const BLOCCHI: { key: CoachBlock; nome: string; cosa: string }[] = [
 export function CoachSettings() {
   const user = useLiveQuery(getUser, [])
   const attivi = new Set<CoachBlock>(user?.coachBlocks ?? COACH_BLOCKS_DEFAULT)
+  const [acceso, setAcceso] = useState(() => new Set(PROMEMORIA.filter((x) => attivo(x.tipo)).map((x) => x.tipo)))
 
   function cambia(k: CoachBlock) {
     const next = new Set(attivi)
@@ -49,10 +52,39 @@ export function CoachSettings() {
         })}
       </div>
       {attivi.size === 0 && (
-        <p className="muted small" style={{ marginBottom: 0 }}>
+        <p className="muted small">
           Tutti spenti: resta solo la riga del check di oggi.
         </p>
       )}
+
+      {/* I promemoria: arrivano solo quando c'e' qualcosa da fare. Uno che
+          parte tutti i giorni comunque diventa rumore, e il rumore si silenzia
+          — perdendo anche gli avvisi che servivano. */}
+      <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
+        <label className="fl">Promemoria</label>
+        <div className="col" style={{ gap: 5 }}>
+          {PROMEMORIA.map((r) => {
+            const on = acceso.has(r.tipo)
+            return (
+              <button key={r.tipo} className={on ? 'sel' : ''} style={{ textAlign: 'left', padding: '9px 12px' }}
+                onClick={() => { accendi(r.tipo, !on); setAcceso(new Set(PROMEMORIA.filter((x) => attivo(x.tipo)).map((x) => x.tipo))) }}>
+                <span className="row spread">
+                  <span>{r.nome}</span>
+                  <span className="small" style={{ flex: 'none', color: on ? 'var(--gold)' : 'var(--muted)' }}>
+                    {on ? 'acceso' : 'spento'}
+                  </span>
+                </span>
+                <span className="muted small">{r.nota}</span>
+              </button>
+            )
+          })}
+        </div>
+        {!promemoriaDisponibili() && (
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            Le notifiche arrivano solo nell’app installata: nel browser questi avvisi non partono.
+          </p>
+        )}
+      </div>
     </div>
   )
 }

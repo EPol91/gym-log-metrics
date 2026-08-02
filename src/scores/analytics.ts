@@ -22,6 +22,8 @@ export interface AnalyticsData {
   weeklySessions: Point[]
   workoutScores: Point[]
   totalSessions: number
+  /** serie allenanti per gruppo muscolare negli ultimi 7 giorni */
+  seriePerGruppo: Point[]
 }
 
 function ms(dateISO: string): number { return new Date(dateISO + 'T00:00:00').getTime() }
@@ -61,5 +63,26 @@ export async function computeAnalytics(weeks = 8): Promise<AnalyticsData> {
     if (r.value != null) workoutScores.push({ label: mmdd(ms(s.date)), value: r.value })
   }
 
-  return { weeklyTonnage, weeklySessions, workoutScores, totalSessions: sessions.length }
+  // Serie per gruppo muscolare, ultimi 7 giorni.
+  //
+  // E' il numero su cui si programma davvero: il tonnellaggio dice quanto hai
+  // spostato, non quante volte hai stimolato il dorso. Si contano le serie
+  // allenanti — il riscaldamento non allena nessuno — e il gruppo e' quello
+  // dell'esercizio in libreria.
+  const daSette = nowMs - 7 * DAY
+  const recenti = sessions.filter((s) => ms(s.date) > daSette)
+  const conteggio = new Map<string, number>()
+  const esercizi = new Map((await db.exercises.toArray()).map((e) => [e.id, e]))
+  for (const s of recenti) {
+    for (const e of await db.exerciseEntries.where({ sessionId: s.id }).toArray()) {
+      const gruppo = esercizi.get(e.exerciseId)?.muscle ?? 'altro'
+      const serie = (await db.sets.where({ entryId: e.id }).toArray()).filter((x) => !x.isWarmup).length
+      if (serie) conteggio.set(gruppo, (conteggio.get(gruppo) ?? 0) + serie)
+    }
+  }
+  const seriePerGruppo = [...conteggio.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+
+  return { weeklyTonnage, weeklySessions, workoutScores, totalSessions: sessions.length, seriePerGruppo }
 }

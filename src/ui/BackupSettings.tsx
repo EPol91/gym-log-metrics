@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
-import { downloadBackup, importBackup, type EsitoImport } from '../db/backup'
+import { importBackup, type EsitoImport } from '../db/backup'
+import { salvaBackup, ultimoBackup } from '../db/backupAuto'
+import { fmtDataOra } from '../util/format'
 
 /**
  * Backup dei dati.
@@ -12,6 +14,8 @@ export function BackupSettings() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [modo, setModo] = useState<'unisci' | 'sostituisci'>('unisci')
   const [esito, setEsito] = useState<EsitoImport | null>(null)
+  const [dove, setDove] = useState<string | null>(null)
+  const ultimo = ultimoBackup()
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -26,10 +30,20 @@ export function BackupSettings() {
     <div className="card">
       <label className="fl">Backup dati</label>
       <div className="row">
-        <button className="ghost" style={{ flex: 1 }} onClick={() => downloadBackup()}>⬇ Esporta (file)</button>
+        <button className="ghost" style={{ flex: 1 }} onClick={async () => setDove(await salvaBackup())}>⬇ Esporta (file)</button>
         <button className="ghost" style={{ flex: 1 }} onClick={() => fileRef.current?.click()}>⬆ Importa</button>
       </div>
       <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onFile} />
+
+      {/* Quando e' andato l'ultimo: un backup di cui non sai la data non
+          tranquillizza nessuno. Nell'app si rifa' da solo ogni settimana. */}
+      <p className="muted small" style={{ margin: '8px 0 0' }}>
+        {dove
+          ? `Salvato: ${dove}`
+          : ultimo
+            ? `Ultimo backup ${fmtDataOra(ultimo.quando)} · ${ultimo.dove}`
+            : 'Mai fatto. Nell’app installata si rifà da solo ogni settimana.'}
+      </p>
 
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
         <button className={'chip' + (modo === 'unisci' ? ' on' : '')} onClick={() => setModo('unisci')}>unisci</button>

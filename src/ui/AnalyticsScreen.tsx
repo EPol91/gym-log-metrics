@@ -44,6 +44,32 @@ export function AnalyticsScreen({ onBack }: { onBack?: () => void }) {
             <div className="muted small" style={{ marginBottom: 6 }}>Sedute per settimana</div>
             <BarChart points={data.weeklySessions} />
           </div>
+          {/* Le serie per gruppo sono il numero su cui si programma davvero: il
+              tonnellaggio dice quanto hai spostato, non quante volte hai
+              stimolato il dorso. Il riscaldamento non allena, e infatti non conta. */}
+          {data.seriePerGruppo.length > 0 && (
+            <div className="card">
+              <div className="row spread" style={{ marginBottom: 4 }}>
+                <span className="muted small">Serie per gruppo · 7 giorni</span>
+                <span className="muted small">{data.seriePerGruppo.reduce((a, g) => a + g.value, 0)} in tutto</span>
+              </div>
+              {data.seriePerGruppo.map((g) => (
+                <div key={g.label} style={{ marginTop: 7 }}>
+                  <div className="row spread">
+                    <span className="small" style={{ textTransform: 'capitalize' }}>{g.label}</span>
+                    <span className="small" style={{ color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{g.value}</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', marginTop: 3 }}>
+                    <div style={{
+                      height: '100%', borderRadius: 999, background: 'var(--gold)',
+                      width: `${(g.value / (data.seriePerGruppo[0].value || 1)) * 100}%`,
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="card">
             <div className="muted small" style={{ marginBottom: 6 }}>Workout Score nel tempo</div>
             <LineChart points={data.workoutScores} />

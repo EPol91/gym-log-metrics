@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { forseBackupAutomatico } from './db/backupAuto'
+import { controllaPromemoria } from './util/promemoria'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureSeed } from './db/seed'
 import { getUser } from './db/repo'
@@ -68,6 +70,11 @@ function AppScreens() {
   // WHOOP si aggiorna da solo all'apertura, una volta al giorno: i dati vecchi
   // fanno mentire il Coach e i Vitali proprio quando ti dimentichi di premere.
   useEffect(() => watchAutoSync(), [])
+  // Il backup settimanale, da solo: se dipende dal fatto che te lo ricordi,
+  // prima o poi non c'e'.
+  useEffect(() => { void forseBackupAutomatico() }, [])
+  // I promemoria: solo quando c'e' davvero qualcosa da fare.
+  useEffect(() => { void controllaPromemoria() }, [])
   // Chi salva le letture della fascia lo decide qui: il modulo bluetooth non
   // conosce il database, e cosi' resta buono anche fuori da questa app.
   useEffect(() => { hrOnSave((id, serie) => { void salvaLettureCuore(id, serie) }) }, [])
