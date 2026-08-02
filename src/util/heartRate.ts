@@ -176,8 +176,13 @@ export async function hrConnect(): Promise<void> {
     }
     hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
   } catch (e) {
-    const msg = (e as Error)?.message ?? ''
-    hrSet({ connecting: false, error: /cancel/i.test(msg) ? null : 'Connessione fascia fallita.' })
+    // L'errore vero, non un generico «fallita»: senza, un permesso negato e un
+    // plugin che non risponde sono lo stesso messaggio e non si capisce cosa fare.
+    const msg = ((e as Error)?.message ?? '').trim()
+    hrSet({
+      connecting: false,
+      error: /cancel|annull/i.test(msg) ? null : msg ? `Fascia: ${msg}` : 'Connessione fascia fallita.',
+    })
   }
 }
 

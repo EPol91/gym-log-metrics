@@ -30,11 +30,76 @@ export function isNativo(): boolean {
   return !!cap?.isNativePlatform?.()
 }
 
+/**
+ * Il plugin preso dal ponte iniettato dal guscio, non da quello impacchettato
+ * con l'app.
+ *
+ * Nella pagina convivono due Capacitor: quello che il guscio inietta — l'unico
+ * collegato ad Android — e quello che finisce nel bundle con `import`. Il
+ * secondo risponde «non implementato» e il collegamento falliva subito: e' lo
+ * stesso inganno gia' visto con i passi di Health Connect.
+ */
+interface Grezzo {
+  initialize(o: Record<string, unknown>): Promise<unknown>
+  requestDevice(o: { services: string[] }): Promise<{ deviceId: string; name?: string }>
+  getDevices(o: { deviceIds: string[] }): Promise<{ devices: { deviceId: string; name?: string }[] }>
+  connect(o: { deviceId: string }): Promise<unknown>
+  disconnect(o: { deviceId: string }): Promise<unknown>
+  startNotifications(o: { deviceId: string; service: string; characteristic: string }): Promise<unknown>
+  stopNotifications(o: { deviceId: string; service: string; characteristic: string }): Promise<unknown>
+  addListener(evento: string, cb: (e: { value?: string }) => void): Promise<{ remove(): Promise<void> }>
+}
+
+function grezzo(): Grezzo | null {
+  const cap = (globalThis as unknown as { Capacitor?: { Plugins?: Record<string, Grezzo> } }).Capacitor
+  return cap?.Plugins?.BluetoothLe ?? null
+}
+
+/** Il valore delle notifiche arriva come stringa esadecimale: «3c 48». */
+function aDataView(hex?: string): DataView {
+  const byte = (hex ?? '').match(/[0-9a-f]{2}/gi) ?? []
+  return new DataView(Uint8Array.from(byte.map((b) => parseInt(b, 16))).buffer)
+}
+
+/** Il ponte vero, con la stessa forma del client del pacchetto. */
+function ponte(p: Grezzo): Ble {
+  const ascolti = new Map<string, { remove(): Promise<void> }>()
+  const chiave = (id: string, s: string, c: string) => `notification|${id}|${s}|${c}`
+
+  return {
+    initialize: () => p.initialize({}).then(() => undefined),
+    requestDevice: (o) => p.requestDevice(o),
+    getDevices: async (ids) => (await p.getDevices({ deviceIds: ids })).devices,
+    async connect(id, onDisconnect) {
+      if (onDisconnect) {
+        const k = `disconnected|${id}`
+        await ascolti.get(k)?.remove()
+        ascolti.set(k, await p.addListener(k, () => onDisconnect(id)))
+      }
+      await p.connect({ deviceId: id })
+    },
+    disconnect: (id) => p.disconnect({ deviceId: id }).then(() => undefined),
+    async startNotifications(id, s, c, cb) {
+      const k = chiave(id, s, c)
+      await ascolti.get(k)?.remove()
+      ascolti.set(k, await p.addListener(k, (e) => cb(aDataView(e?.value))))
+      await p.startNotifications({ deviceId: id, service: s, characteristic: c })
+    },
+    async stopNotifications(id, s, c) {
+      const k = chiave(id, s, c)
+      await ascolti.get(k)?.remove()
+      ascolti.delete(k)
+      await p.stopNotifications({ deviceId: id, service: s, characteristic: c })
+    },
+  }
+}
+
 let ble: Ble | null = null
 async function plugin(): Promise<Ble> {
   if (ble) return ble
-  const mod = await import('@capacitor-community/bluetooth-le')
-  const b = (mod as unknown as { BleClient: Ble }).BleClient
+  const p = grezzo()
+  if (!p) throw new Error('Ponte Bluetooth assente: chiudi e riapri l’app.')
+  const b = ponte(p)
   await b.initialize()
   ble = b
   return b
