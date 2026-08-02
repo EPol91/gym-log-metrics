@@ -610,6 +610,14 @@ export async function setExerciseSettings(exerciseId: string, settings: string):
   await db.exercises.update(exerciseId, { settings: settings.trim(), updatedAt: nowISO() })
 }
 
+/**
+ * L'inclinazione dello schienale, ricordata come le altre regolazioni: la
+ * misuri una volta e alla seduta dopo sai a quanti gradi eri.
+ */
+export async function setExerciseInclinazione(exerciseId: string, gradi: number | undefined): Promise<void> {
+  await db.exercises.update(exerciseId, { inclinazione: gradi, updatedAt: nowISO() })
+}
+
 /** Cerca un esercizio esistente per nome o alias (anti-duplicato). */
 export async function findExercise(name: string): Promise<Exercise | undefined> {
   const n = normalizeName(name)

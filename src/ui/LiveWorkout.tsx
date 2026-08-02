@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
 import { TastoFascia, ChiediFascia } from './fascia'
+import { Inclinometro } from './Inclinometro'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -8,6 +9,7 @@ import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, allExercises, groupEntries, ungroupEntries,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
+  setExerciseInclinazione,
 } from '../db/repo'
 import { e1rm, bestE1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
@@ -379,8 +381,8 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
   )
 }
 
-function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
-  entry: ExerciseEntry; name: string; settings: string; sessionId: string; restSec: number
+function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
+  entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; sessionId: string; restSec: number
   pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
   onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
   onGroup?: () => void
@@ -394,6 +396,7 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
   const [histBest, setHistBest] = useState(0)
   const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   const [showSettings, setShowSettings] = useState(false)
+  const [inclina, setInclina] = useState(false)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
@@ -454,6 +457,10 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className={showHist ? 'chip on' : 'chip'} onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
         <button className={showSettings ? 'chip on' : 'chip'} onClick={() => setShowSettings((v) => !v)}>⚙</button>
+        {/* L'inclinazione dello schienale: «panca a 80°» regolata a occhio non e'
+            lo stesso esercizio della settimana prima. */}
+        <button className={inclinazione != null ? 'chip on' : 'chip'} onClick={() => setInclina(true)}
+          aria-label="Misura l'inclinazione">📐{inclinazione != null ? ` ${inclinazione}°` : ''}</button>
         {onGroup && <button className="chip" onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
         <button className="chip" disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)}>↑</button>
         <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
@@ -462,6 +469,11 @@ function EntryCard({ entry, name, settings, sessionId, restSec, pos, total, rest
       {!showSettings && settings && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {settings}</div>}
       {showSettings && <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />}
       {showHist && <HistoryPanel history={history} />}
+      {inclina && (
+        <Inclinometro valore={inclinazione}
+          onSalva={(g) => setExerciseInclinazione(entry.exerciseId, g)}
+          onClose={() => setInclina(false)} />
+      )}
 
       {/* Tabella set */}
       <div className="card" style={{ padding: '4px 12px 8px' }}>
@@ -865,6 +877,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
       ) : (
         <EntryCard key={block.entry.id} entry={block.entry} name={nameOf(block.entry.exerciseId)}
           settings={exercises.find((x) => x.id === block.entry.exerciseId)?.settings ?? ''}
+          inclinazione={exercises.find((x) => x.id === block.entry.exerciseId)?.inclinazione}
           sessionId={sessionId} restSec={restOf(block.entry.exerciseId)}
           pos={current + 1} total={blocks.length}
           restNode={restNode}
