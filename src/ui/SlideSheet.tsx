@@ -88,8 +88,10 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
           <button className={formato === 'storia' ? 'chip on' : 'chip'} style={{ flex: 1 }} onClick={() => setFormato('storia')}>Storia 9:16</button>
         </div>
 
-        <label className="fl" style={{ marginTop: 10 }}>Firma in fondo alle slide</label>
-        <input value={chi} placeholder="@iltuonome" onChange={(e) => setChi(e.target.value)}
+        {/* La chiocciola la mette l'app: un nome senza non sembra un profilo. */}
+        <label className="fl" style={{ marginTop: 10 }}>Nome Instagram</label>
+        <input value={chi} placeholder="@iltuonome"
+          onChange={(e) => { const v = e.target.value.replace(/^@+/, ''); setChi(v ? `@${v}` : '') }}
           onBlur={() => localStorage.setItem(CHI, chi.trim())} />
 
         {!recipe.photo && (

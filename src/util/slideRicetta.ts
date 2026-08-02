@@ -110,13 +110,42 @@ function titolo(k: Ctx, nome: string, y: number, px = 92): number {
   return y
 }
 
+/**
+ * L'icona di Instagram, disegnata: cornice arrotondata, obiettivo, puntino.
+ * Un'immagine importata sarebbe un file in piu' da caricare (e un logo altrui
+ * dentro il pacchetto); qui sono tre linee e restano nitide a qualsiasi misura.
+ */
+function iconaIg(ctx: CanvasRenderingContext2D, x: number, y: number, lato: number, colore: string) {
+  const r = lato * 0.28
+  ctx.save()
+  ctx.strokeStyle = colore
+  ctx.lineWidth = Math.max(2, lato * 0.085)
+  ctx.beginPath()
+  ctx.roundRect(x, y, lato, lato, r)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(x + lato / 2, y + lato / 2, lato * 0.24, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.fillStyle = colore
+  ctx.beginPath()
+  ctx.arc(x + lato * 0.76, y + lato * 0.24, lato * 0.062, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
 /** Firma in fondo a ogni slide: le rende riconoscibili come tue. */
 function firma(k: Ctx, chi: string) {
   const { ctx } = k
-  ctx.font = `500 24px ${TECNICO}`
-  ctx.fillStyle = '#6f6f6f'
+  const colore = '#9a9a9a'
+  const lato = 38
+  const base = k.giu + 64
+
+  iconaIg(ctx, k.x, base - lato + 5, lato, colore)
+
+  ctx.font = `500 28px ${TECNICO}`
+  ctx.fillStyle = colore
   ctx.letterSpacing = '5px'
-  ctx.fillText(chi.toUpperCase(), k.x, k.giu + 62)
+  ctx.fillText(chi.toUpperCase(), k.x + lato + 20, base)
   ctx.letterSpacing = '0px'
 }
 
