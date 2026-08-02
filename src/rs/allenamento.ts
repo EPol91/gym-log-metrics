@@ -247,3 +247,27 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   // della mattina, non quella che capita per prima nel database.
   .sort((x, y) => x.date.localeCompare(y.date) || x.dalle.localeCompare(y.dalle))
 }
+
+/**
+ * L'aderenza logistica NELLA FORMULA DEL COACH.
+ *
+ * Lui la calcola cosi', e l'ha scritto nel suo tooltip: sedute inviate negli
+ * ultimi sette giorni sulle cinque previste dalla scheda, cardio e riposo
+ * esclusi. Non e' la mia — io guardo quanti esercizi di una giornata hai
+ * davvero fatto — ma il campo va nella sua tabella e deve parlare la sua
+ * lingua: due numeri diversi sotto lo stesso nome sono peggio di nessun numero.
+ *
+ * Il mio calcolo resta dov'era, per l'app.
+ */
+export async function aderenzaDelCoach(date: string, previste = 5): Promise<number> {
+  const da = new Date(date + 'T00:00:00')
+  da.setDate(da.getDate() - 6)
+  const dal = da.toISOString().slice(0, 10)
+
+  const soloCardio = await templateCardio()
+  const sedute = (await db.sessions.where('userId').equals(U).toArray()).filter((s) =>
+    s.finishedAt && s.date >= dal && s.date <= date &&
+    !(s.srcTemplateId && soloCardio.has(s.srcTemplateId)),
+  )
+  return Math.round((sedute.length / previste) * 100)
+}

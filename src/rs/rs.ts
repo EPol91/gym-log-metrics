@@ -19,7 +19,7 @@ import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
 import { statoDieta, sostituzioni } from './dieta'
-import { sedutaRs } from './allenamento'
+import { sedutaRs, aderenzaDelCoach } from './allenamento'
 import type { RsDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -173,11 +173,12 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
     // precedenti sullo stesso esercizio. Se ti sei allenato e non e' successo,
     // la risposta e' No — non vuoto: il coach deve poter distinguere.
     out.perf_up = (await haPr(sedute.map((s) => s.id), tutte, date)) ? 'S' : 'N'
-    // Aderenza logistica: quanti degli esercizi previsti dalla sua giornata hai
-    // davvero fatto. Si compila solo se la seduta somiglia a una delle sue:
-    // su un allenamento tuo non c'e' niente rispetto a cui essere aderente.
+    // Aderenza logistica nella formula del COACH: sedute degli ultimi sette
+    // giorni sulle cinque previste, cardio escluso. E' quello che scrive nel suo
+    // tooltip, e questo campo finisce nella sua tabella — deve parlare la sua
+    // lingua. Il conto dell'app resta un'altra cosa e non si tocca.
     const seduta = await sedutaRs(date)
-    if (seduta?.aderenzaLogistica != null) out.aderenza_logistica = num(seduta.aderenzaLogistica)
+    out.aderenza_logistica = num(await aderenzaDelCoach(date))
     if (seduta?.nome) out.workout = seduta.nome.replace('🦠 ', '')
   }
 
