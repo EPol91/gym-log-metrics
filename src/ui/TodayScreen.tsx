@@ -11,6 +11,7 @@ import { fmtOre, fmtData } from '../util/format'
 import { ScoreRing } from './anim'
 import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
+import { Avvisi } from './Avvisi'
 import { usePesoOggi } from './PesoOggi'
 import { DataDiOggi, Calendario } from './CardCalendario'
 import { useEffect } from 'react'
@@ -120,6 +121,9 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
       {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={(id) => { setCalendario(false); onApriSeduta(id) }} />}
 
       {home && <CoachCard home={home} />}
+
+      {/* Sotto il coach: prima cosa fai oggi, poi cosa e rimasto indietro. */}
+      <Avvisi onGo={onGo} />
 
       <div className="row spread" style={{ marginTop: 2 }}>
         <span className="muted small">I tuoi riquadri</span>

@@ -16,6 +16,9 @@ import { ultimoBackup } from '../db/backupAuto'
 const U = LOCAL_USER_ID
 const SPENTE = 'gymlog.promemoria.spente'
 const VISTE = 'gymlog.promemoria.viste'
+// Consegnato dal telefono e «messo via» dentro l'app sono due cose diverse:
+// una notifica letta nella tendina non deve far sparire la card, e viceversa.
+const VIA = 'gymlog.promemoria.via'
 
 export type Tipo = 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup'
 
@@ -42,6 +45,11 @@ function viste(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(VISTE) ?? '{}') as Record<string, string> } catch { return {} }
 }
 function giaDetto(t: Tipo, oggi: string): boolean { return viste()[t] === oggi }
+
+function letti(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(VIA) ?? '{}') as Record<string, string> } catch { return {} }
+}
+function messoVia(t: Tipo, oggi: string): boolean { return letti()[t] === oggi }
 function segna(t: Tipo, oggi: string): void {
   try { localStorage.setItem(VISTE, JSON.stringify({ ...viste(), [t]: oggi })) } catch { /* ignore */ }
 }
@@ -62,9 +70,26 @@ function plugin(): Plugin | null {
 export function promemoriaDisponibili(): boolean { return !!plugin() }
 
 /** Un messaggio da consegnare, se c'e' davvero qualcosa da dire. */
-interface Avviso { tipo: Tipo; titolo: string; testo: string }
+export interface Avviso { tipo: Tipo; titolo: string; testo: string }
 
-async function daDire(): Promise<Avviso[]> {
+/**
+ * Gli avvisi di oggi, per chi li vuole mostrare dentro l'app.
+ *
+ * Nella tendina di Android arrivano solo nell'app installata e solo se hai dato
+ * il permesso: gli stessi avvisi valgono anche a notifiche spente, quindi la
+ * lista si puo' chiedere e basta.
+ */
+export async function avvisiDiOggi(): Promise<Avviso[]> {
+  const oggi = todayLocal()
+  return (await tutti()).filter((a) => attivo(a.tipo) && !messoVia(a.tipo, oggi))
+}
+
+/** Mettilo via fino a domani: oggi l'hai letto. */
+export function mettiVia(t: Tipo): void {
+  try { localStorage.setItem(VIA, JSON.stringify({ ...letti(), [t]: todayLocal() })) } catch { /* ignore */ }
+}
+
+async function tutti(): Promise<Avviso[]> {
   const oggi = todayLocal()
   const out: Avviso[] = []
   const user = await getUser()
@@ -121,7 +146,7 @@ async function daDire(): Promise<Avviso[]> {
     out.push({ tipo: 'backup', titolo: 'Backup vecchio', testo: 'I tuoi dati stanno su un telefono solo.' })
   }
 
-  return out.filter((a) => attivo(a.tipo) && !giaDetto(a.tipo, oggi))
+  return out
 }
 
 /**
@@ -134,7 +159,8 @@ async function daDire(): Promise<Avviso[]> {
 export async function controllaPromemoria(): Promise<void> {
   const p = plugin()
   if (!p) return
-  const avvisi = await daDire()
+  const oggiD = todayLocal()
+  const avvisi = (await tutti()).filter((a) => attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
   if (!avvisi.length) return
 
   try {
