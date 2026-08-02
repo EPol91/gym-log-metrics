@@ -445,7 +445,12 @@ export async function slideRicetta(
    */
   const segna = async (appena: Blob) => {
     avanzamento?.(++fatte, totale, appena)
-    await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)))
+    // In gara con un ritardo: a schermo spento o con l'app in secondo piano il
+    // fotogramma non arriva mai, e senza la gara il disegno resterebbe fermo li'.
+    await Promise.race([
+      new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0))),
+      new Promise((res) => setTimeout(res, 120)),
+    ])
   }
 
   const m = (r.mode === 'servings' ? calc.perServing : calc.per100) ?? calc.totals
