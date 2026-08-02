@@ -387,5 +387,10 @@ Score: Readiness ${s(home.readiness.value)}, Workout ${s(home.workout.value)}, P
 Obiettivo del ciclo: ${home.weekGoal.done}/${home.weekGoal.target} (giorno ${home.weekGoal.giorno} di ${home.weekGoal.giorni}), streak ${home.weekGoal.streak} giorni.
 ${vitali}
 
-Scrivi max 4 frasi brevi in italiano. Distingui sempre il dato dal consiglio: i consigli vanno introdotti da "Consiglio:" e non devono mai essere imperativi né presentati come verità certe — l'atleta decide da sé. Niente motivazione generica: parla solo dei suoi numeri.`
+Rispondi in italiano con TRE righe, in questo formato esatto e nient'altro:
+LETTURA: <una frase su come sta oggi, coi suoi numeri>
+ATTENZIONE: <una frase sull'indicatore più debole di oggi>
+CONSIGLIO: <una frase, mai imperativa e mai data per certa — l'atleta decide da sé>
+
+Una frase per riga, niente elenchi e niente paragrafi: un muro di testo non si legge. Niente motivazione generica: parla solo dei suoi numeri.`
 }
