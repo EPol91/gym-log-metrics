@@ -73,7 +73,9 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     <div key={key} className="card" data-drag-id={key}
       onPointerDown={press('today', key)}
       style={{
-        padding: '11px 12px', marginBottom: 0,
+        // I due a meta' larghezza hanno dentro un numero e un tasto: l'aria di
+        // un riquadro intero li faceva sembrare mezzi vuoti.
+        padding: META.includes(key) ? '9px 12px' : '11px 12px', marginBottom: 0,
         flex: META.includes(key) ? '1 1 calc(50% - 4px)' : '1 1 100%',
         minWidth: 0,
         ...liftStyle('today', key),
@@ -207,7 +209,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
       <div className="row spread"><span style={LBL}>Corpo</span><span className="muted small">≡</span></div>
       {/* A meta' larghezza due colonne stanno strette: il peso resta grande e la
           variazione gli si mette accanto piccola — e' un contorno, non il dato. */}
-      <div className="row" style={{ marginTop: 8, gap: 6, alignItems: 'baseline', justifyContent: 'center' }}>
+      <div className="row" style={{ marginTop: 6, gap: 6, alignItems: 'baseline', justifyContent: 'center' }}>
         <span style={{ ...NUM, fontSize: 24 }}>{peso ? peso.weight : '—'}</span>
         <span className="muted" style={{ fontSize: 10 }}>kg</span>
         {peso?.delta != null && (
@@ -220,7 +222,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
         // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
         <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
-          style={{ marginTop: 8, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
+          style={{ marginTop: 6, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
           onClick={() => setApri(true)}>
           {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
         </button>
@@ -314,19 +316,14 @@ function CardAbitudini({ onOpen }: { onOpen: () => void }) {
       <div className="row spread"><span style={LBL}>Abitudini</span><span className="muted small">≡</span></div>
       {/* A meta' larghezza "1.330 / 10.000" su una riga sola si stringe troppo:
           il numero di oggi resta grande, l'obiettivo va sotto. */}
-      <div style={{ marginTop: 8, textAlign: 'center' }}>
+      <div style={{ marginTop: 6, textAlign: 'center' }}>
         <span style={{ ...NUM, fontSize: 24 }}>{oggi ? fatti.toLocaleString('it-IT') : '—'}</span>
         <div className="muted" style={{ fontSize: 10 }}>di {target.toLocaleString('it-IT')} passi</div>
       </div>
       <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
         <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%` }} />
       </div>
-      {!oggi && (
-        <p className="muted small" style={{ margin: '6px 0 0' }}>
-          I passi arriveranno da Health Connect con l'app Android.
-        </p>
-      )}
-      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Dettagli ›</button>
+      <button className="chip" style={{ marginTop: 6 }} onClick={onOpen}>Dettagli ›</button>
     </>
   )
 }
