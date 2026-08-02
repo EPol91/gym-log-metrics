@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../db/db'
 import { macrosFor, updateFood, deleteFood } from '../db/diet'
 import { deleteWithUndo } from '../db/trash'
 import { parseNum } from '../util/validate'
@@ -220,7 +222,7 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
  * Scheda alimento: la stessa quando aggiungi e quando tocchi una riga già nel diario.
  * `mode` cambia solo il pulsante finale (Aggiungi / Salva) e mostra l'elimina.
  */
-export function FoodSheet({ food, grams: initialGrams, mode, onConfirm, onDeleteLog, onBack }: {
+export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm, onDeleteLog, onBack }: {
   food: Food
   grams?: number
   mode: 'add' | 'edit'
@@ -228,7 +230,12 @@ export function FoodSheet({ food, grams: initialGrams, mode, onConfirm, onDelete
   onDeleteLog?: () => void
   onBack: () => void
 }) {
-  const [g, setG] = useState(String(initialGrams ?? food.servingG ?? 100))
+  // L'alimento va riletto dal database, non tenuto come l'ha passato chi apre
+  // questa scheda: correggendone il nome, quella copia resta quella di prima e
+  // la schermata mostra il vecchio finche' non la chiudi e riapri.
+  const aggiornato = useLiveQuery(() => db.foods.get(foodProp.id), [foodProp.id])
+  const food = aggiornato ?? foodProp
+  const [g, setG] = useState(String(initialGrams ?? foodProp.servingG ?? 100))
   const [fixing, setFixing] = useState(false)
   const lettore = useScanner()
   const grams = parseNum(g, { min: 1, max: 5000 }) ?? 0
