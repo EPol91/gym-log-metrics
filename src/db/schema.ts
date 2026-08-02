@@ -428,6 +428,8 @@ export interface Recipe extends BaseRecord {
   yieldG?: number
   groups: RecipeGroup[]
   steps: string[]
+  /** foto del piatto (dataURL, ridimensionata): copertina delle slide da postare */
+  photo?: string
   note?: string
   timeMin?: number
   tags?: string[]

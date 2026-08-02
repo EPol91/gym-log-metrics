@@ -7,6 +7,7 @@ import {
 } from '../db/recipes'
 import { MacroDonut, MacroRow } from './FoodSheet'
 import { AddRecipeSheet } from './AddRecipeSheet'
+import { SlideSheet } from './SlideSheet'
 import { useWakeLock, isWakeLockSupported } from '../util/wakeLock'
 import { clampNum } from '../util/validate'
 import type { Macros, Recipe } from '../db/schema'
@@ -35,6 +36,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
   const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set())
   const [cookMode, setCookMode] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [slide, setSlide] = useState(false)
   const [yieldDraft, setYieldDraft] = useState<string | null>(null)
   const wakeActive = useWakeLock(cookMode)
 
@@ -77,6 +79,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
       <div className="row spread" style={{ alignItems: 'center' }}>
         <button className="ghost small" style={{ padding: '6px 10px' }} onClick={onBack}>← Ricette</button>
         <div className="row" style={{ gap: 6 }}>
+          <button className="chip" onClick={() => setSlide(true)} aria-label="Crea slide per Instagram">▤ Slide</button>
           <button className="chip" onClick={onEdit}>✎ Modifica</button>
           <button className={recipe.favorite ? 'chip on' : 'chip'} onClick={() => toggleRecipeFavorite(recipe.id)}>
             {recipe.favorite ? '★' : '☆'}
@@ -266,6 +269,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
       }}>⧉ Duplica ricetta</button>
 
       {adding && <AddRecipeSheet recipe={recipe as Recipe} onClose={() => setAdding(false)} />}
+      {slide && <SlideSheet recipe={recipe as Recipe} calc={calc} foods={foods} onClose={() => setSlide(false)} />}
     </div>
   )
 }

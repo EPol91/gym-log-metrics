@@ -119,7 +119,7 @@ export async function listRecipeTags(): Promise<string[]> {
 // --- Scrittura --------------------------------------------------------------
 
 export type RecipeDraft = Pick<Recipe, 'name' | 'mode' | 'groups' | 'steps'> &
-  Partial<Pick<Recipe, 'servings' | 'yieldG' | 'note' | 'timeMin' | 'tags' | 'favorite'>>
+  Partial<Pick<Recipe, 'servings' | 'yieldG' | 'note' | 'timeMin' | 'tags' | 'favorite' | 'photo'>>
 
 export async function addRecipe(inp: RecipeDraft): Promise<string> {
   const ts = nowISO()
@@ -164,7 +164,7 @@ export async function duplicateRecipe(id: string): Promise<string | null> {
   return addRecipe({
     name: `${r.name} (copia)`, mode: r.mode, servings: r.servings, yieldG: r.yieldG,
     groups: JSON.parse(JSON.stringify(r.groups)), steps: [...r.steps],
-    note: r.note, timeMin: r.timeMin, tags: r.tags ? [...r.tags] : undefined,
+    note: r.note, timeMin: r.timeMin, tags: r.tags ? [...r.tags] : undefined, photo: r.photo,
   })
 }
 
@@ -189,6 +189,7 @@ function normalize(inp: RecipeDraft): RecipeDraft {
     // I due campi si escludono: tenere quello inutile in giro confonde alla riapertura.
     ...(mode === 'servings' ? { servings: Math.max(1, Math.round(Number(inp.servings) || 1)) } : {}),
     ...(mode === 'grams' && Number(inp.yieldG) > 0 ? { yieldG: Math.round(Number(inp.yieldG)) } : {}),
+    ...(inp.photo ? { photo: inp.photo } : {}),
     ...(inp.note?.trim() ? { note: inp.note.trim() } : {}),
     ...(Number(inp.timeMin) > 0 ? { timeMin: Math.round(Number(inp.timeMin)) } : {}),
     ...(inp.tags?.length ? { tags: [...new Set(inp.tags.map((t) => t.trim()).filter(Boolean))] } : {}),

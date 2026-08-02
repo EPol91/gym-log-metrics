@@ -6,6 +6,7 @@ import { addRecipe, updateRecipe, deleteRecipe, getRecipe, type RecipeDraft } fr
 import { deleteWithUndo } from '../db/trash'
 import { FoodChooser } from './FoodChooser'
 import { clampNum } from '../util/validate'
+import { fotoRidotta } from '../util/immagine'
 import type { RecipeGroup, RecipeMode, RecipeQta } from '../db/schema'
 
 /** Il giro dell'unità: grammi → pizzico → quanto basta → grammi. */
@@ -42,6 +43,7 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
   // Ultimo numero valido digitato: e a questo che si torna se lasci il campo vuoto,
   // senza dipendere da quale versione della bozza vede il gestore.
   const ultimoValido = useRef(6)
+  const fotoRef = useRef<HTMLInputElement>(null)
 
   /**
    * Riordino a pressione prolungata, lo stesso della dieta.
@@ -76,6 +78,7 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
       name: existing.name, mode: existing.mode, servings: existing.servings, yieldG: existing.yieldG,
       groups: JSON.parse(JSON.stringify(existing.groups)), steps: [...existing.steps],
       note: existing.note, timeMin: existing.timeMin, tags: existing.tags ? [...existing.tags] : undefined,
+      photo: existing.photo,
     })
     setStepsText(existing.steps.join('\n'))
     // Anche il campo delle porzioni, che vive come testo a parte: restava al 6
@@ -174,6 +177,25 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
               onChange={(e) => set({ timeMin: e.target.value.trim() === '' ? undefined : clampNum(e.target.value, { min: 0, max: 2000, int: true }) ?? undefined })} />
           </div>
         </div>
+
+        {/* Foto: e' la copertina delle slide da postare, e nel frattempo dice
+            com'e' venuto il piatto meglio di qualunque descrizione. */}
+        <label className="fl" style={{ marginTop: 12 }}>Foto</label>
+        {d.photo ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <img src={d.photo} alt="" style={{ width: 74, height: 74, objectFit: 'cover', borderRadius: 10, display: 'block' }} />
+            <button className="chip" onClick={() => fotoRef.current?.click()}>Cambia</button>
+            <button className="chip" style={{ color: '#e57373' }} onClick={() => set({ photo: undefined })}>Togli</button>
+          </div>
+        ) : (
+          <button className="chip" onClick={() => fotoRef.current?.click()}>＋ Scegli dalla galleria</button>
+        )}
+        <input ref={fotoRef} type="file" accept="image/*" hidden onChange={async (e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (!f) return
+          try { set({ photo: await fotoRidotta(f) }) } catch { alert('Foto non leggibile.') }
+        }} />
 
         <label className="fl" style={{ marginTop: 12 }}>Tag</label>
         <div className="row wrap" style={{ gap: 6 }}>
