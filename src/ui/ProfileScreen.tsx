@@ -11,7 +11,7 @@ import { WhoopSettings } from './WhoopSettings'
 import { CoachSettings } from './CoachSettings'
 import { TemplatesSettings } from './TemplatesSettings'
 import { parseNum } from '../util/validate'
-import { fmtRest } from '../util/format'
+import { fmtRest, fmtData } from '../util/format'
 import { todayLocal } from '../util/date'
 import { cicloDi } from '../scores/consistency'
 import { db } from '../db/db'
@@ -28,13 +28,30 @@ const PHASES: { key: Phase; label: string; hint: string }[] = [
 // Etichetta sezione: maiuscoletto tenue.
 const SECTION: React.CSSProperties = { fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
 
-// Sezione collassabile: riga con titolo + freccia, apre il contenuto al tap.
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Sezione a tendina: riga con titolo, il valore di adesso, e il contenuto al tap.
+ *
+ * Il valore a destra e' quello che rende la tendina accettabile: chiuse, le
+ * righe dicono gia' come sei messo — «Cut · dal 15.06.2026», «5 ogni 8 giorni» —
+ * e si apre solo quello che si vuole cambiare, invece di scorrere sette card
+ * alte mezzo schermo per leggere quattro numeri.
+ */
+function Section({ title, valore, children }: { title: string; valore?: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div>
       <button className="card" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', margin: 0 }} onClick={() => setOpen((o) => !o)}>
-        <div className="row spread"><span>{title}</span><span className="muted small">{open ? '▾' : '›'}</span></div>
+        <div className="row spread" style={{ alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 'none' }}>{title}</span>
+          <span className="row" style={{ gap: 8, minWidth: 0, justifyContent: 'flex-end' }}>
+            {!open && valore != null && (
+              <span className="muted small" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {valore}
+              </span>
+            )}
+            <span className="muted small" style={{ flex: 'none' }}>{open ? '▾' : '›'}</span>
+          </span>
+        </div>
       </button>
       {open && <div style={{ marginTop: 8 }}>{children}</div>}
     </div>
@@ -125,11 +142,15 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
       <h1>Profilo</h1>
 
       <span style={SECTION}>Tu</span>
+      <div className="col" style={{ gap: 7 }}>
+      <Section title="Nome" valore={user?.name || '—'}>
       <div className="card" style={{ marginTop: 0 }}>
         <label className="fl">Nome</label>
         <input defaultValue={user?.name ?? ''} onBlur={(e) => updateUser({ name: e.target.value })} />
       </div>
+      </Section>
 
+      <Section title="Fase" valore={phase ? `${phase.phase} · dal ${fmtData(phase.startDate)}` : 'nessuna'}>
       <div className="card">
         <label className="fl">Fase di allenamento</label>
         <div className="grid2">
@@ -154,16 +175,20 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
           <p className="muted small" style={{ marginTop: 10 }}>Nessuna fase: il Performance resta “insufficiente”.</p>
         )}
       </div>
+      </Section>
 
       {/* L'obiettivo di allenamento e' un CICLO, non una settimana: 5 sedute
           ogni 8 giorni non stanno in sette caselle, e giudicate a settimane
           danno 5 e poi 4 — il Consistency ti bocciava mentre facevi tutto. */}
-      <CicloAllenamento
-        sedute={user?.cicloSedute ?? 5}
-        giorni={user?.cicloGiorni ?? 8}
-        inizio={user?.cicloInizio ?? null}
-      />
+      <Section title="Obiettivo" valore={`${user?.cicloSedute ?? 5} ogni ${user?.cicloGiorni ?? 8} giorni`}>
+        <CicloAllenamento
+          sedute={user?.cicloSedute ?? 5}
+          giorni={user?.cicloGiorni ?? 8}
+          inizio={user?.cicloInizio ?? null}
+        />
+      </Section>
 
+      <Section title="Recupero" valore={fmtRest(restDefault)}>
       <div className="card">
         <label className="fl">Recupero di default</label>
         <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
@@ -172,7 +197,11 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
           ))}
         </div>
       </div>
+      </Section>
 
+      <Section title="Cardio e corpo"
+        valore={[user?.birthYear && `${new Date().getFullYear() - user.birthYear} anni`, user?.heightCm && `${user.heightCm} cm`]
+          .filter(Boolean).join(' · ') || 'da compilare'}>
       <div className="card">
         <label className="fl">Dati cardio &amp; corpo</label>
         <div className="grid2" style={{ gap: 8 }}>
@@ -209,10 +238,16 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
         </div>
         <p className="muted small" style={{ marginTop: 6 }}>FCmax misurata: se la conosci le zone la usano al posto di 220−età. Opzionale.</p>
       </div>
+      </Section>
 
-      <MetabolismCard />
+      <Section title="Metabolismo"
+        valore={ACTIVITY_LEVELS.find((a) => a.key === user?.activityLevel)?.name ?? 'dedotto'}>
+        <MetabolismCard />
+      </Section>
 
-
+      <Section title="Acqua e sale"
+        valore={[user?.waterTarget && `${user.waterTarget} L`, user?.saltTarget && `${user.saltTarget} g`]
+          .filter(Boolean).join(' · ') || 'non impostati'}>
       <div className="card">
         <label className="fl">Target giornalieri (opz.)</label>
         <div className="row">
@@ -227,6 +262,8 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
               onBlur={(e) => { const n = parseNum(e.target.value, { min: 0, max: 50 }); if (n != null) updateUser({ saltTarget: n }) }} />
           </div>
         </div>
+      </div>
+      </Section>
       </div>
 
       <span style={{ ...SECTION, marginTop: 6 }}>Avanzate</span>
