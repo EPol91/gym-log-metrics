@@ -143,7 +143,7 @@ export function RsScreen() {
  * ma «6.89» non è un tempo che dica niente a chi lo guarda: sono 6h53. Si
  * spedisce il numero, si mostra l'orario.
  */
-function leggibile(campo: RsCampo, valore: string | undefined): string {
+function leggibile(campo: RsCampo, valore: string | null | undefined): string {
   if (!valore) return '—'
   if (campo !== 'durata_sonno') return valore
   const ore = Number(valore)
