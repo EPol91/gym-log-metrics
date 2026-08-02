@@ -396,10 +396,17 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
   const [histBest, setHistBest] = useState(0)
   const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   const [showSettings, setShowSettings] = useState(false)
+  const [showCoach, setShowCoach] = useState(false)
   const [inclina, setInclina] = useState(false)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
+
+  // Le note stanno in un campo solo, ma sono di due mani diverse: quelle del
+  // coach cominciano col 🦠 e le scrive l'import, le altre le scrivi tu.
+  const righe = (settings ?? '').split('\n').map((x) => x.trim()).filter(Boolean)
+  const righeCoach = righe.filter((x) => x.startsWith('🦠'))
+  const mieNote = righe.filter((x) => !x.startsWith('🦠')).join('\n')
 
   useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
@@ -456,7 +463,15 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
       {/* Controlli secondari */}
       <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className={showHist ? 'chip on' : 'chip'} onClick={() => setShowHist((v) => !v)}>📊 Storico</button>
-        <button className={showSettings ? 'chip on' : 'chip'} onClick={() => setShowSettings((v) => !v)}>⚙</button>
+        {/* Due taccuini diversi: quello che ha prescritto lui e quello che hai
+            capito tu della macchina. In un campo solo, per rileggere l'altezza
+            del sellino toccava scorrere mezza scheda del coach. */}
+        <button className={showSettings ? 'chip on' : 'chip'} onClick={() => { setShowSettings((v) => !v); setShowCoach(false) }}
+          aria-label="Le tue regolazioni">⚙</button>
+        {righeCoach.length > 0 && (
+          <button className={showCoach ? 'chip on' : 'chip'} onClick={() => { setShowCoach((v) => !v); setShowSettings(false) }}
+            aria-label="La scheda del coach">🦠</button>
+        )}
         {/* L'inclinazione dello schienale: «panca a 80°» regolata a occhio non e'
             lo stesso esercizio della settimana prima. */}
         <button className={inclinazione != null ? 'chip on' : 'chip'} onClick={() => setInclina(true)}
@@ -466,8 +481,23 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
         <button className="chip" disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)}>↓</button>
         <button className="chip" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
       </div>
-      {!showSettings && settings && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {settings}</div>}
-      {showSettings && <textarea defaultValue={settings} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }} onBlur={(e) => setExerciseSettings(entry.exerciseId, e.target.value)} />}
+      {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
+      {!showSettings && mieNote && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {mieNote}</div>}
+      {!showCoach && righeCoach.length > 0 && (
+        <div className="muted small" style={{ textAlign: 'center' }}>{righeCoach.join(' · ')}</div>
+      )}
+      {showSettings && (
+        <textarea defaultValue={mieNote} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }}
+          // Si riscrivono solo le tue righe: quelle del coach si rimettono
+          // com'erano, altrimenti scrivere «sellino 4» cancellerebbe la scheda.
+          onBlur={(e) => setExerciseSettings(entry.exerciseId, [e.target.value.trim(), ...righeCoach].filter(Boolean).join('\n'))} />
+      )}
+      {showCoach && (
+        <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--rs)' }}>
+          {righeCoach.map((r, i) => <p key={i} className="small" style={{ margin: i ? '6px 0 0' : 0 }}>{r}</p>)}
+          <p className="muted" style={{ fontSize: 11, margin: '8px 0 0' }}>Scritte dal protocollo: si aggiornano da sole, non si modificano qui.</p>
+        </div>
+      )}
       {showHist && <HistoryPanel history={history} />}
       {inclina && (
         <Inclinometro valore={inclinazione}
