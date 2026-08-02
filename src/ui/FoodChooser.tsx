@@ -22,6 +22,9 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
   const [online, setOnline] = useState<OffFood[]>([])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  // Alimento trovato online in attesa del tuo controllo: non entra in libreria
+  // finché non hai confrontato i valori con l'etichetta che hai in mano.
+  const [daControllare, setDaControllare] = useState<OffFood | null>(null)
 
   const foods = useLiveQuery(listFoodsRanked, []) ?? []
 
@@ -46,13 +49,6 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
     } catch { setMsg('Ricerca online non riuscita: sei offline?') } finally { setBusy(false) }
   }
 
-  /** Salva in libreria l'alimento trovato online e lo consegna alla ricetta. */
-  async function salvaDaOff(o: OffFood) {
-    const id = await addFood({ name: o.name, brand: o.brand, barcode: o.barcode, per100: o.per100, source: 'off', servingG: o.servingG })
-    const f = (await listFoodsRanked()).find((x) => x.id === id)
-    if (f) onPick(f)
-  }
-
   async function onScanned(code: string) {
     setScanning(false); setBusy(true); setMsg(null)
     try {
@@ -60,13 +56,26 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
       if (existing) { onPick(existing); return }
       const o = await fetchByBarcode(code)
       if (!o) { setMsg(`Codice ${code} non trovato: creane uno tu dai valori in etichetta.`); setCreating(true); return }
-      await salvaDaOff(o)
+      setDaControllare(o)
     } catch { setMsg('Lettura non riuscita.') } finally { setBusy(false) }
   }
 
   let body: React.ReactNode
   if (scanning) {
     body = <BarcodeScanner onDetected={onScanned} onCancel={() => setScanning(false)} />
+  } else if (daControllare) {
+    // Il passaggio di controllo: i valori arrivano compilati, ma li vedi tutti e
+    // puoi correggerli prima che finiscano in libreria. Open Food Facts lo
+    // riempiono gli utenti, e l'etichetta ce l'hai davanti solo adesso.
+    body = (
+      <FoodForm title="Controlla con l'etichetta" initial={daControllare}
+        onCancel={() => setDaControllare(null)}
+        onSave={async (v) => {
+          const id = await addFood({ ...v, source: 'off' })
+          const f = (await listFoodsRanked()).find((x) => x.id === id)
+          setDaControllare(null); if (f) onPick(f)
+        }} />
+    )
   } else if (creating) {
     body = (
       <FoodForm title="Nuovo alimento" onCancel={() => setCreating(false)}
@@ -118,7 +127,7 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
 
           {tab === 'online' && online.map((o) => (
             <div key={o.barcode ?? o.name} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => salvaDaOff(o)}>
+              onClick={() => setDaControllare(o)}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
                 <span className="muted small">{o.brand ? `${o.brand} · ` : ''}{o.per100.kcal} kcal · C: {o.per100.carbs}, P: {o.per100.protein}, G: {o.per100.fat}</span>
