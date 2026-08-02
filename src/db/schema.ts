@@ -148,6 +148,8 @@ export interface Exercise extends BaseRecord {
   restSec?: number
   /** regolazioni macchina (sellino, poggiapetto, schienale…), testo libero ricordato tra le sedute */
   settings?: string
+  /** inclinazione dello schienale in gradi, misurata col telefono: 0 = piano, 90 = verticale */
+  inclinazione?: number
 }
 
 export type WorkoutType =
