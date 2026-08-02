@@ -117,12 +117,30 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
  * davvero (le Vulken Overhead Extensions stanno in D2 e in D5 con ripetizioni
  * diverse) e tenerne una sola vorrebbe dire perdere meta' della scheda.
  */
+/**
+ * Una riga del coach vecchio stile: senza codice della seduta e con lo stesso
+ * testo di quella che sto per scrivere. Il codice si riconosce dalla forma
+ * «D2 ·»: chi non ce l'ha e' rimasto indietro, e se dice la stessa cosa e' un
+ * doppione — non una prescrizione di un altro giorno.
+ */
+function vecchiaSenzaCodice(riga: string, prescrizione: string): boolean {
+  const t = riga.trimStart()
+  if (!t.startsWith('🦠')) return false
+  const resto = t.slice(2).trim()
+  if (/^D\d+\s*·/.test(resto)) return false
+  return resto === prescrizione.trim()
+}
+
 async function scriviPrescrizione(id: string, attuali: string | undefined, codice: string, prescrizione: string): Promise<void> {
   const riga = `🦠 ${codice} · ${prescrizione}`
   const tue = (attuali ?? '').split('\n')
     // Via le righe del coach, ma solo quelle di QUESTA seduta: lo stesso esercizio
     // puo' comparire in due giorni con prescrizioni diverse, e servono entrambe.
     .filter((r) => !r.trimStart().startsWith(`🦠 ${codice} ·`))
+    // E via i doppioni di prima che esistesse il codice della seduta: erano
+    // scritti «🦠 @A|B · …», nessun filtro li prendeva e restavano sotto la riga
+    // nuova a ripetere la stessa cosa.
+    .filter((r) => !vecchiaSenzaCodice(r, prescrizione))
     .filter((r) => r.trim())
   const altre = tue.filter((r) => r.trimStart().startsWith('🦠'))
   const mie = tue.filter((r) => !r.trimStart().startsWith('🦠'))
