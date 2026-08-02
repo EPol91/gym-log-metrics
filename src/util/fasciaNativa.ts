@@ -67,7 +67,10 @@ function ponte(p: Grezzo): Ble {
   const chiave = (id: string, s: string, c: string) => `notification|${id}|${s}|${c}`
 
   return {
-    initialize: () => p.initialize({}).then(() => undefined),
+    // androidNeverForLocation: la fascia non serve a capire dove sei, e nel
+    // manifest il permesso di posizione precisa si ferma ad Android 11. Senza
+    // questa riga il plugin lo pretende e si rifiuta di partire.
+    initialize: () => p.initialize({ androidNeverForLocation: true }).then(() => undefined),
     requestDevice: (o) => p.requestDevice(o),
     getDevices: async (ids) => (await p.getDevices({ deviceIds: ids })).devices,
     async connect(id, onDisconnect) {
