@@ -99,13 +99,20 @@ export function useHoldDrag(onDrop: (group: string, ids: string[]) => void) {
     return out.length === items.length ? out : items
   }
 
-  /** Stile della card sollevata: bordo oro e ombra, il segnale che l'hai presa. */
+  /**
+   * Stile della card sollevata: contorno oro e ombra, il segnale che l'hai presa.
+   *
+   * Contorno e non `borderColor`: chi ci passa sopra scrive spesso il bordo con
+   * l'abbreviazione (`borderBottom: '1px solid var(--line)'`), e al rilascio
+   * React cancella il solo `borderColor` senza riscrivere l'abbreviazione — il
+   * bordo restava senza colore e tornava bianco.
+   */
   function liftStyle(group: string, id: string): React.CSSProperties {
     const on = drag?.group === group && drag.activeId === id
     return on
       ? {
         transform: `translateY(${drag!.dy}px) scale(1.02)`,
-        borderColor: 'var(--gold)',
+        outline: '1px solid var(--gold)', outlineOffset: 1,
         boxShadow: '0 10px 28px rgba(0,0,0,.6)',
         position: 'relative', zIndex: 6,
       }

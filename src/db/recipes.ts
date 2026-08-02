@@ -174,7 +174,12 @@ function normalize(inp: RecipeDraft): RecipeDraft {
   const groups: RecipeGroup[] = (inp.groups ?? [])
     .map((g) => ({
       name: (g.name ?? '').trim() || 'Ingredienti',
-      items: (g.items ?? []).filter((it) => it.foodId).map((it) => ({ foodId: it.foodId, grams: Math.max(0, Number(it.grams) || 0) })),
+      // Un pizzico o un «qb» non ha grammi: si azzerano, così non entra nei totali
+      // e non finisce nel diario quando la ricetta viene esplosa in ingredienti.
+      items: (g.items ?? []).filter((it) => it.foodId).map((it) => (
+        it.qta === 'pizzico' || it.qta === 'qb'
+          ? { foodId: it.foodId, grams: 0, qta: it.qta }
+          : { foodId: it.foodId, grams: Math.max(0, Number(it.grams) || 0) })),
     }))
   return {
     name: (inp.name ?? '').trim() || 'Ricetta',

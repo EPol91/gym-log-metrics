@@ -406,8 +406,15 @@ export interface SavedMeal extends BaseRecord {
  */
 export type RecipeMode = 'servings' | 'grams'
 
+/**
+ * Quantità che non si pesano: sale, spezie, dolcificante. Metterci dei grammi
+ * sarebbe inventarli, e i loro macro sono comunque zero — ma nella lista degli
+ * ingredienti devono comparire lo stesso.
+ */
+export type RecipeQta = 'pizzico' | 'qb'
+
 /** Un ingrediente: punta alla libreria alimenti, così una correzione lì ricalcola le ricette. */
-export interface RecipeItem { foodId: ID; grams: number }
+export interface RecipeItem { foodId: ID; grams: number; qta?: RecipeQta }
 
 /** Sezione della ricetta (Base, Crema, Finitura…). Una ricetta semplice ne ha una sola. */
 export interface RecipeGroup { name: string; items: RecipeItem[] }

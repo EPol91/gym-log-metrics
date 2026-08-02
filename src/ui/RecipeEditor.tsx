@@ -6,7 +6,12 @@ import { addRecipe, updateRecipe, deleteRecipe, getRecipe, type RecipeDraft } fr
 import { deleteWithUndo } from '../db/trash'
 import { FoodChooser } from './FoodChooser'
 import { clampNum } from '../util/validate'
-import type { RecipeGroup, RecipeMode } from '../db/schema'
+import type { RecipeGroup, RecipeMode, RecipeQta } from '../db/schema'
+
+/** Il giro dell'unità: grammi → pizzico → quanto basta → grammi. */
+function dopoQta(q: RecipeQta | undefined): RecipeQta | undefined {
+  return q === undefined ? 'pizzico' : q === 'pizzico' ? 'qb' : undefined
+}
 
 const VUOTA = (): RecipeDraft => ({
   name: '', mode: 'servings', servings: 4,
@@ -210,12 +215,26 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {foodName(it.foodId) ?? <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
                 </span>
-                <input inputMode="decimal" value={String(it.grams)} aria-label="Grammi"
-                  onChange={(e) => setGroups((gs) => gs.map((x, i) => (i === gi
-                    ? { ...x, items: x.items.map((y, j) => (j === ii ? { ...y, grams: clampNum(e.target.value, { min: 0, max: 20000 }) ?? 0 } : y)) }
-                    : x)))}
-                  style={{ width: 68, padding: '6px', textAlign: 'center', fontSize: 14 }} />
-                <span className="muted small" style={{ flex: 'none' }}>g</span>
+                {!it.qta && (
+                  <input inputMode="decimal" value={String(it.grams)} aria-label="Grammi"
+                    onChange={(e) => setGroups((gs) => gs.map((x, i) => (i === gi
+                      ? { ...x, items: x.items.map((y, j) => (j === ii ? { ...y, grams: clampNum(e.target.value, { min: 0, max: 20000 }) ?? 0 } : y)) }
+                      : x)))}
+                    style={{ width: 68, padding: '6px', textAlign: 'center', fontSize: 14 }} />
+                )}
+                {/* L'unità è un tasto: sale e dolcificante non si pesano, ma devono
+                    restare nella lista. Ciclando si passa a pizzico e a «qb». */}
+                <button className="ghost" onClick={() => setGroups((gs) => gs.map((x, i) => (i === gi
+                  ? { ...x, items: x.items.map((y, j) => (j === ii ? { ...y, qta: dopoQta(y.qta) } : y)) }
+                  : x)))}
+                  aria-label="Cambia unità"
+                  style={{
+                    flex: it.qta ? 1 : 'none', padding: '5px 8px', fontSize: 13,
+                    textAlign: it.qta ? 'right' : 'center',
+                    color: it.qta ? 'var(--gold)' : 'var(--muted)',
+                  }}>
+                  {it.qta ?? 'g'}
+                </button>
                 <button className="ghost" style={{ flex: 'none', padding: '5px 9px', color: 'var(--muted)' }}
                   onClick={() => setGroups((gs) => gs.map((x, i) => (i === gi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x)))}
                   aria-label="Rimuovi ingrediente">✕</button>

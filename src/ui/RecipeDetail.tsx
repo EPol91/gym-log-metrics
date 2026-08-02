@@ -196,10 +196,12 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                   }}>
                     {f ? f.name : <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
                   </span>
+                  {/* Pizzico e «qb» non si scalano: raddoppiando la dose il sale
+                      resta a occhio, un «2 pizzichi» sarebbe una finta precisione. */}
                   <span style={{
                     flex: 'none', fontSize: 14, fontVariantNumeric: 'tabular-nums',
-                    color: on ? 'var(--muted)' : q < 1 ? 'var(--fat)' : 'var(--gold)',
-                  }}>{qtyOf(q)} g</span>
+                    color: on ? 'var(--muted)' : it.qta ? 'var(--muted)' : q < 1 ? 'var(--fat)' : 'var(--gold)',
+                  }}>{it.qta ?? `${qtyOf(q)} g`}</span>
                 </div>
               )
             })}
