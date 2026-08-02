@@ -8,7 +8,7 @@
 const CHIAVE = 'gymlog.ai.consumo'
 
 /** Chi ha chiesto: serve a capire quale funzione consuma. */
-export type Voce = 'coach' | 'slide'
+export type Voce = 'coach' | 'slide' | 'didascalia'
 
 /**
  * Prezzi Opus per milione di token, in dollari. Sono scritti qui in chiaro

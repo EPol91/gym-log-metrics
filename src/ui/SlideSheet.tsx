@@ -3,6 +3,7 @@ import { createPortal, flushSync } from 'react-dom'
 import { slideRicetta, type Formato, type Lingua } from '../util/slideRicetta'
 import { condividi, inGalleria, nativo } from '../util/condividi'
 import { traduciRicetta, haChiaveAI } from '../util/traduciRicetta'
+import { didascaliaPost, type Didascalia } from '../util/didascalia'
 import type { Food, Recipe } from '../db/schema'
 import type { RecipeCalc } from '../db/recipes'
 
@@ -28,6 +29,8 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   // devono cambiare quello che hai scritto tu.
   const [tradotto, setTradotto] = useState<{ ricetta: Recipe; nomi: Map<string, string> } | null>(null)
   const [traducendo, setTraducendo] = useState(false)
+  const [dida, setDida] = useState<Didascalia | null>(null)
+  const [scrivendo, setScrivendo] = useState(false)
   const [chi, setChi] = useState(() => localStorage.getItem(CHI) ?? '')
   const [urls, setUrls] = useState<string[]>([])
   const [blobs, setBlobs] = useState<Blob[]>([])
@@ -72,6 +75,24 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
     // sono qualche mega l'una.
     return () => { vivo = false; nati.forEach(URL.revokeObjectURL) }
   }, [recipe, calc, foods, formato, chi, lingua, tradotto])
+
+  /** La didascalia del post: la scrive l'AI sui macro veri di questa ricetta. */
+  async function scriviDidascalia() {
+    setScrivendo(true); setMsg(null)
+    try {
+      const nomi = (recipe.groups ?? []).flatMap((g) => g.items
+        .map((it) => tradotto?.nomi.get(it.foodId) ?? foods.find((f) => f.id === it.foodId)?.name)
+        .filter((x): x is string => !!x))
+      setDida(await didascaliaPost(tradotto?.ricetta ?? recipe, calc, nomi, lingua))
+    } catch (e) {
+      setMsg((e as Error)?.message ?? 'Didascalia non riuscita.')
+    } finally { setScrivendo(false) }
+  }
+
+  async function copia(t: string) {
+    try { await navigator.clipboard.writeText(t); setMsg('Copiata.') }
+    catch { setMsg('Copia non riuscita: tienila premuta e copiala a mano.') }
+  }
 
   /** Traduce il testo scritto da te. Le etichette cambiano da sole con la lingua. */
   async function traduci() {
@@ -159,9 +180,50 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
         <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
           <button className="chip" style={{ flex: 1 }} disabled={traducendo || busy || !haChiaveAI()}
             onClick={tradotto ? () => setTradotto(null) : traduci}>
-            {traducendo ? 'Traduco…' : tradotto ? 'Torna al testo tuo' : `Traduci il testo con AI`}
+            {traducendo ? 'Traduco…' : tradotto ? 'Torna al testo tuo' : 'Traduci il testo con AI'}
+          </button>
+          <button className="chip" style={{ flex: 1 }} disabled={scrivendo || busy || !haChiaveAI()}
+            onClick={scriviDidascalia}>
+            {scrivendo ? 'Scrivo…' : dida ? 'Riscrivi didascalia' : 'Didascalia'}
           </button>
         </div>
+
+        {/* La didascalia: il testo, gli hashtag e chi taggare, ognuno copiabile
+            da solo — sotto il post si incollano in momenti diversi. */}
+        {dida && (
+          <div className="card" style={{ marginTop: 8, padding: 12 }}>
+            <div className="row spread" style={{ alignItems: 'center' }}>
+              <span className="muted small">Didascalia</span>
+              <button className="chip" style={{ padding: '3px 10px' }} onClick={() => copia(dida.testo)}>Copia</button>
+            </div>
+            <p className="small" style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{dida.testo}</p>
+
+            {!!dida.hashtag.length && (
+              <>
+                <div className="row spread" style={{ alignItems: 'center', marginTop: 12 }}>
+                  <span className="muted small">Hashtag ({dida.hashtag.length})</span>
+                  <button className="chip" style={{ padding: '3px 10px' }}
+                    onClick={() => copia(dida.hashtag.map((h) => `#${h}`).join(' '))}>Copia</button>
+                </div>
+                <p className="small" style={{ margin: '6px 0 0', color: 'var(--gold-dim)', lineHeight: 1.6 }}>
+                  {dida.hashtag.map((h) => `#${h}`).join(' ')}
+                </p>
+              </>
+            )}
+
+            {!!dida.tag.length && (
+              <>
+                <div className="muted small" style={{ marginTop: 12 }}>Chi taggare</div>
+                <ul className="small" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.5 }}>
+                  {dida.tag.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+                <p className="muted" style={{ fontSize: 11, margin: '6px 0 0' }}>
+                  Sono categorie, non profili: gli account veri li scegli tu — un @ sbagliato è peggio di nessun tag.
+                </p>
+              </>
+            )}
+          </div>
+        )}
         {!haChiaveAI() && (
           <p className="muted small" style={{ margin: '6px 0 0' }}>
             Le etichette cambiano lingua da sole. Per tradurre anche titolo, ingredienti e

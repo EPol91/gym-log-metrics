@@ -4,7 +4,11 @@ import { leggiConsumo, azzeraConsumo, costo, inDollari, PREZZO, type Voce } from
 import { fmtDataOra } from '../util/format'
 
 /** Come si chiamano, per te, le funzioni che consumano. */
-const VOCI: [Voce, string][] = [['coach', 'Coach AI'], ['slide', 'Traduzione slide']]
+const VOCI: [Voce, string][] = [
+  ['coach', 'Coach AI'],
+  ['slide', 'Traduzione slide'],
+  ['didascalia', 'Didascalia post'],
+]
 
 export function AiSettings() {
   const [key, setKey] = useState(getApiKey() ?? '')
