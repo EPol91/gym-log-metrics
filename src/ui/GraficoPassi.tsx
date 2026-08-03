@@ -27,6 +27,8 @@ function inizioDi(p: Periodo): string {
 export function GraficoPassi() {
   const [periodo, setPeriodo] = useState<Periodo>('M')
   const [scarico, setScarico] = useState(false)
+  /** La barra che stai guardando: un grafico senza numeri e' un disegno. */
+  const [scelto, setScelto] = useState<string | null>(null)
   const [nota, setNota] = useState<string | null>(null)
 
   const habit = useLiveQuery(() => getHabit(STEPS), [])
@@ -90,16 +92,39 @@ export function GraficoPassi() {
         </p>
       ) : (
         <>
-          <svg viewBox={`0 0 ${L} ${H}`} width="100%" height={H} style={{ marginTop: 10, display: 'block', overflow: 'visible' }}>
+          {/* Il giorno toccato, sopra il grafico: le barre dicono l'andamento,
+              il numero dice quel giorno li'. */}
+          <div className="row spread" style={{ marginTop: 10, minHeight: 18, alignItems: 'baseline' }}>
+            {(() => {
+              const r = righe.find((x) => x.id === scelto)
+              if (!r) return <span className="muted small">Tocca una barra per il dettaglio.</span>
+              return (
+                <>
+                  <span className="small">{fmtData(r.date)}</span>
+                  <span className="small" style={{ color: r.value >= obiettivo ? 'var(--good)' : 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+                    {r.value.toLocaleString('it-IT')} passi
+                    {r.value >= obiettivo ? ' · obiettivo centrato' : ` · ${(obiettivo - r.value).toLocaleString('it-IT')} sotto`}
+                  </span>
+                </>
+              )
+            })()}
+          </div>
+
+          <svg viewBox={`0 0 ${L} ${H}`} width="100%" height={H} style={{ marginTop: 4, display: 'block', overflow: 'visible' }}>
             {/* La linea dell'obiettivo: senza, le barre dicono solo "tanto o poco". */}
             <line x1="0" y1={H - (obiettivo / massimo) * H} x2={L} y2={H - (obiettivo / massimo) * H}
               stroke="var(--gold)" strokeWidth="1" strokeDasharray="3 3" opacity=".55" />
             {righe.map((r, i) => {
               const h = Math.max(1, (r.value / massimo) * H)
               return (
-                <rect key={r.id} x={(i * L) / righe.length} y={H - h} width={larghezza} height={h}
-                  rx={larghezza > 4 ? 1.5 : 0}
-                  fill={r.value >= obiettivo ? 'var(--good)' : 'var(--gold-dim)'} />
+                <g key={r.id} onClick={() => setScelto((p) => (p === r.id ? null : r.id))} style={{ cursor: 'pointer' }}>
+                  {/* Con sei mesi di barre il dito e' piu' largo della barra:
+                      l'area sensibile e' tutta la colonna, invisibile. */}
+                  <rect x={(i * L) / righe.length} y={0} width={L / righe.length} height={H} fill="transparent" />
+                  <rect x={(i * L) / righe.length} y={H - h} width={larghezza} height={h}
+                    rx={larghezza > 4 ? 1.5 : 0}
+                    fill={r.id === scelto ? 'var(--text)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold-dim)'} />
+                </g>
               )
             })}
           </svg>
