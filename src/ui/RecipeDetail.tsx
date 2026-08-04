@@ -196,7 +196,20 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
 
         {(recipe.groups ?? []).map((g, gi) => (
           <div key={gi} style={{ marginTop: gi === 0 ? 0 : 13 }}>
-            <h4 style={{ fontSize: 14, color: 'var(--gold)', margin: '0 0 3px' }}>{g.name}</h4>
+            {/* Il totale accanto al nome della sezione: come riga a se' era una
+                riga in piu' per ogni sezione, e diceva la stessa cosa. */}
+            <div className="row spread" style={{ alignItems: 'baseline', gap: 8, margin: '0 0 3px' }}>
+              <h4 style={{ fontSize: 14, color: 'var(--gold)', margin: 0 }}>{g.name}</h4>
+              {(() => {
+                const t = totaleSezione(g.items)
+                if (!t) return null
+                return (
+                  <span className="muted" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                    {t.kcal} kcal · C {fmt(t.carbs)} P {fmt(t.protein)} G {fmt(t.fat)}
+                  </span>
+                )
+              })()}
+            </div>
             <div style={{ height: 1, background: 'linear-gradient(90deg, var(--gold-dim), transparent)', marginBottom: 3 }} />
             {g.items.map((it, ii) => {
               const f = foods.find((x) => x.id === it.foodId)
@@ -204,7 +217,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
               const key = `${gi}:${ii}`
               const on = ticked.has(key)
               return (
-                <div key={key} className="row" style={{ gap: 9, padding: '8px 0', borderBottom: ii === g.items.length - 1 ? 'none' : '1px solid var(--line)', cursor: 'pointer' }}
+                <div key={key} className="row" style={{ gap: 9, padding: '8px 0', alignItems: 'flex-start', borderBottom: ii === g.items.length - 1 ? 'none' : '1px solid var(--line)', cursor: 'pointer' }}
                   onClick={() => setTicked((s) => toggle(s, key))}>
                   <span style={{
                     width: 18, height: 18, flex: 'none', borderRadius: 5, border: '1px solid var(--line)',
@@ -217,7 +230,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                       sulle porzioni: e' li' che si capisce chi pesa davvero. */}
                   <span onClick={(e) => { e.stopPropagation(); if (f) setGuarda(f) }}
                     style={{
-                      flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.35,
                       color: on ? 'var(--muted)' : undefined, textDecoration: on ? 'line-through' : undefined,
                     }}>
                     {f ? f.name : <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
@@ -239,18 +252,6 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                 </div>
               )
             })}
-            {(() => {
-              const t = totaleSezione(g.items)
-              if (!t) return null
-              return (
-                <div className="row spread" style={{ paddingTop: 6 }}>
-                  <span className="muted small">Totale sezione</span>
-                  <span className="small" style={{ color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
-                    {t.kcal} kcal · C {fmt(t.carbs)} P {fmt(t.protein)} G {fmt(t.fat)}
-                  </span>
-                </div>
-              )
-            })()}
           </div>
         ))}
 
