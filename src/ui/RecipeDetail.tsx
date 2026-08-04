@@ -5,12 +5,13 @@ import {
   computeRecipe, scaleFactor, scaleMacros, getRecipe, updateRecipe,
   toggleRecipeFavorite, duplicateRecipe,
 } from '../db/recipes'
-import { MacroDonut, MacroRow } from './FoodSheet'
+import { MacroDonut, MacroRow, FoodSheet } from './FoodSheet'
 import { AddRecipeSheet } from './AddRecipeSheet'
 import { SlideSheet } from './SlideSheet'
 import { useWakeLock, isWakeLockSupported } from '../util/wakeLock'
 import { clampNum } from '../util/validate'
-import type { Macros, Recipe } from '../db/schema'
+import { macrosFor } from '../db/diet'
+import type { Food, Macros, Recipe } from '../db/schema'
 
 /** Numeri all'italiana: virgola decimale, e sotto i 10 g un decimale (la bilancia lo legge). */
 const fmt = (n: number, d = 1) => {
@@ -36,6 +37,8 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
   const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set())
   const [cookMode, setCookMode] = useState(false)
   const [adding, setAdding] = useState(false)
+  /** L'alimento che stai guardando: i suoi valori, in sola lettura. */
+  const [guarda, setGuarda] = useState<Food | null>(null)
   const [slide, setSlide] = useState(false)
   const [yieldDraft, setYieldDraft] = useState<string | null>(null)
   const wakeActive = useWakeLock(cookMode)
@@ -67,6 +70,21 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
     return n
   }
   const totIng = (recipe.groups ?? []).reduce((a, g) => a + g.items.length, 0)
+
+  /** I macro di una sezione, sulle quantita' di adesso. Pizzico e «qb» non pesano. */
+  const totaleSezione = (items: { foodId: string; grams: number; qta?: string }[]) => {
+    let t = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+    let visti = 0
+    for (const it of items) {
+      const f = foods.find((x) => x.id === it.foodId)
+      const q = it.grams * factor
+      if (!f || it.qta || !(q > 0)) continue
+      const m = macrosFor(f.per100, q)
+      t = { kcal: t.kcal + m.kcal, protein: t.protein + m.protein, carbs: t.carbs + m.carbs, fat: t.fat + m.fat }
+      visti++
+    }
+    return visti ? { ...t, kcal: Math.round(t.kcal) } : null
+  }
 
   async function salvaResa(v: string) {
     const n = clampNum(v, { min: 1, max: 20000, int: true })
@@ -193,11 +211,24 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                     background: on ? 'var(--gold)' : 'transparent', color: '#1a1400',
                     display: 'grid', placeItems: 'center', fontSize: 11,
                   }}>{on ? '✓' : ''}</span>
-                  <span style={{
-                    flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    color: on ? 'var(--muted)' : undefined, textDecoration: on ? 'line-through' : undefined,
-                  }}>
+                  {/* Il nome si tocca per aprire i valori dell'alimento; la
+                      spunta della spesa resta sulla casella a sinistra. Accanto
+                      al nome i suoi macro su QUESTA quantita', gia' riscalata
+                      sulle porzioni: e' li' che si capisce chi pesa davvero. */}
+                  <span onClick={(e) => { e.stopPropagation(); if (f) setGuarda(f) }}
+                    style={{
+                      flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      color: on ? 'var(--muted)' : undefined, textDecoration: on ? 'line-through' : undefined,
+                    }}>
                     {f ? f.name : <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
+                    {f && !it.qta && q > 0 && (() => {
+                      const m = macrosFor(f.per100, q)
+                      return (
+                        <span className="muted" style={{ fontSize: 11 }}>
+                          {' '}({m.kcal} kcal · C {fmt(m.carbs)} P {fmt(m.protein)} G {fmt(m.fat)})
+                        </span>
+                      )
+                    })()}
                   </span>
                   {/* Pizzico e «qb» non si scalano: raddoppiando la dose il sale
                       resta a occhio, un «2 pizzichi» sarebbe una finta precisione. */}
@@ -208,6 +239,18 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                 </div>
               )
             })}
+            {(() => {
+              const t = totaleSezione(g.items)
+              if (!t) return null
+              return (
+                <div className="row spread" style={{ paddingTop: 6 }}>
+                  <span className="muted small">Totale sezione</span>
+                  <span className="small" style={{ color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+                    {t.kcal} kcal · C {fmt(t.carbs)} P {fmt(t.protein)} G {fmt(t.fat)}
+                  </span>
+                </div>
+              )
+            })()}
           </div>
         ))}
 
@@ -269,6 +312,21 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
       }}>⧉ Duplica ricetta</button>
 
       {adding && <AddRecipeSheet recipe={recipe as Recipe} onClose={() => setAdding(false)} />}
+
+      {/* La scheda dell'alimento, la stessa del diario: qui si guarda e basta,
+          sei dentro una ricetta e non stai aggiungendo niente a un pasto. */}
+      {guarda && (
+        <div onClick={() => setGuarda(null)}
+          style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(520px, 100%)', maxHeight: '92%', overflowY: 'auto', margin: '0 8px',
+              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: '14px 16px',
+            }}>
+            <FoodSheet food={guarda} mode="edit" onBack={() => setGuarda(null)} onConfirm={() => setGuarda(null)} />
+          </div>
+        </div>
+      )}
       {slide && <SlideSheet recipe={recipe as Recipe} calc={calc} foods={foods} onClose={() => setSlide(false)} />}
     </div>
   )

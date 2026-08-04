@@ -260,22 +260,13 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
               <div key={ii} className="row" data-drag-id={gi + ':' + ii}
                 onPointerDown={prendi(String(gi), gi + ':' + ii)}
                 style={{ gap: 6, padding: '6px 0', borderBottom: '1px solid var(--line)', ...liftStyle(String(gi), gi + ':' + ii) }}>
-                {/* Nome e macro sulla stessa riga: sotto ruberebbero un'altra
-                    riga di schermo per ogni ingrediente. Il nome si tocca e
-                    apre la scheda dei valori per 100 g. */}
+                {/* Qui la riga ha dentro grammi, unita' e cestino: i macro
+                    accanto al nome si troncavano a meta'. Stanno nel dettaglio,
+                    dove c'e' spazio; qui resta il totale di sezione. Il nome si
+                    tocca e apre la scheda dei valori per 100 g. */}
                 <span onClick={() => { const f = foods.find((x) => x.id === it.foodId); if (f) setGuarda(f) }}
                   style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                   {foodName(it.foodId) ?? <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
-                  {(() => {
-                    const f = foods.find((x) => x.id === it.foodId)
-                    if (!f || it.qta || !(it.grams > 0)) return null
-                    const m = macrosFor(f.per100, it.grams)
-                    return (
-                      <span className="muted" style={{ fontSize: 11 }}>
-                        {' '}({m.kcal} kcal · C {r1(m.carbs)} P {r1(m.protein)} G {r1(m.fat)})
-                      </span>
-                    )
-                  })()}
                 </span>
                 {!it.qta && (
                   <input inputMode="decimal" value={String(it.grams)} aria-label="Grammi"
