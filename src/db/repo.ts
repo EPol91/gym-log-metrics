@@ -618,6 +618,15 @@ export async function setExerciseInclinazione(exerciseId: string, gradi: number 
   await db.exercises.update(exerciseId, { inclinazione: gradi, updatedAt: nowISO() })
 }
 
+/**
+ * La foto della macchina, ricordata come le altre regolazioni.
+ * «Piede a metà pedana, punta leggermente in fuori» in una foto si vede subito;
+ * scritto, la settimana dopo vuol dire un'altra cosa.
+ */
+export async function setExerciseFoto(exerciseId: string, foto: string | undefined): Promise<void> {
+  await db.exercises.update(exerciseId, { foto, updatedAt: nowISO() })
+}
+
 /** Cerca un esercizio esistente per nome o alias (anti-duplicato). */
 export async function findExercise(name: string): Promise<Exercise | undefined> {
   const n = normalizeName(name)

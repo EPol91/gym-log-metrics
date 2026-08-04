@@ -23,9 +23,17 @@ export function dischiDisponibili(): number[] {
   } catch { return DEFAULT }
 }
 
+/**
+ * Il peso della barra, zero per scelta.
+ *
+ * Cambi palestra e il bilanciere pesa diverso: l'unico numero che sai per certo
+ * sono i dischi che infili. Contarci dentro una barra presunta vuol dire
+ * scrivere carichi che non tornano fra una palestra e l'altra. Chi vuole
+ * sommarla la imposta e resta impostata.
+ */
 export function bilanciere(): number {
   const v = Number(localStorage.getItem(BILANCIERE_KEY))
-  return v > 0 ? v : 20
+  return Number.isFinite(v) && v > 0 ? v : 0
 }
 
 /**
@@ -77,11 +85,13 @@ export function Dischi({ peso, onClose }: { peso: number; onClose: () => void })
           <strong>{n(peso)} kg</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
-        <p className="muted small" style={{ margin: '2px 0 12px' }}>Per lato, dal più pesante.</p>
+        <p className="muted small" style={{ margin: '2px 0 12px' }}>
+          Per lato, dal più pesante.{barra > 0 ? ` Barra da ${n(barra)} kg compresa.` : ' Solo dischi, barra non contata.'}
+        </p>
 
         {gruppi.length === 0 ? (
           <p className="small" style={{ margin: 0, color: 'var(--muted)' }}>
-            Meno del bilanciere da {n(barra)} kg.
+            {barra > 0 ? `Meno del bilanciere da ${n(barra)} kg.` : 'Nessun disco: il peso è zero.'}
           </p>
         ) : (
           <div className="row wrap" style={{ gap: 6 }}>
@@ -102,9 +112,9 @@ export function Dischi({ peso, onClose }: { peso: number; onClose: () => void })
         <div className="row spread" style={{ marginTop: 14, alignItems: 'center' }}>
           <span className="muted small">Bilanciere</span>
           <span className="row" style={{ gap: 4 }}>
-            {[10, 15, 20, 25].map((b) => (
+            {[0, 10, 15, 20, 25].map((b) => (
               <button key={b} className={barra === b ? 'chip on' : 'chip'} style={{ padding: '5px 10px' }}
-                onClick={() => { setBarra(b); localStorage.setItem(BILANCIERE_KEY, String(b)) }}>{b}</button>
+                onClick={() => { setBarra(b); localStorage.setItem(BILANCIERE_KEY, String(b)) }}>{b === 0 ? 'no' : b}</button>
             ))}
           </span>
         </div>

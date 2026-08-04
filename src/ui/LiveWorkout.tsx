@@ -3,6 +3,7 @@ import { hrStartRecording, hrFlush } from '../util/heartRate'
 import { TastoFascia, ChiediFascia } from './fascia'
 import { Inclinometro } from './Inclinometro'
 import { Dischi } from './Dischi'
+import { fotoRidotta } from '../util/immagine'
 import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -10,7 +11,7 @@ import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, allExercises, groupEntries, ungroupEntries,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
-  setExerciseInclinazione,
+  setExerciseInclinazione, setExerciseFoto,
 } from '../db/repo'
 import { e1rm, bestE1rm } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
@@ -385,8 +386,8 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
 /** I tasti secondari: stretti quanto basta a starci tutti in fila. */
 const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
 
-function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
-  entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; sessionId: string; restSec: number
+function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
+  entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; foto?: string; sessionId: string; restSec: number
   pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
   onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
   onGroup?: () => void
@@ -403,6 +404,8 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
   const [showCoach, setShowCoach] = useState(false)
   const [inclina, setInclina] = useState(false)
   const [dischi, setDischi] = useState(false)
+  const [fotoGrande, setFotoGrande] = useState(false)
+  const fotoRef = useRef<HTMLInputElement>(null)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
   const prefilled = useRef(false)
@@ -492,7 +495,15 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
         <button className="chip" style={MINI} aria-label="Rimuovi esercizio" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
       </div>
       {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
-      {!showSettings && mieNote && <div className="muted small" style={{ textAlign: 'center' }}>⚙ {mieNote}</div>}
+      {!showSettings && (mieNote || foto) && (
+        <div className="row" style={{ gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+          {foto && (
+            <img src={foto} alt="" onClick={() => setFotoGrande(true)}
+              style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 7, display: 'block', flex: 'none', cursor: 'pointer' }} />
+          )}
+          {mieNote && <span className="muted small">⚙ {mieNote}</span>}
+        </div>
+      )}
       {!showCoach && righeCoach.length > 0 && (
         <div className="muted small" style={{ textAlign: 'center' }}>{righeCoach.join(' · ')}</div>
       )}
@@ -501,6 +512,37 @@ function EntryCard({ entry, name, settings, inclinazione, sessionId, restSec, po
           // Si riscrivono solo le tue righe: quelle del coach si rimettono
           // com'erano, altrimenti scrivere «sellino 4» cancellerebbe la scheda.
           onBlur={(e) => setExerciseSettings(entry.exerciseId, [e.target.value.trim(), ...righeCoach].filter(Boolean).join('\n'))} />
+      )}
+
+      {/* La foto sta con le TUE regolazioni: «piede a metà pedana, punta in
+          fuori» in una foto si vede, scritto la settimana dopo vuol dire
+          un'altra cosa. */}
+      {showSettings && (
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {foto && (
+            <img src={foto} alt="Come si sta sulla macchina" onClick={() => setFotoGrande(true)}
+              style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 8, display: 'block', cursor: 'pointer' }} />
+          )}
+          <button className="chip" onClick={() => fotoRef.current?.click()}>{foto ? 'Cambia foto' : '＋ Foto'}</button>
+          {foto && (
+            <button className="chip" style={{ color: '#e57373' }}
+              onClick={() => setExerciseFoto(entry.exerciseId, undefined)}>Togli</button>
+          )}
+          <input ref={fotoRef} type="file" accept="image/*" hidden onChange={async (e) => {
+            const f = e.target.files?.[0]
+            e.target.value = ''
+            if (!f) return
+            try { await setExerciseFoto(entry.exerciseId, await fotoRidotta(f, 1100)) } catch { alert('Foto non leggibile.') }
+          }} />
+        </div>
+      )}
+
+      {fotoGrande && foto && createPortal(
+        <div onClick={() => setFotoGrande(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1100, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img src={foto} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        </div>,
+        document.body,
       )}
       {showCoach && (
         <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--rs)' }}>
@@ -919,6 +961,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
         <EntryCard key={block.entry.id} entry={block.entry} name={nameOf(block.entry.exerciseId)}
           settings={exercises.find((x) => x.id === block.entry.exerciseId)?.settings ?? ''}
           inclinazione={exercises.find((x) => x.id === block.entry.exerciseId)?.inclinazione}
+          foto={exercises.find((x) => x.id === block.entry.exerciseId)?.foto}
           sessionId={sessionId} restSec={restOf(block.entry.exerciseId)}
           pos={current + 1} total={blocks.length}
           restNode={restNode}

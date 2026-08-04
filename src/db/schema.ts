@@ -150,6 +150,8 @@ export interface Exercise extends BaseRecord {
   settings?: string
   /** inclinazione dello schienale in gradi, misurata col telefono: 0 = piano, 90 = verticale */
   inclinazione?: number
+  /** una tua foto della macchina (dataURL ridotta): il piede sulla pedana si spiega male a parole */
+  foto?: string
 }
 
 export type WorkoutType =
