@@ -204,8 +204,13 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                 const t = totaleSezione(g.items)
                 if (!t) return null
                 return (
-                  <span className="muted" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                    {t.kcal} kcal · C {fmt(t.carbs)} P {fmt(t.protein)} G {fmt(t.fat)}
+                  // Ogni macro col suo colore, gli stessi di tutta l'app: il
+                  // totale della sezione si legge a colpo d'occhio invece di
+                  // essere una riga grigia in mezzo ad altre righe grigie.
+                  <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', textAlign: 'right', color: 'var(--gold-dim)' }}>
+                    {t.kcal} kcal · <span style={{ color: 'var(--carb)' }}>C {fmt(t.carbs)}</span>
+                    {' '}<span style={{ color: 'var(--prot)' }}>P {fmt(t.protein)}</span>
+                    {' '}<span style={{ color: 'var(--fat)' }}>G {fmt(t.fat)}</span>
                   </span>
                 )
               })()}
