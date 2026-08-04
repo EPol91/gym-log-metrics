@@ -1,18 +1,22 @@
 import { useHoldDrag } from './useHoldDrag'
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listFoods } from '../db/diet'
+import { listFoods, macrosFor } from '../db/diet'
 import { addRecipe, updateRecipe, deleteRecipe, getRecipe, type RecipeDraft } from '../db/recipes'
 import { deleteWithUndo } from '../db/trash'
 import { FoodChooser } from './FoodChooser'
+import { FoodSheet } from './FoodSheet'
 import { clampNum } from '../util/validate'
 import { fotoRidotta } from '../util/immagine'
-import type { RecipeGroup, RecipeMode, RecipeQta } from '../db/schema'
+import type { Food, RecipeGroup, RecipeMode, RecipeQta } from '../db/schema'
 
 /** Il giro dell'unità: grammi → pizzico → quanto basta → grammi. */
 function dopoQta(q: RecipeQta | undefined): RecipeQta | undefined {
   return q === undefined ? 'pizzico' : q === 'pizzico' ? 'qb' : undefined
 }
+
+/** Un decimale, come nel resto dell'app. */
+const r1 = (n: number) => Math.round(n * 10) / 10
 
 const VUOTA = (): RecipeDraft => ({
   name: '', mode: 'servings', servings: 4,
@@ -44,6 +48,28 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
   // senza dipendere da quale versione della bozza vede il gestore.
   const ultimoValido = useRef(6)
   const fotoRef = useRef<HTMLInputElement>(null)
+  /** L'alimento che stai guardando: i suoi valori per 100 g, in sola lettura. */
+  const [guarda, setGuarda] = useState<Food | null>(null)
+
+  /** I grammi con cui compare nella ricetta: la scheda si apre su quelli. */
+  const grammiDi = (foodId: string) => {
+    for (const g of d.groups) for (const it of g.items) if (it.foodId === foodId && it.grams > 0) return it.grams
+    return undefined
+  }
+
+  /** I macro di una sezione: pizzico e «qb» non pesano, e infatti non contano. */
+  const totaleSezione = (items: { foodId: string; grams: number; qta?: RecipeQta }[]) => {
+    let t = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+    let visti = 0
+    for (const it of items) {
+      const f = foods.find((x) => x.id === it.foodId)
+      if (!f || it.qta || !(it.grams > 0)) continue
+      const m = macrosFor(f.per100, it.grams)
+      t = { kcal: t.kcal + m.kcal, protein: t.protein + m.protein, carbs: t.carbs + m.carbs, fat: t.fat + m.fat }
+      visti++
+    }
+    return visti ? { ...t, kcal: Math.round(t.kcal) } : null
+  }
 
   /**
    * Riordino a pressione prolungata, lo stesso della dieta.
@@ -234,8 +260,22 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
               <div key={ii} className="row" data-drag-id={gi + ':' + ii}
                 onPointerDown={prendi(String(gi), gi + ':' + ii)}
                 style={{ gap: 6, padding: '6px 0', borderBottom: '1px solid var(--line)', ...liftStyle(String(gi), gi + ':' + ii) }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {/* Nome e macro sulla stessa riga: sotto ruberebbero un'altra
+                    riga di schermo per ogni ingrediente. Il nome si tocca e
+                    apre la scheda dei valori per 100 g. */}
+                <span onClick={() => { const f = foods.find((x) => x.id === it.foodId); if (f) setGuarda(f) }}
+                  style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                   {foodName(it.foodId) ?? <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
+                  {(() => {
+                    const f = foods.find((x) => x.id === it.foodId)
+                    if (!f || it.qta || !(it.grams > 0)) return null
+                    const m = macrosFor(f.per100, it.grams)
+                    return (
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        {' '}({m.kcal} kcal · C {r1(m.carbs)} P {r1(m.protein)} G {r1(m.fat)})
+                      </span>
+                    )
+                  })()}
                 </span>
                 {!it.qta && (
                   <input inputMode="decimal" value={String(it.grams)} aria-label="Grammi"
@@ -262,6 +302,21 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
                   aria-label="Rimuovi ingrediente">✕</button>
               </div>
             ))}
+
+            {/* Il totale della sezione: la crema pesa quanto la base? Senza
+                questa riga si scopre solo sommando a mano. */}
+            {(() => {
+              const t = totaleSezione(g.items)
+              if (!t) return null
+              return (
+                <div className="row spread" style={{ padding: '6px 0 0' }}>
+                  <span className="muted small">Totale sezione</span>
+                  <span className="small" style={{ color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+                    {t.kcal} kcal · C {r1(t.carbs)} P {r1(t.protein)} G {r1(t.fat)}
+                  </span>
+                </div>
+              )
+            })()}
 
             <button className="chip" style={{ marginTop: 9 }} onClick={() => setPicking(gi)}>＋ Ingrediente</button>
           </div>
@@ -298,6 +353,24 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
             setGroups((gs) => gs.map((x, i) => (i === picking ? { ...x, items: [...x.items, { foodId: f.id, grams: f.servingG ?? 100 }] } : x)))
             setPicking(null)
           }} />
+      )}
+
+      {/* La scheda dell'alimento: la stessa del diario, aperta per guardare i
+          valori per 100 g. Da qui non si aggiunge niente a nessun pasto — sei
+          dentro una ricetta — quindi il tasto chiude e basta. */}
+      {guarda && (
+        <div onClick={() => setGuarda(null)}
+          style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(520px, 100%)', maxHeight: '92%', overflowY: 'auto', margin: '0 8px',
+              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: '14px 16px',
+            }}>
+            <FoodSheet food={guarda} mode="edit" onBack={() => setGuarda(null)}
+              grams={grammiDi(guarda.id)}
+              onConfirm={() => setGuarda(null)} />
+          </div>
+        </div>
       )}
     </div>
   )
