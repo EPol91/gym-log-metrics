@@ -217,7 +217,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
               const key = `${gi}:${ii}`
               const on = ticked.has(key)
               return (
-                <div key={key} className="row" style={{ gap: 9, padding: '8px 0', alignItems: 'flex-start', borderBottom: ii === g.items.length - 1 ? 'none' : '1px solid var(--line)', cursor: 'pointer' }}
+                <div key={key} className="row" style={{ gap: 7, padding: '8px 0', alignItems: 'center', borderBottom: ii === g.items.length - 1 ? 'none' : '1px solid var(--line)', cursor: 'pointer' }}
                   onClick={() => setTicked((s) => toggle(s, key))}>
                   <span style={{
                     width: 18, height: 18, flex: 'none', borderRadius: 5, border: '1px solid var(--line)',
@@ -228,21 +228,24 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
                       spunta della spesa resta sulla casella a sinistra. Accanto
                       al nome i suoi macro su QUESTA quantita', gia' riscalata
                       sulle porzioni: e' li' che si capisce chi pesa davvero. */}
+                  {/* Una riga sola: il nome si stringe, i macro no. Andare a
+                      capo faceva una lista a gradini; troncare i macro li
+                      rendeva inutili. A cedere e' il nome, che tanto lo sai. */}
                   <span onClick={(e) => { e.stopPropagation(); if (f) setGuarda(f) }}
                     style={{
-                      flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.35,
+                      flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       color: on ? 'var(--muted)' : undefined, textDecoration: on ? 'line-through' : undefined,
                     }}>
                     {f ? f.name : <span style={{ color: 'var(--fat)' }}>alimento eliminato</span>}
-                    {f && !it.qta && q > 0 && (() => {
-                      const m = macrosFor(f.per100, q)
-                      return (
-                        <span className="muted" style={{ fontSize: 11 }}>
-                          {' '}({m.kcal} kcal · C {fmt(m.carbs)} P {fmt(m.protein)} G {fmt(m.fat)})
-                        </span>
-                      )
-                    })()}
                   </span>
+                  {f && !it.qta && q > 0 && (() => {
+                    const m = macrosFor(f.per100, q)
+                    return (
+                      <span className="muted" style={{ fontSize: 10, flex: 'none', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                        {m.kcal} · C{fmt(m.carbs)} P{fmt(m.protein)} G{fmt(m.fat)}
+                      </span>
+                    )
+                  })()}
                   {/* Pizzico e «qb» non si scalano: raddoppiando la dose il sale
                       resta a occhio, un «2 pizzichi» sarebbe una finta precisione. */}
                   <span style={{
