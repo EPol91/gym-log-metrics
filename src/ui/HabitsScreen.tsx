@@ -209,7 +209,12 @@ function PassiHealthConnect({ senzaDati }: { senzaDati: boolean }) {
 function leggibile(s: SorgentePassi): string {
   const id = s.id.toLowerCase()
   if (id.includes('whoop')) return 'WHOOP'
-  if (id.includes('samsung') || id.includes('shealth') || /^sm-/i.test(s.nome)) return 'Telefono'
+  // I due «Telefono» non si distinguevano: uno è Samsung Health, l'altro è
+  // l'app Health Connect stessa, che tiene i passi contati dal telefono. Sono
+  // due conteggi diversi, e per sceglierne uno bisogna sapere quale.
+  if (id.includes('healthconnect')) return 'Health Connect'
+  if (id.includes('samsung') || id.includes('shealth')) return 'Samsung Health'
+  if (/^sm-/i.test(s.nome)) return 'Telefono'
   if (id.includes('fitbit')) return 'Fitbit'
   if (id.includes('garmin')) return 'Garmin'
   return s.nome

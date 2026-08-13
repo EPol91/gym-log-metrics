@@ -209,15 +209,39 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
       // Si guarda un giorno piu' in la' e uno piu' indietro: un record puo'
       // cominciare fuori dalla finestra e appartenere a un giorno dentro.
       const largo = (d: Date, giorni: number) => new Date(d.getTime() + giorni * 86_400_000)
-      const r = await conTempo(h.queryRecords({
-        startDate: largo(inizio, -1).toISOString(),
-        endDate: largo(fine, 1).toISOString(),
-        dataType: 'steps',
-      }), 25_000, 'La lettura dei passi non ha risposto.')
+
+      /**
+       * A blocchi di pochi giorni, non tutto in una domanda sola.
+       *
+       * Health Connect a una richiesta risponde con un numero massimo di record
+       * e taglia il resto — e taglia i piu' RECENTI. Il telefono ne scrive
+       * qualche centinaio al giorno: appena lo storico chiesto ha superato quel
+       * tetto, i giorni nuovi hanno smesso di arrivare e le giornate risultavano
+       * a zero per tutte le sorgenti, WHOOP compreso. Nessuna richiesta larga,
+       * nessun taglio.
+       */
+      const PASSO = 3
+      const record: { startDate: string; endDate?: string; value: number; sourceBundleId: string }[] = []
+      for (let t = largo(inizio, -1).getTime(); t <= largo(fine, 1).getTime(); t += PASSO * 86_400_000) {
+        const fineBlocco = Math.min(t + PASSO * 86_400_000, largo(fine, 1).getTime())
+        const parte = await conTempo(h.queryRecords({
+          startDate: new Date(t).toISOString(),
+          endDate: new Date(fineBlocco).toISOString(),
+          dataType: 'steps',
+        }), 25_000, 'La lettura dei passi non ha risposto.')
+        record.push(...(parte.records ?? []))
+      }
 
       // Per giorno E per sorgente: oggi serve sapere chi ha contato di piu'.
+      // I blocchi si sovrappongono agli estremi, quindi lo stesso record puo'
+      // arrivare due volte: si tiene per identita' (inizio + sorgente) o il
+      // giorno verrebbe contato doppio.
       const per = new Map<string, Map<string, number>>()
-      for (const x of r.records ?? []) {
+      const visti = new Set<string>()
+      for (const x of record) {
+        const id = `${x.startDate}|${x.sourceBundleId}|${x.value}`
+        if (visti.has(id)) continue
+        visti.add(id)
         const g = giornoDelRecord(x)
         if (g < daISO || g > aISO) continue
         const perGiorno = per.get(g) ?? new Map<string, number>()
