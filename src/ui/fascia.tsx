@@ -16,6 +16,7 @@ export function useHeartRate() {
     supported: isHeartRateSupported(),
     connected: s.connected, connecting: s.connecting, retrying: s.retrying,
     bpm: s.bpm, avgBpm: s.avgBpm, maxBpm: s.maxBpm, minBpm: s.minBpm,
+    ultimoBattitoMs: s.ultimoBattitoMs, battitiRicevuti: s.battitiRicevuti, ultimaCadutaMs: s.ultimaCadutaMs,
     deviceName: s.deviceName, error: s.error,
     connect: hrConnect, disconnect: hrDisconnect, resetAvg: hrResetAvg,
   }

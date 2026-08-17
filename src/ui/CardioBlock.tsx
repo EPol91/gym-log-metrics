@@ -11,10 +11,32 @@ import { estimateCalories } from '../util/calories'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
 import { useHeartRate } from './fascia'
+import { useWallTick } from '../util/useWallClock'
 import { CardioViz } from './CardioViz'
 import { CardioRunner } from './CardioRunner'
 import type { CardioMethod, CardioType, CardioSession, CardioPreset } from '../db/schema'
 
+
+/**
+ * Quanto e' fresco il battito che stai guardando.
+ *
+ * Un numero fermo sembra un numero vivo: senza questa riga non c'era modo di
+ * accorgersi che la fascia aveva smesso di parlare, e la seduta finiva con la
+ * media vuota. Dice anche quanti battiti sono arrivati in tutto e quando e'
+ * caduta l'ultima volta: sono i tre dati che distinguono «Android ha sospeso le
+ * notifiche» da «la fascia ha smesso di trasmettere».
+ */
+function Freschezza({ ms, n, caduta }: { ms: number | null; n: number; caduta: number | null }) {
+  useWallTick(true)
+  if (ms == null) return null
+  const eta = Math.round((Date.now() - ms) / 1000)
+  const ora = (t: number) => new Date(t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+  return (
+    <span className="muted" style={{ fontSize: 10, color: eta > 10 ? 'var(--fat)' : undefined }}>
+      {eta <= 3 ? 'in diretta' : `fermo da ${eta}s`} · {n} battiti{caduta ? ` · caduta ${ora(caduta)}` : ''}
+    </span>
+  )
+}
 
 const TYPE_LABEL: Record<CardioType, string> = {
   corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',
@@ -203,6 +225,9 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
             <span style={{ fontSize: 18, color: '#e5484d', animation: hr.bpm ? 'heartBeat 1.2s ease-in-out infinite' : 'none' }}>❤️</span>
             <strong style={{ fontSize: 22, color: 'var(--gold)' }}>{hr.bpm ?? '—'}</strong>
             <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>bpm{liveZone ? ` · Z${liveZone.zone}` : ''}{hr.avgBpm ? ` · media ${hr.avgBpm}` : ''} · {hr.deviceName}</span>
+            {/* Quanto e' vecchio l'ultimo battito: un numero fermo da mezzo
+                minuto non e' una misura, e prima non c'era modo di saperlo. */}
+            <Freschezza ms={hr.ultimoBattitoMs} n={hr.battitiRicevuti} caduta={hr.ultimaCadutaMs} />
           </span>
           <button className="ghost small" onClick={hr.disconnect}>Disconnetti</button>
         </>

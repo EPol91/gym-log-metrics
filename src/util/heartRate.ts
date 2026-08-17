@@ -107,8 +107,17 @@ export interface HeartRateState {
   /** il segnale e' caduto e si sta riprovando da soli */
   retrying: boolean
   bpm: number | null; avgBpm: number | null; maxBpm: number | null; minBpm: number | null; deviceName: string; error: string | null
+  /** quando e' arrivato l'ultimo battito (ms) — per sapere se il flusso e' vivo */
+  ultimoBattitoMs: number | null
+  /** quanti battiti sono arrivati da quando ti sei collegato */
+  battitiRicevuti: number
+  /** quando il plugin ha annunciato l'ultima disconnessione (ms) */
+  ultimaCadutaMs: number | null
 }
-let hrState: HeartRateState = { connected: false, connecting: false, retrying: false, bpm: null, avgBpm: null, maxBpm: null, minBpm: null, deviceName: '', error: null }
+let hrState: HeartRateState = {
+  connected: false, connecting: false, retrying: false, bpm: null, avgBpm: null, maxBpm: null, minBpm: null,
+  deviceName: '', error: null, ultimoBattitoMs: null, battitiRicevuti: 0, ultimaCadutaMs: null,
+}
 let hrHandle: HeartRateHandle | null = null
 let hrAcc = { sum: 0, count: 0 }
 const hrSubs = new Set<() => void>()
@@ -129,13 +138,45 @@ export function hrGetState(): HeartRateState { return hrState }
 function onBattito(v: number) {
   registra(v)
   hrAcc.sum += v; hrAcc.count++
-  hrSet({ bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count), maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v) })
+  hrSet({
+    bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count),
+    maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v),
+    ultimoBattitoMs: Date.now(), battitiRicevuti: hrState.battitiRicevuti + 1,
+  })
+}
+
+/**
+ * Il cane da guardia sul flusso.
+ *
+ * La riconnessione automatica parte solo quando il plugin ANNUNCIA una
+ * disconnessione. Ma una fascia puo' smettere di notificare restando
+ * "collegata" — Android sospende le notifiche, o la fascia esce dalla modalita'
+ * trasmissione — e in quel caso non annuncia niente: l'ultimo battito resta a
+ * schermo per sempre e sembra tutto a posto. Qui si guarda l'orologio: se per
+ * QUIETE_MS non arriva niente, la connessione si considera morta e si rifa'.
+ */
+const QUIETE_MS = 15_000
+let guardia: number | null = null
+
+function accendiGuardia() {
+  if (guardia != null) return
+  guardia = setInterval(() => {
+    if (!hrState.connected || hrVoluto) return
+    const u = hrState.ultimoBattitoMs
+    if (u == null || Date.now() - u < QUIETE_MS) return
+    // Il numero vecchio sparisce: un battito fermo da mezzo minuto non e' una
+    // misura, e lasciarlo li' e' peggio che non mostrare niente.
+    hrSet({ bpm: null })
+    try { hrHandle?.disconnect() } catch { /* gia' morta */ }
+    hrHandle = null
+    onPerso()
+  }, 5_000) as unknown as number
 }
 
 /** Il segnale e' caduto: si riprova da soli finche' non torna. */
 function onPerso() {
   hrHandle = null
-  hrSet({ connected: false, bpm: null, retrying: !hrVoluto })
+  hrSet({ connected: false, bpm: null, retrying: !hrVoluto, ultimaCadutaMs: Date.now() })
   if (!hrVoluto) riprova()
 }
 
@@ -150,7 +191,8 @@ function riprova() {
       hrHandle = isNativo() || !hrDevice
         ? await connettiNativo(onBattito, onPerso, true)
         : await connectHeartRate(hrDevice, onBattito, onPerso)
-      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null })
+      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null, ultimoBattitoMs: Date.now() })
+      accendiGuardia()
       fermaRiprove()
     } catch { /* ancora fuori portata: si riprova fra tre secondi */ }
   }, RIPROVA_MS) as unknown as number
@@ -174,7 +216,8 @@ export async function hrConnect(): Promise<void> {
       hrDevice = (await knownHeartRateDevice()) ?? (await pickHeartRateDevice())
       hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
     }
-    hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
+    hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, ultimoBattitoMs: Date.now() })
+    accendiGuardia()
   } catch (e) {
     // L'errore vero, non un generico «fallita»: senza, un permesso negato e un
     // plugin che non risponde sono lo stesso messaggio e non si capisce cosa fare.
@@ -200,7 +243,8 @@ export async function hrReconnectKnown(): Promise<boolean> {
     try {
       hrVoluto = false
       hrHandle = await connettiNativo(onBattito, onPerso, true)
-      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName })
+      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, ultimoBattitoMs: Date.now() })
+      accendiGuardia()
       return true
     } catch { hrSet({ connecting: false }); return false }
   }
