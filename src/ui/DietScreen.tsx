@@ -231,6 +231,9 @@ export function DietScreen() {
    */
   const ancora = useRef<HTMLDivElement>(null)
   const [fuori, setFuori] = useState(false)
+  // TEMPORANEO: riga di diagnostica, per capire perche' sul telefono la riga
+  // compatta non compare. Si toglie appena si sa.
+  const [spia, setSpia] = useState('—')
   useEffect(() => {
     // Misura diretta, senza requestAnimationFrame: con l'app in secondo piano o
     // lo schermo spento il fotogramma non arriva e la riga resterebbe indietro.
@@ -238,10 +241,11 @@ export function DietScreen() {
     let ultima = 0
     const guarda = () => {
       const el = ancora.current
-      if (!el) return
-      // Un filo sopra il bordo: cosi' la riga non lampeggia mentre la card
-      // sta esattamente al limite.
-      setFuori(el.getBoundingClientRect().top < -8)
+      if (!el) { setSpia('ancora assente'); return }
+      const top = Math.round(el.getBoundingClientRect().top)
+      setFuori(top < -8)
+      const b = document.body, h = document.documentElement
+      setSpia(`top ${top} · fuori ${top < -8 ? 'SI' : 'no'} · body ${Math.round(b.scrollTop)}/${b.scrollHeight} · html ${Math.round(h.scrollTop)}/${h.scrollHeight} · win ${Math.round(window.scrollY)}`)
     }
     const suScroll = () => {
       const ora = Date.now()
@@ -420,6 +424,8 @@ export function DietScreen() {
           cosa che guardi mentre aggiungi cibo — sparivano con lei. Ora al suo
           posto resta in alto una riga sola con gli stessi numeri. */}
       <div ref={ancora} />
+      {/* TEMPORANEO */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(58px + var(--sicuro-basso))', zIndex: 300, background: '#301010', color: '#ffb4b4', fontSize: 10, padding: '3px 6px', textAlign: 'center' }}>{spia}</div>
 
       {/* La riga: anello, calorie, i tre macro col loro obiettivo, e sotto la
           barra delle calorie. Il «restano» non c'e': il confronto col target e'
