@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allExercises, getOrCreateExercise } from '../db/repo'
@@ -6,6 +7,8 @@ import { normalizeName } from '../db/catalog'
 import type { Exercise, MuscleGroup } from '../db/schema'
 
 export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
+  // La pagina sotto non scorre finché questa è aperta.
+  useBloccoScroll()
   const [q, setQ] = useState('')
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
   const list = useLiveQuery(allExercises, []) ?? []
@@ -21,9 +24,7 @@ export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => vo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [onClose])
 
   // Portal su body: la modale deve stare SOPRA tutto (gli antenati con transform

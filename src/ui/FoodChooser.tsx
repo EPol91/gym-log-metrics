@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoodsRanked, addFood, findFoodByBarcode } from '../db/diet'
@@ -15,6 +16,8 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacrit
  * del pannello del diario, ma alla fine restituisce l'alimento invece di registrarlo.
  */
 export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; onClose: () => void }) {
+  // La pagina sotto non scorre finché questa è aperta.
+  useBloccoScroll()
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online'>('mine')
   const [creating, setCreating] = useState(false)
@@ -31,9 +34,7 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [onClose])
 
   const nq = norm(q)

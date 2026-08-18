@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { ScoreRing } from './anim'
 import type { ScoreResult } from '../scores/types'
@@ -11,12 +12,12 @@ const RELIABILITY_COLOR: Record<string, string> = {
 export function ScoreDetail({ title, subtitle, score, footer, onClose }: {
   title: string; subtitle: string; score: ScoreResult; footer?: string; onClose: () => void
 }) {
+  // La pagina sotto non scorre finché questa è aperta.
+  useBloccoScroll()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [onClose])
 
   return createPortal(

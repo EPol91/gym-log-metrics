@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } from '../db/diet'
@@ -18,6 +19,8 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
   /** 🦠RS: invece di aggiungere una riga, cambia l'alimento di quella indicata. */
   sostituisciLog?: { id: string; onFatto: () => void }
 }) {
+  // La pagina sotto non scorre finché questa è aperta.
+  useBloccoScroll()
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
   const [chosen, setChosen] = useState<Food | null>(null)
@@ -38,9 +41,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [onClose])
 
   const nq = norm(q)

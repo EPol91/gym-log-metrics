@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal, flushSync } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -646,12 +647,10 @@ async function addMealRestore(meal: { id: string; date: string; name: string; or
 /** Scheda di modifica di una riga già nel diario: stessa scheda dell'aggiunta. */
 function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClose: () => void; onDelete: () => void }) {
   const [sostituendo, setSostituendo] = useState(false)
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-
+  // La pagina sotto non scorre finché questa è aperta. Il conto è unico per
+  // tutte le finestre: da qui se ne apre un'altra dentro (scegli alimento), e
+  // chi si chiude per primo non deve riattivare lo scorrimento all'altra.
+  useBloccoScroll()
   // Portal su body: gli antenati animati hanno `transform`, che intrappolerebbe
   // un position:fixed annidato facendolo comparire nel posto sbagliato.
   return createPortal(

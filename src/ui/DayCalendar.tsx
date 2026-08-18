@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBloccoScroll } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { loggedDates, listDayTypes, todayDiet } from '../db/diet'
@@ -14,6 +15,8 @@ const iso = (y: number, m: number, d: number) =>
 export function DayCalendar({ date, onPick, onClose }: {
   date: string; onPick: (d: string) => void; onClose: () => void
 }) {
+  // La pagina sotto non scorre finché questa è aperta.
+  useBloccoScroll()
   const [cursor, setCursor] = useState(() => {
     const d = new Date(date + 'T00:00:00')
     return { y: d.getFullYear(), m: d.getMonth() }
@@ -35,9 +38,7 @@ export function DayCalendar({ date, onPick, onClose }: {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    return () => { window.removeEventListener('keydown', onKey) }
   }, [onClose])
 
   // Griglia da lunedì.
