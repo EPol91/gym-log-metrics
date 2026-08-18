@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
-import { passo } from '../util/blocco'
 import { TastoFascia, ChiediFascia } from './fascia'
 import { Inclinometro } from './Inclinometro'
 import { Dischi } from './Dischi'
@@ -861,11 +860,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
   // se la fascia e' collegata; se la colleghi a meta' riprende da li'.
   useEffect(() => {
     if (!session) return
-    // Segnaposti: se il rientro in una seduta si pianta, la traccia dice a
-    // quale passo. Si tolgono quando il blocco e' risolto.
-    passo(`seduta caricata (${session.hr?.bpm?.length ?? 0} letture cuore)`)
     hrStartRecording(sessionId, session.hr)
-    passo('cuore agganciato')
     return () => { hrFlush(true) }
   }, [sessionId, session?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const user = useLiveQuery(getUser, [])

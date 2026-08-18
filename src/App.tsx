@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { forseBackupAutomatico } from './db/backupAuto'
-import { BarraErrore } from './ui/BarraErrore'
 import { controllaPromemoria } from './util/promemoria'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureSeed } from './db/seed'
@@ -144,7 +143,6 @@ function AppScreens() {
 
   return (
     <div className="app">
-      <BarraErrore />
       <RsGiorno />
       {/* L'avviso sta in tutte le schermate, non solo nell'allenamento: prima
           fuori di li' l'aggiornamento si prendeva da solo il diritto di ricaricare. */}
