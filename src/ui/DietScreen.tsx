@@ -232,9 +232,11 @@ export function DietScreen() {
   const ancora = useRef<HTMLDivElement>(null)
   const [fuori, setFuori] = useState(false)
   useEffect(() => {
-    let atteso = false
+    // Misura diretta, senza requestAnimationFrame: con l'app in secondo piano o
+    // lo schermo spento il fotogramma non arriva e la riga resterebbe indietro.
+    // Una misura ogni 100 ms basta e avanza.
+    let ultima = 0
     const guarda = () => {
-      atteso = false
       const el = ancora.current
       if (!el) return
       // Un filo sopra il bordo: cosi' la riga non lampeggia mentre la card
@@ -242,9 +244,10 @@ export function DietScreen() {
       setFuori(el.getBoundingClientRect().top < -8)
     }
     const suScroll = () => {
-      if (atteso) return
-      atteso = true
-      requestAnimationFrame(guarda)
+      const ora = Date.now()
+      if (ora - ultima < 100) return
+      ultima = ora
+      guarda()
     }
     guarda()
     window.addEventListener('scroll', suScroll, { capture: true, passive: true })
