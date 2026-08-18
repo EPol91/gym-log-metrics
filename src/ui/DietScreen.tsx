@@ -220,17 +220,39 @@ export function DietScreen() {
   const statoRs = useLiveQuery(() => statoDieta(date), [date])
   const kcalPct = t && t.kcal > 0 ? Math.min(100, (totals.kcal / t.kcal) * 100) : 0
 
-  // La riga compatta compare quando il riepilogo esce dallo schermo. Si guarda
-  // un segnaposto vuoto messo sopra la card: e' l'unico modo di saperlo senza
-  // stare appesi all'evento di scorrimento, che su un telefono costa.
+  /**
+   * La riga compatta compare quando il riepilogo esce dallo schermo.
+   *
+   * Si ascolta lo scorrimento IN CATTURA e si misura dove sta la card. Con
+   * IntersectionObserver legato alla finestra non funzionava: nell'app a
+   * scorrere non e' la finestra ma un contenitore interno, e per la finestra
+   * non si muoveva niente — la riga non compariva mai. In cattura l'evento
+   * arriva da qualunque contenitore, senza doverlo sapere.
+   */
   const ancora = useRef<HTMLDivElement>(null)
   const [fuori, setFuori] = useState(false)
   useEffect(() => {
-    const el = ancora.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(([e]) => setFuori(!e.isIntersecting), { rootMargin: '-4px 0px 0px 0px' })
-    io.observe(el)
-    return () => io.disconnect()
+    let atteso = false
+    const guarda = () => {
+      atteso = false
+      const el = ancora.current
+      if (!el) return
+      // Un filo sopra il bordo: cosi' la riga non lampeggia mentre la card
+      // sta esattamente al limite.
+      setFuori(el.getBoundingClientRect().top < -8)
+    }
+    const suScroll = () => {
+      if (atteso) return
+      atteso = true
+      requestAnimationFrame(guarda)
+    }
+    guarda()
+    window.addEventListener('scroll', suScroll, { capture: true, passive: true })
+    window.addEventListener('resize', suScroll)
+    return () => {
+      window.removeEventListener('scroll', suScroll, { capture: true } as EventListenerOptions)
+      window.removeEventListener('resize', suScroll)
+    }
   }, [])
 
   // Uscendo dalla modalità selezione azzero le spunte.
