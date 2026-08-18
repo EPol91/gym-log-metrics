@@ -12,7 +12,7 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
-import { computeDiary } from '../db/diet'
+import { computeDiary, saleEAcquaDelGiorno } from '../db/diet'
 import { getNutrition } from '../db/repo'
 import { getHabitValue, STEPS } from '../db/habits'
 import { whoopDay } from '../db/whoop'
@@ -139,9 +139,12 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   out.pro = haCibo ? num(t.protein) : null
   out.fat = haCibo ? num(t.fat) : null
 
+  // Sale e acqua: prima quello che hai scritto tu, altrimenti quello che risulta
+  // dal diario. Un valore scritto a mano non si sovrascrive mai da solo.
   const nutri = await getNutrition(date)
-  out.acqua = num(nutri?.water, 1)
-  out.sale = num(nutri?.salt, 1)
+  const dal = await saleEAcquaDelGiorno(date)
+  out.acqua = num(nutri?.water ?? (dal.acquaL > 0 ? dal.acquaL : undefined), 2)
+  out.sale = num(nutri?.salt ?? (dal.saleG > 0 ? dal.saleG : undefined), 1)
 
   if (stato.attiva) {
     // Precisione e pasti extra escono dalle spunte: e' la tua idea, ed e' il

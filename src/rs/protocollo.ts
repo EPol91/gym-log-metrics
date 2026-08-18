@@ -20,6 +20,10 @@ export interface AlimentoRs {
 const m = (kcal: number, carbs: number, protein: number, fat: number): Macros =>
   ({ kcal, carbs, protein, fat })
 
+/** Il sale e' sale: cento grammi su cento. Senza questo, un grammo di sale nel
+ *  piatto contava zero e il campo «sale» del coach restava sempre vuoto. */
+const sale = (): Macros => ({ kcal: 0, carbs: 0, protein: 0, fat: 0, salt: 100 })
+
 export const ALIMENTI_RS: AlimentoRs[] = [
   { nome: "Albume d'uovo", per100: m(47, 0.8, 11, 0), fonte: 'EP Coaching · Albume (Aia)' },
   { nome: 'Ananas', per100: m(40, 10, 0.5, 0), fonte: 'EP Coaching' },
@@ -53,7 +57,7 @@ export const ALIMENTI_RS: AlimentoRs[] = [
   { nome: 'Proteine isolate Isopure', per100: m(358, 3, 90, 2), fonte: 'EP Coaching · IsolatePure Vaniglia/Nocciola (Tsunami)' },
   { nome: 'Rice Meal Tsunami Nutrition', per100: m(345, 78, 6.5, 0.8), fonte: 'EP Coaching · Cream of Rice (TBJP)' },
   { nome: 'Riso basmati (crudo)', per100: m(354, 79, 7, 1), fonte: 'EP Coaching' },
-  { nome: 'Sale', per100: m(0, 0, 0, 0), fonte: 'EP Coaching · sale iodato' },
+  { nome: 'Sale', per100: sale(), fonte: 'EP Coaching · sale iodato' },
   { nome: "Tuorlo d'uovo", per100: m(294, 0, 15, 26), fonte: 'EP Coaching' },
   { nome: 'Vitello', per100: null, fonte: 'da completare' },
   { nome: 'Zucchine', per100: m(11, 1, 1, 0), fonte: 'EP Coaching' },

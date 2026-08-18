@@ -445,6 +445,7 @@ export function DietScreen() {
                 <span className="muted" style={{ fontSize: 10 }}>/{t?.kcal ?? '—'}</span>
               </span>
               <span style={{ flex: 1 }} />
+              <Bicchiere date={date} acqua={nutri?.water ?? 0} compatto />
               {([
                 ['C', totals.carbs, t?.carbs, 'var(--carb)'],
                 ['P', totals.protein, t?.protein, 'var(--prot)'],
@@ -606,6 +607,7 @@ export function DietScreen() {
             </button>
             <RipetiIeri mealId={m.meal.id} mealName={m.meal.name} date={date}
               onDone={(ids) => { if (ids.length) pushUndo(`${ids.length} righe da ieri`, async () => { await deleteFoodLogs(ids) }) }} />
+            <Bicchiere date={date} acqua={nutri?.water ?? 0} />
           </div>
         </div>
         )
@@ -708,6 +710,37 @@ export { macrosFor }
  * mattina è il lavoro più inutile dell'app. Compare solo se ieri quel pasto
  * aveva davvero qualcosa dentro.
  */
+/**
+ * Il bicchiere.
+ *
+ * L'acqua bevuta non si scrive come un alimento: un tocco vale un bicchiere e
+ * basta, altrimenti nessuno la registra e il campo del coach resta vuoto tutti
+ * i giorni. Tenendo premuto si sceglie la misura, perche' mezzo litro e una
+ * tazzina non sono la stessa cosa.
+ */
+const BICCHIERE_L = 0.25
+
+function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; compatto?: boolean }) {
+  const bevi = (litri: number) => {
+    const nuovo = Math.max(0, Math.round((acqua + litri) * 100) / 100)
+    void upsertNutrition(date, { water: nuovo })
+  }
+  const scegli = () => {
+    const t = prompt('Quanti litri in tutto oggi?', String(acqua || 0))?.replace(',', '.')
+    const n = t == null ? null : Number(t)
+    if (n != null && Number.isFinite(n) && n >= 0) void upsertNutrition(date, { water: Math.round(n * 100) / 100 })
+  }
+  return (
+    <button className="chip" title="Un bicchiere (250 ml) · tieni premuto per correggere"
+      aria-label="Aggiungi un bicchiere d'acqua"
+      style={compatto ? { padding: '3px 8px', fontSize: 11, flex: 'none' } : { marginTop: 8 }}
+      onClick={() => bevi(BICCHIERE_L)}
+      onContextMenu={(e) => { e.preventDefault(); scegli() }}>
+      💧{acqua > 0 ? ` ${String(acqua).replace('.', ',')} L` : ''}
+    </button>
+  )
+}
+
 function RipetiIeri({ mealId, mealName, date, onDone }: {
   mealId: string; mealName: string; date: string; onDone: (ids: string[]) => void
 }) {

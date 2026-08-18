@@ -322,6 +322,30 @@ function add(a: Macros, b: Macros): Macros {
  * SOLO LETTURA: la creazione dei pasti di default sta in `ensureMeals`, chiamata
  * dalla schermata. Scrivere qui dentro romperebbe la query reattiva di Dexie.
  */
+/**
+ * Il sale e l'acqua del giorno, presi dal diario.
+ *
+ * Non stanno nei totali dei macro — quelli portano solo kcal, carbo, proteine e
+ * grassi — ma il coach li chiede, e finora restavano vuoti anche con il sale
+ * pesato nel piatto. Il sale si somma da TUTTI gli alimenti (ognuno ha il suo
+ * per cento grammi), l'acqua solo da quelli che sono acqua: cento grammi d'acqua
+ * sono cento millilitri, il resto no.
+ */
+export async function saleEAcquaDelGiorno(date: string): Promise<{ saleG: number; acquaL: number }> {
+  const logs = await logsOfDate(date)
+  const foods = new Map((await listFoods()).map((f) => [f.id, f]))
+  let saleG = 0
+  let acquaMl = 0
+  for (const log of logs) {
+    if (log.recipeId) continue // riga-ricetta: i suoi macro sono congelati, il sale non c'e'
+    const f = foods.get(log.foodId)
+    if (!f) continue
+    if (f.per100.salt) saleG += (f.per100.salt * log.grams) / 100
+    if (/^acqua/i.test(f.name.trim())) acquaMl += log.grams
+  }
+  return { saleG: Math.round(saleG * 10) / 10, acquaL: Math.round((acquaMl / 1000) * 100) / 100 }
+}
+
 export async function computeDiary(date: string): Promise<DiaryDay> {
   const meals = await mealsOfDate(date)
   const logs = (await logsOfDate(date)).sort((a, b) => a.order - b.order)
