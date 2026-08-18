@@ -96,7 +96,7 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
   // Il sale si conta come si mangia: sono i grammi delle righe «Sale» che hai
   // spuntato. Niente conversioni e niente sale nascosto negli altri alimenti —
   // al coach interessa quello che aggiungi tu.
-  const saleG = Math.round(spuntate.filter((r) => /^sale/i.test(r.nome.trim()))
+  const saleG = Math.round(spuntate.filter((r) => /^sale/i.test(r.nome.trim()))
     .reduce((a, r) => a + r.log.grams, 0) * 10) / 10
   const delPiano = righe.filter((r) => r.dalPiano)
   const onorate = delPiano.filter((r) => r.spuntata)

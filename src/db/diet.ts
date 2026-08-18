@@ -335,7 +335,7 @@ export async function saleDelDiario(date: string): Promise<number> {
   for (const log of logs) {
     if (log.recipeId) continue
     const f = foods.get(log.foodId)
-    if (f && /^sale/i.test(f.name.trim())) g += log.grams
+    if (f && /^sale/i.test(f.name.trim())) g += log.grams
   }
   return Math.round(g * 10) / 10
 }
