@@ -832,7 +832,10 @@ function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; com
                 <button key={i} className="chip"
                   style={{ padding: '8px 11px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   onClick={() => cambia(m.l)}>
-                  {m.icona} {litri(m.l)}
+                  {/* L'icona prende l'oro: dentro il chip erediterebbe il grigio
+                      del testo e sembrerebbe spenta. */}
+                  <span style={{ color: 'var(--gold)', display: 'inline-flex' }}>{m.icona}</span>
+                  <span style={{ color: 'var(--text)' }}>{litri(m.l)}</span>
                 </button>
               ))}
             </div>

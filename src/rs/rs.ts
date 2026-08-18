@@ -146,7 +146,9 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   const nutri = await getNutrition(date)
   const sale = stato.attiva ? stato.saleG : await saleDelDiario(date)
   out.acqua = num(nutri?.water, 2)
-  out.sale = num(nutri?.salt ?? (sale > 0 ? sale : undefined), 1)
+  // Il valore scritto a mano vale se c'e' davvero: uno zero salvato una volta
+  // vinceva per sempre sul conteggio, e il campo restava a zero comunque.
+  out.sale = num((nutri?.salt ?? 0) > 0 ? nutri!.salt : (sale > 0 ? sale : undefined), 1)
 
   if (stato.attiva) {
     // Precisione e pasti extra escono dalle spunte: e' la tua idea, ed e' il
