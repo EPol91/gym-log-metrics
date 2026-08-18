@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { sorvegliaBlocchi, ultimaTraccia, scordaTraccia } from '../util/blocco'
+import { ultimaTraccia, scordaTraccia } from '../util/blocco'
 
 /**
  * L'errore che l'app si teneva per sé.
@@ -28,8 +28,6 @@ export function BarraErrore() {
       const r = e.reason as { message?: string } | string | undefined
       aggiungi(typeof r === 'string' ? r : r?.message ?? 'promessa rifiutata')
     }
-    // Un blocco non lancia errori: si misura dal ritardo del battito.
-    const basta = sorvegliaBlocchi(aggiungi)
     // E se la volta scorsa si e' piantata del tutto, il battito non e' mai
     // arrivato: resta solo la traccia scritta su disco al momento del tocco.
     const t = ultimaTraccia()
@@ -43,7 +41,6 @@ export function BarraErrore() {
     return () => {
       window.removeEventListener('error', suErrore)
       window.removeEventListener('unhandledrejection', suPromessa)
-      basta()
     }
   }, [])
 

@@ -155,27 +155,19 @@ function onBattito(v: number) {
  * schermo per sempre e sembra tutto a posto. Qui si guarda l'orologio: se per
  * QUIETE_MS non arriva niente, la connessione si considera morta e si rifa'.
  */
-const QUIETE_MS = 15_000
-let guardia: number | null = null
-
-function spegniGuardia() {
-  if (guardia != null) { clearInterval(guardia); guardia = null }
-}
-
-function accendiGuardia() {
-  if (guardia != null) return
-  guardia = setInterval(() => {
-    if (!hrState.connected || hrVoluto) return
-    const u = hrState.ultimoBattitoMs
-    if (u == null || Date.now() - u < QUIETE_MS) return
-    // Il numero vecchio sparisce: un battito fermo da mezzo minuto non e' una
-    // misura, e lasciarlo li' e' peggio che non mostrare niente.
-    hrSet({ bpm: null })
-    try { hrHandle?.disconnect() } catch { /* gia' morta */ }
-    hrHandle = null
-    onPerso()
-  }, 5_000) as unknown as number
-}
+/**
+ * Il cane da guardia e' stato tolto.
+ *
+ * Forzava stacca-e-riattacca dopo quindici secondi di silenzio: su una fascia
+ * che tace ogni tanto diventava un ciclo continuo di connessioni al Bluetooth,
+ * e il ponte nativo — che gira sullo stesso filo dell'interfaccia — si
+ * intasava. L'app si bloccava con lo scorrimento ancora vivo: il sintomo
+ * esatto. Meglio un battito fermo a schermo che un'app ferma.
+ *
+ * Resta la freschezza scritta sotto il numero: se e' fermo, si vede.
+ */
+function accendiGuardia() { /* niente: vedi sopra */ }
+function spegniGuardia() { /* niente: vedi sopra */ }
 
 /** Il segnale e' caduto: si riprova da soli finche' non torna. */
 function onPerso() {
@@ -325,27 +317,41 @@ export function hrStartRecording(sessionId: string, gia?: { t0: string; step: nu
   // Ogni cinque secondi si scrive. Erano trenta, e un aggiornamento che ricarica
   // la pagina si portava via mezzo minuto di battiti: scrivere un array di
   // numeri costa niente, perderli costa una seduta.
-  if (timer == null) timer = setInterval(() => hrFlush(), 5_000) as unknown as number
+  if (timer == null) timer = setInterval(() => hrFlush(), 15_000) as unknown as number
   // E comunque un'ultima volta prima che la pagina se ne vada: pagehide e'
   // l'unico evento che Android garantisce quando chiude o ricarica.
   if (typeof window !== 'undefined' && !attaccatoAllaChiusura) {
-    window.addEventListener('pagehide', hrFlush)
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hrFlush() })
+    window.addEventListener('pagehide', () => hrFlush(true))
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hrFlush(true) })
     attaccatoAllaChiusura = true
   }
 }
 
 let attaccatoAllaChiusura = false
 
-/** Scrive quello che c'e' adesso. */
-export function hrFlush(): void {
+/**
+ * Scrive quello che c'e' adesso — ma solo se e' cambiato.
+ *
+ * Prima riscriveva l'intera serie ogni cinque secondi anche quando non era
+ * arrivato nessun battito nuovo: su una seduta lunga sono migliaia di numeri
+ * riserializzati di continuo, sul filo che serve a rispondere ai tocchi.
+ */
+let ultimoScritto = -1
+let ultimoScrittoMs = 0
+
+export function hrFlush(forza = false): void {
   if (!rec || !salva || !rec.bpm.length) return
+  const ora = Date.now()
+  if (!forza && rec.bpm.length === ultimoScritto && ora - ultimoScrittoMs < 60_000) return
+  if (!forza && ora - ultimoScrittoMs < 15_000) return
+  ultimoScritto = rec.bpm.length
+  ultimoScrittoMs = ora
   salva(rec.sessionId, { t0: new Date(rec.t0).toISOString(), step: PASSO_SEC, bpm: rec.bpm })
 }
 
 /** Chiude la registrazione della seduta e scrive l'ultima volta. */
 export function hrStopRecording(): void {
-  hrFlush()
+  hrFlush(true)
   rec = null
   if (timer != null) { clearInterval(timer); timer = null }
 }

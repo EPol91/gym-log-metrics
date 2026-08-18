@@ -866,7 +866,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
     passo(`seduta caricata (${session.hr?.bpm?.length ?? 0} letture cuore)`)
     hrStartRecording(sessionId, session.hr)
     passo('cuore agganciato')
-    return () => { hrFlush() }
+    return () => { hrFlush(true) }
   }, [sessionId, session?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const user = useLiveQuery(getUser, [])
   // Schermo acceso mentre ti alleni: col telefono in standby Android sospende
