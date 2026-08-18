@@ -38,8 +38,8 @@ const ICONS: Record<Tab, ReactNode> = {
 export function Nav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const items: { key: Tab; label: string }[] = [
     { key: 'today', label: 'Oggi' },
-    { key: 'train', label: 'Allena' },
     { key: 'food', label: 'Cibo' },
+    { key: 'train', label: 'Allena' },
     { key: 'health', label: 'Salute' },
     { key: 'rs', label: 'RS' },
     { key: 'profile', label: 'Profilo' },
