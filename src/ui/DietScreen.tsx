@@ -711,33 +711,84 @@ export { macrosFor }
  * aveva davvero qualcosa dentro.
  */
 /**
- * Il bicchiere.
+ * L'acqua bevuta.
  *
- * L'acqua bevuta non si scrive come un alimento: un tocco vale un bicchiere e
- * basta, altrimenti nessuno la registra e il campo del coach resta vuoto tutti
- * i giorni. Tenendo premuto si sceglie la misura, perche' mezzo litro e una
- * tazzina non sono la stessa cosa.
+ * Registrarla come un alimento e' una seccatura che nessuno fa, e il campo del
+ * coach resta vuoto tutti i giorni. Qui si tocca una misura e basta: sono
+ * quelle vere — il bicchiere che usi, la bottiglietta, la bottiglia da un litro
+ * e mezzo — perche' «250 ml» a mente non se li converte nessuno.
  */
-const BICCHIERE_L = 0.25
+const MISURE: { nome: string; icona: string; l: number }[] = [
+  { nome: 'Bicchiere', icona: '🥛', l: 0.1 },
+  { nome: 'Bicchiere', icona: '🥛', l: 0.15 },
+  { nome: 'Bicchiere', icona: '🥛', l: 0.2 },
+  { nome: 'Bicchiere', icona: '🥛', l: 0.25 },
+  { nome: 'Bicchiere', icona: '🥛', l: 0.3 },
+  { nome: 'Bicchierone', icona: '🍺', l: 0.7 },
+  { nome: 'Bottiglietta', icona: '🧴', l: 0.5 },
+  { nome: 'Bottiglia', icona: '🍶', l: 1 },
+  { nome: 'Bottiglia', icona: '🍶', l: 1.5 },
+  { nome: 'Bottiglia', icona: '🍶', l: 2 },
+  { nome: 'Caffè', icona: '☕', l: 0.04 },
+  { nome: 'Tè', icona: '🍵', l: 0.25 },
+]
+
+const litri = (n: number) => (n >= 1 ? `${String(n).replace('.', ',')} L` : `${Math.round(n * 1000)} ml`)
 
 function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; compatto?: boolean }) {
-  const bevi = (litri: number) => {
-    const nuovo = Math.max(0, Math.round((acqua + litri) * 100) / 100)
-    void upsertNutrition(date, { water: nuovo })
+  const [apri, setApri] = useState(false)
+  const cambia = (delta: number) => {
+    const n = Math.max(0, Math.round((acqua + delta) * 100) / 100)
+    void upsertNutrition(date, { water: n })
   }
-  const scegli = () => {
-    const t = prompt('Quanti litri in tutto oggi?', String(acqua || 0))?.replace(',', '.')
-    const n = t == null ? null : Number(t)
-    if (n != null && Number.isFinite(n) && n >= 0) void upsertNutrition(date, { water: Math.round(n * 100) / 100 })
-  }
+
   return (
-    <button className="chip" title="Un bicchiere (250 ml) · tieni premuto per correggere"
-      aria-label="Aggiungi un bicchiere d'acqua"
-      style={compatto ? { padding: '3px 8px', fontSize: 11, flex: 'none' } : { marginTop: 8 }}
-      onClick={() => bevi(BICCHIERE_L)}
-      onContextMenu={(e) => { e.preventDefault(); scegli() }}>
-      💧{acqua > 0 ? ` ${String(acqua).replace('.', ',')} L` : ''}
-    </button>
+    <>
+      <button className="chip" aria-label="Acqua bevuta"
+        style={compatto ? { padding: '3px 8px', fontSize: 11, flex: 'none' } : { marginTop: 8 }}
+        onClick={() => setApri(true)}>
+        💧{acqua > 0 ? ` ${String(acqua).replace('.', ',')} L` : ''}
+      </button>
+
+      {apri && createPortal(
+        <div onClick={() => setApri(false)}
+          style={{ position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', height: 'var(--vvh, 100dvh)', zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(420px, 100%)', background: 'var(--surface)', border: '1px solid var(--line)',
+              borderRadius: 16, padding: 16, margin: '0 8px',
+            }}>
+            <div className="row spread" style={{ alignItems: 'center' }}>
+              <strong>Acqua di oggi</strong>
+              <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}
+                onClick={() => setApri(false)}>✕</button>
+            </div>
+
+            <div className="row spread" style={{ alignItems: 'center', marginTop: 8 }}>
+              <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 30, color: 'var(--gold)' }}>
+                {String(acqua).replace('.', ',')} L
+              </span>
+              <span className="row" style={{ gap: 6 }}>
+                <button className="chip" disabled={acqua <= 0} onClick={() => cambia(-0.25)}>− 250 ml</button>
+                <button className="chip" style={{ color: '#e57373' }} disabled={acqua <= 0}
+                  onClick={() => upsertNutrition(date, { water: 0 })}>Azzera</button>
+              </span>
+            </div>
+
+            <p className="muted small" style={{ margin: '10px 0 6px' }}>Tocca quello che hai bevuto.</p>
+            <div className="row wrap" style={{ gap: 6 }}>
+              {MISURE.map((m, i) => (
+                <button key={i} className="chip" style={{ padding: '8px 11px' }}
+                  onClick={() => cambia(m.l)}>
+                  {m.icona} {litri(m.l)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
 

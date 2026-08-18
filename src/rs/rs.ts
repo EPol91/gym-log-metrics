@@ -12,7 +12,7 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
-import { computeDiary, saleEAcquaDelGiorno } from '../db/diet'
+import { computeDiary, saleDelDiario } from '../db/diet'
 import { getNutrition } from '../db/repo'
 import { getHabitValue, STEPS } from '../db/habits'
 import { whoopDay } from '../db/whoop'
@@ -141,10 +141,12 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
 
   // Sale e acqua: prima quello che hai scritto tu, altrimenti quello che risulta
   // dal diario. Un valore scritto a mano non si sovrascrive mai da solo.
+  // Il sale: i grammi delle righe «Sale» — spuntate, se la giornata e' del
+  // coach. L'acqua la segni col bicchiere. Quello che scrivi a mano vince.
   const nutri = await getNutrition(date)
-  const dal = await saleEAcquaDelGiorno(date)
-  out.acqua = num(nutri?.water ?? (dal.acquaL > 0 ? dal.acquaL : undefined), 2)
-  out.sale = num(nutri?.salt ?? (dal.saleG > 0 ? dal.saleG : undefined), 1)
+  const sale = stato.attiva ? stato.saleG : await saleDelDiario(date)
+  out.acqua = num(nutri?.water, 2)
+  out.sale = num(nutri?.salt ?? (sale > 0 ? sale : undefined), 1)
 
   if (stato.attiva) {
     // Precisione e pasti extra escono dalle spunte: e' la tua idea, ed e' il

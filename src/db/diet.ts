@@ -323,27 +323,21 @@ function add(a: Macros, b: Macros): Macros {
  * dalla schermata. Scrivere qui dentro romperebbe la query reattiva di Dexie.
  */
 /**
- * Il sale e l'acqua del giorno, presi dal diario.
+ * I grammi di sale del giorno: le righe che SONO sale.
  *
- * Non stanno nei totali dei macro — quelli portano solo kcal, carbo, proteine e
- * grassi — ma il coach li chiede, e finora restavano vuoti anche con il sale
- * pesato nel piatto. Il sale si somma da TUTTI gli alimenti (ognuno ha il suo
- * per cento grammi), l'acqua solo da quelli che sono acqua: cento grammi d'acqua
- * sono cento millilitri, il resto no.
+ * Non il sale contenuto negli alimenti — quello e' un'altra cosa e il coach non
+ * lo chiede. Qui conta quello che aggiungi tu nel piatto, come lo scrivi.
  */
-export async function saleEAcquaDelGiorno(date: string): Promise<{ saleG: number; acquaL: number }> {
+export async function saleDelDiario(date: string): Promise<number> {
   const logs = await logsOfDate(date)
   const foods = new Map((await listFoods()).map((f) => [f.id, f]))
-  let saleG = 0
-  let acquaMl = 0
+  let g = 0
   for (const log of logs) {
-    if (log.recipeId) continue // riga-ricetta: i suoi macro sono congelati, il sale non c'e'
+    if (log.recipeId) continue
     const f = foods.get(log.foodId)
-    if (!f) continue
-    if (f.per100.salt) saleG += (f.per100.salt * log.grams) / 100
-    if (/^acqua/i.test(f.name.trim())) acquaMl += log.grams
+    if (f && /^sale/i.test(f.name.trim())) g += log.grams
   }
-  return { saleG: Math.round(saleG * 10) / 10, acquaL: Math.round((acquaMl / 1000) * 100) / 100 }
+  return Math.round(g * 10) / 10
 }
 
 export async function computeDiary(date: string): Promise<DiaryDay> {

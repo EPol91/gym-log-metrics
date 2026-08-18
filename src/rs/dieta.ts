@@ -35,6 +35,8 @@ export interface StatoDieta {
   precisione: number | null
   /** i totali che vanno al coach: solo lo spuntato */
   versoIlCoach: Macros
+  /** grammi di sale delle righe spuntate: il coach lo chiede a parte */
+  saleG: number
   /** i totali tuoi: tutto quello che hai scritto */
   tuoi: Macros
   pianoTotale: number
@@ -91,6 +93,11 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
 
   const spuntate = righe.filter((r) => r.spuntata)
   const versoIlCoach = spuntate.reduce((acc, r) => somma(acc, r.macros), ZERO)
+  // Il sale si conta come si mangia: sono i grammi delle righe «Sale» che hai
+  // spuntato. Niente conversioni e niente sale nascosto negli altri alimenti —
+  // al coach interessa quello che aggiungi tu.
+  const saleG = Math.round(spuntate.filter((r) => /^sale/i.test(r.nome.trim()))
+    .reduce((a, r) => a + r.log.grams, 0) * 10) / 10
   const delPiano = righe.filter((r) => r.dalPiano)
   const onorate = delPiano.filter((r) => r.spuntata)
 
@@ -103,7 +110,7 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
     righe,
     aderenza: delPiano.length ? Math.round((onorate.length / delPiano.length) * 100) : null,
     precisione: tipo ? scarto(versoIlCoach, tipo.targets) : null,
-    versoIlCoach, tuoi: diario.totals,
+    versoIlCoach, saleG, tuoi: diario.totals,
     pianoTotale: delPiano.length, pianoOnorato: onorate.length,
     pastiExtra, attiva,
   }
