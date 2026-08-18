@@ -6,16 +6,40 @@
 // guardare. Qui si tiene un battito al secondo: se arriva molto in ritardo,
 // quel ritardo E' la durata del blocco, e insieme si sa cosa stavi toccando.
 
+const TRACCIA = 'gymlog.blocco.traccia'
+
 let ultimoTocco = '—'
 let ultimoQuando = 0
+
+/**
+ * La traccia si scrive SU DISCO a ogni tocco.
+ *
+ * Quando il filo principale si ferma davvero, niente di quello che sta in
+ * memoria arriva piu' allo schermo: il misuratore stesso muore col blocco. Una
+ * riga in localStorage scritta al momento del tocco invece resta, e alla
+ * riapertura racconta l'ultima cosa toccata prima che si piantasse.
+ */
+export function ultimaTraccia(): { cosa: string; quando: string } | null {
+  try {
+    const s = localStorage.getItem(TRACCIA)
+    return s ? (JSON.parse(s) as { cosa: string; quando: string }) : null
+  } catch { return null }
+}
+
+export function scordaTraccia(): void {
+  try { localStorage.removeItem(TRACCIA) } catch { /* ignore */ }
+}
 
 /** Cosa hai toccato per ultimo: serve a dare un nome al blocco. */
 function segnaTocco(e: Event) {
   const t = e.target as HTMLElement | null
   const el = t?.closest('button, a, [role="button"], input, select, textarea') as HTMLElement | null
   const testo = (el?.getAttribute('aria-label') || el?.innerText || el?.tagName || 'schermo').trim()
-  ultimoTocco = testo.replace(/\s+/g, ' ').slice(0, 40)
+  ultimoTocco = testo.replace(/s+/g, ' ').slice(0, 40)
   ultimoQuando = Date.now()
+  try {
+    localStorage.setItem(TRACCIA, JSON.stringify({ cosa: ultimoTocco, quando: new Date().toISOString() }))
+  } catch { /* storage pieno: pazienza */ }
 }
 
 /**
