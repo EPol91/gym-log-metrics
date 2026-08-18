@@ -158,6 +158,10 @@ function onBattito(v: number) {
 const QUIETE_MS = 15_000
 let guardia: number | null = null
 
+function spegniGuardia() {
+  if (guardia != null) { clearInterval(guardia); guardia = null }
+}
+
 function accendiGuardia() {
   if (guardia != null) return
   guardia = setInterval(() => {
@@ -180,21 +184,45 @@ function onPerso() {
   if (!hrVoluto) riprova()
 }
 
+/**
+ * Un tentativo per volta.
+ *
+ * Le riprove partivano ogni tre secondi SENZA aspettare la precedente: se una
+ * chiamata al Bluetooth restava appesa se ne accumulavano decine in parallelo,
+ * il ponte nativo si intasava e da fuori sembrava l'app bloccata. Con il cane
+ * da guardia che forza un riaggancio ogni quindici secondi di silenzio,
+ * diventava facile arrivarci.
+ */
+let inCorso = false
+
+/** Oltre questo tempo il tentativo si considera perso: meglio riprovare pulito. */
+const ATTESA_MAX_MS = 12_000
+
+function conScadenza<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, no) => setTimeout(() => no(new Error('tentativo scaduto')), ATTESA_MAX_MS)),
+  ])
+}
+
 function riprova() {
   if (hrRetry != null || (!hrDevice && !isNativo())) return
   hrRetry = setInterval(async () => {
     if (hrVoluto || (!hrDevice && !isNativo())) { fermaRiprove(); return }
+    if (inCorso) return
+    inCorso = true
     // Si riprova anche con l'app in secondo piano: cambiare canzone su Spotify
     // non e' un motivo per smettere di registrare il cuore. Il telefono i
     // tentativi li rallenta comunque da solo.
     try {
       hrHandle = isNativo() || !hrDevice
-        ? await connettiNativo(onBattito, onPerso, true)
-        : await connectHeartRate(hrDevice, onBattito, onPerso)
+        ? await conScadenza(connettiNativo(onBattito, onPerso, true))
+        : await conScadenza(connectHeartRate(hrDevice, onBattito, onPerso))
       hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null, ultimoBattitoMs: Date.now() })
       accendiGuardia()
       fermaRiprove()
     } catch { /* ancora fuori portata: si riprova fra tre secondi */ }
+    finally { inCorso = false }
   }, RIPROVA_MS) as unknown as number
 }
 
@@ -266,6 +294,7 @@ export async function hrReconnectKnown(): Promise<boolean> {
 export function hrDisconnect(): void {
   hrVoluto = true
   fermaRiprove()
+  spegniGuardia()
   hrHandle?.disconnect(); hrHandle = null; hrDevice = null
   hrSet({ connected: false, retrying: false, bpm: null })
 }
