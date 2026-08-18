@@ -231,9 +231,6 @@ export function DietScreen() {
    */
   const ancora = useRef<HTMLDivElement>(null)
   const [fuori, setFuori] = useState(false)
-  // TEMPORANEO: riga di diagnostica, per capire perche' sul telefono la riga
-  // compatta non compare. Si toglie appena si sa.
-  const [spia, setSpia] = useState('—')
   useEffect(() => {
     // Misura diretta, senza requestAnimationFrame: con l'app in secondo piano o
     // lo schermo spento il fotogramma non arriva e la riga resterebbe indietro.
@@ -241,11 +238,10 @@ export function DietScreen() {
     let ultima = 0
     const guarda = () => {
       const el = ancora.current
-      if (!el) { setSpia('ancora assente'); return }
-      const top = Math.round(el.getBoundingClientRect().top)
-      setFuori(top < -8)
-      const b = document.body, h = document.documentElement
-      setSpia(`top ${top} · fuori ${top < -8 ? 'SI' : 'no'} · body ${Math.round(b.scrollTop)}/${b.scrollHeight} · html ${Math.round(h.scrollTop)}/${h.scrollHeight} · win ${Math.round(window.scrollY)}`)
+      if (!el) return
+      // Un filo sopra il bordo: cosi' la riga non lampeggia quando la card sta
+      // esattamente al limite.
+      setFuori(el.getBoundingClientRect().top < -8)
     }
     const suScroll = () => {
       const ora = Date.now()
@@ -424,13 +420,15 @@ export function DietScreen() {
           cosa che guardi mentre aggiungi cibo — sparivano con lei. Ora al suo
           posto resta in alto una riga sola con gli stessi numeri. */}
       <div ref={ancora} />
-      {/* TEMPORANEO */}
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(58px + var(--sicuro-basso))', zIndex: 300, background: '#301010', color: '#ffb4b4', fontSize: 10, padding: '3px 6px', textAlign: 'center' }}>{spia}</div>
 
       {/* La riga: anello, calorie, i tre macro col loro obiettivo, e sotto la
           barra delle calorie. Il «restano» non c'e': il confronto col target e'
           gia' scritto accanto a ogni numero. */}
-      {fuori && (
+      {/* Nel portale su document.body, come le modali: la schermata sta dentro
+          un contenitore con una trasformazione, e li' dentro «position: fixed»
+          non si ancora allo schermo ma a quel contenitore — la riga finiva
+          disegnata in cima al documento, fuori da quello che vedi. */}
+      {fuori && createPortal(
         <div style={{
           position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', zIndex: 60,
           padding: '6px 12px 0', background: 'var(--bg)',
@@ -460,7 +458,8 @@ export function DietScreen() {
               <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999 }} />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
         <div className="row" style={{ gap: 12, alignItems: 'center' }}>
