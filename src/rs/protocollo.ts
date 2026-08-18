@@ -77,9 +77,9 @@ export const GIORNATE_RS: GiornataRs[] = [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r("Albume d'uovo", 150), r("Tuorlo d'uovo", 15), r('Mirtilli', 100), r('Burro di mandorle', 10), r('Proteine isolate Isopure', 15), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Gallette di riso', 50), r('Petto di pollo', 150), r('Avocado', 50), r('Pomodori', 100), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Patate dolci', 200), r('Petto di pollo', 150), r("Olio extravergine d'oliva", 10), r('Zucchine', 100), r('Sale', 1)] },
-      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 80), r('Proteine isolate Isopure', 30), r('Ananas', 100), r('Sale', 15)] },
+      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 80), r('Proteine isolate Isopure', 30), r('Ananas', 100), r('Sale', 1.5)] },
       { nome: 'Intra-workout', righe: [r('Ciclodestrine', 30), r('Sale', 1)] },
-      { nome: 'Post-workout', righe: [r('Riso basmati (crudo)', 80), r('Manzo', 150), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 15)] },
+      { nome: 'Post-workout', righe: [r('Riso basmati (crudo)', 80), r('Manzo', 150), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1.5)] },
     ],
   },
   {
@@ -100,9 +100,9 @@ export const GIORNATE_RS: GiornataRs[] = [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r("Albume d'uovo", 150), r('Burro di mandorle', 25), r('Mirtilli', 50), r('Rice Meal Tsunami Nutrition', 20), r('Proteine isolate Isopure', 15), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Pane arabo', 80), r('Petto di pollo', 140), r('Avocado', 70), r('Zucchine', 50), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Cous cous (crudo)', 50), r('Petto di pollo', 150), r("Olio extravergine d'oliva", 15), r('Zucchine', 100), r('Sale', 1)] },
-      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 80), r('Proteine isolate Isopure', 30), r('Banana', 120), r('Sale', 15)] },
+      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 80), r('Proteine isolate Isopure', 30), r('Banana', 120), r('Sale', 1.5)] },
       { nome: 'Intra-workout', righe: [r('Ciclodestrine', 25), r('Sale', 1)] },
-      { nome: 'Post-workout', righe: [r('Pasta di riso (cruda)', 120), r('Gamberetti', 180), r("Olio extravergine d'oliva", 5), r('Zucchine', 50), r('Pomodori datterini', 50), r('Sale', 15)] },
+      { nome: 'Post-workout', righe: [r('Pasta di riso (cruda)', 120), r('Gamberetti', 180), r("Olio extravergine d'oliva", 5), r('Zucchine', 50), r('Pomodori datterini', 50), r('Sale', 1.5)] },
     ],
   },
   {
