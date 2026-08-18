@@ -718,19 +718,70 @@ export { macrosFor }
  * quelle vere — il bicchiere che usi, la bottiglietta, la bottiglia da un litro
  * e mezzo — perche' «250 ml» a mente non se li converte nessuno.
  */
-const MISURE: { nome: string; icona: string; l: number }[] = [
-  { nome: 'Bicchiere', icona: '🥛', l: 0.1 },
-  { nome: 'Bicchiere', icona: '🥛', l: 0.15 },
-  { nome: 'Bicchiere', icona: '🥛', l: 0.2 },
-  { nome: 'Bicchiere', icona: '🥛', l: 0.25 },
-  { nome: 'Bicchiere', icona: '🥛', l: 0.3 },
-  { nome: 'Bicchierone', icona: '🍺', l: 0.7 },
-  { nome: 'Bottiglietta', icona: '🧴', l: 0.5 },
-  { nome: 'Bottiglia', icona: '🍶', l: 1 },
-  { nome: 'Bottiglia', icona: '🍶', l: 1.5 },
-  { nome: 'Bottiglia', icona: '🍶', l: 2 },
-  { nome: 'Caffè', icona: '☕', l: 0.04 },
-  { nome: 'Tè', icona: '🍵', l: 0.25 },
+/**
+ * Le icone dei recipienti, disegnate.
+ *
+ * Le emoji non hanno le forme che servono: il boccale di birra per un
+ * bicchierone d'acqua e il flacone di lozione per una bottiglietta dicono la
+ * cosa sbagliata. Qui ogni misura ha la sua sagoma, con le proporzioni giuste —
+ * il bicchierone e' un bicchiere alto, la bottiglia ha il collo.
+ */
+function Vetro({ d, w = 16, h = 18 }: { d: React.ReactNode; w?: number; h?: number }) {
+  return (
+    <svg width={w} height={h} viewBox="0 0 24 28" fill="none" stroke="currentColor"
+      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ flex: 'none' }}>{d}</svg>
+  )
+}
+
+// La misura si legge anche dalla dimensione: un mezzo litro e un due litri
+// disegnati uguali non dicono niente, e la fila diventa tutta uguale.
+/** Bicchiere: tronco di cono, tanto piu' pieno quanto piu' grande. */
+const bicchiere = (pieno: number, alto = 18) => (
+  <Vetro h={alto} d={<>
+    <path d="M6.5 4h11l-1.4 19a1.6 1.6 0 0 1-1.6 1.4h-5a1.6 1.6 0 0 1-1.6-1.4L6.5 4z" />
+    <path d={`M${7.1 + 0.5 * (1 - pieno)} ${24.4 - 20 * pieno}h${9.8 - 1 * (1 - pieno)}`} opacity=".55" />
+  </>} />
+)
+
+/** Bicchierone: piu' alto e piu' dritto, non un boccale. */
+const bicchierone = (
+  <Vetro h={24} w={19} d={<>
+    <path d="M7 2h10l-.9 22.2a1.5 1.5 0 0 1-1.5 1.4h-5.2a1.5 1.5 0 0 1-1.5-1.4L7 2z" />
+    <path d="M7.6 8h8.8" opacity=".55" />
+  </>} />
+)
+
+/** Bottiglietta e bottiglia: stessa sagoma, altezza diversa. */
+const bottiglia = (alto: number) => (
+  <Vetro h={alto} d={<>
+    <path d="M10 2h4v3.2c0 1 .3 1.5 1 2.2 1.2 1.2 1.7 2.2 1.7 3.9v11.3a3 3 0 0 1-3 3h-3.4a3 3 0 0 1-3-3V11.3c0-1.7.5-2.7 1.7-3.9.7-.7 1-1.2 1-2.2V2z" />
+    <path d="M8.3 14h7.4" opacity=".55" />
+  </>} />
+)
+
+/** Tazzina e tazza: la stessa tazza, il te' piu' larga. */
+const tazza = (larga: boolean) => (
+  <Vetro h={16} d={<>
+    <path d={`M4 8h${larga ? 13 : 10}v${larga ? 8 : 6}a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8z`} />
+    <path d={`M${larga ? 17 : 14} 10h1.6a2.6 2.6 0 0 1 0 5.2H${larga ? 17 : 14}`} />
+    <path d="M20 24H3" opacity=".55" />
+  </>} />
+)
+
+const MISURE: { icona: React.ReactNode; l: number }[] = [
+  { icona: bicchiere(0.25, 14), l: 0.1 },
+  { icona: bicchiere(0.4, 15.5), l: 0.15 },
+  { icona: bicchiere(0.55, 17), l: 0.2 },
+  { icona: bicchiere(0.75, 18.5), l: 0.25 },
+  { icona: bicchiere(0.9, 20), l: 0.3 },
+  { icona: bicchierone, l: 0.7 },
+  { icona: bottiglia(17), l: 0.5 },
+  { icona: bottiglia(21), l: 1 },
+  { icona: bottiglia(24), l: 1.5 },
+  { icona: bottiglia(27), l: 2 },
+  { icona: tazza(false), l: 0.04 },
+  { icona: tazza(true), l: 0.25 },
 ]
 
 const litri = (n: number) => (n >= 1 ? `${String(n).replace('.', ',')} L` : `${Math.round(n * 1000)} ml`)
@@ -778,7 +829,8 @@ function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; com
             <p className="muted small" style={{ margin: '10px 0 6px' }}>Tocca quello che hai bevuto.</p>
             <div className="row wrap" style={{ gap: 6 }}>
               {MISURE.map((m, i) => (
-                <button key={i} className="chip" style={{ padding: '8px 11px' }}
+                <button key={i} className="chip"
+                  style={{ padding: '8px 11px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   onClick={() => cambia(m.l)}>
                   {m.icona} {litri(m.l)}
                 </button>
