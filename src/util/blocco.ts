@@ -26,6 +26,19 @@ export function ultimaTraccia(): { cosa: string; quando: string } | null {
   } catch { return null }
 }
 
+/**
+ * Un segnaposto lungo un percorso lento.
+ *
+ * L'ultimo tocco dice DA DOVE parte il blocco, non dove si pianta. Chiamando
+ * questa a ogni passo, la traccia dice anche fin dove e' arrivato: l'ultimo
+ * passo scritto e' quello che non e' mai finito.
+ */
+export function passo(dove: string): void {
+  try {
+    localStorage.setItem(TRACCIA, JSON.stringify({ cosa: dove, quando: new Date().toISOString() }))
+  } catch { /* ignore */ }
+}
+
 export function scordaTraccia(): void {
   try { localStorage.removeItem(TRACCIA) } catch { /* ignore */ }
 }

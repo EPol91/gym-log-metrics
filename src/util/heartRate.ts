@@ -357,15 +357,33 @@ export function hrRecordingFor(): string | null { return rec?.sessionId ?? null 
  * tace per un minuto restano buchi, e i buchi sono la verita' — riempirli
  * inventerebbe battiti che non ci sono stati.
  */
+/**
+ * Il tetto della serie: sei ore a una lettura ogni cinque secondi.
+ *
+ * Senza, una seduta lasciata aperta per giorni fa crescere l'array all'infinito
+ * — e ogni cinque secondi viene riscritto per intero nel database. Piu' cresce,
+ * piu' quella scrittura costa, finche' il filo principale non fa altro: da
+ * fuori, l'app bloccata. Nessun allenamento dura sei ore; se le supera, il
+ * cuore smette di allungarsi invece di trascinare giu' tutto.
+ */
+const MAX_LETTURE = (6 * 3600) / PASSO_SEC
+
 function registra(v: number): void {
   if (!rec) return
   const i = Math.floor((Date.now() - rec.t0) / (PASSO_SEC * 1000))
-  if (i < 0) return
+  if (i < 0 || i >= MAX_LETTURE) return
   // Le caselle saltate restano vuote, segnate con 0: nessun cuore batte a zero,
   // e chi legge sa che li' la fascia taceva. Riempirle con l'ultimo battito
   // buono — come faceva prima, al contrario di quanto diceva questo commento —
   // inventa minuti interi di sforzo che non hai fatto.
-  while (rec.bpm.length < i) rec.bpm.push(0)
+  // I buchi restano zeri — nessun cuore batte a zero, e chi legge sa che li' la
+  // fascia taceva — ma si scrivono in blocco: uno per uno, dopo una pausa lunga,
+  // sarebbero migliaia di passaggi a mano.
+  if (rec.bpm.length < i) {
+    const da = rec.bpm.length
+    rec.bpm.length = i
+    rec.bpm.fill(0, da)
+  }
   rec.bpm[i] = v
   rec.ultimo = v
 }
