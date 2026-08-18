@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { sorvegliaBlocchi } from '../util/blocco'
 
 /**
  * L'errore che l'app si teneva per sé.
@@ -27,11 +28,14 @@ export function BarraErrore() {
       const r = e.reason as { message?: string } | string | undefined
       aggiungi(typeof r === 'string' ? r : r?.message ?? 'promessa rifiutata')
     }
+    // Un blocco non lancia errori: si misura dal ritardo del battito.
+    const basta = sorvegliaBlocchi(aggiungi)
     window.addEventListener('error', suErrore)
     window.addEventListener('unhandledrejection', suPromessa)
     return () => {
       window.removeEventListener('error', suErrore)
       window.removeEventListener('unhandledrejection', suPromessa)
+      basta()
     }
   }, [])
 
