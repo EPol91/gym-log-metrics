@@ -220,6 +220,19 @@ export function DietScreen() {
   const statoRs = useLiveQuery(() => statoDieta(date), [date])
   const kcalPct = t && t.kcal > 0 ? Math.min(100, (totals.kcal / t.kcal) * 100) : 0
 
+  // La riga compatta compare quando il riepilogo esce dallo schermo. Si guarda
+  // un segnaposto vuoto messo sopra la card: e' l'unico modo di saperlo senza
+  // stare appesi all'evento di scorrimento, che su un telefono costa.
+  const ancora = useRef<HTMLDivElement>(null)
+  const [fuori, setFuori] = useState(false)
+  useEffect(() => {
+    const el = ancora.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setFuori(!e.isIntersecting), { rootMargin: '-4px 0px 0px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   // Uscendo dalla modalità selezione azzero le spunte.
   useEffect(() => { if (!selectMode) setSelected(new Set()) }, [selectMode])
 
@@ -377,7 +390,47 @@ export function DietScreen() {
           giornata segue il coach: senza piano, non c'e' niente da misurare. */}
       <BarraRs date={date} onTuttoSeguito={(ids) => spuntaTutte(ids, true)} />
 
-      {/* Riepilogo macro */}
+      {/* Riepilogo macro.
+          Scorrendo, la card esce dallo schermo e i totali del giorno — l'unica
+          cosa che guardi mentre aggiungi cibo — sparivano con lei. Ora al suo
+          posto resta in alto una riga sola con gli stessi numeri. */}
+      <div ref={ancora} />
+
+      {/* La riga: anello, calorie, i tre macro col loro obiettivo, e sotto la
+          barra delle calorie. Il «restano» non c'e': il confronto col target e'
+          gia' scritto accanto a ogni numero. */}
+      {fuori && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, top: 'var(--vvtop, 0px)', zIndex: 60,
+          padding: '6px 12px 0', background: 'var(--bg)',
+        }}>
+          <div className="card" style={{
+            margin: 0, padding: '8px 10px', background: '#101010',
+            boxShadow: '0 6px 18px rgba(0,0,0,.55)',
+          }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
+              <MacroDonut m={totals} size={26} />
+              <span style={{ flex: 'none' }}>
+                <strong style={{ color: 'var(--gold)', fontSize: 15 }}>{totals.kcal}</strong>
+                <span className="muted" style={{ fontSize: 10 }}>/{t?.kcal ?? '—'}</span>
+              </span>
+              <span style={{ flex: 1 }} />
+              {([
+                ['C', totals.carbs, t?.carbs, 'var(--carb)'],
+                ['P', totals.protein, t?.protein, 'var(--prot)'],
+                ['G', totals.fat, t?.fat, 'var(--fat)'],
+              ] as const).map(([et, v, tg, col]) => (
+                <span key={et} style={{ fontSize: 12, color: col, flex: 'none' }}>
+                  {et} {Math.round(v)}<span className="muted" style={{ fontSize: 10 }}>/{tg ? Math.round(tg) : '—'}</span>
+                </span>
+              ))}
+            </div>
+            <div style={{ height: 3, borderRadius: 999, background: 'var(--surface-2)', marginTop: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999 }} />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
         <div className="row" style={{ gap: 12, alignItems: 'center' }}>
           {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai soli colori. */}
