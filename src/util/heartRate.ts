@@ -1,4 +1,5 @@
-import { isNativo, connettiNativo } from './fasciaNativa'
+import { isNativo, connettiNativo, annullaCollegamento } from './fasciaNativa'
+import { accendiSeduta, spegniSeduta } from './sedutaViva'
 
 // Live BPM via Web Bluetooth — standard Heart Rate Service (0x180D / 0x2A37).
 // Solo browser che supportano Web Bluetooth (Android Chrome, desktop Chrome). iOS/Safari: non supportato.
@@ -123,14 +124,33 @@ let hrAcc = { sum: 0, count: 0 }
 const hrSubs = new Set<() => void>()
 // La fascia di questa sessione: si ricorda per poterla riagganciare da soli.
 let hrDevice: BleDevice | null = null
-let hrRetry: number | null = null
 // Staccata da te o caduta da sola? Solo nel secondo caso si riprova: se hai
 // premuto Scollega, riattaccarsi ogni tre secondi sarebbe una molestia.
 let hrVoluto = false
 
-const RIPROVA_MS = 3000
+/**
+ * Chi guarda viene avvisato al massimo quattro volte al secondo.
+ *
+ * Ogni battito faceva ridisegnare l'intera schermata di allenamento. A cuore
+ * alto sono tre volte al secondo per tutta la seduta, e soprattutto: se il
+ * telefono ha tenuto da parte l'arretrato mentre eri fuori dall'app, al rientro
+ * quei ridisegni arrivano tutti in fila e il filo dell'interfaccia non fa
+ * altro. Il numero a schermo non ha bisogno di piu' di quattro aggiornamenti al
+ * secondo — l'occhio non li vede comunque.
+ */
+let avvisoTimer: number | null = null
+function avvisa(subito: boolean) {
+  if (subito) {
+    if (avvisoTimer != null) { clearTimeout(avvisoTimer); avvisoTimer = null }
+    hrSubs.forEach((f) => f())
+    return
+  }
+  if (avvisoTimer != null) return
+  avvisoTimer = setTimeout(() => { avvisoTimer = null; hrSubs.forEach((f) => f()) }, 250) as unknown as number
+}
 
-function hrSet(patch: Partial<HeartRateState>) { hrState = { ...hrState, ...patch }; hrSubs.forEach((f) => f()) }
+/** `subito` false = aggiornamento di routine (un battito), si puo' raggruppare. */
+function hrSet(patch: Partial<HeartRateState>, subito = true) { hrState = { ...hrState, ...patch }; avvisa(subito) }
 
 export function hrSubscribe(cb: () => void): () => void { hrSubs.add(cb); return () => { hrSubs.delete(cb) } }
 export function hrGetState(): HeartRateState { return hrState }
@@ -142,84 +162,129 @@ function onBattito(v: number) {
     bpm: v, avgBpm: Math.round(hrAcc.sum / hrAcc.count),
     maxBpm: Math.max(hrState.maxBpm ?? 0, v), minBpm: Math.min(hrState.minBpm ?? 999, v),
     ultimoBattitoMs: Date.now(), battitiRicevuti: hrState.battitiRicevuti + 1,
-  })
+  }, false)
 }
-
-/**
- * Il cane da guardia sul flusso.
- *
- * La riconnessione automatica parte solo quando il plugin ANNUNCIA una
- * disconnessione. Ma una fascia puo' smettere di notificare restando
- * "collegata" — Android sospende le notifiche, o la fascia esce dalla modalita'
- * trasmissione — e in quel caso non annuncia niente: l'ultimo battito resta a
- * schermo per sempre e sembra tutto a posto. Qui si guarda l'orologio: se per
- * QUIETE_MS non arriva niente, la connessione si considera morta e si rifa'.
- */
-/**
- * Il cane da guardia e' stato tolto.
- *
- * Forzava stacca-e-riattacca dopo quindici secondi di silenzio: su una fascia
- * che tace ogni tanto diventava un ciclo continuo di connessioni al Bluetooth,
- * e il ponte nativo — che gira sullo stesso filo dell'interfaccia — si
- * intasava. L'app si bloccava con lo scorrimento ancora vivo: il sintomo
- * esatto. Meglio un battito fermo a schermo che un'app ferma.
- *
- * Resta la freschezza scritta sotto il numero: se e' fermo, si vede.
- */
-function accendiGuardia() { /* niente: vedi sopra */ }
-function spegniGuardia() { /* niente: vedi sopra */ }
 
 /** Il segnale e' caduto: si riprova da soli finche' non torna. */
 function onPerso() {
   hrHandle = null
   hrSet({ connected: false, bpm: null, retrying: !hrVoluto, ultimaCadutaMs: Date.now() })
-  if (!hrVoluto) riprova()
+  if (!hrVoluto) riprova(true)
 }
 
 /**
- * Un tentativo per volta.
+ * Un tentativo per volta. Sul serio, questa volta.
  *
- * Le riprove partivano ogni tre secondi SENZA aspettare la precedente: se una
- * chiamata al Bluetooth restava appesa se ne accumulavano decine in parallelo,
- * il ponte nativo si intasava e da fuori sembrava l'app bloccata. Con il cane
- * da guardia che forza un riaggancio ogni quindici secondi di silenzio,
- * diventava facile arrivarci.
+ * Prima il posto si liberava allo scadere di un cronometro di dodici secondi —
+ * ma la chiamata al Bluetooth, scaduta o no, restava viva nel nativo. Ogni
+ * dodici secondi ne partiva un'altra sopra la precedente: un quarto d'ora fuori
+ * dall'app e sul ponte c'erano decine di connessioni appese. Il ponte gira
+ * sullo stesso filo dell'interfaccia, e al rientro te le scaricava tutte
+ * addosso: app bloccata, con lo scorrimento ancora vivo. Era questo.
+ *
+ * Adesso il posto lo libera la RISPOSTA del Bluetooth, non l'orologio. Il
+ * cronometro resta solo come ultima spiaggia: se un tentativo non risponde piu'
+ * per tre quarti di minuto si sgancia la linea e si riparte puliti — mai due
+ * chiamate vive insieme.
  */
-let inCorso = false
+let inCorso: Promise<HeartRateHandle> | null = null
+let inCorsoDa = 0
 
-/** Oltre questo tempo il tentativo si considera perso: meglio riprovare pulito. */
-const ATTESA_MAX_MS = 12_000
+/** Le attese fra un tentativo e l'altro: crescono, cosi' non e' mai una raffica. */
+const ATTESE_MS = [3_000, 6_000, 12_000, 30_000, 60_000]
+let passo = 0
 
-function conScadenza<T>(p: Promise<T>): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, no) => setTimeout(() => no(new Error('tentativo scaduto')), ATTESA_MAX_MS)),
-  ])
+/** Oltre questo, il tentativo appeso si considera perso e la linea si sgancia. */
+const APPESO_MS = 45_000
+
+let attesaTimer: number | null = null
+let appesoTimer: number | null = null
+/** Il numero del tentativo in corso: uno che risponde in ritardo non deve sorpassare quello nuovo. */
+let gen = 0
+
+/**
+ * Si riprova anche con l'app in secondo piano: cambiare canzone su Spotify non
+ * e' un motivo per smettere di registrare il cuore. A tenere sveglia l'app
+ * mentre sei fuori ci pensa il servizio in primo piano (vedi sedutaViva.ts):
+ * senza quello Android congela tutto e questi tentativi non servirebbero a
+ * niente.
+ */
+function riprova(subito = false) {
+  if (hrVoluto || hrState.connected) return
+  if (!hrDevice && !isNativo()) return
+  if (attesaTimer != null) return
+  // Una chiamata e' ancora viva: si aspetta lei, non se ne apre un'altra.
+  if (inCorso && Date.now() - inCorsoDa < APPESO_MS) return
+
+  // Il primo tentativo dopo la caduta e' immediato: quello non conta come
+  // fallimento, quindi le attese partono dalla prima della lista.
+  const attesa = subito ? 0 : ATTESE_MS[Math.min(Math.max(passo - 1, 0), ATTESE_MS.length - 1)]
+  attesaTimer = setTimeout(() => { attesaTimer = null; void tenta() }, attesa) as unknown as number
 }
 
-function riprova() {
-  if (hrRetry != null || (!hrDevice && !isNativo())) return
-  hrRetry = setInterval(async () => {
-    if (hrVoluto || (!hrDevice && !isNativo())) { fermaRiprove(); return }
-    if (inCorso) return
-    inCorso = true
-    // Si riprova anche con l'app in secondo piano: cambiare canzone su Spotify
-    // non e' un motivo per smettere di registrare il cuore. Il telefono i
-    // tentativi li rallenta comunque da solo.
-    try {
-      hrHandle = isNativo() || !hrDevice
-        ? await conScadenza(connettiNativo(onBattito, onPerso, true))
-        : await conScadenza(connectHeartRate(hrDevice, onBattito, onPerso))
-      hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, error: null, ultimoBattitoMs: Date.now() })
-      accendiGuardia()
-      fermaRiprove()
-    } catch { /* ancora fuori portata: si riprova fra tre secondi */ }
-    finally { inCorso = false }
-  }, RIPROVA_MS) as unknown as number
+async function tenta(): Promise<void> {
+  if (hrVoluto || hrState.connected) return
+  // Rimasta appesa dalla volta prima: prima si chiude, o la linea resta occupata.
+  if (inCorso) { inCorso = null; await annullaCollegamento() }
+  if (hrVoluto || hrState.connected) return
+
+  const mio = ++gen
+  const p = isNativo() || !hrDevice
+    ? connettiNativo(onBattito, onPerso, true)
+    : connectHeartRate(hrDevice, onBattito, onPerso)
+  inCorso = p
+  inCorsoDa = Date.now()
+
+  // Se non risponde piu' nessuno, qualcuno deve pur svegliare la riprova: la
+  // promessa appesa non chiama nemmeno il proprio `finally`, e senza questo la
+  // fascia resterebbe giu' per tutta la seduta.
+  if (appesoTimer != null) clearTimeout(appesoTimer)
+  appesoTimer = setTimeout(() => {
+    appesoTimer = null
+    if (mio === gen && !hrState.connected && !hrVoluto) riprova(true)
+  }, APPESO_MS) as unknown as number
+
+  try {
+    const h = await p
+    // Arrivata tardi, quando ne era gia' partita un'altra: si chiude e si fa
+    // finta di niente, altrimenti restano due collegamenti vivi sulla stessa fascia.
+    if (mio !== gen) { h.disconnect(); return }
+    hrHandle = h
+    passo = 0
+    hrSet({ connected: true, connecting: false, retrying: false, deviceName: h.deviceName, error: null, ultimoBattitoMs: Date.now() })
+  } catch {
+    if (mio === gen) passo++ // ancora fuori portata: si riprova, ma piu' piano
+  } finally {
+    if (mio === gen) {
+      if (appesoTimer != null) { clearTimeout(appesoTimer); appesoTimer = null }
+      if (inCorso === p) inCorso = null
+      if (!hrState.connected && !hrVoluto) riprova()
+    }
+  }
+}
+
+/**
+ * Rientri nell'app: si riprova subito, senza aspettare il giro lungo.
+ *
+ * Le riprove vanno avanti anche mentre sei fuori — il servizio in primo piano
+ * serve a questo — ma se la fascia era fuori portata le attese si sono allungate
+ * fino a un minuto. Nel momento in cui torni a guardare lo schermo, un minuto di
+ * cuore vuoto si vede: qui si riparte dalla prima attesa e si tenta all'istante.
+ */
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    if (hrState.connected || hrVoluto || (!hrDevice && !isNativo())) return
+    fermaRiprove()
+    riprova(true)
+  })
 }
 
 function fermaRiprove() {
-  if (hrRetry != null) { clearInterval(hrRetry); hrRetry = null }
+  if (attesaTimer != null) { clearTimeout(attesaTimer); attesaTimer = null }
+  if (appesoTimer != null) { clearTimeout(appesoTimer); appesoTimer = null }
+  gen++
+  passo = 0
 }
 
 /** Collega la fascia. Il selettore si apre solo se il telefono non ne conosce gia' una. */
@@ -237,7 +302,6 @@ export async function hrConnect(): Promise<void> {
       hrHandle = await connectHeartRate(hrDevice, onBattito, onPerso)
     }
     hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, ultimoBattitoMs: Date.now() })
-    accendiGuardia()
   } catch (e) {
     // L'errore vero, non un generico «fallita»: senza, un permesso negato e un
     // plugin che non risponde sono lo stesso messaggio e non si capisce cosa fare.
@@ -264,7 +328,6 @@ export async function hrReconnectKnown(): Promise<boolean> {
       hrVoluto = false
       hrHandle = await connettiNativo(onBattito, onPerso, true)
       hrSet({ connected: true, connecting: false, retrying: false, deviceName: hrHandle.deviceName, ultimoBattitoMs: Date.now() })
-      accendiGuardia()
       return true
     } catch { hrSet({ connecting: false }); return false }
   }
@@ -286,7 +349,7 @@ export async function hrReconnectKnown(): Promise<boolean> {
 export function hrDisconnect(): void {
   hrVoluto = true
   fermaRiprove()
-  spegniGuardia()
+  inCorso = null
   hrHandle?.disconnect(); hrHandle = null; hrDevice = null
   hrSet({ connected: false, retrying: false, bpm: null })
 }
@@ -310,6 +373,10 @@ export function hrOnSave(fn: typeof salva): void { salva = fn }
 
 /** Comincia a registrare per questa seduta. Ripartire sulla stessa non azzera. */
 export function hrStartRecording(sessionId: string, gia?: { t0: string; step: number; bpm: number[] }): void {
+  // La notifica fissa: da qui in poi Android sa che questa app sta registrando
+  // e smette di congelarla appena esci. E' la differenza fra "continua a
+  // funzionare fuori dall'app" e "al rientro trovi tutto fermo".
+  accendiSeduta()
   if (rec?.sessionId === sessionId) return
   rec = gia?.bpm?.length
     ? { sessionId, t0: new Date(gia.t0).getTime(), bpm: [...gia.bpm], ultimo: 0 }
@@ -352,6 +419,10 @@ export function hrFlush(forza = false): void {
 /** Chiude la registrazione della seduta e scrive l'ultima volta. */
 export function hrStopRecording(): void {
   hrFlush(true)
+  spegniSeduta()
+  // Seduta chiusa e fascia gia' caduta: non c'e' piu' niente da registrare, e
+  // continuare a cercarla per ore non serve a nessuno.
+  if (!hrState.connected) { hrVoluto = true; fermaRiprove(); inCorso = null }
   rec = null
   if (timer != null) { clearInterval(timer); timer = null }
 }

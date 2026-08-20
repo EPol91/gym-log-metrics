@@ -24,6 +24,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    // Va registrato PRIMA di super.onCreate: dopo, il ponte e' gia' costruito e
+    // il plugin non esisterebbe per la pagina.
+    registerPlugin(SedutaViva.class);
     super.onCreate(savedInstanceState);
 
     // Barre trasparenti sul nero dell'app, con icone chiare: la barra di stato

@@ -166,19 +166,29 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
 
   const [runStartMs, setRunStartMs] = useState<number | null>(null)
   const [pendingMax, setPendingMax] = useState<number | null>(null)
-  function clearRun() { try { sessionStorage.removeItem('cardioRun') } catch { /* ignore */ } setRunStartMs(null) }
+  function clearRun() { try { localStorage.removeItem('cardioRun') } catch { /* ignore */ } setRunStartMs(null) }
 
-  // Ripristina un cardio in corso dopo un refresh (il timer riparte dall'orario reale).
+  /**
+   * Un cardio in corso si riprende sempre, anche dopo che l'app e' stata chiusa.
+   *
+   * Stava in sessionStorage, che muore insieme all'app: chiudere e riaprire —
+   * l'unica cosa da fare quando l'app si impallava — si portava via la seduta
+   * cardio intera. Ora sta in localStorage, che resta su disco: il cronometro
+   * riparte dall'orario vero e non hai perso niente.
+   */
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem('cardioRun')
+      const raw = localStorage.getItem('cardioRun') ?? sessionStorage.getItem('cardioRun')
       if (!raw) return
       const r = JSON.parse(raw)
+      // Roba di un'altra seduta o di ore fa: non si riapre da sola.
+      if (r.sessionId && r.sessionId !== sessionId) return
+      if (!r.startMs || Date.now() - r.startMs > 6 * 3600_000) { localStorage.removeItem('cardioRun'); return }
       setCtype(r.ctype); setMethod(r.method); setSteadyMode(r.steadyMode)
       setRounds(r.rounds); setWork(r.work); setRest(r.rest); setTargetMin(r.targetMin)
       setRunStartMs(r.startMs); setPhase('running')
     } catch { /* ignore */ }
-  }, [])
+  }, [sessionId])
 
   function onRunnerComplete(min: number) {
     clearRun()
@@ -191,7 +201,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
     hr.resetAvg()
     const startMs = Date.now()
     setRunStartMs(startMs)
-    try { sessionStorage.setItem('cardioRun', JSON.stringify({ ctype, method, steadyMode, rounds, work, rest, targetMin, startMs })) } catch { /* ignore */ }
+    try { localStorage.setItem('cardioRun', JSON.stringify({ sessionId, ctype, method, steadyMode, rounds, work, rest, targetMin, startMs })) } catch { /* ignore */ }
     setPhase('running')
   }
 

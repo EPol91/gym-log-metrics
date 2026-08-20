@@ -112,6 +112,22 @@ async function plugin(): Promise<Ble> {
 const RICORDO = 'fascia-nativa-id'
 
 /**
+ * Chiude un collegamento rimasto a meta'.
+ *
+ * Un tentativo che non risponde piu' tiene occupata la linea del Bluetooth: il
+ * successivo la trova occupata e fallisce anche lui, e cosi' all'infinito.
+ * Prima di riprovare si sgancia — non importa se non c'era niente da sganciare.
+ */
+export async function annullaCollegamento(): Promise<void> {
+  try {
+    const p = grezzo()
+    const id = localStorage.getItem(RICORDO)
+    if (!p || !id) return
+    await p.disconnect({ deviceId: id })
+  } catch { /* non c'era niente da chiudere */ }
+}
+
+/**
  * Apre il selettore nativo, si collega e avvia le notifiche.
  * Stessa firma di `connectHeartRate`, cosi' lo store non cambia di una riga.
  */

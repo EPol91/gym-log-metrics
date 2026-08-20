@@ -45,7 +45,9 @@ const restKey = (sessionId: string) => `rest-${sessionId}`
 
 function leggiRecupero(sessionId: string): RestState | null {
   try {
-    const s = sessionStorage.getItem(restKey(sessionId))
+    // localStorage e non sessionStorage: il secondo muore quando l'app si
+    // chiude, e il recupero in corso spariva insieme a lei.
+    const s = localStorage.getItem(restKey(sessionId)) ?? sessionStorage.getItem(restKey(sessionId))
     if (!s) return null
     const st = JSON.parse(s) as RestState
     // Un recupero finito da piu' di dieci minuti e' roba di ieri, non si riapre.
@@ -57,15 +59,25 @@ function leggiRecupero(sessionId: string): RestState | null {
 
 export function salvaRecupero(sessionId: string, st: RestState | null): void {
   try {
-    if (st) sessionStorage.setItem(restKey(sessionId), JSON.stringify(st))
-    else sessionStorage.removeItem(restKey(sessionId))
+    if (st) localStorage.setItem(restKey(sessionId), JSON.stringify(st))
+    else { localStorage.removeItem(restKey(sessionId)); sessionStorage.removeItem(restKey(sessionId)) }
+  } catch { /* ignore */ }
+}
+
+/** I recuperi delle sedute vecchie: restavano li' per sempre, uno per seduta. */
+function pulisciVecchi(sessionId: string): void {
+  try {
+    const mio = restKey(sessionId)
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('rest-') && k !== mio) localStorage.removeItem(k)
+    }
   } catch { /* ignore */ }
 }
 
 /** Lo store del recupero di questa seduta: sopravvive allo smontaggio. */
 function storeRecupero(sessionId: string): { current: RestState | null } {
   let s = restCache.get(sessionId)
-  if (!s) { s = { current: leggiRecupero(sessionId) }; restCache.set(sessionId, s) }
+  if (!s) { pulisciVecchi(sessionId); s = { current: leggiRecupero(sessionId) }; restCache.set(sessionId, s) }
   return s
 }
 

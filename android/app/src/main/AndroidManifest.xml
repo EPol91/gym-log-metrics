@@ -24,6 +24,14 @@
 
         </activity>
 
+        <!-- La seduta che continua fuori dall'app: notifica fissa mentre
+             registri, cosi' Android non congela il processo. Il tipo
+             "connectedDevice" e' la fascia cardio. -->
+        <service
+            android:name=".ServizioSeduta"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -62,6 +70,11 @@
     <!-- Schermo acceso durante l'allenamento: col telefono in standby il
          Bluetooth smette di consegnare battiti -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- La seduta continua anche quando esci dall'app: senza un servizio in
+         primo piano Android congela il processo e si ferma tutto — fascia,
+         recupero, cardio. E' la stessa notifica fissa di WHOOP o Strava. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- Rilevamento della palestra piu' vicina, solo quando lo chiedi tu -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
