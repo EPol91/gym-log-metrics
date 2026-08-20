@@ -5,8 +5,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoodsRanked, addFood, findFoodByBarcode } from '../db/diet'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
 import { BarcodeScanner, isScanSupported } from './BarcodeScanner'
-import { FoodForm } from './FoodSheet'
-import type { Food } from '../db/schema'
+import { FoodForm, MacroDonut } from './FoodSheet'
+import { listRecipesRanked, computeRecipe } from '../db/recipes'
+import type { Food, Recipe } from '../db/schema'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
@@ -15,11 +16,17 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacrit
  * Serve all'editor delle ricette: stessa ricerca, stesso scanner e stesso form
  * del pannello del diario, ma alla fine restituisce l'alimento invece di registrarlo.
  */
-export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; onClose: () => void }) {
+export function FoodChooser({ onPick, onPickRecipe, onClose }: {
+  onPick: (f: Food) => void
+  /** Se c'è, compare anche la scheda Ricette: una ricetta può prendere il posto
+   *  di un alimento — il pane arabo del coach diventa la tua focaccia. */
+  onPickRecipe?: (r: Recipe) => void
+  onClose: () => void
+}) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
   const [q, setQ] = useState('')
-  const [tab, setTab] = useState<'mine' | 'online'>('mine')
+  const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
   const [creating, setCreating] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [online, setOnline] = useState<OffFood[]>([])
@@ -30,6 +37,7 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
   const [daControllare, setDaControllare] = useState<OffFood | null>(null)
 
   const foods = useLiveQuery(listFoodsRanked, []) ?? []
+  const recipes = useLiveQuery(listRecipesRanked, []) ?? []
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -102,6 +110,11 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
           <button className={tab === 'online' ? 'chip on' : 'chip'} onClick={runOnlineSearch} disabled={!q.trim() || busy}>
             {busy ? 'Cerco…' : 'Cerca online'}
           </button>
+          {onPickRecipe && (
+            <button className={tab === 'recipes' ? 'chip on' : 'chip'} onClick={() => setTab('recipes')}>
+              📖 Ricette ({recipes.length})
+            </button>
+          )}
           <button className="chip" onClick={() => setCreating(true)}>＋ Nuovo</button>
         </div>
 
@@ -123,8 +136,41 @@ export function FoodChooser({ onPick, onClose }: { onPick: (f: Food) => void; on
             </div>
           ))}
           {tab === 'mine' && filtered.length === 0 && (
-            <p className="muted small" style={{ marginTop: 10 }}>Nessun alimento trovato. Cerca online o creane uno nuovo.</p>
+            <p className="muted small" style={{ marginTop: 10 }}>
+              Nessun alimento trovato. Cerca online, creane uno nuovo
+              {onPickRecipe && <> — o guarda fra le <strong>📖 Ricette</strong>, se è una cosa che cucini tu</>}.
+            </p>
           )}
+
+          {tab === 'recipes' && onPickRecipe && (() => {
+            const byId = new Map(foods.map((f) => [f.id, f]))
+            const visibili = nq ? recipes.filter((r) => norm(r.name).includes(nq)) : recipes
+            if (!visibili.length) {
+              return <p className="muted small" style={{ marginTop: 10 }}>
+                {recipes.length ? 'Nessuna ricetta con questo nome.' : 'Non hai ancora ricette: creale da Cibo → 📖 Ricette.'}
+              </p>
+            }
+            return visibili.map((r) => {
+              const c = computeRecipe(r, byId)
+              const m = (r.mode === 'servings' ? c.perServing : c.per100) ?? c.totals
+              return (
+                <div key={r.id} className="row spread" style={{ alignItems: 'center', gap: 9, padding: '9px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
+                  onClick={() => onPickRecipe(r)}>
+                  <MacroDonut m={m} size={34} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.favorite ? '★ ' : ''}{r.name}
+                    </span>
+                    <span className="muted small">
+                      {r.mode === 'servings' ? `${m.kcal} kcal a porzione` : `${m.kcal} kcal per 100 g`}
+                      {' · '}C: {m.carbs}, P: {m.protein}, G: {m.fat}
+                    </span>
+                  </span>
+                  <span className="muted small" style={{ flex: 'none' }}>＋</span>
+                </div>
+              )
+            })
+          })()}
 
           {tab === 'online' && online.map((o) => (
             <div key={o.barcode ?? o.name} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}

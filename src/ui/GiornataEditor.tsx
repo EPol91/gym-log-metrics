@@ -15,10 +15,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
 import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes, sincronizzaObiettivo, pastoComeItems } from '../db/diet'
 import { pastoCopiato } from '../util/appuntiPasto'
+import { computeRecipe, macrosForAmount, type RecipeAmount } from '../db/recipes'
 import { FoodChooser } from './FoodChooser'
 import { GIORNATE_RS } from '../rs/protocollo'
 import { useBloccoScroll } from './useBloccoScroll'
-import type { DayTemplateItem, DayTemplateMeal, Food, Macros } from '../db/schema'
+import type { DayTemplateItem, DayTemplateMeal, Food, Macros, Recipe } from '../db/schema'
 
 const VUOTO: Macros = { kcal: 0, carbs: 0, protein: 0, fat: 0 }
 
@@ -81,12 +82,22 @@ function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
           </p>
         )}
 
-        <label className="fl" style={{ marginTop: 10 }}>Grammi</label>
-        <input inputMode="decimal" value={g} onChange={(e) => setG(e.target.value)} autoFocus
-          style={{ width: '100%', fontSize: 20, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '8px 0' }} />
+        {/* Riga-ricetta: la quantita' e' in porzioni, e si cambia rifacendo la
+            scelta — non scrivendoci dentro dei grammi che non vogliono dire niente. */}
+        {it.recipeId ? (
+          <p className="muted small" style={{ margin: '10px 0 0' }}>
+            📖 Ricetta · {it.portions != null ? `${String(it.portions).replace('.', ',')} ${it.portions === 1 ? 'porzione' : 'porzioni'}` : `${it.grams} g`}
+          </p>
+        ) : (
+          <>
+            <label className="fl" style={{ marginTop: 10 }}>Grammi</label>
+            <input inputMode="decimal" value={g} onChange={(e) => setG(e.target.value)} autoFocus
+              style={{ width: '100%', fontSize: 20, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '8px 0' }} />
+          </>
+        )}
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
-          {!it.recipeId && <button className="chip" style={{ flex: 1 }} onClick={onSostituisci}>⇄ Sostituisci</button>}
+          <button className="chip" style={{ flex: 1 }} onClick={onSostituisci}>⇄ Sostituisci</button>
           {cambiata && <button className="chip" style={{ flex: 1 }} onClick={() => { onClose(); onGrammi(originale!.g) }}>↺ Come il coach</button>}
         </div>
 
@@ -94,6 +105,49 @@ function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
           <button className="ghost" style={{ flex: 1, color: '#e57373' }} onClick={() => { onElimina(); onClose() }}>🗑 Elimina</button>
           <button className="ghost" style={{ flex: 1 }} onClick={onClose}>Annulla</button>
           <button className="primary" style={{ flex: 1 }} onClick={salva}>Salva</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/** Quante porzioni (o quanti grammi) di ricetta mettere nella riga. */
+function QuantitaRicetta({ ricetta, cibi, onConferma, onClose }: {
+  ricetta: Recipe; cibi: Map<string, Food>
+  onConferma: (item: DayTemplateItem) => void; onClose: () => void
+}) {
+  useBloccoScroll()
+  const aPorzioni = ricetta.mode === 'servings'
+  const [q, setQ] = useState(aPorzioni ? '1' : '150')
+  const calc = computeRecipe(ricetta, cibi)
+  const n = Number(q.replace(',', '.'))
+  const valido = Number.isFinite(n) && n > 0
+  const amount: RecipeAmount | null = !valido ? null : aPorzioni ? { portions: n } : { grams: n }
+  const macros = amount ? macrosForAmount(ricetta, calc, amount) : VUOTO
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}
+      onClick={onClose}>
+      <div className="card" style={{ width: 'min(420px, 100%)', margin: 0 }} onClick={(e) => e.stopPropagation()}>
+        <strong style={{ display: 'block' }}>📖 {ricetta.name}</strong>
+        <label className="fl" style={{ marginTop: 10 }}>{aPorzioni ? 'Quante porzioni' : 'Quanti grammi'}</label>
+        <input inputMode="decimal" value={q} autoFocus onChange={(e) => setQ(e.target.value)}
+          style={{ width: '100%', fontSize: 20, textAlign: 'center', padding: '8px 0', fontVariantNumeric: 'tabular-nums' }} />
+        <p className="muted small" style={{ margin: '8px 0 0' }}>
+          {macros.kcal} kcal · <span style={{ color: 'var(--carb)' }}>C: {macros.carbs}</span>,{' '}
+          <span style={{ color: 'var(--prot)' }}>P: {macros.protein}</span>,{' '}
+          <span style={{ color: 'var(--fat)' }}>G: {macros.fat}</span>
+        </p>
+        <div className="row" style={{ gap: 6, marginTop: 12 }}>
+          <button className="ghost" style={{ flex: 1 }} onClick={onClose}>Annulla</button>
+          <button className="primary" style={{ flex: 1 }} disabled={!valido}
+            onClick={() => onConferma({
+              foodId: '', recipeId: ricetta.id,
+              grams: aPorzioni ? 0 : Math.round(n),
+              ...(aPorzioni ? { portions: n } : {}),
+              nameSnapshot: ricetta.name, macrosSnapshot: macros,
+            })}>Metti</button>
         </div>
       </div>
     </div>,
@@ -112,6 +166,7 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
   const [bozza, setBozza] = useState<DayTemplateMeal[] | null>(null)
   const [apri, setApri] = useState<{ m: number; i: number } | null>(null)
   const [scegli, setScegli] = useState<{ m: number; i: number | null } | null>(null)
+  const [ricetta, setRicetta] = useState<{ r: Recipe; dove: { m: number; i: number | null } } | null>(null)
   const [salvato, setSalvato] = useState(false)
   const [nota, setNota] = useState<string | null>(null)
   // Il pasto copiato in Cibo: si legge quando apri, non serve che cambi dopo.
@@ -187,6 +242,23 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
     setNota(`Pasto «${p.nome}» aggiunto in fondo. Salva per tenerlo.`)
   }
 
+  /**
+   * Mette una ricetta al posto di una riga, tenendo la prescrizione del coach.
+   *
+   * La riga cambia natura — non e' piu' un alimento — ma resta la stessa riga
+   * del piano: `rsOriginale` non si tocca, altrimenti il confronto direbbe che
+   * quella voce non c'era.
+   */
+  function sostituisciConRiga(mi: number, ii: number, item: DayTemplateItem) {
+    setBozza((b) => {
+      if (!b) return b
+      const copia = b.map((m) => ({ ...m, items: m.items.map((it) => ({ ...it })) }))
+      const vecchia = copia[mi].items[ii]
+      copia[mi].items[ii] = { ...item, ...(vecchia.rsOriginale ? { rsOriginale: vecchia.rsOriginale } : {}) }
+      return copia
+    })
+  }
+
   function metti(f: Food) {
     const dove = scegli
     setScegli(null)
@@ -240,7 +312,10 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
                       {cambiata && <span style={{ color: 'var(--rs)', fontSize: 11 }}> · corretta</span>}
                     </span>
                     <span className="muted" style={{ fontSize: 11 }}>
-                      {it.grams} g{cambiata && orig ? ` · coach: ${orig.nome} ${orig.g} g` : ''}
+                      {it.recipeId && it.portions != null
+                        ? `${String(it.portions).replace('.', ',')} ${it.portions === 1 ? 'porzione' : 'porzioni'}`
+                        : `${it.grams} g`}
+                      {cambiata && orig ? ` · coach: ${orig.nome} ${orig.g} g` : ''}
                     </span>
                   </span>
                   <Macro m={macroDi(it, cibi)} />
@@ -328,7 +403,24 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
         />
       )}
 
-      {scegli && <FoodChooser onPick={metti} onClose={() => setScegli(null)} />}
+      {scegli && (
+        <FoodChooser onPick={metti} onClose={() => setScegli(null)}
+          onPickRecipe={(r) => { setRicetta({ r, dove: scegli }); setScegli(null) }} />
+      )}
+
+      {/* Quanto ne metti: porzioni se la ricetta va a porzioni, grammi se va a
+          peso. Stessa domanda del ricettario, fatta qui perche' la riga la stai
+          scrivendo dentro la giornata. */}
+      {ricetta && (
+        <QuantitaRicetta ricetta={ricetta.r} cibi={cibi}
+          onClose={() => setRicetta(null)}
+          onConferma={(item) => {
+            const dove = ricetta.dove
+            setRicetta(null)
+            if (dove.i != null) sostituisciConRiga(dove.m, dove.i, item)
+            else setBozza((b) => b?.map((m, i) => (i === dove.m ? { ...m, items: [...m.items, item] } : m)) ?? b)
+          }} />
+      )}
     </div>
   )
 }
