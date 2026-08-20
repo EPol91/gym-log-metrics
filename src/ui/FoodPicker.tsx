@@ -273,7 +273,10 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
     <>
       {pannello}
       {recipe && (
+        // Anche una ricetta puo' prendere il posto di una riga del piano: il
+        // pane arabo del coach diventa una porzione della tua focaccia.
         <AddRecipeSheet recipe={recipe} date={date} mealId={mealId}
+          {...(sostituisciLog ? { sostituisci: { id: sostituisciLog.id, onFatto: () => { sostituisciLog.onFatto(); onClose() } } } : {})}
           onClose={() => setRecipe(null)} onDone={() => onClose()} />
       )}
     </>

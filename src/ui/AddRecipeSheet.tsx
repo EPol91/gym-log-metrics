@@ -8,6 +8,7 @@ import { DayCalendar } from './DayCalendar'
 import { shiftDate } from '../util/date'
 import { parseNum } from '../util/validate'
 import type { Recipe } from '../db/schema'
+import { sostituisciConRicetta } from '../rs/dieta'
 
 const labelFor = (iso: string) => {
   if (iso === todayDiet()) return 'Oggi'
@@ -21,12 +22,14 @@ const labelFor = (iso: string) => {
  * porzioni se la ricetta va a porzioni, grammi se va a peso.
  * Usata sia dal dettaglio ricetta sia dalla scheda Ricette del pannello alimenti.
  */
-export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal, onClose, onDone }: {
+export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal, onClose, onDone, sostituisci }: {
   recipe: Recipe
   date?: string
   mealId?: string
   onClose: () => void
   onDone?: (mealName: string) => void
+  /** 🦠RS: invece di aggiungere una riga, prende il posto di quella indicata. */
+  sostituisci?: { id: string; onFatto: () => void }
 }) {
   const [date, setDate] = useState(initialDate ?? todayDiet())
   const [mealId, setMealId] = useState<string | null>(initialMeal ?? null)
@@ -65,6 +68,21 @@ export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal,
   async function conferma() {
     if (!ok || !amount || !mealId) return
     setBusy(true)
+    if (sostituisci) {
+      // Sostituzione: la riga del piano diventa questa ricetta, al posto suo.
+      // Non si aggiunge niente — la riga del coach resta una sola, com'e' giusto.
+      // Stessa forma di una riga-ricetta aggiunta dal ricettario: a porzioni i
+      // grammi restano a zero, e la quantita' la dice `portions`.
+      await sostituisciConRicetta(sostituisci.id, {
+        id: recipe.id, nome: recipe.name,
+        ...('portions' in amount ? { porzioni: Number(amount.portions) || 0 } : {}),
+        grammi: 'grams' in amount ? Math.max(0, Number(amount.grams) || 0) : 0,
+        macros,
+      })
+      sostituisci.onFatto()
+      onClose()
+      return
+    }
     await addRecipeToDiary(recipe.id, date, mealId, amount)
     onDone?.(ordered.find((m) => m.id === mealId)?.name ?? 'pasto')
     onClose()
@@ -83,7 +101,7 @@ export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal,
         }}>
         <div className="row spread" style={{ alignItems: 'center', marginBottom: 12 }}>
           <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Aggiungi al diario
+            {sostituisci ? 'Sostituisci con la ricetta' : 'Aggiungi al diario'}
           </strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center', flex: 'none' }} onClick={onClose}>✕</button>
         </div>

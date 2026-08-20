@@ -149,6 +149,35 @@ export async function sostituisci(logId: string, foodId: string, grams: number):
   })
 }
 
+/**
+ * Sostituisce una riga con una RICETTA.
+ *
+ * Il pane arabo del coach diventa una porzione della tua focaccia: e' la stessa
+ * sostituzione di prima, solo che al posto di un alimento c'e' una ricetta —
+ * con le sue porzioni e i suoi macro fotografati, come quando la aggiungi dal
+ * ricettario. Il piano del coach resta scritto sotto, come sempre.
+ */
+export async function sostituisciConRicetta(
+  logId: string,
+  ricetta: { id: string; nome: string; porzioni?: number; grammi: number; macros: Macros },
+): Promise<void> {
+  const log = await db.foodLogs.get(logId)
+  if (!log) return
+  await db.foodLogs.update(logId, {
+    recipeId: ricetta.id,
+    // La riga non e' piu' un alimento: l'alimento di prima non deve restare
+    // agganciato, o il diario continuerebbe a contarne i macro.
+    foodId: '',
+    grams: ricetta.grammi,
+    ...(ricetta.porzioni != null ? { portions: ricetta.porzioni } : {}),
+    nameSnapshot: ricetta.nome,
+    macrosSnapshot: ricetta.macros,
+    rsPlanned: log.rsPlanned ?? { nome: '', g: log.grams },
+    rsDone: true,
+    updatedAt: nowISO(),
+  })
+}
+
 /** Le sostituzioni del giorno, in chiaro: finiscono nella nota per il coach. */
 export async function sostituzioni(date: string): Promise<string[]> {
   const s = await statoDieta(date)
