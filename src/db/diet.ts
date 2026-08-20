@@ -506,24 +506,31 @@ export async function deleteDayTemplate(id: string): Promise<Trash> {
  * Restituisce cosa serve per annullare: le righe create e quelle cancellate.
  */
 export async function applyDayTemplate(
-  templateId: string, date: string, sostituisci: boolean,
+  templateId: string, date: string,
 ): Promise<{ creati: string[]; rimossi: FoodLog[]; pastiRimossi: Meal[] }> {
   const t = await db.dayTemplates.get(templateId)
   if (!t) return { creati: [], rimossi: [], pastiRimossi: [] }
   const ts = nowISO()
 
-  const rimossi: FoodLog[] = []
-  const pastiRimossi: Meal[] = []
-  if (sostituisci) {
-    const vecchiLog = await db.foodLogs.where('date').equals(date).filter((l) => l.userId === U).toArray()
-    const vecchiPasti = await mealsOfDate(date)
-    rimossi.push(...vecchiLog)
-    pastiRimossi.push(...vecchiPasti)
-    await db.foodLogs.bulkDelete(vecchiLog.map((l) => l.id))
-    await db.meals.bulkDelete(vecchiPasti.map((m) => m.id))
-  }
+  /*
+   * Su una giornata che ha gia' righe non si scrive.
+   *
+   * Non si sovrascrive — quello che hai scritto vale piu' di un modello — e non
+   * si accoda, che vuol dire ritrovarsi i pasti doppi senza averlo chiesto. La
+   * regola sta qui e non solo nei tasti: cosi' nessuna schermata puo' aggirarla
+   * per distrazione. Per rifare la giornata la si svuota, e quello lo decidi tu.
+   */
+  const vecchiLog = await db.foodLogs.where('date').equals(date).filter((l) => l.userId === U).toArray()
+  if (vecchiLog.length) return { creati: [], rimossi: [], pastiRimossi: [] }
 
-  const base = sostituisci ? 0 : (await mealsOfDate(date)).length
+  // I pasti che ci sono sono quelli vuoti creati d'ufficio: prendono il posto
+  // di quelli del modello invece di restare li' in coda.
+  const rimossi: FoodLog[] = []
+  const vecchiPasti = await mealsOfDate(date)
+  const pastiRimossi: Meal[] = [...vecchiPasti]
+  await db.meals.bulkDelete(vecchiPasti.map((m) => m.id))
+
+  const base = 0
   const creati: string[] = []
   // Le giornate del coach segnano da dove viene ogni riga: e' quello che poi
   // distingue "piano" da "fuori piano" quando si tirano le somme per lui.

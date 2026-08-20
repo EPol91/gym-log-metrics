@@ -45,7 +45,7 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
     setBusy(true)
     // I pasti che ci sono sono quelli creati d'ufficio, vuoti: il modello
     // prende il loro posto invece di accodarsi e lasciarne otto.
-    const snap = await applyDayTemplate(id, date, true)
+    const snap = await applyDayTemplate(id, date)
     setBusy(false)
     setEsito(`"${nome}" applicata: ${snap.creati.length} righe.`)
     pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))

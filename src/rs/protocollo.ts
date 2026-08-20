@@ -30,7 +30,6 @@ export const ALIMENTI_RS: AlimentoRs[] = [
   { nome: 'Avocado', per100: m(205, 0.8, 1.6, 20.6), fonte: 'Ciqual (libreria app)' },
   { nome: 'Banana', per100: m(65, 15.4, 1.2, 0.3), fonte: 'EP Coaching' },
   { nome: 'Burro di mandorle', per100: m(628, 5, 22, 55), fonte: 'EP Coaching · Tsunami' },
-  { nome: 'Carpaccio di manzo', per100: null, fonte: 'da completare' },
   { nome: 'Ciclodestrine', per100: m(375, 95, 0, 0), fonte: 'EP Coaching · Solo Carb Tsunami' },
   { nome: 'Corn flakes', per100: m(371, 80, 9, 1), fonte: 'EP Coaching · Migros' },
   { nome: 'Cous cous (crudo)', per100: m(361, 72, 13, 1.8), fonte: 'Open Food Facts · 100% semola grano duro' },
@@ -59,7 +58,6 @@ export const ALIMENTI_RS: AlimentoRs[] = [
   { nome: 'Riso basmati (crudo)', per100: m(354, 79, 7, 1), fonte: 'EP Coaching' },
   { nome: 'Sale', per100: sale(), fonte: 'EP Coaching · sale iodato' },
   { nome: "Tuorlo d'uovo", per100: m(294, 0, 15, 26), fonte: 'EP Coaching' },
-  { nome: 'Vitello', per100: null, fonte: 'da completare' },
   { nome: 'Zucchine', per100: m(11, 1, 1, 0), fonte: 'EP Coaching' },
 ]
 
@@ -93,7 +91,7 @@ export const GIORNATE_RS: GiornataRs[] = [
       { nome: 'Pasto 1', righe: [r("Farina d'avena", 80), r("Albume d'uovo", 250), r('Burro di mandorle', 20), r('Mirtilli', 100), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Proteine isolate Isopure', 40), r('Ananas', 100)] },
       { nome: 'Pasto 3', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 150), r("Olio extravergine d'oliva", 15), r('Zucchine', 150), r('Sale', 1)] },
-      { nome: 'Pasto 4 · Panino arabo', righe: [r('Pane arabo', 80), r("Albume d'uovo", 60), r("Tuorlo d'uovo", 30), r('Carpaccio di manzo', 80), r('Sale', 1)] },
+      { nome: 'Pasto 4 · Panino arabo', righe: [r('Pane arabo', 80), r("Albume d'uovo", 60), r("Tuorlo d'uovo", 30), r('Manzo', 80), r('Sale', 1)] },
       { nome: 'Pasto 5', righe: [r('Patate bollite', 280), r('Merluzzo', 180), r("Olio extravergine d'oliva", 5), r('Lattuga', 120), r('Sale', 1)] },
     ],
   },
@@ -117,7 +115,7 @@ export const GIORNATE_RS: GiornataRs[] = [
       { nome: 'Pasto 2', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Zucchine', 50), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Lattuga', 100), r('Sale', 1)] },
       { nome: 'Pasto 4', righe: [r('Corn flakes', 70), r('Proteine isolate Isopure', 35), r('Latte di mandorla senza zuccheri', 300), r('Kiwi', 100)] },
-      { nome: 'Pasto 5', righe: [r('Patate dolci', 300), r('Vitello', 200), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1)] },
+      { nome: 'Pasto 5', righe: [r('Patate dolci', 300), r('Manzo', 200), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1)] },
     ],
   },
 ]
