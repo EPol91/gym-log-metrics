@@ -31,15 +31,20 @@ export function GiornataConsigliata({ date }: { date: string }) {
     const nome = consiglio!.nome(on)
     const modello = modelli.find((m) => m.name === nome)
     if (!modello) return
-    // Se la giornata ha già roba dentro, decidi tu: sovrascrivere il diario di
-    // qualcuno senza chiedere è il modo più rapido per fargli perdere il lavoro.
-    let sostituisci = righe === 0
+    /*
+     * Giornata già compilata: non si applica e basta.
+     *
+     * Non si sovrascrive — quello che hai scritto vale più di un modello — e
+     * non si accoda, che vuol dire ritrovarsi i pasti doppi. Se vuoi rifarla,
+     * la svuoti tu col 🧹 e riapplichi: è un tocco, ed è annullabile.
+     */
     if (righe > 0) {
-      sostituisci = confirm(`Questa giornata ha già ${righe} righe.\n\nOK = sostituisci tutto con "${nome}"\nAnnulla = aggiungi in coda`)
+      alert(`Questa giornata ha già ${righe} righe: non ci scrivo sopra.\n\nSe vuoi metterci "${nome}", svuotala prima col 🧹 in alto.`)
+      return
     }
     setBusy(true)
     try {
-      const snap = await applyDayTemplate(modello.id, date, sostituisci)
+      const snap = await applyDayTemplate(modello.id, date, true)
       // Gli obiettivi della giornata seguono il piano: applicare i pasti e
       // lasciare i target di ieri farebbe leggere numeri sbagliati tutto il giorno.
       await upsertNutrition(date, { dayType: consiglio!.chiave(on) as never })

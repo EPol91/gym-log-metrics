@@ -31,17 +31,21 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
   const righeOggi = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
 
   async function applica(id: string, nome: string) {
-    // Se la giornata ha già roba dentro, chiedo: sovrascrivere il diario di
-    // qualcuno senza avvisarlo è il modo più rapido per fargli perdere dati.
-    // Giornata senza righe: i pasti che ci sono sono quelli creati d ufficio,
-    // quindi il modello li sostituisce invece di accodarsi e lasciarne otto.
-    let sostituisci = righeOggi === 0
+    /*
+     * Giornata già compilata: non si applica e basta.
+     *
+     * Niente sovrascrittura — quello che hai scritto vale più di un modello — e
+     * niente aggiunta in coda, che vuol dire pasti doppi. Per rifarla la svuoti
+     * tu dal diario col 🧹, che è un tocco ed è annullabile.
+     */
     if (righeOggi > 0) {
-      const r = confirm(`Questa giornata ha già ${righeOggi} righe.\n\nOK = sostituisci tutto con "${nome}"\nAnnulla = aggiungi in coda`)
-      sostituisci = r
+      setEsito(`La giornata ha già ${righeOggi} righe: non ci scrivo sopra. Svuotala dal diario (🧹) e riapplica "${nome}".`)
+      return
     }
     setBusy(true)
-    const snap = await applyDayTemplate(id, date, sostituisci)
+    // I pasti che ci sono sono quelli creati d'ufficio, vuoti: il modello
+    // prende il loro posto invece di accodarsi e lasciarne otto.
+    const snap = await applyDayTemplate(id, date, true)
     setBusy(false)
     setEsito(`"${nome}" applicata: ${snap.creati.length} righe.`)
     pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))
