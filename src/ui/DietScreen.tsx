@@ -23,6 +23,7 @@ import { shiftDate } from '../util/date'
 import type { DiaryEntry, DiaryMeal } from '../db/diet'
 import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
+import { GiornataConsigliata } from './GiornataConsigliata'
 
 const shift = shiftDate
 const labelFor = (iso: string) => {
@@ -406,6 +407,10 @@ export function DietScreen() {
             onClick={() => setShowTargets(true)}>⚙</button>
         </div>
       </div>
+
+      {/* Quale giornata del coach tocca oggi: il basso/alto lo dice la
+          ciclizzazione, ON/OFF lo dici tu. Sparisce appena hai scelto. */}
+      <GiornataConsigliata date={date} />
 
       {/* Tipo giornata: due tendine separate, la tua e quella del coach. Tutte in
           fila diventavano sette voci e non si capiva piu' in quale mondo eri. */}

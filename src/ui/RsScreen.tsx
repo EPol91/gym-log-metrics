@@ -16,6 +16,7 @@ import {
 } from '../rs/rs'
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
 import { sedutaRs } from '../rs/allenamento'
+import { cicloValido, indiceGiorno, GIORNI } from '../rs/ciclo'
 import { numeriSettimana, testoSettimana, periodo, checkSettimana, salvaCheck, aggiungiFoto, togliFoto, settimanaCorrente } from '../rs/settimana'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
@@ -233,6 +234,41 @@ function NotaTua({ date, attuale }: { date: string; attuale: string }) {
   )
 }
 
+/**
+ * La ciclizzazione dei carboidrati, sette caselle da lunedì a domenica.
+ *
+ * Sta qui e non nel codice perché il coach la cambia: quando succede si tocca
+ * il giorno e cambia, invece di aspettare una versione nuova dell'app. È da qui
+ * che Cibo sa quale giornata consigliarti.
+ */
+function CiclizzazioneCard({ ciclo }: { ciclo: string }) {
+  const oggi = indiceGiorno(todayLocal())
+  const scambia = (i: number) => {
+    const nuovo = ciclo.split('')
+    nuovo[i] = nuovo[i] === 'H' ? 'L' : 'H'
+    void updateUser({ rsCiclo: nuovo.join('') })
+  }
+  return (
+    <div className="card" style={{ marginBottom: 0 }}>
+      <label className="fl">Ciclizzazione dei carboidrati</label>
+      <div className="row" style={{ gap: 4 }}>
+        {ciclo.split('').map((c, i) => (
+          <button key={i} className={c === 'H' ? 'chip on' : 'chip'} onClick={() => scambia(i)}
+            style={{ flex: 1, padding: '8px 0', lineHeight: 1.2, ...(i === oggi ? { borderColor: 'var(--rs)' } : {}) }}
+            aria-label={`${GIORNI[i]}: ${c === 'H' ? 'alto' : 'basso'}`}>
+            <span style={{ display: 'block', fontSize: 10, opacity: 0.7 }}>{GIORNI[i].slice(0, 3)}</span>
+            <span style={{ display: 'block', fontWeight: 700 }}>{c === 'H' ? 'HIGH' : 'LOW'}</span>
+          </button>
+        ))}
+      </div>
+      <p className="muted small" style={{ marginTop: 8 }}>
+        Tocca un giorno per invertirlo. ON e OFF restano una tua scelta: dipendono dal fatto che ti alleni,
+        e te lo chiede Cibo quando applichi la giornata.
+      </p>
+    </div>
+  )
+}
+
 /** Impostazioni: cosa comanda il calendario, e a che punto è il collegamento. */
 function RsImpostazioni({ onClose }: { onClose: () => void }) {
   const user = useLiveQuery(getUser, [])
@@ -286,6 +322,8 @@ function RsImpostazioni({ onClose }: { onClose: () => void }) {
           <span className="chip on">oggi · {sg.settimana < 1 ? 'non ancora iniziato' : sg.label}</span>
         </div>
       </div>
+
+      <CiclizzazioneCard ciclo={cicloValido(user?.rsCiclo)} />
 
       <div className="card" style={{ marginBottom: 0 }}>
         <label className="fl">Collegamento al coach</label>

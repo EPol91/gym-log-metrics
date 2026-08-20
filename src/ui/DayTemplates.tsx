@@ -8,6 +8,7 @@ import {
 import { deleteWithUndo } from '../db/trash'
 import { pushUndo } from '../util/undo'
 import { GiornataEditor } from './GiornataEditor'
+import { consiglioGiornata } from '../rs/ciclo'
 
 /**
  * Giornate tipo: una giornata alimentare intera salvata come modello e
@@ -22,6 +23,10 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
   const [esito, setEsito] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [modifica, setModifica] = useState<string | null>(null)
+  // Le due giornate che tocca oggi: quella con l'allenamento e quella senza.
+  // Fra ON e OFF non decide l'app — ma dire quale metà della settimana sei sì.
+  const consiglio = useLiveQuery(() => consiglioGiornata(date), [date])
+  const consigliate = consiglio ? [consiglio.nome(true), consiglio.nome(false)] : []
 
   const righeOggi = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
 
@@ -86,6 +91,13 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
               <div className="row spread" style={{ alignItems: 'center' }}>
                 <span style={{ minWidth: 0 }}>
                   <strong style={{ fontSize: 15 }}>{t.name}</strong>
+                  {/* Quale tocca oggi lo dice la ciclizzazione: entrando da qui
+                      non devi ricordarti a che punto sei della settimana. */}
+                  {consigliate.includes(t.name) && (
+                    <span className="chip" style={{ marginLeft: 6, padding: '2px 7px', fontSize: 10, color: 'var(--rs)', borderColor: 'var(--rs)' }}>
+                      consigliata oggi
+                    </span>
+                  )}
                   <span className="muted small" style={{ display: 'block' }}>
                     {t.meals.length} pasti · {righe} righe
                     {t.lastUsedAt ? ` · usata il ${fmtData(t.lastUsedAt)}` : ''}

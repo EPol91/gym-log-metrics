@@ -83,6 +83,12 @@ export interface User extends BaseRecord {
   /** Chiedere conferma di RS al primo rientro della giornata. */
   rsAskDaily?: boolean
   /**
+   * La ciclizzazione dei carboidrati, sette lettere da lunedi' a domenica:
+   * L = giornata LOW, H = giornata HIGH. Vive qui e non nel codice perche' il
+   * coach la cambia, e cambiarla deve costare dieci secondi.
+   */
+  rsCiclo?: string
+  /**
    * Schermo acceso durante l'allenamento. Non e' comodita': col telefono in
    * standby Android sospende la pagina e la fascia smette di consegnare
    * battiti — meta' seduta senza cuore registrato. Default acceso.
