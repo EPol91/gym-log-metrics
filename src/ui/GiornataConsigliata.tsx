@@ -22,10 +22,6 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const [busy, setBusy] = useState(false)
 
   if (!consiglio) return null
-  // Hai già scelto la giornata: qui non ci va NIENTE, nemmeno un tasto piccolo.
-  // Una riga in piu' spinge in basso tutto quello che guardi davvero — macro,
-  // aderenza, pasti — e per cambiare giornata c'e' gia' il 🗓 in barra.
-  if (consiglio.giaScelta) return null
 
   const righe = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
 
@@ -52,23 +48,53 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const parte = consiglio.carbo === 'H' ? 'HIGH' : 'LOW'
   const colore = consiglio.carbo === 'H' ? 'var(--carb)' : 'var(--gold)'
 
-  // Una riga sola, alta come un tasto: il suggerimento sta sopra le cose che
-  // guardi davvero, quindi non puo' permettersi piu' di quello.
+  /**
+   * Hai già scelto: qui resta solo il promemoria di cosa dice il calendario.
+   *
+   * Niente tasti. Se hai messo OFF a mano e l'app ti riproponesse ON perché
+   * risulta una seduta, ti starebbe contraddicendo su una cosa che decidi tu —
+   * ed è esattamente quello che faceva prima.
+   */
+  if (consiglio.giaScelta) {
+    const uguale = consiglio.giaScelta.startsWith(`rs_${parte.toLowerCase()}`)
+    return (
+      <div className="card" style={{ flex: 1.2, minWidth: 0, margin: 0, padding: '3px 8px 4px' }}>
+        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>OGGI TOCCA</span>
+        <span className="row" style={{ gap: 5, alignItems: 'center', height: 20, flexWrap: 'nowrap' }}>
+          <strong style={{ color: colore, fontSize: 12.5 }}>{parte}</strong>
+          <span className="muted" style={{ fontSize: 10.5 }}>{uguale ? '· scelta' : '· diversa'}</span>
+        </span>
+      </div>
+    )
+  }
+
+  /**
+   * Il terzo riquadro, alto come gli altri due: qui non si ruba spazio a niente.
+   *
+   * I tasti sono alti quanto tutto il riquadro, non quanto la loro riga: un
+   * bersaglio da ventitré pixel col pollice non lo prendi, e allungare la
+   * pastiglia non costa un solo pixel in verticale.
+   */
+  const tasto = { padding: '0 4px', fontSize: 11.5, lineHeight: 1.1, alignSelf: 'stretch' } as const
   return (
-    <div className="row" style={{ alignItems: 'center', gap: 6, margin: '0 0 6px', flexWrap: 'nowrap' }}>
-      <span className="muted small" style={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {consiglio.giorno.toLowerCase()}: tocca <strong style={{ color: colore }}>{parte}</strong>
+    <div className="card" style={{
+      flex: 1.5, minWidth: 0, margin: 0, padding: '3px 5px 4px', borderColor: 'var(--gold)',
+      display: 'flex', alignItems: 'stretch', gap: 4,
+    }}>
+      <span style={{ minWidth: 0, flex: '0 1 auto' }}>
+        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>OGGI TOCCA</span>
+        <strong style={{ color: colore, fontSize: 12.5, display: 'block', lineHeight: '24px' }}>{parte}</strong>
       </span>
       {consiglio.allenato ? (
-        // Una seduta c'è: ON non è una domanda.
-        <button className="chip on" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(true)}>
-          Applica {parte} ON
-        </button>
+        // Una seduta c'è: ON non è una domanda, si applica e basta.
+        <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 52 }}
+          disabled={busy} onClick={() => applica(true)}>applica<br />ON</button>
       ) : (
         <>
-          <span className="muted small" style={{ flex: 'none' }}>ti alleni?</span>
-          <button className="chip on" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(true)}>ON</button>
-          <button className="chip" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(false)}>OFF</button>
+          <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }}
+            disabled={busy} onClick={() => applica(true)}>ON</button>
+          <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }}
+            disabled={busy} onClick={() => applica(false)}>OFF</button>
         </>
       )}
     </div>

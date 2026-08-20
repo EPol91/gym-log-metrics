@@ -408,14 +408,11 @@ export function DietScreen() {
         </div>
       </div>
 
-      {/* Quale giornata del coach tocca oggi: il basso/alto lo dice la
-          ciclizzazione, ON/OFF lo dici tu. Sparisce appena hai scelto. */}
-      <GiornataConsigliata date={date} />
-
-      {/* Tipo giornata: due tendine separate, la tua e quella del coach. Tutte in
-          fila diventavano sette voci e non si capiva piu' in quale mondo eri. */}
+      {/* Tipo giornata: la tua, quella del coach, e quale tocca oggi. Tre
+          riquadri bassi su una riga sola: l'etichetta sta dentro. */}
       <TendineGiornata dayTypes={dayTypes} scelta={nutri?.dayType ?? null}
-        onScegli={(key) => upsertNutrition(date, { dayType: key as never })} />
+        onScegli={(key) => upsertNutrition(date, { dayType: key as never })}
+        terzo={<GiornataConsigliata date={date} />} />
 
       {/* Quanto del piano hai onorato, e quanto ci sei andato vicino. Solo se la
           giornata segue il coach: senza piano, non c'e' niente da misurare. */}
@@ -873,23 +870,36 @@ function RipetiIeri({ mealId, mealName, date, onDone }: {
  * gli obiettivi di tutto il giorno. Tenendole separate sai sempre da quale
  * elenco stai pescando, e quella del coach si riconosce dal rosso.
  */
-function TendineGiornata({ dayTypes, scelta, onScegli }: {
+function TendineGiornata({ dayTypes, scelta, onScegli, terzo }: {
   dayTypes: DayType[]; scelta: string | null; onScegli: (key: string | null) => void
+  /** il terzo riquadro: quale giornata tocca oggi */
+  terzo?: React.ReactNode
 }) {
   const rs = dayTypes.filter((d) => d.name.startsWith('🦠'))
   const mie = dayTypes.filter((d) => !d.name.startsWith('🦠'))
   const attiva = dayTypes.find((d) => d.key === scelta) ?? null
 
-  const tendina = (voci: DayType[], etichetta: string, colore: string) => {
+  /**
+   * L'etichetta sta DENTRO il riquadro, non su una riga sua.
+   *
+   * Prima le due scritte «LE TUE» e «RS · DAL COACH» si prendevano una riga
+   * intera solo per dire cosa fossero le tendine sotto, e insieme al resto
+   * spingevano i pasti a seicento pixel dall'alto. Cosi' si capisce uguale e
+   * non costa niente.
+   */
+  const tendina = (voci: DayType[], etichetta: string, colore: string, quanto: number) => {
     if (!voci.length) return null
     const sceltaQui = voci.some((v) => v.key === scelta)
     return (
-      <label style={{ flex: 1, minWidth: 0, display: 'block' }}>
-        <span className="muted" style={{ fontSize: 10, letterSpacing: '.06em', display: 'block', marginBottom: 3 }}>{etichetta}</span>
+      <label className="card" style={{
+        flex: quanto, minWidth: 0, margin: 0, padding: '3px 8px 4px', position: 'relative',
+        borderColor: sceltaQui ? colore : 'var(--line)',
+      }}>
+        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{etichetta}</span>
         <select value={sceltaQui ? scelta! : ''} onChange={(e) => onScegli(e.target.value || null)}
           style={{
-            padding: '8px 10px', fontSize: 13,
-            borderColor: sceltaQui ? colore : 'var(--line)',
+            padding: 0, border: 0, background: 'transparent', width: '100%', height: 20,
+            fontSize: 12.5, fontWeight: sceltaQui ? 700 : 400,
             color: sceltaQui ? colore : 'var(--muted)',
           }}>
           <option value="">—</option>
@@ -899,18 +909,19 @@ function TendineGiornata({ dayTypes, scelta, onScegli }: {
     )
   }
 
+  // Gli obiettivi della giornata non si scrivono qui: sono gia' scritti piu'
+  // grandi nella card dei macro, due dita piu' sotto.
+  void attiva
+
   return (
-    <>
-      <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
-        {tendina(mie, 'LE TUE', 'var(--gold)')}
-        {tendina(rs, '🦠 RS · DAL COACH', 'var(--rs)')}
-      </div>
-      {attiva && attiva.targets.kcal > 0 && (
-        <p className="muted small" style={{ margin: '4px 0 0', textAlign: 'center' }}>
-          {attiva.name} · {attiva.targets.kcal} kcal — C: {attiva.targets.carbs}, P: {attiva.targets.protein}, G: {attiva.targets.fat}
-        </p>
-      )}
-    </>
+    <div className="row" style={{ gap: 6, alignItems: 'stretch' }}>
+      {/* Larghezze diverse apposta: "LE TUE" mostra quasi sempre un trattino,
+          il terzo riquadro deve ospitare due tasti che si devono poter centrare
+          col pollice. */}
+      {tendina(mie, 'LE TUE', 'var(--gold)', 0.8)}
+      {tendina(rs, 'DAL COACH', 'var(--rs)', 1.15)}
+      {terzo}
+    </div>
   )
 }
 
@@ -925,37 +936,42 @@ function BarraRs({ date, onTuttoSeguito }: { date: string; onTuttoSeguito: (ids:
   const s = useLiveQuery(() => statoDieta(date), [date])
   if (!s?.attiva) return null
 
-  const numero = (v: number | null, etichetta: string, sotto: string) => (
-    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-      <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--rs)', fontVariantNumeric: 'tabular-nums' }}>
-        {v == null ? '—' : `${v}%`}
+  /**
+   * Un numero con la sua barretta.
+   *
+   * La barretta dice a colpo d'occhio quanto sei lontano: il numero da solo lo
+   * devi leggere e confrontare a mente. E costa tre pixel, mentre i numeri
+   * grandi con due righe di didascalia sotto ne costavano ottanta.
+   */
+  const numero = (v: number | null, etichetta: string, testo: string, quota: number) => (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="muted" style={{ fontSize: 9.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{etichetta}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--rs)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>{testo}</div>
+      <div style={{ height: 3, borderRadius: 2, background: 'var(--surface-2)', overflow: 'hidden' }}>
+        <div style={{ height: 3, width: `${Math.max(0, Math.min(100, quota))}%`, background: v == null ? 'var(--line)' : 'var(--rs)' }} />
       </div>
-      <div className="muted" style={{ fontSize: 10 }}>{etichetta}</div>
-      <div className="muted" style={{ fontSize: 9 }}>{sotto}</div>
     </div>
   )
 
   const daSpuntare = s.righe.filter((r) => !r.spuntata).map((r) => r.log.id)
+  // Quanto delle kcal del piano hai coperto: e' il senso di quel numero, e la
+  // barretta lo dice senza doverli dividere a mente.
+  const quotaKcal = s.versoIlCoach.kcal > 0 ? (s.tuoi.kcal / s.versoIlCoach.kcal) * 100 : 0
 
   return (
-    <div className="card" style={{ padding: '10px 12px', marginBottom: 0, borderColor: 'var(--rs)' }}>
-      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-        {numero(s.aderenza, 'aderenza', `${s.pianoOnorato}/${s.pianoTotale} voci`)}
-        {numero(s.precisione, 'precisione', 'sui macro')}
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--rs)', fontVariantNumeric: 'tabular-nums' }}>
-            {Math.round(s.versoIlCoach.kcal)}
-          </div>
-          <div className="muted" style={{ fontSize: 10 }}>al coach</div>
-          <div className="muted" style={{ fontSize: 9 }}>tu {Math.round(s.tuoi.kcal)}</div>
-        </div>
+    <div className="card" style={{ padding: '7px 10px', marginBottom: 0, borderColor: 'var(--rs)' }}>
+      <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
+        {numero(s.aderenza, `aderenza ${s.pianoOnorato}/${s.pianoTotale}`, s.aderenza == null ? '—' : `${s.aderenza}%`, s.aderenza ?? 0)}
+        {numero(s.precisione, 'precisione', s.precisione == null ? '—' : `${s.precisione}%`, s.precisione ?? 0)}
+        {numero(s.versoIlCoach.kcal, `al coach · tu ${Math.round(s.tuoi.kcal)}`, String(Math.round(s.versoIlCoach.kcal)), quotaKcal)}
+        {daSpuntare.length > 0 && (
+          <button className="chip" style={{ flex: 'none', padding: '5px 9px', fontSize: 12 }}
+            aria-label={`Segna seguite tutte le ${daSpuntare.length} righe rimaste`}
+            onClick={() => onTuttoSeguito(daSpuntare)}>
+            ✓ {daSpuntare.length}
+          </button>
+        )}
       </div>
-      {daSpuntare.length > 0 && (
-        <button className="chip" style={{ marginTop: 8, width: '100%' }}
-          onClick={() => onTuttoSeguito(daSpuntare)}>
-          ✓ Tutto seguito ({daSpuntare.length} righe)
-        </button>
-      )}
     </div>
   )
 }
