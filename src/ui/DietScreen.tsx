@@ -483,20 +483,22 @@ export function DietScreen() {
         </div>,
         document.body,
       )}
-      <div className="card" style={{ padding: '11px 12px', marginBottom: 0 }}>
-        <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-          {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai soli colori. */}
-          <MacroDonut m={totals} size={66} />
+      <div className="card" style={{ padding: '7px 12px 8px', marginBottom: 0 }}>
+        <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+          {/* Anello: ripartizione calorica dei macro, letta a colpo d'occhio dai
+              soli colori — per quello non serve grande, e il posto che lascia
+              libero e' schermo guadagnato per i pasti. */}
+          <MacroDonut m={totals} size={52} />
           <div className="row" style={{ gap: 10, flex: 1, minWidth: 0 }}>
             <MacroTrack label="Carboidrati" value={totals.carbs} target={t?.carbs ?? 0} color="var(--carb)" />
             <MacroTrack label="Proteine" value={totals.protein} target={t?.protein ?? 0} color="var(--prot)" />
             <MacroTrack label="Grassi" value={totals.fat} target={t?.fat ?? 0} color="var(--fat)" />
           </div>
         </div>
-        <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', marginTop: 9, overflow: 'hidden' }}>
+        <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', marginTop: 6, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999, transition: 'width .3s' }} />
         </div>
-        <div style={{ textAlign: 'center', fontSize: 13, marginTop: 4 }}>
+        <div style={{ textAlign: 'center', fontSize: 13, marginTop: 3 }}>
           <strong style={{ color: 'var(--gold)' }}>{totals.kcal}</strong>
           <span className="muted"> / {t?.kcal ?? '—'} kcal{t ? ` · restano ${Math.max(0, t.kcal - totals.kcal)}` : ''}</span>
         </div>
@@ -506,7 +508,7 @@ export function DietScreen() {
           totale della giornata scelta, contro quello che hai davvero spuntato.
           L'acqua nel suo piano non c'e', quindi il bersaglio e' il tuo (Profilo).
         */}
-        <div className="row" style={{ gap: 14, justifyContent: 'center', marginTop: 6, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+        <div className="row" style={{ gap: 14, justifyContent: 'center', marginTop: 4, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
           <span>
             💧 <strong style={{ color: acquaOk ? 'var(--good)' : 'var(--gold)' }}>{String(acqua).replace('.', ',')}</strong>
             <span className="muted"> / {obiettivoAcqua ? `${String(obiettivoAcqua).replace('.', ',')} L` : '— L'}</span>
