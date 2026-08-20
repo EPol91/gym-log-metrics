@@ -66,6 +66,8 @@ export interface GiornataRs {
   key: string
   nome: string
   targets: { kcal: number; protein: number; carbs: number; fat: number }
+  /** Litri d'acqua al giorno: il coach ne prescrive 5,5 in tutte le giornate. */
+  acqua: number
   pasti: PastoRs[]
 }
 
@@ -75,6 +77,7 @@ export const GIORNATE_RS: GiornataRs[] = [
   {
     key: 'rs_low_on', nome: '🦠 LOW ON',
     targets: { kcal: 2435, carbs: 300, protein: 201, fat: 49 },
+    acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r("Albume d'uovo", 150), r("Tuorlo d'uovo", 15), r('Mirtilli', 100), r('Burro di mandorle', 10), r('Proteine isolate Isopure', 15), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Gallette di riso', 50), r('Petto di pollo', 150), r('Avocado', 50), r('Pomodori', 100), r('Sale', 1)] },
@@ -87,6 +90,7 @@ export const GIORNATE_RS: GiornataRs[] = [
   {
     key: 'rs_low_off', nome: '🦠 LOW OFF',
     targets: { kcal: 2249, carbs: 241, protein: 204, fat: 52 },
+    acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Farina d'avena", 80), r("Albume d'uovo", 250), r('Burro di mandorle', 20), r('Mirtilli', 100), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Proteine isolate Isopure', 40), r('Ananas', 100)] },
@@ -98,6 +102,7 @@ export const GIORNATE_RS: GiornataRs[] = [
   {
     key: 'rs_high_on', nome: '🦠 HIGH ON',
     targets: { kcal: 2772, carbs: 353, protein: 209, fat: 59 },
+    acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r("Albume d'uovo", 150), r('Burro di mandorle', 25), r('Mirtilli', 50), r('Rice Meal Tsunami Nutrition', 20), r('Proteine isolate Isopure', 15), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Pane arabo', 80), r('Petto di pollo', 140), r('Avocado', 70), r('Zucchine', 50), r('Sale', 1)] },
@@ -110,11 +115,12 @@ export const GIORNATE_RS: GiornataRs[] = [
   {
     key: 'rs_high_off', nome: '🦠 HIGH OFF',
     targets: { kcal: 2778, carbs: 353, protein: 211, fat: 58 },
+    acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r('Proteine isolate Isopure', 30), r('Burro di mandorle', 10), r('Mirtilli', 50), r('Marmellata biologica', 30), r('Rice Meal Tsunami Nutrition', 50), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Zucchine', 50), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Lattuga', 100), r('Sale', 1)] },
-      { nome: 'Pasto 4', righe: [r('Corn flakes', 70), r('Proteine isolate Isopure', 35), r('Latte di mandorla senza zuccheri', 300), r('Kiwi', 100)] },
+      { nome: 'Pasto 4', righe: [r('Corn flakes', 70), r('Proteine isolate Isopure', 35), r('Latte di mandorla senza zuccheri', 300), r('Kiwi', 100), r('Sale', 1)] },
       { nome: 'Pasto 5', righe: [r('Patate dolci', 300), r('Manzo', 200), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1)] },
     ],
   },
@@ -230,3 +236,15 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
 ]
+
+/**
+ * L'acqua che il coach prescrive per una giornata.
+ *
+ * Sta scritta nel protocollo, non nei pasti: 5,5 litri al giorno, ON e OFF
+ * uguale — «le due variabili che tengono leggibile tutto il resto». Il sale
+ * invece e' dentro i pasti come ingrediente pesato, quindi quello si somma
+ * dalle righe (vedi saleDelPiano).
+ */
+export function acquaDelPiano(nomeGiornata: string): number | null {
+  return GIORNATE_RS.find((g) => g.nome === nomeGiornata)?.acqua ?? null
+}
