@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
-import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes } from '../db/diet'
+import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes, sincronizzaObiettivo } from '../db/diet'
 import { FoodChooser } from './FoodChooser'
 import { useBloccoScroll } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros } from '../db/schema'
@@ -120,6 +120,9 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
 
   useEffect(() => {
     if (modello && bozza == null) setBozza(copiaOrdinata(modello.meals))
+    // Corretta prima che l'obiettivo la seguisse: si allinea aprendola, senza
+    // che tu debba risalvarla a mano.
+    if (modello?.modificata) void sincronizzaObiettivo(modello.id)
   }, [modello, bozza]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!modello || !bozza) return <p className="muted">Apro…</p>

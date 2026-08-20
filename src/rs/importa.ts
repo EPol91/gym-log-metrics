@@ -95,8 +95,14 @@ async function giornate(mappa: Map<string, Food>): Promise<{ fatte: string[]; tu
   for (const [i, g] of GIORNATE_RS.entries()) {
     const posto = primoPosto + i
     const tipo = tipiEsistenti.find((t) => t.key === g.key)
+    // Giornata corretta da te: gli obiettivi sono i totali della TUA versione,
+    // non quelli del coach. Reimportare non deve rimetterli come stavano.
+    const tua = modelliEsistenti.find((m) => m.name === g.nome)?.modificata === true
     if (tipo) {
-      await db.dayTypes.update(tipo.id, { name: g.nome, targets: g.targets, manual: true, order: posto, updatedAt: ts })
+      await db.dayTypes.update(tipo.id, {
+        name: g.nome, order: posto, updatedAt: ts,
+        ...(tua ? {} : { targets: g.targets, manual: true }),
+      })
     } else {
       await db.dayTypes.add({
         id: newId(), userId: U, createdAt: ts, updatedAt: ts,

@@ -489,6 +489,52 @@ export function getDayTemplate(id: string) {
  */
 export async function updateDayTemplateMeals(id: string, meals: DayTemplateMeal[]): Promise<void> {
   await db.dayTemplates.update(id, { meals, modificata: true, updatedAt: nowISO() })
+  await sincronizzaObiettivo(id)
+}
+
+/**
+ * Rimette l'obiettivo del giorno d'accordo con la giornata.
+ *
+ * Serve anche alle giornate corrette prima che questo esistesse: aprendole si
+ * allineano da sole, senza doverle risalvare a mano.
+ */
+export async function sincronizzaObiettivo(id: string): Promise<void> {
+  const ts = nowISO()
+  const meals = (await db.dayTemplates.get(id))?.meals ?? []
+
+  /*
+   * L'obiettivo segue la giornata corretta.
+   *
+   * Correggevi gli alimenti e i macro della giornata cambiavano, ma il bersaglio
+   * restava quello scritto dal coach: ti ritrovavi a inseguire numeri di una
+   * giornata che non esiste piu'. Adesso il tipo giornata con lo stesso nome
+   * prende i totali di quello che c'e' scritto dentro davvero.
+   *
+   * Il confronto col coach non ne risente: quello guarda riga per riga cosa
+   * aveva prescritto lui (rsOriginale), non questi totali.
+   */
+  const t = await db.dayTemplates.get(id)
+  if (!t) return
+  const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((x) => x.name === t.name)
+  if (!tipo) return
+
+  const cibi = new Map((await db.foods.where('userId').equals(U).toArray()).map((f) => [f.id, f]))
+  const tot = { kcal: 0, carbs: 0, protein: 0, fat: 0 }
+  for (const p of meals) {
+    for (const it of p.items) {
+      const f = cibi.get(it.foodId)
+      const m = f && !it.recipeId ? macrosFor(f.per100, it.grams) : it.macrosSnapshot
+      if (!m) continue
+      tot.kcal += m.kcal; tot.carbs += m.carbs; tot.protein += m.protein; tot.fat += m.fat
+    }
+  }
+  await db.dayTypes.update(tipo.id, {
+    targets: {
+      kcal: Math.round(tot.kcal), carbs: Math.round(tot.carbs),
+      protein: Math.round(tot.protein), fat: Math.round(tot.fat),
+    },
+    manual: true, updatedAt: ts,
+  })
 }
 
 export async function renameDayTemplate(id: string, name: string): Promise<void> {
