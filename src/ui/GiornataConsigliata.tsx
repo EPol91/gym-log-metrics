@@ -20,17 +20,12 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const modelli = useLiveQuery(listDayTemplates, []) ?? []
   const diario = useLiveQuery(() => computeDiary(date), [date])
   const [busy, setBusy] = useState(false)
-  const [riapri, setRiapri] = useState(false)
 
   if (!consiglio) return null
-  // Hai già scelto la giornata: niente da suggerire, solo il modo di cambiarla.
-  if (consiglio.giaScelta && !riapri) {
-    return (
-      <p className="muted small" style={{ margin: '0 0 6px', textAlign: 'right' }}>
-        <button className="ghost small" onClick={() => setRiapri(true)}>✎ cambia giornata</button>
-      </p>
-    )
-  }
+  // Hai già scelto la giornata: qui non ci va NIENTE, nemmeno un tasto piccolo.
+  // Una riga in piu' spinge in basso tutto quello che guardi davvero — macro,
+  // aderenza, pasti — e per cambiare giornata c'e' gia' il 🗓 in barra.
+  if (consiglio.giaScelta) return null
 
   const righe = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
 
@@ -50,7 +45,6 @@ export function GiornataConsigliata({ date }: { date: string }) {
       // Gli obiettivi della giornata seguono il piano: applicare i pasti e
       // lasciare i target di ieri farebbe leggere numeri sbagliati tutto il giorno.
       await upsertNutrition(date, { dayType: consiglio!.chiave(on) as never })
-      setRiapri(false)
       pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))
     } finally { setBusy(false) }
   }
@@ -58,31 +52,24 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const parte = consiglio.carbo === 'H' ? 'HIGH' : 'LOW'
   const colore = consiglio.carbo === 'H' ? 'var(--carb)' : 'var(--gold)'
 
+  // Una riga sola, alta come un tasto: il suggerimento sta sopra le cose che
+  // guardi davvero, quindi non puo' permettersi piu' di quello.
   return (
-    <div className="card" style={{ padding: '9px 12px', borderColor: 'var(--rs)', margin: '0 0 8px' }}>
-      <div className="row spread" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ minWidth: 0, flex: 1 }}>
-          <span className="muted small" style={{ letterSpacing: '.06em' }}>{consiglio.giorno.toUpperCase()} · TOCCA</span>
-          <strong style={{ display: 'block', color: colore, fontSize: 15 }}>{parte}</strong>
-        </span>
-
-        {consiglio.allenato ? (
-          // Una seduta c'è: ON non è una domanda.
-          <button className="chip on" disabled={busy} onClick={() => applica(true)}>
-            Applica {consiglio.nome(true)}
-          </button>
-        ) : (
-          <span className="row" style={{ gap: 6, flex: 'none' }}>
-            <span className="muted small">ti alleni?</span>
-            <button className="chip on" disabled={busy} onClick={() => applica(true)}>ON</button>
-            <button className="chip" disabled={busy} onClick={() => applica(false)}>OFF</button>
-          </span>
-        )}
-      </div>
-      {consiglio.allenato && (
-        <p className="muted small" style={{ margin: '4px 0 0' }}>
-          Oggi risulta una seduta: se non era allenamento, scegli la giornata a mano dalla tendina.
-        </p>
+    <div className="row" style={{ alignItems: 'center', gap: 6, margin: '0 0 6px', flexWrap: 'nowrap' }}>
+      <span className="muted small" style={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {consiglio.giorno.toLowerCase()}: tocca <strong style={{ color: colore }}>{parte}</strong>
+      </span>
+      {consiglio.allenato ? (
+        // Una seduta c'è: ON non è una domanda.
+        <button className="chip on" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(true)}>
+          Applica {parte} ON
+        </button>
+      ) : (
+        <>
+          <span className="muted small" style={{ flex: 'none' }}>ti alleni?</span>
+          <button className="chip on" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(true)}>ON</button>
+          <button className="chip" style={{ flex: 'none' }} disabled={busy} onClick={() => applica(false)}>OFF</button>
+        </>
       )}
     </div>
   )
