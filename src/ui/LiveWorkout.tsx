@@ -18,6 +18,7 @@ import { parseNum } from '../util/validate'
 import { tick, goSound } from '../util/sound'
 import { isVoiceSupported, startRecognition, parseVoiceSet, type VoiceSet } from '../util/voice'
 import { useWallTick } from '../util/useWallClock'
+import { programmaBip, annullaBip } from '../util/sedutaViva'
 import { useWakeLock } from '../util/wakeLock'
 import { Info } from './anim'
 import { CardioBlock } from './CardioBlock'
@@ -108,9 +109,37 @@ function RestTimer({ defaultSec, presets, store, sessionId, onPick, onClose }: {
   const warn = left > 0 && left <= 5 // ultimi 5 secondi
 
   useEffect(() => {
-    if (warn) { navigator.vibrate?.(30); tick() }                    // tick negli ultimi 5s
-    if (left === 0 && !st.fired) { st.fired = true; goSound() }      // fine = suono "GO" (una volta sola)
+    const visibile = document.visibilityState === 'visible'
+    if (left === 0 && !st.fired) {
+      st.fired = true
+      // Il «Vai!» una volta sola. Se e' scaduto mentre eri fuori dall'app l'ha
+      // gia' suonato il servizio: rientrando non si ripete a freddo.
+      if (visibile && Date.now() - st.endAt < 2000) goSound()
+    }
+    if (!visibile) return // fuori dall'app suona il servizio, non la pagina
+    if (warn) { navigator.vibrate?.(30); tick() } // tick negli ultimi 5s
   }, [left, warn, st])
+
+  /**
+   * Il conto alla rovescia si sente anche fuori dall'app.
+   *
+   * Uscendo, Android rallenta la pagina a un battito al minuto: i tic e il
+   * «Vai!» arrivavano tardi o non arrivavano proprio. Allora quando esci il
+   * compito passa al servizio, che ha il suo orologio e suona sul canale della
+   * sveglia; quando rientri glielo si toglie, o si sentirebbe doppio.
+   */
+  useEffect(() => {
+    const passaIlTestimone = () => {
+      if (document.visibilityState === 'hidden' && running && !st.fired) {
+        programmaBip('recupero', [{ ms: st.endAt - Date.now(), tipo: 'via', tick: 5 }])
+      } else {
+        annullaBip('recupero')
+      }
+    }
+    passaIlTestimone()
+    document.addEventListener('visibilitychange', passaIlTestimone)
+    return () => { document.removeEventListener('visibilitychange', passaIlTestimone); annullaBip('recupero') }
+  }, [running, st.endAt, st])
 
   function pick(sec: number) { setTotal(sec); st.endAt = Date.now() + sec * 1000; st.fired = false; setPausedLeft(sec); setRunning(true); onPick(sec) }
   function toggle() {

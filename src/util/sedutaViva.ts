@@ -15,9 +15,17 @@
 // Fuori dal guscio nativo (browser) non c'e' niente da accendere: le funzioni
 // non fanno nulla e nessuno se ne accorge.
 
+/**
+ * Un segnale sonoro programmato.
+ * `ms` = fra quanto, da adesso. `tick` = quanti tic prima.
+ */
+export interface Bip { ms: number; tipo: 'via' | 'riposo' | 'fine'; tick?: number }
+
 interface Servizio {
   accendi(o: { testo?: string }): Promise<void>
   spegni(): Promise<void>
+  programmaBip(o: { bip: Bip[] }): Promise<void>
+  annullaBip(): Promise<void>
 }
 
 /**
@@ -48,6 +56,47 @@ export function spegniSeduta(): void {
   const p = plugin()
   if (!p?.spegni) return
   void p.spegni().catch(() => { /* gia' spento */ })
+}
+
+/**
+ * Affida al servizio i segnali del conto alla rovescia.
+ *
+ * Da chiamare quando esci dall'app con un timer che gira: fuori di li' la
+ * pagina viene rallentata a un battito al minuto e i suoi beep arrivano tardi o
+ * non arrivano. Rientrando si annulla, e a suonare torna la pagina — altrimenti
+ * si sentirebbe tutto doppio.
+ */
+/**
+ * Chi ha programmato cosa.
+ *
+ * Il servizio tiene UNA lista sola, e chi parla per ultimo la riscrive: il
+ * recupero cancellava i bip del cardio e viceversa. Qui ognuno tiene la sua
+ * parte e al servizio si manda sempre il quadro completo.
+ */
+export type Fonte = 'recupero' | 'cardio'
+const fonti = new Map<Fonte, Bip[]>()
+
+function invia(): void {
+  // Solo a servizio gia' acceso: chiedere un bip quando la seduta e' chiusa lo
+  // farebbe ripartire, e ti resterebbe addosso una notifica fissa per niente.
+  if (!accesa) return
+  const p = plugin()
+  if (!p?.programmaBip) return
+  const tutti = [...fonti.values()].flat().filter((b) => b.ms > 0)
+  if (tutti.length) void p.programmaBip({ bip: tutti }).catch(() => { /* pazienza */ })
+  else void p.annullaBip?.().catch(() => { /* pazienza */ })
+}
+
+export function programmaBip(chi: Fonte, bip: Bip[]): void {
+  fonti.set(chi, bip)
+  invia()
+}
+
+/** Butta via i segnali di questa fonte. Gli altri restano dove sono. */
+export function annullaBip(chi: Fonte): void {
+  if (!fonti.has(chi)) return
+  fonti.delete(chi)
+  invia()
 }
 
 /** Serve alla schermata di profilo: dire se il guscio sa tenere viva la seduta. */

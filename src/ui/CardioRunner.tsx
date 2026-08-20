@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { tick, goSound, restCue, finishCue } from '../util/sound'
 import { useWallTick } from '../util/useWallClock'
+import { programmaBip, annullaBip, type Bip } from '../util/sedutaViva'
 import { estimateCalories } from '../util/calories'
 
 type Mode = 'interval' | 'countdown' | 'chrono'
@@ -68,13 +69,53 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
   // Segnali sonori
   useEffect(() => {
     if (finished || mode === 'chrono') return
+    // La fase si segna comunque: se il cambio e' avvenuto mentre eri fuori
+    // dall'app l'ha annunciato il servizio, e rientrando non si ripete.
+    const prima = prevPhase.current
+    if (mode === 'interval' && phaseType !== prima) prevPhase.current = phaseType
+    if (document.visibilityState !== 'visible') return // fuori dall'app suona il servizio
     if (secLeft > 0 && secLeft <= 3) tick()
-    if (mode === 'interval' && phaseType !== prevPhase.current) {
+    if (mode === 'interval' && phaseType !== prima) {
       if (phaseType === 'work') goSound()
       else if (phaseType === 'rest') restCue()
-      prevPhase.current = phaseType
     }
   }, [elapsed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Cambi di fase e fine sessione si sentono anche fuori dall'app.
+   *
+   * Uscendo, la pagina viene rallentata da Android e i suoi segnali arrivano
+   * quando non servono piu'. Allora le si toglie il compito: al servizio si
+   * consegna l'elenco dei momenti che restano — ogni cambio di fase e la fine —
+   * e li suona lui, con l'orologio giusto. Rientrando si annulla tutto.
+   */
+  const elapsedRef = useRef(0)
+  elapsedRef.current = elapsed
+  useEffect(() => {
+    const passaIlTestimone = () => {
+      if (document.visibilityState !== 'hidden' || !running || finished || mode === 'chrono') { annullaBip('cardio'); return }
+      const ora = elapsedRef.current
+      const lista: Bip[] = []
+      if (mode === 'interval') {
+        let acc = 0
+        for (let i = 0; i < phases.length; i++) {
+          acc += phases[i].dur
+          const dopo = phases[i + 1]
+          lista.push({
+            ms: (acc - ora) * 1000,
+            tipo: dopo ? (dopo.type === 'work' ? 'via' : 'riposo') : 'fine',
+            tick: 3,
+          })
+        }
+      } else {
+        lista.push({ ms: (targetSec - ora) * 1000, tipo: 'fine', tick: 5 })
+      }
+      programmaBip('cardio', lista.filter((b) => b.ms > 0))
+    }
+    passaIlTestimone()
+    document.addEventListener('visibilitychange', passaIlTestimone)
+    return () => { document.removeEventListener('visibilitychange', passaIlTestimone); annullaBip('cardio') }
+  }, [running, finished, mode, phases, targetSec])
 
   // Fine automatica (intervalli / countdown)
   useEffect(() => {
