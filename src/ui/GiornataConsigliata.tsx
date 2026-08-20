@@ -20,6 +20,8 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const modelli = useLiveQuery(listDayTemplates, []) ?? []
   const diario = useLiveQuery(() => computeDiary(date), [date])
   const [busy, setBusy] = useState(false)
+  // Hai toccato il riquadro di una giornata gia' scelta: vuoi rifarla.
+  const [riapri, setRiapri] = useState(false)
 
   if (!consiglio) return null
 
@@ -41,6 +43,7 @@ export function GiornataConsigliata({ date }: { date: string }) {
       // Gli obiettivi della giornata seguono il piano: applicare i pasti e
       // lasciare i target di ieri farebbe leggere numeri sbagliati tutto il giorno.
       await upsertNutrition(date, { dayType: consiglio!.chiave(on) as never })
+      setRiapri(false)
       pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))
     } finally { setBusy(false) }
   }
@@ -49,22 +52,31 @@ export function GiornataConsigliata({ date }: { date: string }) {
   const colore = consiglio.carbo === 'H' ? 'var(--carb)' : 'var(--gold)'
 
   /**
-   * Hai già scelto: qui resta solo il promemoria di cosa dice il calendario.
+   * Hai già scelto: qui resta il promemoria di cosa dice il calendario.
    *
-   * Niente tasti. Se hai messo OFF a mano e l'app ti riproponesse ON perché
-   * risulta una seduta, ti starebbe contraddicendo su una cosa che decidi tu —
-   * ed è esattamente quello che faceva prima.
+   * Di suo non propone niente — se hai messo OFF a mano e l'app ti riproponesse
+   * ON perché risulta una seduta, ti starebbe contraddicendo su una cosa che
+   * decidi tu. Ma si tocca: allora, e solo allora, tira fuori ON e OFF per
+   * rifare la giornata. Un riquadro che non fa niente al tocco sembra rotto.
    */
-  if (consiglio.giaScelta) {
+  if (consiglio.giaScelta && !riapri) {
     const uguale = consiglio.giaScelta.startsWith(`rs_${parte.toLowerCase()}`)
     return (
-      <div className="card" style={{ flex: 1.2, minWidth: 0, margin: 0, padding: '3px 8px 4px' }}>
+      <button className="card" onClick={() => setRiapri(true)}
+        aria-label={`Oggi tocca ${parte}. Tocca per riapplicare la giornata`}
+        style={{
+          flex: 1.2, minWidth: 0, margin: 0, padding: '3px 8px 4px', textAlign: 'left',
+          background: 'var(--surface)', borderColor: 'var(--line)', borderRadius: 14,
+        }}>
         <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>OGGI TOCCA</span>
-        <span className="row" style={{ gap: 5, alignItems: 'center', height: 20, flexWrap: 'nowrap' }}>
+        <span className="row" style={{ gap: 5, alignItems: 'center', height: 24, flexWrap: 'nowrap' }}>
           <strong style={{ color: colore, fontSize: 12.5 }}>{parte}</strong>
-          <span className="muted" style={{ fontSize: 10.5 }}>{uguale ? '· scelta' : '· diversa'}</span>
+          <span className="muted" style={{ fontSize: 10.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {uguale ? '· scelta' : '· diversa'}
+          </span>
+          <span className="muted" style={{ fontSize: 12, marginLeft: 'auto' }}>›</span>
         </span>
-      </div>
+      </button>
     )
   }
 
