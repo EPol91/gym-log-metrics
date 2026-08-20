@@ -7,6 +7,7 @@ import {
 } from '../db/diet'
 import { deleteWithUndo } from '../db/trash'
 import { pushUndo } from '../util/undo'
+import { GiornataEditor } from './GiornataEditor'
 
 /**
  * Giornate tipo: una giornata alimentare intera salvata come modello e
@@ -20,6 +21,7 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
   const diario = useLiveQuery(() => computeDiary(date), [date])
   const [esito, setEsito] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [modifica, setModifica] = useState<string | null>(null)
 
   const righeOggi = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
 
@@ -39,6 +41,10 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
     setEsito(`"${nome}" applicata: ${snap.creati.length} righe.`)
     pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))
   }
+
+  // Una giornata aperta in correzione si prende tutta la schermata: qui dentro
+  // si lavora riga per riga, e mezzo elenco sopra sarebbe solo rumore.
+  if (modifica) return <GiornataEditor templateId={modifica} onClose={() => setModifica(null)} />
 
   return (
     <div className="col">
@@ -90,10 +96,14 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
               </div>
 
               <div className="row" style={{ gap: 6, marginTop: 8 }}>
+                {/* Correggerla PRIMA di applicarla: gli alimenti del coach non
+                    sono sempre i tuoi, e rifare le stesse sostituzioni ogni
+                    giorno in Cibo e' lavoro buttato. */}
+                <button className="chip" onClick={() => setModifica(t.id)}>✎ Modifica</button>
                 <button className="chip" onClick={async () => {
                   const n = prompt('Nuovo nome', t.name)?.trim()
                   if (n) await renameDayTemplate(t.id, n)
-                }}>✎ Rinomina</button>
+                }}>Rinomina</button>
                 <button className="chip" style={{ color: '#e57373' }} onClick={async () => {
                   if (!confirm(`Eliminare la giornata tipo "${t.name}"?`)) return
                   await deleteWithUndo(`Giornata tipo "${t.name}" eliminata`, () => deleteDayTemplate(t.id))
@@ -103,6 +113,7 @@ export function DayTemplates({ date, onClose }: { date: string; onClose: () => v
               {/* Cosa contiene, per non applicare a scatola chiusa */}
               <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
                 {t.meals.map((m) => `${m.name} (${m.items.length})`).join(' · ')}
+                {t.modificata && <span style={{ color: 'var(--rs)' }}> · ✎ corretta da te</span>}
               </div>
             </div>
           )

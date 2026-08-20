@@ -476,6 +476,21 @@ export async function saveDayAsTemplate(date: string, name: string): Promise<str
   return id
 }
 
+export function getDayTemplate(id: string) {
+  return db.dayTemplates.get(id)
+}
+
+/**
+ * Riscrive i pasti di una giornata tipo con le tue correzioni.
+ *
+ * Da qui in poi la giornata e' segnata come modificata: reimportare il
+ * protocollo del coach non se la riprende piu'. La prescrizione originale resta
+ * dentro ogni riga (rsOriginale), quindi il confronto col piano non si perde.
+ */
+export async function updateDayTemplateMeals(id: string, meals: DayTemplateMeal[]): Promise<void> {
+  await db.dayTemplates.update(id, { meals, modificata: true, updatedAt: nowISO() })
+}
+
 export async function renameDayTemplate(id: string, name: string): Promise<void> {
   await db.dayTemplates.update(id, { name: name.trim() || 'Giornata', updatedAt: nowISO() })
 }
@@ -521,7 +536,9 @@ export async function applyDayTemplate(
       date, mealId, foodId: it.foodId, grams: it.grams, order: i,
       ...(it.recipeId ? { recipeId: it.recipeId, nameSnapshot: it.nameSnapshot, macrosSnapshot: it.macrosSnapshot } : {}),
       ...(it.portions != null ? { portions: it.portions } : {}),
-      ...(dalCoach ? { rsPlanned: { nome: it.nameSnapshot ?? '', g: it.grams } } : {}),
+      // Il confronto col piano guarda quello che ha prescritto LUI: se hai
+      // corretto la riga, l'originale e' in rsOriginale ed e' quello che conta.
+      ...(dalCoach ? { rsPlanned: it.rsOriginale ?? { nome: it.nameSnapshot ?? '', g: it.grams } } : {}),
     }))
     if (righe.length) await db.foodLogs.bulkAdd(righe)
     creati.push(...righe.map((r) => r.id))

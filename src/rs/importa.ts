@@ -25,6 +25,10 @@ export interface EsitoImport {
   alimentiRiusati: string[]
   daCompletare: string[]
   giornate: string[]
+  /** giornate che hai corretto a mano: lasciate come stanno */
+  giornateTue: string[]
+  /** ...e fra quelle, quelle dove il coach ha cambiato qualcosa */
+  giornateCambiate: string[]
   sedute: string[]
   eserciziCreati: number
 }
@@ -58,12 +62,31 @@ async function alimenti(): Promise<{ mappa: Map<string, Food>; esito: Pick<Esito
   return { mappa, esito: { alimentiCreati: creati, alimentiRiusati: riusati, daCompletare } }
 }
 
+/**
+ * Il piano del coach su questa giornata e' cambiato?
+ *
+ * Si confronta con quello che lui aveva prescritto la volta scorsa — non con
+ * quello che c'e' scritto adesso, che sono le tue correzioni. Nome del pasto,
+ * alimento e grammi: se cambia uno di questi, la giornata e' un'altra.
+ */
+function diverso(vecchi: DayTemplateMeal[], nuovi: DayTemplateMeal[]): boolean {
+  const impronta = (meals: DayTemplateMeal[], originale: boolean) => meals
+    .map((m) => `${m.name}:${m.items.map((it) => {
+      const o = originale ? it.rsOriginale : undefined
+      return `${o?.nome ?? it.nameSnapshot ?? ''}@${o?.g ?? it.grams}`
+    }).join(',')}`)
+    .join('|')
+  return impronta(vecchi, true) !== impronta(nuovi, false)
+}
+
 /** Le quattro giornate: obiettivi (tipi giornata) + pasti pronti (giornate tipo). */
-async function giornate(mappa: Map<string, Food>): Promise<string[]> {
+async function giornate(mappa: Map<string, Food>): Promise<{ fatte: string[]; tue: string[]; cambiate: string[] }> {
   const ts = nowISO()
   const tipiEsistenti = await db.dayTypes.where('userId').equals(U).toArray()
   const modelliEsistenti = await db.dayTemplates.where('userId').equals(U).toArray()
   const fatte: string[] = []
+  const tue: string[] = []
+  const cambiate: string[] = []
 
   // L'ordine delle sue giornate lo decide il protocollo, non l'ordine in cui
   // sono state create: LOW ON, LOW OFF, HIGH ON, HIGH OFF. Vale anche quando si
@@ -90,11 +113,20 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
           foodId: f?.id ?? '', grams: r.g,
           nameSnapshot: r.alimento,
           macrosSnapshot: f ? macrosFor(f.per100, r.g) : VUOTO,
+          // Quello che ha prescritto lui, tenuto da parte: se poi correggi la
+          // riga, il confronto col piano continua a guardare questo.
+          rsOriginale: { nome: r.alimento, g: r.g },
         }
       }),
     }))
     const modello = modelliEsistenti.find((m) => m.name === g.nome)
-    if (modello) {
+    if (modello?.modificata) {
+      // L'hai corretta a mano: non si sovrascrive. Se pero' il coach ha cambiato
+      // quella giornata bisogna dirlo, altrimenti resti col piano vecchio senza
+      // saperlo.
+      tue.push(g.nome)
+      if (diverso(modello.meals, meals)) cambiate.push(g.nome)
+    } else if (modello) {
       await db.dayTemplates.update(modello.id, { meals, updatedAt: ts })
     } else {
       const nuovo: DayTemplate = { id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: g.nome, meals }
@@ -102,7 +134,7 @@ async function giornate(mappa: Map<string, Food>): Promise<string[]> {
     }
     fatte.push(g.nome)
   }
-  return fatte
+  return { fatte, tue, cambiate }
 }
 
 /**
@@ -224,7 +256,11 @@ export async function importaProtocolloRs(): Promise<EsitoImport> {
   const { mappa, esito } = await alimenti()
   const g = await giornate(mappa)
   const s = await sedute()
-  return { ...esito, giornate: g, sedute: s.nomi, eserciziCreati: s.eserciziCreati }
+  return {
+    ...esito,
+    giornate: g.fatte, giornateTue: g.tue, giornateCambiate: g.cambiate,
+    sedute: s.nomi, eserciziCreati: s.eserciziCreati,
+  }
 }
 
 /** È già stato importato? Serve a non far ripetere il giro a vuoto. */

@@ -324,6 +324,12 @@ export interface DayTemplateItem {
   portions?: number
   macrosSnapshot?: Macros
   nameSnapshot?: string
+  /**
+   * 🦠RS: cosa aveva prescritto il coach su questa riga, prima delle tue
+   * correzioni. Resta qui anche se cambi alimento o grammi: senza, dopo una
+   * sostituzione il report direbbe che hai seguito il piano alla lettera.
+   */
+  rsOriginale?: { nome: string; g: number }
 }
 
 export interface DayTemplateMeal {
@@ -337,6 +343,11 @@ export interface DayTemplate extends BaseRecord {
   meals: DayTemplateMeal[]
   /** ultimo utilizzo: i modelli che usi davvero stanno in cima */
   lastUsedAt?: ISODateTime
+  /**
+   * 🦠RS: l'hai corretta a mano. Reimportare il protocollo non la sovrascrive:
+   * le tue correzioni valgono piu' di una copia fresca del piano.
+   */
+  modificata?: boolean
 }
 
 export type MealKey = 'colazione' | 'pranzo' | 'cena' | 'spuntino'

@@ -341,6 +341,17 @@ function ImportProtocollo() {
           <p className="muted small" style={{ margin: '4px 0 0' }}>
             Alimenti: {esito.alimentiCreati.length} creati, {esito.alimentiRiusati.length} già tuoi e riusati.
           </p>
+          {esito.giornateTue.length > 0 && (
+            <p className="muted small" style={{ margin: '4px 0 0' }}>
+              Corrette da te, lasciate come stanno: {esito.giornateTue.join(', ')}.
+            </p>
+          )}
+          {esito.giornateCambiate.length > 0 && (
+            <p className="small" style={{ margin: '6px 0 0', color: 'var(--gold)' }}>
+              ⚠ Il coach ha cambiato {esito.giornateCambiate.join(', ')}, ma le hai corrette tu e non le
+              ho toccate. Aprile da Cibo → Giornate tipo e allineale a mano, o eliminale e reimporta.
+            </p>
+          )}
           {esito.daCompletare.length > 0 && (
             <p className="small" style={{ margin: '6px 0 0', color: 'var(--gold)' }}>
               Da completare a mano ({esito.daCompletare.length}): {esito.daCompletare.join(', ')}. Sono a
