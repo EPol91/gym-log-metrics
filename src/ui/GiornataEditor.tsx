@@ -15,6 +15,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
 import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes, sincronizzaObiettivo } from '../db/diet'
 import { FoodChooser } from './FoodChooser'
+import { GIORNATE_RS } from '../rs/protocollo'
 import { useBloccoScroll } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros } from '../db/schema'
 
@@ -128,6 +129,16 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
   if (!modello || !bozza) return <p className="muted">Apro…</p>
 
   const obiettivi = tipi.find((t) => t.name === modello.name)?.targets
+  // Quello che ha scritto il coach per questa giornata, com'e' arrivato: e' il
+  // metro del controllo, e non lo tocca nessuno — nemmeno le tue correzioni.
+  const g = GIORNATE_RS.find((x) => x.nome === modello.name)
+  const piano: Macros | null = g
+    ? { kcal: g.targets.kcal, carbs: g.targets.carbs, protein: g.targets.protein, fat: g.targets.fat }
+    : null
+  const scarto = (mio: number, suo: number) => {
+    const d = Math.round((mio - suo) * 10) / 10
+    return `${d > 0 ? '+' : ''}${d}`
+  }
   const pasti = bozza
   const totale = pasti.reduce((a, m) => m.items.reduce((x, it) => somma(x, macroDi(it, cibi)), a), VUOTO)
   const sporco = JSON.stringify(bozza) !== JSON.stringify(copiaOrdinata(modello.meals))
@@ -215,19 +226,39 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
         )
       })}
 
-      {/* Il totale della giornata contro gli obiettivi di quella giornata: è il
-          numero che guardi prima di decidere che va bene così. */}
+      {/*
+        Due totali, non uno.
+        Il tuo — quello che mangerai davvero, coi tuoi alimenti — e quello che ha
+        prescritto il coach. Sono la stessa giornata scritta da due persone
+        diverse: metterli uno sotto l'altro è l'unico modo per controllare in un
+        colpo d'occhio quanto ti sei allontanato dal piano.
+      */}
       <div className="card" style={{ padding: '10px 12px' }}>
         <div className="row spread" style={{ alignItems: 'baseline' }}>
-          <strong style={{ fontSize: 14 }}>Totale giornata</strong>
+          <strong style={{ fontSize: 14 }}>Totale mio</strong>
           <Macro m={totale} grande />
         </div>
-        {obiettivi && (
+
+        {piano && (
+          <>
+            <div className="row spread" style={{ alignItems: 'baseline', marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+              <span style={{ fontSize: 13, color: 'var(--rs)' }}>Totale RS · piano del coach</span>
+              <Macro m={piano} />
+            </div>
+            <p className="muted small" style={{ margin: '6px 0 0' }}>
+              differenza {scarto(totale.kcal, piano.kcal)} kcal ·{' '}
+              <span style={{ color: 'var(--carb)' }}>C {scarto(totale.carbs, piano.carbs)}</span>,{' '}
+              <span style={{ color: 'var(--prot)' }}>P {scarto(totale.protein, piano.protein)}</span>,{' '}
+              <span style={{ color: 'var(--fat)' }}>G {scarto(totale.fat, piano.fat)}</span>
+            </p>
+          </>
+        )}
+
+        {!piano && obiettivi && (
           <p className="muted small" style={{ margin: '6px 0 0' }}>
             Obiettivo: {obiettivi.kcal} kcal · <span style={{ color: 'var(--carb)' }}>C: {obiettivi.carbs}</span>,{' '}
             <span style={{ color: 'var(--prot)' }}>P: {obiettivi.protein}</span>,{' '}
             <span style={{ color: 'var(--fat)' }}>G: {obiettivi.fat}</span>
-            {' '}· differenza {totale.kcal - obiettivi.kcal >= 0 ? '+' : ''}{totale.kcal - obiettivi.kcal} kcal
           </p>
         )}
       </div>
