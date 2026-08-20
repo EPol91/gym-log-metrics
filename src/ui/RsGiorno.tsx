@@ -1,8 +1,8 @@
 // 🦠RS — la domanda di inizio giornata.
 //
 // Una sola domanda al giorno, che ne risolve due: conferma RS e sceglie che
-// giornata segui. Imposta gli obiettivi del giorno e basta: il diario non lo
-// tocca — i pasti li porti dentro tu, quando vuoi, da Cibo → 🗓 Giornate tipo.
+// giornata segui — e con quella risposta ti compila la giornata, se e' vuota.
+// Su una giornata che ha gia' righe non si scrive: quelle sono tue.
 //
 // Il cambio di data va intercettato al RIENTRO nell'app, non all'avvio: sul
 // telefono la PWA resta in memoria e a mezzanotte non riparte niente — lo
@@ -11,13 +11,16 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../db/db'
+import { LOCAL_USER_ID } from '../db/seed'
 import { getUser, upsertNutrition, getNutrition } from '../db/repo'
-import { listDayTypes } from '../db/diet'
+import { listDayTypes, applyDayTemplate, logsOfDate } from '../db/diet'
 import { todayLocal } from '../util/date'
 import { fmtData } from '../util/format'
 import { settimanaGiorno, RS_START_DEFAULT } from '../rs/rs'
 import type { DayType } from '../db/schema'
 
+const U = LOCAL_USER_ID
 const CHIESTO = 'rs-chiesto'
 /** Prima di quest'ora la giornata non e' cominciata: la domanda aspetta. */
 const ORA_MINIMA = 7
@@ -67,17 +70,26 @@ export function RsGiorno() {
   const chiudi = () => { segnaChiesto(giorno); setAperto(false) }
 
   /**
-   * Rispondere imposta la giornata. Punto.
+   * Qui compilare e' chiesto: il permesso e' la risposta che hai appena dato.
    *
-   * Prima compilava anche il diario: rispondevi "mi alleno" e ti ritrovavi sei
-   * pasti che non avevi chiesto. Aggiungere pasti e' una cosa che si fa con un
-   * tuo gesto, da Cibo → 🗓 Giornate tipo, mai di iniziativa dell'app.
+   * Il tasto lo dice — «Conferma e compila la giornata» — e la giornata si
+   * riempie solo se e' vuota: su una che ha gia' righe non si scrive, ne' sopra
+   * ne' in coda. Quello che hai scritto vale piu' di un modello.
    */
   async function conferma() {
     if (!scelta) return
     await upsertNutrition(giorno, { dayType: scelta.key as never })
-    setEsito(`${scelta.name} impostata.`)
-    setTimeout(chiudi, 1400)
+    const righe = await logsOfDate(giorno)
+    if (righe.length === 0) {
+      const modello = (await db.dayTemplates.where('userId').equals(U).toArray()).find((m) => m.name === scelta!.name)
+      if (modello) {
+        await applyDayTemplate(modello.id, giorno)
+        setEsito(`${scelta.name} compilata. Spunta quello che mangi.`)
+      }
+    } else {
+      setEsito(`${scelta.name} impostata. La giornata aveva già delle righe: non l'ho toccata.`)
+    }
+    setTimeout(chiudi, 1600)
   }
 
   return createPortal(
@@ -120,7 +132,7 @@ export function RsGiorno() {
 
         <button className="primary" style={{ width: '100%', marginTop: 12 }} disabled={!scelta || !!esito}
           onClick={conferma}>
-          Conferma
+          Conferma e compila la giornata
         </button>
         <div className="row" style={{ justifyContent: 'center', marginTop: 10 }}>
           <button className="chip" onClick={chiudi}>oggi salto RS</button>
