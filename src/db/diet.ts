@@ -368,6 +368,27 @@ export async function saleDelDiario(date: string): Promise<number> {
   return Math.round(g * 10) / 10
 }
 
+/**
+ * Il sale che quella giornata prevede, letto dalla giornata tipo.
+ *
+ * Il coach il sale lo scrive riga per riga dentro i pasti (1 g, 1,5 nei pasti
+ * dell'allenamento), non come totale: qui si sommano quelle righe. Segue anche
+ * le tue correzioni, perche' legge la giornata come sta adesso.
+ */
+export async function saleDelPiano(nomeGiornata: string): Promise<number | null> {
+  const t = (await db.dayTemplates.where('userId').equals(U).toArray()).find((m) => m.name === nomeGiornata)
+  if (!t) return null
+  const cibi = new Map((await listFoods()).map((f) => [f.id, f]))
+  let g = 0
+  for (const p of t.meals) {
+    for (const it of p.items) {
+      const nome = cibi.get(it.foodId)?.name ?? it.nameSnapshot ?? ''
+      if (/^sale/i.test(nome.trim())) g += it.grams
+    }
+  }
+  return g > 0 ? Math.round(g * 10) / 10 : null
+}
+
 export async function computeDiary(date: string): Promise<DiaryDay> {
   const meals = await mealsOfDate(date)
   const logs = (await logsOfDate(date)).sort((a, b) => a.order - b.order)

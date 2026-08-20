@@ -6,6 +6,7 @@ import {
   computeDiary, listDayTypes, todayDiet, addMeal, renameMeal, deleteMeal, moveMeal, ensureMeals,
   duplicateMeal, pasteIntoMeal, deleteFoodLogs, restoreFoodLogs, moveLogsToMeal,
   reorderLogs, reorderMeals, updateFoodLog, macrosFor, duplicateLogs, repeatMealFrom, mealCountOn,
+  saleDelDiario, saleDelPiano,
 } from '../db/diet'
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
@@ -206,6 +207,20 @@ export function DietScreen() {
   const phase = useLiveQuery(getCurrentPhase, [])
 
   const activeType = dayTypes.find((d) => d.key === nutri?.dayType)
+
+  // Acqua e sale: quanto ne hai preso e quanto ne prevede la giornata scelta.
+  // Il sale viene dal piano (le righe «Sale» dentro i pasti); l'acqua dal tuo
+  // obiettivo nel Profilo, perche' nel piano del coach non c'e'.
+  const acqua = nutri?.water ?? 0
+  const obiettivoAcqua = user?.waterTarget ?? null
+  const acquaOk = obiettivoAcqua != null && acqua >= obiettivoAcqua
+  const sale = useLiveQuery(() => saleDelDiario(date), [date]) ?? 0
+  const salePiano = useLiveQuery(
+    () => (activeType ? saleDelPiano(activeType.name) : Promise.resolve(null)),
+    [activeType?.name],
+  )
+  const obiettivoSale = salePiano ?? user?.saltTarget ?? null
+  const saleOk = obiettivoSale != null && sale >= obiettivoSale
   const weight = meas.length ? meas[meas.length - 1].weight : 0
   const suggested = weight && user?.heightCm && user?.birthYear
     ? computeTargets({
@@ -482,6 +497,22 @@ export function DietScreen() {
         <div style={{ textAlign: 'center', fontSize: 13, marginTop: 4 }}>
           <strong style={{ color: 'var(--gold)' }}>{totals.kcal}</strong>
           <span className="muted"> / {t?.kcal ?? '—'} kcal{t ? ` · restano ${Math.max(0, t.kcal - totals.kcal)}` : ''}</span>
+        </div>
+        {/*
+          Acqua e sale accanto ai macro.
+          Il sale il coach lo prescrive riga per riga dentro i pasti: qui c'e' il
+          totale della giornata scelta, contro quello che hai davvero spuntato.
+          L'acqua nel suo piano non c'e', quindi il bersaglio e' il tuo (Profilo).
+        */}
+        <div className="row" style={{ gap: 14, justifyContent: 'center', marginTop: 6, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+          <span>
+            💧 <strong style={{ color: acquaOk ? 'var(--good)' : 'var(--gold)' }}>{String(acqua).replace('.', ',')}</strong>
+            <span className="muted"> / {obiettivoAcqua ? `${String(obiettivoAcqua).replace('.', ',')} L` : '— L'}</span>
+          </span>
+          <span>
+            🧂 <strong style={{ color: saleOk ? 'var(--good)' : 'var(--gold)' }}>{String(sale).replace('.', ',')}</strong>
+            <span className="muted"> / {obiettivoSale ? `${String(obiettivoSale).replace('.', ',')} g` : '— g'}</span>
+          </span>
         </div>
         {!t && <p className="muted small" style={{ marginTop: 8, textAlign: 'center' }}>Imposta gli obiettivi con ⚙ qui sopra.</p>}
       </div>
