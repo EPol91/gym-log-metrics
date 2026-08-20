@@ -1,79 +1,53 @@
-// 🦠RS — la giornata che tocca oggi, a un tocco.
+// 🦠RS — quale giornata tocca oggi.
 //
-// Il basso e l'alto li dice il calendario (la ciclizzazione del coach, L L L H
-// L H L da lunedì); ON e OFF li decidi tu, perché dipendono dal fatto che ti
-// alleni. Se però quel giorno una seduta c'è già, ON non è un'opinione: la
-// domanda sparisce e resta un tasto solo.
+// Questo riquadro SEGNALA, non compila. Il basso e l'alto li dice la
+// ciclizzazione del coach (L L L H L H L da lunedì); ON e OFF li scegli tu,
+// perché dipendono dal fatto che ti alleni. Scelto, quella diventa la giornata
+// selezionata — cioè gli obiettivi del giorno — e finisce lì.
 //
-// Sparisce da sola appena hai scelto: un suggerimento che resta lì dopo che
-// hai deciso non è un aiuto, è un ingombro.
+// Non tocca il diario: non aggiunge righe, non ne toglie, non sostituisce
+// niente. Compilare la giornata è un'altra cosa e si fa da un'altra parte
+// (🗓 Giornate tipo), con un gesto tuo.
 
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { consiglioGiornata } from '../rs/ciclo'
-import { listDayTemplates, applyDayTemplate, undoDayApply, computeDiary } from '../db/diet'
 import { upsertNutrition } from '../db/repo'
-import { pushUndo } from '../util/undo'
 
 export function GiornataConsigliata({ date }: { date: string }) {
   const consiglio = useLiveQuery(() => consiglioGiornata(date), [date])
-  const modelli = useLiveQuery(listDayTemplates, []) ?? []
-  const diario = useLiveQuery(() => computeDiary(date), [date])
-  const [busy, setBusy] = useState(false)
-  // Hai toccato il riquadro di una giornata gia' scelta: vuoi rifarla.
+  // Hai toccato il riquadro di una giornata già scelta: vuoi cambiarla.
   const [riapri, setRiapri] = useState(false)
 
   if (!consiglio) return null
 
-  const righe = diario?.meals.reduce((a, m) => a + m.entries.length, 0) ?? 0
-
-  async function applica(on: boolean) {
-    const nome = consiglio!.nome(on)
-    const modello = modelli.find((m) => m.name === nome)
-    if (!modello) return
-    /*
-     * Giornata già compilata: non si applica e basta.
-     *
-     * Non si sovrascrive — quello che hai scritto vale più di un modello — e
-     * non si accoda, che vuol dire ritrovarsi i pasti doppi. Se vuoi rifarla,
-     * la svuoti tu col 🧹 e riapplichi: è un tocco, ed è annullabile.
-     */
-    if (righe > 0) {
-      alert(`Questa giornata ha già ${righe} righe: non ci scrivo sopra.\n\nSe vuoi metterci "${nome}", svuotala prima col 🧹 in alto.`)
-      return
-    }
-    setBusy(true)
-    try {
-      const snap = await applyDayTemplate(modello.id, date, true)
-      // Gli obiettivi della giornata seguono il piano: applicare i pasti e
-      // lasciare i target di ieri farebbe leggere numeri sbagliati tutto il giorno.
-      await upsertNutrition(date, { dayType: consiglio!.chiave(on) as never })
-      setRiapri(false)
-      pushUndo(`Giornata "${nome}" applicata`, () => undoDayApply(snap, date))
-    } finally { setBusy(false) }
+  /** Sceglie la giornata del giorno. Nient'altro: il diario resta com'è. */
+  async function scegli(on: boolean) {
+    await upsertNutrition(date, { dayType: consiglio!.chiave(on) as never })
+    setRiapri(false)
   }
 
   const parte = consiglio.carbo === 'H' ? 'HIGH' : 'LOW'
   const colore = consiglio.carbo === 'H' ? 'var(--carb)' : 'var(--gold)'
+  const etichetta = { fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const
 
   /**
-   * Hai già scelto: qui resta il promemoria di cosa dice il calendario.
+   * Hai già scelto: resta il promemoria di cosa dice il calendario.
    *
-   * Di suo non propone niente — se hai messo OFF a mano e l'app ti riproponesse
-   * ON perché risulta una seduta, ti starebbe contraddicendo su una cosa che
-   * decidi tu. Ma si tocca: allora, e solo allora, tira fuori ON e OFF per
-   * rifare la giornata. Un riquadro che non fa niente al tocco sembra rotto.
+   * Di suo non propone niente — se hai messo OFF a mano non deve essere l'app a
+   * rimetterti ON perché risulta una seduta. Ma si tocca: allora, e solo allora,
+   * tira fuori ON e OFF per cambiarla.
    */
   if (consiglio.giaScelta && !riapri) {
     const uguale = consiglio.giaScelta.startsWith(`rs_${parte.toLowerCase()}`)
     return (
       <button className="card" onClick={() => setRiapri(true)}
-        aria-label={`Oggi tocca ${parte}. Tocca per riapplicare la giornata`}
+        aria-label={`Oggi tocca ${parte}. Tocca per cambiare la giornata`}
         style={{
           flex: 1.2, minWidth: 0, margin: 0, padding: '3px 8px 4px', textAlign: 'left',
           background: 'var(--surface)', borderColor: 'var(--line)', borderRadius: 14,
         }}>
-        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>OGGI TOCCA</span>
+        <span className="muted" style={etichetta}>OGGI TOCCA</span>
         <span className="row" style={{ gap: 5, alignItems: 'center', height: 24, flexWrap: 'nowrap' }}>
           <strong style={{ color: colore, fontSize: 12.5 }}>{parte}</strong>
           <span className="muted" style={{ fontSize: 10.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -86,11 +60,9 @@ export function GiornataConsigliata({ date }: { date: string }) {
   }
 
   /**
-   * Il terzo riquadro, alto come gli altri due: qui non si ruba spazio a niente.
-   *
    * I tasti sono alti quanto tutto il riquadro, non quanto la loro riga: un
    * bersaglio da ventitré pixel col pollice non lo prendi, e allungare la
-   * pastiglia non costa un solo pixel in verticale.
+   * pastiglia non costa un pixel in verticale.
    */
   const tasto = { padding: '0 4px', fontSize: 11.5, lineHeight: 1.1, alignSelf: 'stretch' } as const
   return (
@@ -99,21 +71,11 @@ export function GiornataConsigliata({ date }: { date: string }) {
       display: 'flex', alignItems: 'stretch', gap: 4,
     }}>
       <span style={{ minWidth: 0, flex: '0 1 auto' }}>
-        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em', display: 'block', lineHeight: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>OGGI TOCCA</span>
+        <span className="muted" style={etichetta}>OGGI TOCCA</span>
         <strong style={{ color: colore, fontSize: 12.5, display: 'block', lineHeight: '24px' }}>{parte}</strong>
       </span>
-      {consiglio.allenato ? (
-        // Una seduta c'è: ON non è una domanda, si applica e basta.
-        <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 52 }}
-          disabled={busy} onClick={() => applica(true)}>applica<br />ON</button>
-      ) : (
-        <>
-          <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }}
-            disabled={busy} onClick={() => applica(true)}>ON</button>
-          <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }}
-            disabled={busy} onClick={() => applica(false)}>OFF</button>
-        </>
-      )}
+      <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }} onClick={() => void scegli(true)}>ON</button>
+      <button className="ghost" style={{ ...tasto, flex: 1, minWidth: 38 }} onClick={() => void scegli(false)}>OFF</button>
     </div>
   )
 }
