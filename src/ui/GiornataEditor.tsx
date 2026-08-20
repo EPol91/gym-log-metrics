@@ -13,7 +13,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
-import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes, sincronizzaObiettivo } from '../db/diet'
+import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTypes, sincronizzaObiettivo, pastoComeItems } from '../db/diet'
+import { pastoCopiato } from '../util/appuntiPasto'
 import { FoodChooser } from './FoodChooser'
 import { GIORNATE_RS } from '../rs/protocollo'
 import { useBloccoScroll } from './useBloccoScroll'
@@ -112,6 +113,9 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
   const [apri, setApri] = useState<{ m: number; i: number } | null>(null)
   const [scegli, setScegli] = useState<{ m: number; i: number | null } | null>(null)
   const [salvato, setSalvato] = useState(false)
+  const [nota, setNota] = useState<string | null>(null)
+  // Il pasto copiato in Cibo: si legge quando apri, non serve che cambi dopo.
+  const [appunti] = useState(pastoCopiato)
 
   // La bozza nasce già in ordine di pasto: così l'indice della riga a schermo è
   // lo stesso della riga nella bozza, e una correzione non finisce sul pasto sbagliato.
@@ -158,6 +162,29 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
 
   function elimina(mi: number, ii: number) {
     setBozza((b) => b?.map((m, i) => (i === mi ? { ...m, items: m.items.filter((_, x) => x !== ii) } : m)) ?? b)
+  }
+
+  /**
+   * Incolla dentro un pasto le righe di quello copiato in Cibo.
+   *
+   * Va nella bozza, non su disco: resta una modifica come le altre, che Salva
+   * conferma e «Annulla modifiche» butta via.
+   */
+  async function incolla(mi: number) {
+    if (!appunti) return
+    const p = await pastoComeItems(appunti.mealId)
+    if (!p?.items.length) { setNota(`«${appunti.name}» non c'è più, o è vuoto.`); return }
+    setBozza((b) => b?.map((m, i) => (i === mi ? { ...m, items: [...m.items, ...p.items] } : m)) ?? b)
+    setNota(`${p.items.length} righe da «${p.nome}». Salva per tenerle.`)
+  }
+
+  /** Il pasto copiato diventa un pasto nuovo in fondo alla giornata. */
+  async function incollaComePasto() {
+    if (!appunti) return
+    const p = await pastoComeItems(appunti.mealId)
+    if (!p?.items.length) { setNota(`«${appunti.name}» non c'è più, o è vuoto.`); return }
+    setBozza((b) => [...(b ?? []), { name: p.nome, order: (b?.length ?? 0), items: p.items }])
+    setNota(`Pasto «${p.nome}» aggiunto in fondo. Salva per tenerlo.`)
   }
 
   function metti(f: Food) {
@@ -221,10 +248,26 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
               )
             })}
 
-            <button className="chip" style={{ marginTop: 8 }} onClick={() => setScegli({ m: mi, i: null })}>＋ Aggiungi alimento</button>
+            <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              <button className="chip" onClick={() => setScegli({ m: mi, i: null })}>＋ Aggiungi alimento</button>
+              {/* Il pasto che hai gia' sistemato in Cibo entra qui dentro com'e':
+                  le sostituzioni le hai gia' fatte una volta. */}
+              {appunti && (
+                <button className="chip" onClick={() => void incolla(mi)}>
+                  📥 Incolla «{appunti.name}»
+                </button>
+              )}
+            </div>
           </div>
         )
       })}
+
+      {appunti && (
+        <button className="chip" style={{ alignSelf: 'flex-start' }} onClick={() => void incollaComePasto()}>
+          📥 Incolla «{appunti.name}» come nuovo pasto
+        </button>
+      )}
+      {nota && <p className="small" style={{ margin: 0, color: 'var(--gold)' }}>{nota}</p>}
 
       {/*
         Due totali, non uno.

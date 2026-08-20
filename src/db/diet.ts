@@ -5,7 +5,7 @@ import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { todayLocal } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
-import type { DayTemplateMeal, DayType, Food, FoodLog, Macros, Meal } from './schema'
+import type { DayTemplateItem, DayTemplateMeal, DayType, Food, FoodLog, Macros, Meal } from './schema'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
@@ -169,6 +169,34 @@ function copyOf(l: FoodLog) {
       ...(l.portions != null ? { portions: l.portions } : {}),
     } : {}),
   }
+}
+
+/**
+ * Un pasto del diario tradotto in righe da giornata tipo.
+ *
+ * Serve per incollare dentro la giornata del coach un pasto che hai gia'
+ * compilato in Cibo: li' dentro hai gia' fatto le sostituzioni, e rifarle a
+ * mano riga per riga e' lavoro fatto due volte.
+ */
+export async function pastoComeItems(mealId: string): Promise<{ nome: string; items: DayTemplateItem[] } | null> {
+  const m = await db.meals.get(mealId)
+  if (!m) return null
+  const logs = (await db.foodLogs.where('mealId').equals(mealId).toArray()).sort((a, b) => a.order - b.order)
+  const cibi = new Map((await db.foods.where('userId').equals(U).toArray()).map((f) => [f.id, f]))
+  const items: DayTemplateItem[] = logs.map((l) => {
+    const f = cibi.get(l.foodId)
+    return {
+      foodId: l.foodId, grams: l.grams,
+      ...(l.recipeId ? { recipeId: l.recipeId } : {}),
+      ...(l.portions != null ? { portions: l.portions } : {}),
+      nameSnapshot: l.nameSnapshot ?? f?.name,
+      macrosSnapshot: l.macrosSnapshot ?? (f ? macrosFor(f.per100, l.grams) : undefined),
+      // Quello che il coach aveva prescritto su quella riga viene dietro: e' il
+      // metro del confronto, e non deve perdersi passando dal diario.
+      ...(l.rsPlanned ? { rsOriginale: { nome: l.rsPlanned.nome, g: l.rsPlanned.g } } : {}),
+    }
+  })
+  return { nome: m.name, items }
 }
 
 /** Incolla il contenuto di un pasto dentro un altro (in coda). */

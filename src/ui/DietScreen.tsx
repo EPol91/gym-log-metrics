@@ -24,6 +24,7 @@ import type { DiaryEntry, DiaryMeal } from '../db/diet'
 import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 import { GiornataConsigliata } from './GiornataConsigliata'
+import { copiaPasto } from '../util/appuntiPasto'
 
 const shift = shiftDate
 const labelFor = (iso: string) => {
@@ -556,7 +557,14 @@ export function DietScreen() {
             <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
               <button className="chip" onClick={async () => { const n = prompt('Nome del pasto', m.meal.name)?.trim(); if (n) await renameMeal(m.meal.id, n); setMenuMeal(null) }}>✎ Rinomina</button>
               <button className="chip" onClick={async () => { await duplicateMeal(m.meal.id); setMenuMeal(null) }}>⧉ Duplica</button>
-              <button className="chip" onClick={() => { setClipboard({ mealId: m.meal.id, name: m.meal.name }); setMenuMeal(null) }}>📋 Copia</button>
+              {/* Il pasto copiato finisce anche negli appunti su disco: da li'
+                  lo puoi incollare dentro una giornata tipo, che e' un'altra
+                  schermata e non vede lo stato di questa. */}
+              <button className="chip" onClick={() => {
+                setClipboard({ mealId: m.meal.id, name: m.meal.name })
+                copiaPasto({ mealId: m.meal.id, name: m.meal.name })
+                setMenuMeal(null)
+              }}>📋 Copia</button>
               {clipboard && clipboard.mealId !== m.meal.id && (
                 <button className="chip on" onClick={async () => {
                   const ids = await pasteIntoMeal(clipboard.mealId, m.meal.id)
