@@ -526,6 +526,48 @@ export async function moveExerciseEntry(entryId: string, dir: -1 | 1): Promise<v
   await db.exerciseEntries.update(other.id, { order: e.order, updatedAt: nowISO() })
 }
 
+/**
+ * Stacca UN esercizio dal superset, lasciando in piedi gli altri.
+ *
+ * Se dopo l'uscita ne resta uno solo, il gruppo non ha piu' senso e si scioglie
+ * da se': un superset di un esercizio e' un esercizio.
+ */
+export async function staccaDalGruppo(entryId: string): Promise<void> {
+  const e = await db.exerciseEntries.get(entryId)
+  if (!e?.groupId) return
+  const ts = nowISO()
+  await db.exerciseEntries.update(e.id, { groupId: undefined, groupOrder: undefined, updatedAt: ts })
+  const restano = (await db.exerciseEntries.where('groupId').equals(e.groupId).toArray())
+    .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
+  if (restano.length <= 1) {
+    for (const r of restano) await db.exerciseEntries.update(r.id, { groupId: undefined, groupOrder: undefined, updatedAt: ts })
+    return
+  }
+  // I posti si richiudono: A, B, C senza buchi.
+  for (let i = 0; i < restano.length; i++) await db.exerciseEntries.update(restano[i].id, { groupOrder: i, updatedAt: ts })
+}
+
+/**
+ * Sposta un esercizio DENTRO il suo superset: A diventa B e viceversa.
+ *
+ * Nel giro l'ordine conta — e' quello in cui li fai — e senza questo l'unico
+ * modo per cambiarlo era sciogliere il gruppo e rifarlo.
+ */
+export async function moveInGroup(entryId: string, dir: -1 | 1): Promise<void> {
+  const e = await db.exerciseEntries.get(entryId)
+  if (!e?.groupId) return
+  const gruppo = (await db.exerciseEntries.where({ sessionId: e.sessionId }).toArray())
+    .filter((x) => x.groupId === e.groupId)
+    .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
+  const i = gruppo.findIndex((x) => x.id === entryId)
+  const j = i + dir
+  if (j < 0 || j >= gruppo.length) return
+  const altro = gruppo[j]
+  const ts = nowISO()
+  await db.exerciseEntries.update(e.id, { groupOrder: altro.groupOrder ?? j, updatedAt: ts })
+  await db.exerciseEntries.update(altro.id, { groupOrder: e.groupOrder ?? i, updatedAt: ts })
+}
+
 // --- Set ---
 export interface SetInput { weight: number; reps: number; rir?: number; isWarmup?: boolean; restSec?: number }
 

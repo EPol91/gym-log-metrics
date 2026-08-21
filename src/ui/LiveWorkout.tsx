@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
-  deleteExerciseEntry, moveExerciseEntry, allExercises, groupEntries, ungroupEntries,
+  deleteExerciseEntry, moveExerciseEntry, moveInGroup, staccaDalGruppo, allExercises, groupEntries, ungroupEntries,
   lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
   setExerciseInclinazione, setExerciseFoto,
 } from '../db/repo'
@@ -427,20 +427,26 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
 /** I tasti secondari: stretti quanto basta a starci tutti in fila. */
 const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
 
-function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
-  entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; foto?: string; sessionId: string; restSec: number
-  pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
-  onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
+/**
+ * Gli strumenti di un esercizio: storico, regolazioni, scheda del coach,
+ * inclinazione, dischi, spostamenti, elimina.
+ *
+ * Stanno qui e non dentro la scheda dell'esercizio singolo perche' servono
+ * uguali dentro un superset: li' un esercizio resta un esercizio, e prima
+ * perdeva tutto — storico, foto della macchina, prescrizione, tutto.
+ */
+function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, sessionId, peso, isFirst, isLast, nelGruppo, onGroup, onUngroup }: {
+  entry: ExerciseEntry; name: string; settings: string
+  inclinazione?: number; foto?: string; sessionId: string
+  /** il carico scritto adesso: serve al calcolo dei dischi */
+  peso: number
+  isFirst: boolean; isLast: boolean
+  /** dentro un superset i tasti su/giu' spostano nel giro, non nella seduta */
+  nelGruppo?: boolean
   onGroup?: () => void
+  /** stacca questo esercizio dal superset */
+  onUngroup?: () => void
 }) {
-  const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
-  const [w, setW] = useState('')
-  const [r, setR] = useState('')
-  const [rir, setRir] = useState<number | null>(null)
-  const [warmup, setWarmup] = useState(false)
-  const [hint, setHint] = useState<SetEntry | null>(null)
-  const [histBest, setHistBest] = useState(0)
-  const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [showCoach, setShowCoach] = useState(false)
   const [inclina, setInclina] = useState(false)
@@ -449,66 +455,17 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
   const fotoRef = useRef<HTMLInputElement>(null)
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
-  const prefilled = useRef(false)
 
   // Le note stanno in un campo solo, ma sono di due mani diverse: quelle del
   // coach cominciano col 🦠 e le scrive l'import, le altre le scrivi tu.
-  const righe = (settings ?? '').split('\n').map((x) => x.trim()).filter(Boolean)
+  const righe = (settings ?? '').split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean)
   const righeCoach = righe.filter((x) => x.startsWith('🦠'))
-  const mieNote = righe.filter((x) => !x.startsWith('🦠')).join('\n')
+  const mieNote = righe.filter((x) => !x.startsWith('🦠')).join(String.fromCharCode(10))
 
   useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
-  useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
-  useEffect(() => { exerciseHistory(entry.exerciseId, sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, sessionId])
-  useEffect(() => {
-    if (prefilled.current) return
-    const src = sets.length ? sets[sets.length - 1] : hint
-    if (src) { setW(String(src.weight)); setR(String(src.reps)); prefilled.current = true }
-  }, [hint, sets])
 
-  const canAdd = parseNum(w, { min: 0 }) != null && parseNum(r, { min: 1, int: true }) != null
-  const stepKg = (d: number) => setW((v) => String(Math.max(0, +(((v === '' ? 0 : +v) + d * 2.5)).toFixed(2))))
-  const stepRep = (d: number) => setR((v) => String(Math.max(1, (v === '' ? 0 : +v) + d)))
-  const stepRir = (d: number) => setRir((v) => d > 0 ? (v == null ? 0 : Math.min(6, v + 1)) : (v == null || v <= 0 ? null : v - 1))
-
-  function fillFromVoice(f: VoiceSet) {
-    if (f.weight != null) setW(String(f.weight))
-    if (f.reps != null) setR(String(f.reps))
-    if (f.rir != null) setRir(f.rir)
-    if (f.warmup) setWarmup(true)
-  }
-  async function add() {
-    const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
-    if (wn == null || rn == null) return
-    // Il recupero salvato sulla serie = il timer scelto per questo esercizio (non il tempo misurato).
-    // Se durante il recupero cambi preset, il parent aggiorna questa serie via l'id qui sotto.
-    // RIR lasciato vuoto su una serie di lavoro = 0 (a esaurimento); sul riscaldamento resta assente.
-    const rirToSave = warmup ? (rir ?? undefined) : (rir ?? 0)
-    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rirToSave, isWarmup: warmup, restSec: warmup ? undefined : restSec })
-    setRir(null); setWarmup(false)
-    if (!warmup) onLogged(restSec, entry.exerciseId, id)
-  }
-
-  let wIdx = 0
   return (
-    <div className="col" style={{ gap: 10 }}>
-      {/* Header centrato con ‹ prev / next › ai lati del titolo (sempre visibili) */}
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <button className="ghost" style={{ padding: '10px 12px', visibility: onPrev ? 'visible' : 'hidden' }} onClick={onPrev} aria-label="Esercizio precedente">‹</button>
-        <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
-          <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
-          <h2 style={{ margin: '2px 0' }}>{name}</h2>
-          <div className="row" style={{ gap: 6, justifyContent: 'center', marginTop: 4 }}>
-            <span className="chip" style={{ padding: '3px 10px', color: 'var(--text)' }}>
-              {hint ? `Ultima ${hint.weight}×${hint.reps}` : 'Prima volta'}
-            </span>
-            {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px' }}>PR {Math.round(histBest)}</span>}
-          </div>
-        </div>
-        <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
-      </div>
-
+    <>
       {/* Controlli secondari: una riga sola. A capo occupavano due righe di
           schermo per sei icone; qui restano in fila e, se proprio non ci stanno,
           scorrono di lato. */}
@@ -531,8 +488,13 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
             lato, e farlo a mente fra due serie e' come si sbaglia carico. */}
         <button className="chip" style={MINI} onClick={() => setDischi(true)} aria-label="Che dischi caricare">⚖</button>
         {onGroup && <button className="chip" style={MINI} onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
-        <button className="chip" style={MINI} disabled={isFirst} onClick={() => moveExerciseEntry(entry.id, -1)} aria-label="Sposta su">↑</button>
-        <button className="chip" style={MINI} disabled={isLast} onClick={() => moveExerciseEntry(entry.id, 1)} aria-label="Sposta giù">↓</button>
+        {/* Dentro un giro «stacca» toglie questo esercizio dal superset; le
+            frecce spostano dentro il giro (A↔B), non dentro la seduta. */}
+        {onUngroup && <button className="chip" style={MINI} onClick={onUngroup} aria-label="Stacca dal superset">✂</button>}
+        <button className="chip" style={MINI} disabled={isFirst}
+          onClick={() => (nelGruppo ? moveInGroup(entry.id, -1) : moveExerciseEntry(entry.id, -1))} aria-label="Sposta su">↑</button>
+        <button className="chip" style={MINI} disabled={isLast}
+          onClick={() => (nelGruppo ? moveInGroup(entry.id, 1) : moveExerciseEntry(entry.id, 1))} aria-label="Sposta giù">↓</button>
         <button className="chip" style={MINI} aria-label="Rimuovi esercizio" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
       </div>
       {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
@@ -592,12 +554,105 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
         </div>
       )}
       {showHist && <HistoryPanel history={history} />}
-      {dischi && <Dischi peso={parseNum(w, { min: 0, max: 1000 }) ?? 0} onClose={() => setDischi(false)} />}
+      {dischi && <Dischi peso={peso} onClose={() => setDischi(false)} />}
       {inclina && (
         <Inclinometro valore={inclinazione}
           onSalva={(g) => setExerciseInclinazione(entry.exerciseId, g)}
           onClose={() => setInclina(false)} />
       )}
+    </>
+  )
+}
+
+function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restSec, pos, total, restNode, isFirst, isLast, onLogged, onPrev, onNext, onGroup }: {
+  entry: ExerciseEntry; name: string; settings: string; inclinazione?: number; foto?: string; sessionId: string; restSec: number
+  pos: number; total: number; restNode: React.ReactNode; isFirst: boolean; isLast: boolean
+  onLogged: (sec: number, exerciseId: string, setId?: string) => void; onPrev?: () => void; onNext?: () => void
+  onGroup?: () => void
+}) {
+  const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
+  const [w, setW] = useState('')
+  const [r, setR] = useState('')
+  const [rir, setRir] = useState<number | null>(null)
+  const [warmup, setWarmup] = useState(false)
+  const [hint, setHint] = useState<SetEntry | null>(null)
+  const [histBest, setHistBest] = useState(0)
+  const [prevSets, setPrevSets] = useState<SetEntry[]>([])
+  // Finche' lo storico non e' arrivato non si precompila niente: riempire coi
+  // dati sbagliati e poi non correggerli piu' e' peggio che aspettare un istante.
+  const [prevPronti, setPrevPronti] = useState(false)
+  const prefilled = useRef(false)
+
+  useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
+  useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
+  useEffect(() => { exerciseHistory(entry.exerciseId, sessionId, 1).then((h) => { setPrevSets(h[0]?.sets ?? []); setPrevPronti(true) }) }, [entry.exerciseId, sessionId])
+  /*
+   * Il riferimento della serie che stai per fare e' la serie di PARI NUMERO
+   * della volta scorsa: la prima con la prima, la seconda con la seconda.
+   *
+   * Prima si copiava l'ultima serie in assoluto, che e' quasi sempre la piu'
+   * scarica della giornata: aprivi l'esercizio e la prima serie partiva dal peso
+   * con cui l'avevi chiuso. Se la scorsa volta ne avevi fatte meno, vale
+   * l'ultima che c'era.
+   */
+  const fatte = sets.filter((s) => !s.isWarmup).length
+  const daFare = prevSets[fatte] ?? prevSets[prevSets.length - 1] ?? hint
+
+  useEffect(() => {
+    if (prefilled.current || !prevPronti) return
+    if (daFare) { setW(String(daFare.weight)); setR(String(daFare.reps)); prefilled.current = true }
+  }, [daFare, prevPronti])
+
+  const canAdd = parseNum(w, { min: 0 }) != null && parseNum(r, { min: 1, int: true }) != null
+  const stepKg = (d: number) => setW((v) => String(Math.max(0, +(((v === '' ? 0 : +v) + d * 2.5)).toFixed(2))))
+  const stepRep = (d: number) => setR((v) => String(Math.max(1, (v === '' ? 0 : +v) + d)))
+  const stepRir = (d: number) => setRir((v) => d > 0 ? (v == null ? 0 : Math.min(6, v + 1)) : (v == null || v <= 0 ? null : v - 1))
+
+  function fillFromVoice(f: VoiceSet) {
+    if (f.weight != null) setW(String(f.weight))
+    if (f.reps != null) setR(String(f.reps))
+    if (f.rir != null) setRir(f.rir)
+    if (f.warmup) setWarmup(true)
+  }
+  async function add() {
+    const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
+    if (wn == null || rn == null) return
+    // Il recupero salvato sulla serie = il timer scelto per questo esercizio (non il tempo misurato).
+    // Se durante il recupero cambi preset, il parent aggiorna questa serie via l'id qui sotto.
+    // RIR lasciato vuoto su una serie di lavoro = 0 (a esaurimento); sul riscaldamento resta assente.
+    const rirToSave = warmup ? (rir ?? undefined) : (rir ?? 0)
+    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rirToSave, isWarmup: warmup, restSec: warmup ? undefined : restSec })
+    setRir(null); setWarmup(false)
+    if (!warmup) onLogged(restSec, entry.exerciseId, id)
+  }
+
+  let wIdx = 0
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      {/* Header centrato con ‹ prev / next › ai lati del titolo (sempre visibili) */}
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onPrev ? 'visible' : 'hidden' }} onClick={onPrev} aria-label="Esercizio precedente">‹</button>
+        <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
+          <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
+          <h2 style={{ margin: '2px 0' }}>{name}</h2>
+          <div className="row" style={{ gap: 6, justifyContent: 'center', marginTop: 4 }}>
+            <span className="chip" style={{ padding: '3px 10px', color: 'var(--text)' }}>
+              {/* Non «l'ultima serie» ma quella che stai per rifare: la stessa
+                  serie della volta scorsa. */}
+              {daFare ? `${fatte + 1}ª volta scorsa ${daFare.weight}×${daFare.reps}` : 'Prima volta'}
+            </span>
+            {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px' }}>PR {Math.round(histBest)}</span>}
+          </div>
+        </div>
+        <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
+      </div>
+
+      {/* Gli strumenti dell'esercizio: stanno in un componente solo, perche
+          servono uguali dentro un superset. */}
+      <StrumentiEsercizio entry={entry} name={name} settings={settings}
+        inclinazione={inclinazione} foto={foto} sessionId={sessionId}
+        peso={parseNum(w, { min: 0, max: 1000 }) ?? 0}
+        isFirst={isFirst} isLast={isLast} onGroup={onGroup} />
 
       {/* Tabella set */}
       <div className="card" style={{ padding: '4px 12px 8px' }}>
@@ -703,11 +758,13 @@ const GROUP_LABEL = ['A', 'B', 'C']
  * Un esercizio dentro un superset. Le serie già fatte stanno nella STESSA tabella
  * dell'esercizio singolo: si toccano per correggere kg/reps/RIR/recupero o eliminarle.
  */
-function GroupExercise({ entry, name, values, onChange, prev }: {
+function GroupExercise({ entry, name, settings, inclinazione, foto, values, onChange, isFirst, isLast, onUngroup }: {
   entry: ExerciseEntry; name: string
+  settings: string; inclinazione?: number; foto?: string
   values: { w: string; r: string; rir: number | null }
   onChange: (v: { w: string; r: string; rir: number | null }) => void
-  prev: SetEntry | null
+  isFirst: boolean; isLast: boolean
+  onUngroup: () => void
 }) {
   const label = GROUP_LABEL[entry.groupOrder ?? 0] ?? '?'
   // Reattivo: correggendo o eliminando una serie la tabella si aggiorna da sola.
@@ -718,6 +775,11 @@ function GroupExercise({ entry, name, values, onChange, prev }: {
   useEffect(() => { exerciseHistory(entry.exerciseId, entry.sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, entry.sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, entry.sessionId).then(setHistBest) }, [entry.exerciseId, entry.sessionId])
 
+  // Il riferimento della serie che stai per fare: la serie di PARI NUMERO della
+  // volta scorsa. Se la scorsa volta ne avevi fatte meno, vale l'ultima che c'era.
+  const fatte = sets.filter((s) => !s.isWarmup).length
+  const prev = prevSets[fatte] ?? prevSets[prevSets.length - 1] ?? null
+
   let wIdx = 0
   return (
     <div className="card" style={{ margin: 0, padding: '10px 12px' }}>
@@ -726,8 +788,17 @@ function GroupExercise({ entry, name, values, onChange, prev }: {
           <span style={{ color: 'var(--gold)', fontWeight: 700, marginRight: 6 }}>{label}</span>{name}
         </span>
         <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>
-          {prev ? `ultima ${prev.weight}×${prev.reps}` : 'prima volta'}
+          {prev ? `${fatte + 1}ª volta scorsa ${prev.weight}×${prev.reps}` : 'prima volta'}
         </span>
+      </div>
+
+      {/* Gli stessi strumenti dell'esercizio singolo: dentro un giro un
+          esercizio resta un esercizio. */}
+      <div style={{ marginTop: 6 }}>
+        <StrumentiEsercizio entry={entry} name={name} settings={settings}
+          inclinazione={inclinazione} foto={foto} sessionId={entry.sessionId}
+          peso={parseNum(values.w, { min: 0, max: 1000 }) ?? 0}
+          isFirst={isFirst} isLast={isLast} nelGruppo onUngroup={onUngroup} />
       </div>
 
       {sets.length > 0 && (
@@ -778,19 +849,23 @@ function GroupExercise({ entry, name, values, onChange, prev }: {
  * Blocco superset/triset: compili tutti gli esercizi e chiudi il giro con un tocco.
  * Il recupero parte solo a fine giro — è il senso stesso del superset.
  */
-function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, onPrev, onNext, onUngroup }: {
+function GroupCard({ entries, nameOf, datiOf, restSec, pos, total, restNode, onLogged, onPrev, onNext, onUngroup, onStacca }: {
   entries: ExerciseEntry[]
   nameOf: (id: string) => string
+  /** regolazioni, inclinazione e foto dell'esercizio: servono ai suoi strumenti */
+  datiOf: (id: string) => { settings: string; inclinazione?: number; foto?: string }
   restSec: number
   pos: number; total: number
   restNode: React.ReactNode
   onLogged: (sec: number, exerciseId: string) => void
   onPrev?: () => void; onNext?: () => void
   onUngroup: () => void
+  /** stacca UN esercizio dal giro, lasciando in piedi gli altri */
+  onStacca: (entryId: string) => void
 }) {
   const sorted = [...entries].sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
   const [vals, setVals] = useState<Record<string, { w: string; r: string; rir: number | null }>>({})
-  const [prevByEntry, setPrevByEntry] = useState<Record<string, SetEntry | null>>({})
+  const [prevByEntry, setPrevByEntry] = useState<Record<string, SetEntry[]>>({})
   const ids = sorted.map((e) => e.id).join(',')
   // Serie di tutti gli esercizi del gruppo, reattive: giri e precompilazione restano allineati.
   const setsByEntry = useLiveQuery(async () => {
@@ -799,27 +874,35 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
     return m
   }, [ids]) ?? {}
 
-  // Riferimento della volta scorsa, per ogni esercizio del gruppo.
+  // Le serie della volta scorsa, per ogni esercizio del gruppo: servono INTERE,
+  // perche' il riferimento e' la serie di pari numero, non l'ultima.
   useEffect(() => {
     let alive = true
-    Promise.all(sorted.map(async (e) => ({ id: e.id, prev: await lastWorkingSet(e.exerciseId, e.sessionId) })))
+    Promise.all(sorted.map(async (e) => ({ id: e.id, sets: (await exerciseHistory(e.exerciseId, e.sessionId, 1))[0]?.sets ?? [] })))
       .then((rows) => {
         if (!alive) return
-        const p: Record<string, SetEntry | null> = {}
-        for (const r of rows) p[r.id] = r.prev
+        const p: Record<string, SetEntry[]> = {}
+        for (const r of rows) p[r.id] = r.sets
         setPrevByEntry(p)
       })
     return () => { alive = false }
   }, [ids]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Precompilo con l'ultima serie fatta oggi, altrimenti con quella della volta scorsa.
+  /*
+   * Precompilazione: la serie di PARI NUMERO della volta scorsa.
+   *
+   * Prima si copiava l'ultima serie fatta — oggi o la volta scorsa — e cosi' la
+   * prima serie partiva dal peso dell'ultima, che e' quasi sempre il piu' basso
+   * della giornata. Se la scorsa volta ne avevi fatte meno, vale l'ultima che c'era.
+   */
   useEffect(() => {
     setVals((old) => {
       const next = { ...old }
       for (const e of sorted) {
         if (next[e.id]) continue
-        const done = setsByEntry[e.id] ?? []
-        const src = done.length ? done[done.length - 1] : prevByEntry[e.id]
+        const fatte = (setsByEntry[e.id] ?? []).filter((s) => !s.isWarmup).length
+        const scorsa = prevByEntry[e.id] ?? []
+        const src = scorsa[fatte] ?? scorsa[scorsa.length - 1]
         if (!src) continue
         next[e.id] = { w: String(src.weight), r: String(src.reps), rir: null }
       }
@@ -835,11 +918,15 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
 
   /** Chiude il giro: una serie per ogni esercizio del gruppo, poi parte il recupero. */
   async function closeRound() {
-    for (const e of sorted) {
+    for (const [i, e] of sorted.entries()) {
       const v = vals[e.id]
       const wn = parseNum(v.w, { min: 0 }), rn = parseNum(v.r, { min: 1, int: true })
       if (wn == null || rn == null) continue
-      await addSet(e.id, { weight: wn, reps: rn, rir: v.rir ?? 0, restSec })
+      // Il recupero sta solo sull'ULTIMO esercizio del giro: fra A e B non ti
+      // fermi — e' il senso del superset. Scriverlo su tutti metteva nel report
+      // un recupero che non hai mai fatto.
+      const ultimo = i === sorted.length - 1
+      await addSet(e.id, { weight: wn, reps: rn, rir: v.rir ?? 0, restSec: ultimo ? restSec : 0 })
     }
     setVals((old) => {
       const next = { ...old }
@@ -868,11 +955,15 @@ function GroupCard({ entries, nameOf, restSec, pos, total, restNode, onLogged, o
         <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Blocco successivo">›</button>
       </div>
 
-      {sorted.map((e) => (
+      {sorted.map((e, i) => (
         <GroupExercise key={e.id} entry={e} name={nameOf(e.exerciseId)}
+          settings={datiOf(e.exerciseId).settings}
+          inclinazione={datiOf(e.exerciseId).inclinazione}
+          foto={datiOf(e.exerciseId).foto}
           values={vals[e.id] ?? { w: '', r: '', rir: null }}
           onChange={(v) => setVals((old) => ({ ...old, [e.id]: v }))}
-          prev={prevByEntry[e.id] ?? null} />
+          isFirst={i === 0} isLast={i === sorted.length - 1}
+          onUngroup={() => onStacca(e.id)} />
       ))}
 
       {restNode}
@@ -991,6 +1082,11 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
       {blocks.length > 0 && (block.kind === 'group' ? (
         <GroupCard entries={block.entries} nameOf={nameOf}
+          datiOf={(id) => {
+            const x = exercises.find((e) => e.id === id)
+            return { settings: x?.settings ?? '', inclinazione: x?.inclinazione, foto: x?.foto }
+          }}
+          onStacca={(entryId) => { void staccaDalGruppo(entryId) }}
           restSec={restOf(block.entries[0].exerciseId)}
           pos={current + 1} total={blocks.length}
           restNode={restNode}
