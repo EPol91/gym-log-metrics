@@ -7,8 +7,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioFormat;
 import android.media.AudioManager;
-import android.media.ToneGenerator;
+import android.media.AudioTrack;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -56,7 +59,6 @@ public class ServizioSeduta extends Service {
 
   private PowerManager.WakeLock sveglia;
   private final Handler mano = new Handler(Looper.getMainLooper());
-  private ToneGenerator toni;
   private String testoCorrente = "Seduta in corso";
 
   @Override
@@ -98,7 +100,6 @@ public class ServizioSeduta extends Service {
   @Override
   public void onDestroy() {
     mano.removeCallbacksAndMessages(null);
-    if (toni != null) { toni.release(); toni = null; }
     lasciaDormire();
     super.onDestroy();
   }
@@ -131,33 +132,112 @@ public class ServizioSeduta extends Service {
     }
   }
 
-  /** Un segnale: tono sul canale sveglia + vibrazione, come dentro l'app. */
+  /**
+   * Un segnale: suono sul canale sveglia + vibrazione.
+   *
+   * Il tono non arriva da ToneGenerator ma se lo scrive questo servizio, nota
+   * per nota: cosi' si sa esattamente com'e' fatto — onda quadra, che ha le
+   * armoniche acute che bucano la musica dove un fischio pulito sparisce — e
+   * non dipende da un pezzo di Android che ogni tanto resta muto senza dirlo.
+   */
   private void suona(String tipo) {
-    try {
-      if (toni == null) toni = new ToneGenerator(AudioManager.STREAM_ALARM, 100);
-      switch (tipo) {
-        case "tic":
-          toni.startTone(ToneGenerator.TONE_PROP_BEEP, 90);
-          vibra(new long[]{0, 30});
-          break;
-        case "riposo":
-          toni.startTone(ToneGenerator.TONE_PROP_BEEP2, 350);
-          vibra(new long[]{0, 140});
-          break;
-        case "fine":
-          toni.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 1200);
-          vibra(new long[]{0, 150, 70, 250, 70, 250});
-          break;
-        default: // via
-          toni.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 1000);
-          vibra(new long[]{0, 200, 80, 200, 80, 200});
-          break;
-      }
-    } catch (RuntimeException e) {
-      // Il generatore di toni puo' morire se l'audio e' occupato: si butta e
-      // alla prossima se ne fa uno nuovo, invece di restare muti per sempre.
-      if (toni != null) { try { toni.release(); } catch (RuntimeException ignored) { } toni = null; }
+    switch (tipo) {
+      case "tic":
+        nota(new int[][]{{1000, 90}});
+        vibra(new long[]{0, 30});
+        break;
+      case "riposo":
+        nota(new int[][]{{660, 170}, {0, 30}, {480, 300}});
+        vibra(new long[]{0, 140});
+        break;
+      case "fine":
+        nota(new int[][]{{784, 180}, {988, 180}, {1175, 180}, {0, 60}, {1568, 550}});
+        vibra(new long[]{0, 150, 70, 250, 70, 250});
+        break;
+      default: // via
+        nota(new int[][]{{1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1600, 520}});
+        vibra(new long[]{0, 200, 80, 200, 80, 200});
+        break;
     }
+  }
+
+  private static final int CAMPIONI = 44100;
+
+  /**
+   * Suona una sequenza di note: ogni riga e' {frequenza in Hz, durata in ms},
+   * frequenza 0 = silenzio.
+   *
+   * Prima si chiede il FUOCO AUDIO: e' quello che fa abbassare la musica per un
+   * secondo. Senza, il beep parte davvero ma finisce sotto la canzone — che e'
+   * esattamente come suonava prima.
+   */
+  private void nota(int[][] sequenza) {
+    int durataMs = 0;
+    for (int[] n : sequenza) durataMs += n[1];
+
+    AudioAttributes attributi = new AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ALARM)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build();
+
+    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+    AudioFocusRequest fuoco = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+        .setAudioAttributes(attributi)
+        .build();
+    if (am != null) am.requestAudioFocus(fuoco);
+
+    try {
+      byte[] pcm = onda(sequenza);
+      AudioTrack tr = new AudioTrack.Builder()
+          .setAudioAttributes(attributi)
+          .setAudioFormat(new AudioFormat.Builder()
+              .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+              .setSampleRate(CAMPIONI)
+              .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+              .build())
+          .setBufferSizeInBytes(pcm.length)
+          .setTransferMode(AudioTrack.MODE_STATIC)
+          .build();
+      tr.write(pcm, 0, pcm.length);
+      tr.setVolume(AudioTrack.getMaxVolume());
+      tr.play();
+      // Il lettore si butta quando ha finito, non prima: rilasciarlo subito
+      // taglierebbe il suono a meta'.
+      mano.postDelayed(() -> { try { tr.release(); } catch (RuntimeException ignored) { } }, durataMs + 400L);
+    } catch (RuntimeException e) {
+      // Senza suono resta la vibrazione: meglio di niente, e non si porta giu' il servizio.
+    }
+
+    if (am != null) mano.postDelayed(() -> am.abandonAudioFocusRequest(fuoco), durataMs + 500L);
+  }
+
+  /** La sequenza scritta come onda quadra, con attacco e coda smussati. */
+  private byte[] onda(int[][] sequenza) {
+    int totale = 0;
+    for (int[] n : sequenza) totale += (int) (CAMPIONI * (n[1] / 1000.0));
+    byte[] out = new byte[totale * 2];
+
+    int i = 0;
+    for (int[] n : sequenza) {
+      int freq = n[0];
+      int campioni = (int) (CAMPIONI * (n[1] / 1000.0));
+      // Venti millesimi di rampa: senza, ogni nota comincia e finisce con uno
+      // schiocco che si sente piu' della nota stessa.
+      int rampa = Math.min(campioni / 2, CAMPIONI / 50);
+      for (int c = 0; c < campioni; c++, i++) {
+        double v = 0;
+        if (freq > 0) {
+          double fase = (c * freq / (double) CAMPIONI) % 1.0;
+          v = fase < 0.5 ? 1.0 : -1.0;              // onda quadra: ricca di acuti
+          if (c < rampa) v *= c / (double) rampa;
+          if (c > campioni - rampa) v *= (campioni - c) / (double) rampa;
+        }
+        short s = (short) (v * 0.85 * Short.MAX_VALUE);
+        out[i * 2] = (byte) (s & 0xff);
+        out[i * 2 + 1] = (byte) ((s >> 8) & 0xff);
+      }
+    }
+    return out;
   }
 
   private void vibra(long[] schema) {
