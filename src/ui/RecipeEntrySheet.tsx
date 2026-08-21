@@ -8,6 +8,7 @@ import { MacroDonut, MacroRow } from './FoodSheet'
 import { pushUndo } from '../util/undo'
 import { parseNum } from '../util/validate'
 import type { DiaryEntry } from '../db/diet'
+import { FoodPicker } from './FoodPicker'
 
 /**
  * Modifica di una riga-ricetta già nel diario.
@@ -25,6 +26,7 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
   const byPortions = entry.log.portions != null
   const [qty, setQty] = useState(String(byPortions ? entry.log.portions : entry.log.grams))
   const [busy, setBusy] = useState(false)
+  const [sostituendo, setSostituendo] = useState(false)
 
 
   const n = parseNum(qty, { min: 0.01, max: byPortions ? 50 : 5000 })
@@ -75,6 +77,31 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
         <div style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', padding: '12px 0', margin: '12px 0' }}>
           <MacroRow m={entry.macros} />
         </div>
+
+        {/*
+          Anche da qui si sostituisce.
+          Una riga del piano che hai gia' cambiato in ricetta apriva questa
+          scheda, che il tasto non ce l'aveva: da li' non si tornava piu'
+          indietro — ne' a un altro alimento ne' a un'altra ricetta.
+        */}
+        {entry.log.rsPlanned && (
+          <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
+            <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
+              <span className="small" style={{ minWidth: 0 }}>
+                {entry.log.rsPlanned.nome
+                  ? <>Al posto di <strong>{entry.log.rsPlanned.nome}</strong> · {entry.log.rsPlanned.g} g</>
+                  : 'Riga del piano del coach'}
+              </span>
+              <button className="chip" style={{ flex: 'none', borderColor: 'var(--rs)', color: 'var(--rs)' }}
+                onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
+            </div>
+          </div>
+        )}
+        {sostituendo && (
+          <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"
+            onClose={() => setSostituendo(false)}
+            sostituisciLog={{ id: entry.log.id, onFatto: () => { setSostituendo(false); onClose() } }} />
+        )}
 
         {recipe ? (
           <>

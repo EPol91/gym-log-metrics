@@ -139,7 +139,18 @@ export async function sostituisci(logId: string, foodId: string, grams: number):
   if (!log) return
   const cibo = await db.foods.get(foodId)
   if (!cibo) return
-  await db.foodLogs.update(logId, {
+  /*
+   * Si riscrive la riga intera, non si aggiorna.
+   *
+   * Se prima era diventata una ricetta, i suoi campi vanno tolti — nome e macro
+   * fotografati, porzioni — o resta una riga meta' e meta': l'alimento nuovo
+   * sotto e il nome della ricetta a schermo. E `update` con i campi a
+   * `undefined` non li toglie: Dexie li ignora e basta.
+   */
+  const { recipeId, portions, nameSnapshot, macrosSnapshot, ...resto } = log
+  void recipeId; void portions; void nameSnapshot; void macrosSnapshot
+  await db.foodLogs.put({
+    ...resto,
     foodId, grams,
     // Il piano originale NON si perde: e' quello che rende la riga una
     // sostituzione invece di una voce qualsiasi.
