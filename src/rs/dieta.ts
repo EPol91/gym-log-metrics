@@ -257,7 +257,9 @@ export async function sostituisciConRicetta(
 export async function sostituzioni(date: string): Promise<string[]> {
   const s = await statoDieta(date)
   return s.righe.filter((r) => r.sostituita)
-    .map((r) => `${r.log.rsPlanned!.nome} → ${r.nome} ${r.log.grams} g`)
+    // La prescrizione sta in `piano`: sulla riga puo' non esserci scritta —
+    // le righe riconosciute dal protocollo non hanno etichetta.
+    .map((r) => `${r.piano?.nome ?? '?'} → ${r.nome} ${r.log.grams} g`)
 }
 
 /** I macro di una riga se fosse mangiata come prescritta: serve all'anteprima. */

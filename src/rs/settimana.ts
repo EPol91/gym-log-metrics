@@ -64,7 +64,7 @@ export async function numeriSettimana(inizio: string, n: number): Promise<Numeri
     if (s.aderenza != null) aderenze.push(s.aderenza)
     if (s.precisione != null) precisioni.push(s.precisione)
     for (const r of s.righe.filter((x) => x.sostituita)) {
-      sostituzioni.push(`${r.log.rsPlanned!.nome} → ${r.nome}`)
+      sostituzioni.push(`${r.piano?.nome ?? '?'} → ${r.nome}`)
     }
   }
 
