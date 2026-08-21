@@ -11,6 +11,7 @@ import { db, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { computeDiary, macrosFor } from '../db/diet'
 import { getNutrition } from '../db/repo'
+import { GIORNATE_RS } from './protocollo'
 import type { FoodLog, Macros } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -88,45 +89,52 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
    * L'etichetta la scrive solo chi compila la giornata dal piano (Applica, o la
    * domanda del mattino). Ma se la giornata segue il coach e nel pasto c'e' il
    * SUO alimento, quella e' una riga del piano comunque sia arrivata li' —
-   * incollata, duplicata, riscritta a mano. Qui si confronta con la giornata
-   * tipo: stesso pasto, stesso alimento.
+   * incollata, duplicata, riscritta a mano. Il metro e' il PROTOCOLLO del coach,
+   * pasto per pasto: mai la posizione della riga, mai gli altri pasti.
    *
    * Solo lettura: il diario non si tocca.
    */
+  const norm = (s: string) => s.trim().toLowerCase()
+
+  // Le voci del piano si leggono dal PROTOCOLLO del coach, pasto per pasto.
+  // Non dalla giornata tipo: quella e' la tua versione, dove al posto del suo
+  // alimento puoi aver messo il tuo prodotto con la tua marca.
+  const protocollo = attiva ? GIORNATE_RS.find((x) => x.nome === tipo!.name) : undefined
+  const voci = new Map<string, { nome: string; g: number }[]>()
+  if (protocollo) {
+    for (const p of protocollo.pasti) voci.set(p.nome, p.righe.map((r) => ({ nome: r.alimento, g: r.g })))
+  }
+
+  // La giornata tipo fa solo da ponte: dice quale tuo alimento sta al posto di
+  // quale voce del coach (rsOriginale). Serve a riconoscere la tua avena di
+  // marca come i suoi fiocchi d'avena.
   const modello = attiva
     ? (await db.dayTemplates.where('userId').equals(U).toArray()).find((t) => t.name === tipo!.name)
     : undefined
-  const liberi = new Map<string, { foodId: string; recipeId?: string; nome: string; g: number }[]>()
-  if (modello) {
-    for (const p of modello.meals) {
-      liberi.set(p.name, p.items.map((it) => ({
-        foodId: it.foodId,
-        ...(it.recipeId ? { recipeId: it.recipeId } : {}),
-        nome: it.rsOriginale?.nome ?? it.nameSnapshot ?? '',
-        g: it.rsOriginale?.g ?? it.grams,
-      })))
-    }
-  }
-  const norm = (s: string) => s.trim().toLowerCase()
 
   const righe: RigaRs[] = []
   for (const m of diario.meals) {
     for (const e of m.entries) {
       let piano = e.log.rsPlanned
       let riconosciuta = false
-      if (!piano && modello) {
-        const resto = liberi.get(m.meal.name)
-        // Una voce del piano vale per una riga sola: senza consumarla, due
-        // porzioni dello stesso alimento diventerebbero due voci onorate.
-        const i = resto?.findIndex((x) => (
-          (e.log.recipeId && x.recipeId === e.log.recipeId)
-          || (!e.log.recipeId && x.foodId && x.foodId === e.log.foodId)
-          || (!!x.nome && norm(x.nome) === norm(e.food.name))
-        )) ?? -1
-        if (resto && i >= 0) {
-          const voce = resto[i]
-          resto.splice(i, 1)
-          piano = { nome: voce.nome || e.food.name, g: voce.g }
+      const restanti = voci.get(m.meal.name)
+      if (!piano && restanti?.length) {
+        // Con che nomi questa riga puo' presentarsi da lui: il suo alimento, e
+        // quello che nella giornata tipo hai messo al suo posto.
+        const nomi = [norm(e.food.name)]
+        const gemella = modello?.meals.find((p) => p.name === m.meal.name)?.items.find((it) => (
+          (e.log.recipeId && it.recipeId === e.log.recipeId)
+          || (!e.log.recipeId && !!it.foodId && it.foodId === e.log.foodId)
+          || norm(it.nameSnapshot ?? '') === norm(e.food.name)
+        ))
+        if (gemella?.rsOriginale?.nome) nomi.push(norm(gemella.rsOriginale.nome))
+
+        // Una voce vale per una riga sola: senza consumarla, due porzioni dello
+        // stesso alimento diventerebbero due voci onorate.
+        const i = restanti.findIndex((v) => nomi.includes(norm(v.nome)))
+        if (i >= 0) {
+          piano = restanti[i]
+          restanti.splice(i, 1)
           riconosciuta = true
         }
       }
