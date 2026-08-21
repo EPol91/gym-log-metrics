@@ -29,7 +29,7 @@ export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal,
   onClose: () => void
   onDone?: (mealName: string) => void
   /** 🦠RS: invece di aggiungere una riga, prende il posto di quella indicata. */
-  sostituisci?: { id: string; onFatto: () => void }
+  sostituisci?: { id: string; onFatto: () => void; piano?: { nome: string; g: number } }
 }) {
   const [date, setDate] = useState(initialDate ?? todayDiet())
   const [mealId, setMealId] = useState<string | null>(initialMeal ?? null)
@@ -78,7 +78,7 @@ export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal,
         ...('portions' in amount ? { porzioni: Number(amount.portions) || 0 } : {}),
         grammi: 'grams' in amount ? Math.max(0, Number(amount.grams) || 0) : 0,
         macros,
-      })
+      }, sostituisci.piano)
       sostituisci.onFatto()
       onClose()
       return

@@ -222,13 +222,16 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
  * Scheda alimento: la stessa quando aggiungi e quando tocchi una riga già nel diario.
  * `mode` cambia solo il pulsante finale (Aggiungi / Salva) e mostra l'elimina.
  */
-export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm, onDeleteLog, onBack }: {
+export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm, onDeleteLog, onBack, sottoIlNome }: {
   food: Food
   grams?: number
   mode: 'add' | 'edit'
   onConfirm: (grams: number) => void
   onDeleteLog?: () => void
   onBack: () => void
+  /** Sta sotto il nome e la riga «per X g · X kcal»: e' li' che serve il tasto
+   *  per cambiare alimento, non sopra al nome di quello che stai guardando. */
+  sottoIlNome?: React.ReactNode
 }) {
   // L'alimento va riletto dal database, non tenuto come l'ha passato chi apre
   // questa scheda: correggendone il nome, quella copia resta quella di prima e
@@ -262,6 +265,7 @@ export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm
           <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
             per 100 g · {food.per100.kcal} kcal{food.edited ? ' · corretto da te' : ''}
           </div>
+          {sottoIlNome && <div style={{ marginTop: 8 }}>{sottoIlNome}</div>}
         </div>
         <MacroDonut m={food.per100} />
       </div>

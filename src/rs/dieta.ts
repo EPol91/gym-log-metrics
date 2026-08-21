@@ -22,6 +22,10 @@ export interface RigaRs {
   macros: Macros
   /** viene dal piano del coach */
   dalPiano: boolean
+  /** cosa aveva prescritto il coach su questa riga (scritto sulla riga o riconosciuto) */
+  piano?: { nome: string; g: number }
+  /** non ce l'aveva scritto: e' stata riconosciuta confrontandola con la giornata tipo */
+  riconosciuta: boolean
   /** e' stata cambiata rispetto a quello che aveva prescritto lui */
   sostituita: boolean
   spuntata: boolean
@@ -78,13 +82,59 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
     : null
   const attiva = !!tipo?.name.startsWith('🦠')
 
+  /*
+   * Le righe del coach si riconoscono anche senza etichetta.
+   *
+   * L'etichetta la scrive solo chi compila la giornata dal piano (Applica, o la
+   * domanda del mattino). Ma se la giornata segue il coach e nel pasto c'e' il
+   * SUO alimento, quella e' una riga del piano comunque sia arrivata li' —
+   * incollata, duplicata, riscritta a mano. Qui si confronta con la giornata
+   * tipo: stesso pasto, stesso alimento.
+   *
+   * Solo lettura: il diario non si tocca.
+   */
+  const modello = attiva
+    ? (await db.dayTemplates.where('userId').equals(U).toArray()).find((t) => t.name === tipo!.name)
+    : undefined
+  const liberi = new Map<string, { foodId: string; recipeId?: string; nome: string; g: number }[]>()
+  if (modello) {
+    for (const p of modello.meals) {
+      liberi.set(p.name, p.items.map((it) => ({
+        foodId: it.foodId,
+        ...(it.recipeId ? { recipeId: it.recipeId } : {}),
+        nome: it.rsOriginale?.nome ?? it.nameSnapshot ?? '',
+        g: it.rsOriginale?.g ?? it.grams,
+      })))
+    }
+  }
+  const norm = (s: string) => s.trim().toLowerCase()
+
   const righe: RigaRs[] = []
   for (const m of diario.meals) {
     for (const e of m.entries) {
-      const piano = e.log.rsPlanned
+      let piano = e.log.rsPlanned
+      let riconosciuta = false
+      if (!piano && modello) {
+        const resto = liberi.get(m.meal.name)
+        // Una voce del piano vale per una riga sola: senza consumarla, due
+        // porzioni dello stesso alimento diventerebbero due voci onorate.
+        const i = resto?.findIndex((x) => (
+          (e.log.recipeId && x.recipeId === e.log.recipeId)
+          || (!e.log.recipeId && x.foodId && x.foodId === e.log.foodId)
+          || (!!x.nome && norm(x.nome) === norm(e.food.name))
+        )) ?? -1
+        if (resto && i >= 0) {
+          const voce = resto[i]
+          resto.splice(i, 1)
+          piano = { nome: voce.nome || e.food.name, g: voce.g }
+          riconosciuta = true
+        }
+      }
       righe.push({
         log: e.log, nome: e.food.name, macros: e.macros,
         dalPiano: !!piano,
+        ...(piano ? { piano } : {}),
+        riconosciuta,
         sostituita: !!piano && piano.nome !== '' && piano.nome !== e.food.name,
         spuntata: !!e.log.rsDone,
       })
@@ -103,8 +153,9 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
 
   // "Pasti extra" e' un conto di PASTI, non di righe: il gelato della sera e'
   // un pasto in piu', un'aggiunta dentro il pranzo no.
+  const perId = new Map(righe.map((r) => [r.log.id, r]))
   const pastiExtra = diario.meals.filter((m) =>
-    m.entries.length > 0 && m.entries.every((e) => !e.log.rsPlanned)).length
+    m.entries.length > 0 && m.entries.every((e) => !perId.get(e.log.id)?.dalPiano)).length
 
   return {
     righe,
@@ -134,7 +185,7 @@ export async function spuntaTutte(logIds: string[], valore: boolean): Promise<vo
  * La voce resta ONORATA — hai seguito il piano con un'alternativa — e i macro
  * che vanno a lui sono quelli veri, non quelli del cibo che non hai mangiato.
  */
-export async function sostituisci(logId: string, foodId: string, grams: number): Promise<void> {
+export async function sostituisci(logId: string, foodId: string, grams: number, piano?: { nome: string; g: number }): Promise<void> {
   const log = await db.foodLogs.get(logId)
   if (!log) return
   const cibo = await db.foods.get(foodId)
@@ -156,7 +207,10 @@ export async function sostituisci(logId: string, foodId: string, grams: number):
     // sostituzione invece di una voce qualsiasi. Ma su una riga TUA non si
     // inventa: senza prescrizione la riga resta una voce tua, e non entra nei
     // conti dell'aderenza.
-    ...(log.rsPlanned ? { rsPlanned: log.rsPlanned, rsDone: true } : {}),
+    // Se la riga era del piano solo perche RICONOSCIUTA, la prescrizione si
+    // scrive adesso: cambiando alimento non somiglierebbe piu a niente, e la
+    // voce del coach sparirebbe dai conti.
+    ...(log.rsPlanned ?? piano ? { rsPlanned: log.rsPlanned ?? piano!, rsDone: true } : {}),
     updatedAt: nowISO(),
   })
 }
@@ -172,6 +226,7 @@ export async function sostituisci(logId: string, foodId: string, grams: number):
 export async function sostituisciConRicetta(
   logId: string,
   ricetta: { id: string; nome: string; porzioni?: number; grammi: number; macros: Macros },
+  piano?: { nome: string; g: number },
 ): Promise<void> {
   const log = await db.foodLogs.get(logId)
   if (!log) return
@@ -184,8 +239,8 @@ export async function sostituisciConRicetta(
     ...(ricetta.porzioni != null ? { portions: ricetta.porzioni } : {}),
     nameSnapshot: ricetta.nome,
     macrosSnapshot: ricetta.macros,
-    // Come sopra: la prescrizione si tiene se c'era, non si inventa.
-    ...(log.rsPlanned ? { rsPlanned: log.rsPlanned, rsDone: true } : {}),
+    // Come sopra: si tiene quella scritta, o si fissa quella riconosciuta.
+    ...(log.rsPlanned ?? piano ? { rsPlanned: log.rsPlanned ?? piano!, rsDone: true } : {}),
     updatedAt: nowISO(),
   })
 }

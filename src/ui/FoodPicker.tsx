@@ -17,7 +17,7 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacrit
 export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: {
   date: string; mealId: string; mealName: string; onClose: () => void
   /** 🦠RS: invece di aggiungere una riga, cambia l'alimento di quella indicata. */
-  sostituisciLog?: { id: string; onFatto: () => void }
+  sostituisciLog?: { id: string; onFatto: () => void; piano?: { nome: string; g: number } }
 }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
@@ -74,7 +74,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
     // crearne un'altra, cosi' resta agganciata a cosa aveva prescritto il coach
     // e continua a valere come voce del piano onorata.
     if (sostituisciLog) {
-      await sostituisci(sostituisciLog.id, chosen.id, grams)
+      await sostituisci(sostituisciLog.id, chosen.id, grams, sostituisciLog.piano)
       sostituisciLog.onFatto()
       return
     }
@@ -276,7 +276,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
         // Anche una ricetta puo' prendere il posto di una riga del piano: il
         // pane arabo del coach diventa una porzione della tua focaccia.
         <AddRecipeSheet recipe={recipe} date={date} mealId={mealId}
-          {...(sostituisciLog ? { sostituisci: { id: sostituisciLog.id, onFatto: () => { sostituisciLog.onFatto(); onClose() } } } : {})}
+          {...(sostituisciLog ? { sostituisci: { id: sostituisciLog.id, piano: sostituisciLog.piano, onFatto: () => { sostituisciLog.onFatto(); onClose() } } } : {})}
           onClose={() => setRecipe(null)} onDone={() => onClose()} />
       )}
     </>

@@ -15,8 +15,10 @@ import { FoodPicker } from './FoodPicker'
  * Non è la scheda degli alimenti: qui non si "corregge l'alimento", si cambia
  * quanto ne hai mangiato — oppure si scioglie la riga nei suoi ingredienti.
  */
-export function RecipeEntrySheet({ entry, onClose, onDelete }: {
+export function RecipeEntrySheet({ entry, piano, onClose, onDelete }: {
   entry: DiaryEntry
+  /** cosa aveva prescritto il coach su questa riga, se e' una riga del piano */
+  piano?: { nome: string; g: number }
   onClose: () => void
   onDelete: () => void
 }) {
@@ -84,12 +86,12 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
           scheda, che il tasto non ce l'aveva: da li' non si tornava piu'
           indietro — ne' a un altro alimento ne' a un'altra ricetta.
         */}
-        {entry.log.rsPlanned ? (
+        {piano ? (
           <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
             <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
               <span className="small" style={{ minWidth: 0 }}>
-                {entry.log.rsPlanned.nome
-                  ? <>Al posto di <strong>{entry.log.rsPlanned.nome}</strong> · {entry.log.rsPlanned.g} g</>
+                {piano.nome && piano.nome !== entry.food.name
+                  ? <>Al posto di <strong>{piano.nome}</strong> · {piano.g} g</>
                   : 'Riga del piano del coach'}
               </span>
               <button className="chip" style={{ flex: 'none', borderColor: 'var(--rs)', color: 'var(--rs)' }}
@@ -102,7 +104,7 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
         {sostituendo && (
           <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"
             onClose={() => setSostituendo(false)}
-            sostituisciLog={{ id: entry.log.id, onFatto: () => { setSostituendo(false); onClose() } }} />
+            sostituisciLog={{ id: entry.log.id, ...(piano ? { piano } : {}), onFatto: () => { setSostituendo(false); onClose() } }} />
         )}
 
         {recipe ? (

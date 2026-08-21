@@ -238,6 +238,9 @@ export function DietScreen() {
   const totals = diary?.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   const righeDelGiorno = (diary?.meals ?? []).flatMap((m) => m.entries)
   const statoRs = useLiveQuery(() => statoDieta(date), [date])
+  // Cosa aveva prescritto il coach su ogni riga: quella scritta sulla riga, o
+  // quella riconosciuta confrontandola con la giornata tipo.
+  const pianoDi = new Map((statoRs?.righe ?? []).filter((r) => r.piano).map((r) => [r.log.id, r.piano!]))
   const kcalPct = t && t.kcal > 0 ? Math.min(100, (totals.kcal / t.kcal) * 100) : 0
 
   /**
@@ -670,9 +673,9 @@ export function DietScreen() {
 
       {/* Una riga-ricetta non si modifica come un alimento: ha la sua scheda. */}
       {editEntry && (editEntry.log.recipeId
-        ? <RecipeEntrySheet entry={editEntry} onClose={() => setEditEntry(null)}
+        ? <RecipeEntrySheet entry={editEntry} piano={pianoDi.get(editEntry.log.id)} onClose={() => setEditEntry(null)}
             onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
-        : <EditEntrySheet entry={editEntry} onClose={() => setEditEntry(null)}
+        : <EditEntrySheet entry={editEntry} piano={pianoDi.get(editEntry.log.id)} onClose={() => setEditEntry(null)}
             onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
       )}
 
@@ -692,7 +695,12 @@ async function addMealRestore(meal: { id: string; date: string; name: string; or
 }
 
 /** Scheda di modifica di una riga già nel diario: stessa scheda dell'aggiunta. */
-function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClose: () => void; onDelete: () => void }) {
+function EditEntrySheet({ entry, piano, onClose, onDelete }: {
+  entry: DiaryEntry
+  /** cosa aveva prescritto il coach su questa riga, se e' una riga del piano */
+  piano?: { nome: string; g: number }
+  onClose: () => void; onDelete: () => void
+}) {
   const [sostituendo, setSostituendo] = useState(false)
   // La pagina sotto non scorre finché questa è aperta. Il conto è unico per
   // tutte le finestre: da qui se ne apre un'altra dentro (scegli alimento), e
@@ -714,40 +722,36 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
 
-        {/* Riga del piano: qui si sostituisce. Non e' "cancella e riscrivi" —
-            la voce resta onorata, e al coach vanno i macro di quello che hai
-            mangiato davvero invece di quelli del cibo che non hai toccato. */}
-        {entry.log.rsPlanned ? (
-          <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
-            <div className="row spread" style={{ alignItems: 'center' }}>
-              <span className="small">
-                {entry.log.rsPlanned.nome && entry.log.rsPlanned.nome !== entry.food.name
-                  ? <>Al posto di <strong>{entry.log.rsPlanned.nome}</strong></>
-                  : 'Riga del piano del coach'}
-              </span>
-              <button className="chip" style={{ borderColor: 'var(--rs)', color: 'var(--rs)' }}
-                onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
-            </div>
-          </div>
-        ) : (
-          /* Anche una riga tua si scambia con un altro alimento (o con una
-             ricetta): prima l'unico modo era cancellarla e riscriverla, e la
-             riga perdeva il suo posto nel pasto. */
-          <button className="chip" style={{ alignSelf: 'flex-start' }}
-            onClick={() => setSostituendo(true)}>⇄ Sostituisci alimento</button>
-        )}
         {sostituendo && (
           <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"
             onClose={() => setSostituendo(false)}
             sostituisciLog={{
               id: entry.log.id,
+              ...(piano ? { piano } : {}),
               onFatto: () => { setSostituendo(false); onClose() },
             }} />
         )}
+        {/* Il tasto sta sotto il nome e la riga «per 100 g · X kcal»: sopra
+            copriva la cosa che sei venuto a guardare.
+            Sulla riga del piano non e' "cancella e riscrivi": la voce resta
+            onorata, e al coach vanno i macro di quello che hai mangiato davvero. */}
         <FoodSheet food={entry.food} grams={entry.log.grams} mode="edit"
           onConfirm={async (g) => { await updateFoodLog(entry.log.id, { grams: g }); onClose() }}
           onDeleteLog={onDelete}
-          onBack={onClose} />
+          onBack={onClose}
+          sottoIlNome={piano ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="small" style={{ color: 'var(--rs)' }}>
+                {piano.nome && piano.nome !== entry.food.name
+                  ? <>al posto di <strong>{piano.nome}</strong> · {piano.g} g</>
+                  : 'riga del piano del coach'}
+              </span>
+              <button className="chip" style={{ borderColor: 'var(--rs)', color: 'var(--rs)' }}
+                onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
+            </div>
+          ) : (
+            <button className="chip" onClick={() => setSostituendo(true)}>⇄ Sostituisci alimento</button>
+          )} />
       </div>
     </div>,
     document.body,
