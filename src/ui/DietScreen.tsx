@@ -717,7 +717,7 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
         {/* Riga del piano: qui si sostituisce. Non e' "cancella e riscrivi" —
             la voce resta onorata, e al coach vanno i macro di quello che hai
             mangiato davvero invece di quelli del cibo che non hai toccato. */}
-        {entry.log.rsPlanned && (
+        {entry.log.rsPlanned ? (
           <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
             <div className="row spread" style={{ alignItems: 'center' }}>
               <span className="small">
@@ -729,6 +729,12 @@ function EditEntrySheet({ entry, onClose, onDelete }: { entry: DiaryEntry; onClo
                 onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
             </div>
           </div>
+        ) : (
+          /* Anche una riga tua si scambia con un altro alimento (o con una
+             ricetta): prima l'unico modo era cancellarla e riscriverla, e la
+             riga perdeva il suo posto nel pasto. */
+          <button className="chip" style={{ alignSelf: 'flex-start' }}
+            onClick={() => setSostituendo(true)}>⇄ Sostituisci alimento</button>
         )}
         {sostituendo && (
           <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"

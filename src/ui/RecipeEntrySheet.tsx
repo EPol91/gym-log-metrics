@@ -84,7 +84,7 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
           scheda, che il tasto non ce l'aveva: da li' non si tornava piu'
           indietro — ne' a un altro alimento ne' a un'altra ricetta.
         */}
-        {entry.log.rsPlanned && (
+        {entry.log.rsPlanned ? (
           <div className="card" style={{ borderColor: 'var(--rs)', padding: '10px 12px' }}>
             <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
               <span className="small" style={{ minWidth: 0 }}>
@@ -96,6 +96,8 @@ export function RecipeEntrySheet({ entry, onClose, onDelete }: {
                 onClick={() => setSostituendo(true)}>🦠 Sostituisci</button>
             </div>
           </div>
+        ) : (
+          <button className="chip" onClick={() => setSostituendo(true)}>⇄ Sostituisci</button>
         )}
         {sostituendo && (
           <FoodPicker date={entry.log.date} mealId={entry.log.mealId} mealName="sostituzione"

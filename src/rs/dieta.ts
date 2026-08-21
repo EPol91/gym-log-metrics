@@ -153,9 +153,10 @@ export async function sostituisci(logId: string, foodId: string, grams: number):
     ...resto,
     foodId, grams,
     // Il piano originale NON si perde: e' quello che rende la riga una
-    // sostituzione invece di una voce qualsiasi.
-    rsPlanned: log.rsPlanned ?? { nome: '', g: log.grams },
-    rsDone: true,
+    // sostituzione invece di una voce qualsiasi. Ma su una riga TUA non si
+    // inventa: senza prescrizione la riga resta una voce tua, e non entra nei
+    // conti dell'aderenza.
+    ...(log.rsPlanned ? { rsPlanned: log.rsPlanned, rsDone: true } : {}),
     updatedAt: nowISO(),
   })
 }
@@ -183,8 +184,8 @@ export async function sostituisciConRicetta(
     ...(ricetta.porzioni != null ? { portions: ricetta.porzioni } : {}),
     nameSnapshot: ricetta.nome,
     macrosSnapshot: ricetta.macros,
-    rsPlanned: log.rsPlanned ?? { nome: '', g: log.grams },
-    rsDone: true,
+    // Come sopra: la prescrizione si tiene se c'era, non si inventa.
+    ...(log.rsPlanned ? { rsPlanned: log.rsPlanned, rsDone: true } : {}),
     updatedAt: nowISO(),
   })
 }
