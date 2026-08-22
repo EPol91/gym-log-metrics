@@ -3,6 +3,7 @@ import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym, updateTemplate } from '../db/repo'
 import { TemplateEditor } from './TemplateEditor'
+import { SchedaVista } from './SchedaVista'
 import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
 import { PesoOggi } from './PesoOggi'
 import type { WorkoutType } from '../db/schema'
@@ -26,6 +27,8 @@ export function StartScreen({
 }) {
   const [type, setType] = useState<WorkoutType | null>(null)
   const [editId, setEditId] = useState<string | 'new' | null>(null)
+  // La scheda aperta in sola lettura: guardarla non fa partire niente.
+  const [vedi, setVedi] = useState<string | null>(null)
   const [locating, setLocating] = useState(false)
   const [geoMsg, setGeoMsg] = useState<string | null>(null)
   const tutti = useLiveQuery(listTemplates, []) ?? []
@@ -123,6 +126,8 @@ export function StartScreen({
                       <span className="muted small">{t.items.length} esercizi · protocollo</span>
                     </span>
                   </button>
+                  {/* Guardare prima di partire: apre la scheda in sola lettura. */}
+                  <button className="ghost small" aria-label={`Vedi ${t.name}`} onClick={() => setVedi(t.id)}>👁</button>
                 </div>
               ))}
             </div>
@@ -155,6 +160,7 @@ export function StartScreen({
                   vede: l'interruttore stava dentro l'editor della scheda, e una
                   scheda di corsa restava in mezzo agli allenamenti finche' non
                   andavi a cercarlo. */}
+              <button className="ghost small" aria-label={`Vedi ${t.name}`} onClick={() => setVedi(t.id)}>👁</button>
               <button className="ghost small" aria-label={`Sposta ${t.name} in Solo cardio`}
                 onClick={() => updateTemplate(t.id, { cardio: true })}>♥</button>
               <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
@@ -217,6 +223,12 @@ export function StartScreen({
       <button className="fab primary" disabled={!type} onClick={() => type && onNext(type)}>
         Continua{selLabel ? ` · ${selLabel}` : ''}
       </button>
+
+      {/* La scheda guardata e basta. Se poi decidi di farla, «Inizia» e' li'. */}
+      {vedi && (
+        <SchedaVista templateId={vedi} onClose={() => setVedi(null)}
+          onInizia={() => { const id = vedi; setVedi(null); onTemplate(id) }} />
+      )}
     </div>
   )
 }
