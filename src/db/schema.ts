@@ -599,6 +599,12 @@ export interface TrainingPhase extends BaseRecord {
 export interface TemplateItem {
   exerciseId: ID
   order: number
+  /**
+   * Esercizi da fare in superset: stessa sigla = stessa coppia. Iniziando la
+   * seduta nascono gia' uniti, invece di restare due esercizi sciolti da
+   * riabbinare a mano ogni volta.
+   */
+  coppia?: string
 }
 
 /** Template = struttura di una seduta (solo esercizi ordinati, nessun carico). */

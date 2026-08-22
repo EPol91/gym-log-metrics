@@ -59,6 +59,15 @@ public class ServizioSeduta extends Service {
 
   private PowerManager.WakeLock sveglia;
   private final Handler mano = new Handler(Looper.getMainLooper());
+  /*
+   * Una lista di promemoria a parte per l'audio.
+   *
+   * Quella dei bip viene svuotata di colpo quando rientri nell'app o si
+   * riprogrammano i segnali: se dentro c'era anche il «rilascia il fuoco audio»,
+   * quello non partiva piu' e la musica restava abbassata per sempre.
+   */
+  private final Handler manoAudio = new Handler(Looper.getMainLooper());
+  private AudioFocusRequest fuocoAttivo;
   private String testoCorrente = "Seduta in corso";
 
   @Override
@@ -86,6 +95,7 @@ public class ServizioSeduta extends Service {
 
     if (AZIONE_ANNULLA.equals(azione)) {
       mano.removeCallbacksAndMessages(null);
+      rilasciaFuoco();
     } else if (AZIONE_BIP.equals(azione)) {
       programma(
           intent.getLongArrayExtra(EXTRA_ISTANTI),
@@ -100,6 +110,8 @@ public class ServizioSeduta extends Service {
   @Override
   public void onDestroy() {
     mano.removeCallbacksAndMessages(null);
+    manoAudio.removeCallbacksAndMessages(null);
+    rilasciaFuoco();
     lasciaDormire();
     super.onDestroy();
   }
@@ -163,6 +175,13 @@ public class ServizioSeduta extends Service {
 
   private static final int CAMPIONI = 44100;
 
+  /** Rilascia il fuoco audio, se ce l'abbiamo: la musica torna al suo volume. */
+  private synchronized void rilasciaFuoco() {
+    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+    if (am != null && fuocoAttivo != null) am.abandonAudioFocusRequest(fuocoAttivo);
+    fuocoAttivo = null;
+  }
+
   /**
    * Suona una sequenza di note: ogni riga e' {frequenza in Hz, durata in ms},
    * frequenza 0 = silenzio.
@@ -181,10 +200,18 @@ public class ServizioSeduta extends Service {
         .build();
 
     AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
-    AudioFocusRequest fuoco = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-        .setAudioAttributes(attributi)
-        .build();
-    if (am != null) am.requestAudioFocus(fuoco);
+    synchronized (this) {
+      if (fuocoAttivo == null) {
+        fuocoAttivo = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(attributi)
+            .build();
+        if (am != null) am.requestAudioFocus(fuocoAttivo);
+      }
+    }
+    // Il rilascio va sulla lista dell'audio, che non viene mai svuotata, e si
+    // rimanda a ogni nuovo segnale: durante i tic la musica resta bassa una
+    // volta sola invece di ballare a ogni secondo.
+    manoAudio.removeCallbacksAndMessages(null);
 
     try {
       byte[] pcm = onda(sequenza);
@@ -208,7 +235,7 @@ public class ServizioSeduta extends Service {
       // Senza suono resta la vibrazione: meglio di niente, e non si porta giu' il servizio.
     }
 
-    if (am != null) mano.postDelayed(() -> am.abandonAudioFocusRequest(fuoco), durataMs + 500L);
+    manoAudio.postDelayed(this::rilasciaFuoco, durataMs + 600L);
   }
 
   /** La sequenza scritta come onda quadra, con attacco e coda smussati. */

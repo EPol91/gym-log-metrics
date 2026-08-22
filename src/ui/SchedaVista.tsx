@@ -69,6 +69,13 @@ export function SchedaVista({ templateId, onClose, onInizia }: {
               <div className="row" style={{ gap: 8, alignItems: 'baseline' }}>
                 <span className="muted small" style={{ flex: 'none', width: 18 }}>{i + 1}</span>
                 <strong style={{ fontSize: 14, minWidth: 0 }}>{nome(it.exerciseId)}</strong>
+                {/* La coppia si vede prima di entrare in palestra: sapere che
+                    due esercizi vanno insieme cambia come ti organizzi. */}
+                {it.coppia && (
+                  <span className="chip" style={{ padding: '1px 7px', fontSize: 10, color: 'var(--gold)', borderColor: 'var(--gold)' }}>
+                    superset
+                  </span>
+                )}
               </div>
               {dalCoach.map((r, k) => (
                 <p key={k} className="small" style={{ margin: '3px 0 0 26px', color: 'var(--rs)' }}>{r}</p>

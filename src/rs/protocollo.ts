@@ -163,10 +163,19 @@ export const RINOMINE: Record<string, string | string[]> = {
   'Shrug al cavo o macchina': 'Cable Shrug',
 }
 
-export interface EsercizioRs { nome: string; muscolo: string; prescrizione: string }
+export interface EsercizioRs {
+  nome: string; muscolo: string; prescrizione: string
+  /**
+   * Gli esercizi che il coach fa in superset: stessa sigla = stessa coppia.
+   * Lo scrive nella prescrizione («superset con 6B»), ma li' e' testo: qui e'
+   * un dato, e la seduta puo' nascere gia' accoppiata.
+   */
+  coppia?: string
+}
 export interface SedutaRs { nome: string; codice: string; tipo: string; focus: string; prehab: string; esercizi: EsercizioRs[] }
 
-const e = (nome: string, muscolo: string, prescrizione: string): EsercizioRs => ({ nome, muscolo, prescrizione })
+const e = (nome: string, muscolo: string, prescrizione: string, coppia?: string): EsercizioRs =>
+  ({ nome, muscolo, prescrizione, ...(coppia ? { coppia } : {}) })
 
 export const SEDUTE_RS: SedutaRs[] = [
   {
@@ -217,18 +226,18 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('Pulldown alla corda in massimo allungamento', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 90″'),
       e('Chest press inclinata convergente', 'petto', '@A|B · 8-12 · RIR1-2 · rec 150″'),
       e('Cable fly', 'petto', '@A|B · 12-15 · RIR1 · rec 90″'),
-      e('6A · Preacher curl unilaterale', 'bicipiti', '@A|B · 10-15 · RIR1 · superset con 6B'),
-      e('6B · Crucifix pushdown', 'tricipiti', '@A|B · 10-15 · RIR1 · rec 90″ dopo la coppia'),
+      e('6A · Preacher curl unilaterale', 'bicipiti', '@A|B · 10-15 · RIR1 · superset con 6B', 'D4-6'),
+      e('6B · Crucifix pushdown', 'tricipiti', '@A|B · 10-15 · RIR1 · rec 90″ dopo la coppia', 'D4-6'),
     ],
   },
   {
     nome: '🦠 D5 · ARMS + BACK C', codice: 'D5', tipo: 'upper', focus: 'Braccia prioritarie · trapezi · rear delts · paravertebrali',
     prehab: 'Estensione toracica su supporto — 1 serie da 5-6 respirazioni. Curl e pushdown feeder — 1 serie leggera, RIR 5. Non contano come volume.',
     esercizi: [
-      e('1A · Curl bilanciere EZ', 'bicipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · superset con 1B'),
-      e('1B · French press EZ o manubri', 'tricipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · rec 120-150″ dopo la coppia'),
-      e('2A · Curl al cavo braccio dietro il tronco', 'bicipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · superset con 2B'),
-      e('2B · Overhead rope extension', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · rec 90″ dopo la coppia'),
+      e('1A · Curl bilanciere EZ', 'bicipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · superset con 1B', 'D5-1'),
+      e('1B · French press EZ o manubri', 'tricipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · rec 120-150″ dopo la coppia', 'D5-1'),
+      e('2A · Curl al cavo braccio dietro il tronco', 'bicipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · superset con 2B', 'D5-2'),
+      e('2B · Overhead rope extension', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · rec 90″ dopo la coppia', 'D5-2'),
       e('High row tecnica per upper back', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 120″'),
       e('Rear delt row o rear delt machine', 'spalle', '@A|B · 12-20 · RIR1 · rec 75-90″'),
       e('Shrug al cavo o macchina', 'schiena', '@A|B · 10-15 · RIR1 · rec 90-120″'),

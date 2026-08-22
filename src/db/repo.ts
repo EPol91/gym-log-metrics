@@ -223,7 +223,27 @@ export async function startFromTemplate(templateId: string, readiness: Readiness
   // quelli non dicono chi ha scritto l'allenamento.
   await db.sessions.update(sessionId, { srcTemplateId: tpl.id })
   const ordered = [...tpl.items].sort((a, b) => a.order - b.order)
-  for (const it of ordered) await addExerciseEntry(sessionId, it.exerciseId)
+  const nati: { entryId: string; coppia?: string }[] = []
+  for (const it of ordered) {
+    const entryId = await addExerciseEntry(sessionId, it.exerciseId)
+    nati.push({ entryId, ...(it.coppia ? { coppia: it.coppia } : {}) })
+  }
+
+  /*
+   * I superset nascono gia' fatti.
+   *
+   * Il coach il superset lo scrive — «6A e 6B insieme» — e prima arrivavano
+   * come due esercizi sciolti, da riabbinare a mano ogni volta che facevi
+   * quella seduta. Se la scheda dice che vanno in coppia, la seduta parte
+   * accoppiata; scioglierla resta un tocco.
+   */
+  const coppie = new Map<string, string[]>()
+  for (const n of nati) {
+    if (!n.coppia) continue
+    coppie.set(n.coppia, [...(coppie.get(n.coppia) ?? []), n.entryId])
+  }
+  for (const ids of coppie.values()) if (ids.length > 1) await groupEntries(ids)
+
   return sessionId
 }
 

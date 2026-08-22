@@ -239,7 +239,7 @@ async function sedute(): Promise<{ nomi: string[]; eserciziCreati: number }> {
       const e = s.esercizi[i]
       const ex = await esercizioGiusto(e.nome, e.muscolo as MuscleGroup)
       await scriviPrescrizione(ex.id, ex.settings, s.codice, e.prescrizione)
-      items.push({ exerciseId: ex.id, order: i })
+      items.push({ exerciseId: ex.id, order: i, ...(e.coppia ? { coppia: e.coppia } : {}) })
     }
     const gia = esistenti.find((t) => t.name === s.nome)
     if (gia) {
