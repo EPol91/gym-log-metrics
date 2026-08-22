@@ -667,7 +667,9 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
         })}
         <div style={{ ...SROW, color: 'var(--gold)' }}>
           <span className="muted small">{sets.filter((x) => !x.isWarmup).length + 1}</span>
-          <span className="muted small">{hint ? `${hint.weight}×${hint.reps}` : '—'}</span>
+          {/* La riga che stai per registrare: il precedente e' la serie di pari
+              numero della volta scorsa, come nelle righe gia' fatte sopra. */}
+          <span className="muted small">{daFare ? `${daFare.weight}×${daFare.reps}` : '—'}</span>
           <span className="strong">{w === '' ? '—' : w}</span>
           <span className="strong">{r === '' ? '—' : r}</span>
           <span style={{ textAlign: 'center' }}>○</span>
@@ -690,7 +692,7 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
           riga resta libero per quello che verra' dopo. */}
       <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className={warmup ? 'sel' : 'ghost'} style={{ flex: '0 0 auto' }} onClick={() => setWarmup((v) => !v)}>Risc.</button>
-        <TastoScarico base={baseScarico(sets, hint, w)} onSet={setW} />
+        <TastoScarico base={baseScarico(sets, daFare, w)} onSet={setW} />
         <VoiceButton onFill={fillFromVoice} />
       </div>
 
