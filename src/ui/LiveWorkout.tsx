@@ -428,6 +428,21 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
 const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
 
 /**
+ * Lo storico dell'esercizio: lo stato sta qui, il tasto lo disegna chi lo usa.
+ *
+ * Sta fuori dalla fila dei tasti perche' li' erano nove icone e sul telefono
+ * uscivano dallo schermo: questo va accanto al PR, in alto, dove c'e' posto.
+ */
+function useStorico(exerciseId: string, sessionId: string) {
+  const [aperto, setAperto] = useState(false)
+  const [righe, setRighe] = useState<{ date: string; sets: SetEntry[] }[]>([])
+  useEffect(() => {
+    if (aperto && righe.length === 0) exerciseHistory(exerciseId, sessionId).then(setRighe)
+  }, [aperto]) // eslint-disable-line react-hooks/exhaustive-deps
+  return { aperto, cambia: () => setAperto((v) => !v), righe }
+}
+
+/**
  * Gli strumenti di un esercizio: storico, regolazioni, scheda del coach,
  * inclinazione, dischi, spostamenti, elimina.
  *
@@ -435,9 +450,9 @@ const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
  * uguali dentro un superset: li' un esercizio resta un esercizio, e prima
  * perdeva tutto — storico, foto della macchina, prescrizione, tutto.
  */
-function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, sessionId, peso, isFirst, isLast, nelGruppo, onGroup, onUngroup }: {
+function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, isFirst, isLast, nelGruppo, onGroup, onUngroup }: {
   entry: ExerciseEntry; name: string; settings: string
-  inclinazione?: number; foto?: string; sessionId: string
+  inclinazione?: number; foto?: string
   /** il carico scritto adesso: serve al calcolo dei dischi */
   peso: number
   isFirst: boolean; isLast: boolean
@@ -453,16 +468,12 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, session
   const [dischi, setDischi] = useState(false)
   const [fotoGrande, setFotoGrande] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
-  const [showHist, setShowHist] = useState(false)
-  const [history, setHistory] = useState<{ date: string; sets: SetEntry[] }[]>([])
-
   // Le note stanno in un campo solo, ma sono di due mani diverse: quelle del
   // coach cominciano col 🦠 e le scrive l'import, le altre le scrivi tu.
   const righe = (settings ?? '').split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean)
   const righeCoach = righe.filter((x) => x.startsWith('🦠'))
   const mieNote = righe.filter((x) => !x.startsWith('🦠')).join(String.fromCharCode(10))
 
-  useEffect(() => { if (showHist && history.length === 0) exerciseHistory(entry.exerciseId, sessionId).then(setHistory) }, [showHist]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -470,7 +481,6 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, session
           schermo per sei icone; qui restano in fila e, se proprio non ci stanno,
           scorrono di lato. */}
       <div className="row" style={{ gap: 5, justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
-        <button className={showHist ? 'chip on' : 'chip'} style={MINI} onClick={() => setShowHist((v) => !v)} aria-label="Storico">📊</button>
         {/* Due taccuini diversi: quello che ha prescritto lui e quello che hai
             capito tu della macchina. In un campo solo, per rileggere l'altezza
             del sellino toccava scorrere mezza scheda del coach. */}
@@ -553,7 +563,6 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, session
           <p className="muted" style={{ fontSize: 11, margin: '8px 0 0' }}>Scritte dal protocollo: si aggiornano da sole, non si modificano qui.</p>
         </div>
       )}
-      {showHist && <HistoryPanel history={history} />}
       {dischi && <Dischi peso={peso} onClose={() => setDischi(false)} />}
       {inclina && (
         <Inclinometro valore={inclinazione}
@@ -582,6 +591,7 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
   // dati sbagliati e poi non correggerli piu' e' peggio che aspettare un istante.
   const [prevPronti, setPrevPronti] = useState(false)
   const prefilled = useRef(false)
+  const storico = useStorico(entry.exerciseId, sessionId)
 
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
@@ -642,6 +652,11 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
               {daFare ? `${fatte + 1}ª volta scorsa ${daFare.weight}×${daFare.reps}` : 'Prima volta'}
             </span>
             {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px' }}>PR {Math.round(histBest)}</span>}
+            {/* Lo storico sta qui e non in fila coi tasti: li' erano nove icone
+                e sul telefono uscivano dallo schermo. */}
+            <button className={storico.aperto ? 'chip on' : 'chip'} aria-label="Storico"
+              style={{ padding: '3px 10px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+              onClick={storico.cambia}>📊</button>
           </div>
         </div>
         <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
@@ -650,9 +665,10 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
       {/* Gli strumenti dell'esercizio: stanno in un componente solo, perche
           servono uguali dentro un superset. */}
       <StrumentiEsercizio entry={entry} name={name} settings={settings}
-        inclinazione={inclinazione} foto={foto} sessionId={sessionId}
+        inclinazione={inclinazione} foto={foto}
         peso={parseNum(w, { min: 0, max: 1000 }) ?? 0}
         isFirst={isFirst} isLast={isLast} onGroup={onGroup} />
+      {storico.aperto && <HistoryPanel history={storico.righe} />}
 
       {/* Tabella set */}
       <div className="card" style={{ padding: '4px 12px 8px' }}>
@@ -773,6 +789,7 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
   const sets = useLiveQuery(() => setsOf(entry.id), [entry.id]) ?? []
   const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   const [histBest, setHistBest] = useState(0)
+  const storico = useStorico(entry.exerciseId, entry.sessionId)
 
   useEffect(() => { exerciseHistory(entry.exerciseId, entry.sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, entry.sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, entry.sessionId).then(setHistBest) }, [entry.exerciseId, entry.sessionId])
@@ -789,16 +806,22 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
         <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <span style={{ color: 'var(--gold)', fontWeight: 700, marginRight: 6 }}>{label}</span>{name}
         </span>
-        <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>
-          {prev ? `${fatte + 1}ª volta scorsa ${prev.weight}×${prev.reps}` : 'prima volta'}
+        <span className="row" style={{ gap: 6, alignItems: 'center', flex: 'none', marginLeft: 8 }}>
+          <span className="muted small">
+            {prev ? `${fatte + 1}ª volta scorsa ${prev.weight}×${prev.reps}` : 'prima volta'}
+          </span>
+          <button className={storico.aperto ? 'chip on' : 'chip'} aria-label="Storico"
+            style={{ padding: '2px 8px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+            onClick={storico.cambia}>📊</button>
         </span>
       </div>
+      {storico.aperto && <HistoryPanel history={storico.righe} />}
 
       {/* Gli stessi strumenti dell'esercizio singolo: dentro un giro un
           esercizio resta un esercizio. */}
       <div style={{ marginTop: 6 }}>
         <StrumentiEsercizio entry={entry} name={name} settings={settings}
-          inclinazione={inclinazione} foto={foto} sessionId={entry.sessionId}
+          inclinazione={inclinazione} foto={foto}
           peso={parseNum(values.w, { min: 0, max: 1000 }) ?? 0}
           isFirst={isFirst} isLast={isLast} nelGruppo onUngroup={onUngroup} />
       </div>
