@@ -397,25 +397,30 @@ export function DietScreen() {
   return (
     <div className="col" style={{ gap: 8 }}>
       {/* Ricette a sinistra, data al centro, obiettivi a destra: la data resta
-          centrata perche i due lati pesano uguale. */}
-      <div className="row" style={{ alignItems: 'center' }}>
-        <div className="row" style={{ flex: 1, gap: 6 }}>
-          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Ricette"
+          centrata perche i due lati pesano uguale.
+          I lati non si allargano e non si stringono — sono bottoni, e un bottone
+          schiacciato non si preme piu'. Lo spazio che avanza va alla data, che
+          e' l'unica cosa qui dentro che puo' accorciarsi: cosi' la testata sta
+          dentro qualsiasi schermo senza spingere niente fuori. */}
+      <div className="row" style={{ alignItems: 'center', gap: 4 }}>
+        <div className="row" style={{ flex: 'none', gap: 4 }}>
+          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Ricette"
             onClick={() => setShowRecipes(true)}>📖</button>
-          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Giornate tipo"
+          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Giornate tipo"
             onClick={() => setShowDays(true)}>🗓</button>
         </div>
-        <div className="row" style={{ gap: 2, alignItems: 'center', flex: 'none' }}>
-          <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
-          <button className="chip" style={{ fontSize: 15, padding: '7px 14px' }} onClick={() => setShowCal(true)}>
+        <div className="row" style={{ gap: 2, alignItems: 'center', flex: 1, minWidth: 0, justifyContent: 'center' }}>
+          <button className="ghost" style={{ padding: '6px 7px', flex: 'none' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
+          <button className="chip" onClick={() => setShowCal(true)}
+            style={{ fontSize: 15, padding: '7px 9px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             📅 {labelFor(date)}
           </button>
-          <button className="ghost" style={{ padding: '6px 10px' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
+          <button className="ghost" style={{ padding: '6px 7px', flex: 'none' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
         </div>
-        <div className="row" style={{ flex: 1, justifyContent: 'flex-end', gap: 6 }}>
+        <div className="row" style={{ flex: 'none', justifyContent: 'flex-end', gap: 4 }}>
           {/* Svuota la giornata. Chiede conferma e resta annullabile: cancellare
               venti righe per sbaglio e non poter tornare indietro sarebbe grave. */}
-          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Svuota giornata"
+          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Svuota giornata"
             disabled={righeDelGiorno.length === 0}
             onClick={async () => {
               const n = righeDelGiorno.length
@@ -424,7 +429,7 @@ export function DietScreen() {
               const tolte = await deleteFoodLogs(ids)
               pushUndo(`Giornata svuotata · ${n} righe`, () => restoreFoodLogs(tolte))
             }}>🧹</button>
-          <button className="chip" style={{ padding: '6px 11px', fontSize: 16 }} aria-label="Obiettivi"
+          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Obiettivi"
             onClick={() => setShowTargets(true)}>⚙</button>
         </div>
       </div>
