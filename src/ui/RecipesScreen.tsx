@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoods } from '../db/diet'
 import { listRecipesRanked, listRecipeTags, computeRecipe } from '../db/recipes'
@@ -77,6 +78,7 @@ function RecipeCard({ recipe, foods, onOpen }: {
  * Obiettivi: lista → dettaglio → modifica, e si torna indietro un passo alla volta.
  */
 export function RecipesScreen({ onBack }: { onBack: () => void }) {
+  useIndietro(onBack)
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [open, setOpen] = useState<string | null>(null)

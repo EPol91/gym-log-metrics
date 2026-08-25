@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { initPwaUpdate } from './util/pwaUpdate'
 import { initViewportVars } from './util/viewport'
 import { allineaCoppieRs } from './rs/coppie'
+import { ascoltaIndietro } from './util/indietro'
 
 // Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
 // se le compensasse anche la pagina, il margine finirebbe contato due volte
@@ -17,6 +18,10 @@ initPwaUpdate() // controlla e applica gli aggiornamenti da solo
 // Le schede 🦠 importate prima che la coppia fosse un dato: gliela stampiamo
 // noi, cosi' i superset del coach partono uniti senza reimportare niente.
 void allineaCoppieRs()
+// Il tasto indietro del telefono chiude l'ultima finestra aperta, come in
+// qualsiasi altra app: prima non arrivava alla pagina e restavi col pollice
+// costretto alla ✕ in alto.
+ascoltaIndietro()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

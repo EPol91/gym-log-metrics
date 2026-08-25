@@ -9,7 +9,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
 import { db } from '../db/db'
 import { allExercises, exerciseHistory } from '../db/repo'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { fmtData } from '../util/format'
 import type { SetEntry } from '../db/schema'
 
@@ -26,6 +26,7 @@ export function SchedaVista({ templateId, onClose, onInizia }: {
   onInizia?: () => void
 }) {
   useBloccoScroll()
+  useIndietro(onClose)
   const scheda = useLiveQuery(() => db.templates.get(templateId), [templateId])
   const esercizi = useLiveQuery(allExercises, []) ?? []
   const storia = useLiveQuery(async () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getRecipe, updateRecipeLog, explodeRecipeLog, type RecipeAmount } from '../db/recipes'
@@ -24,6 +24,7 @@ export function RecipeEntrySheet({ entry, piano, onClose, onDelete }: {
 }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
+  useIndietro(onClose)
   const recipe = useLiveQuery(async () => (entry.log.recipeId ? await getRecipe(entry.log.recipeId) : undefined), [entry.log.recipeId])
   const byPortions = entry.log.portions != null
   const [qty, setQty] = useState(String(byPortions ? entry.log.portions : entry.log.grams))

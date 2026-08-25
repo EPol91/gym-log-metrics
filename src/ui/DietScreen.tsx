@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal, flushSync } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -730,6 +730,7 @@ function EditEntrySheet({ entry, piano, onClose, onDelete }: {
   // tutte le finestre: da qui se ne apre un'altra dentro (scegli alimento), e
   // chi si chiude per primo non deve riattivare lo scorrimento all'altra.
   useBloccoScroll()
+  useIndietro(onClose)
   // Portal su body: gli antenati animati hanno `transform`, che intrappolerebbe
   // un position:fixed annidato facendolo comparire nel posto sbagliato.
   return createPortal(

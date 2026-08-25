@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } from '../db/diet'
@@ -21,6 +21,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
 }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
+  useIndietro(onClose)
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
   const [chosen, setChosen] = useState<Food | null>(null)

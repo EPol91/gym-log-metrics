@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoods } from '../db/diet'
 import {
@@ -28,6 +29,7 @@ export function RecipeDetail({ recipeId, onBack, onEdit }: {
   onBack: () => void
   onEdit: () => void
 }) {
+  useIndietro(onBack)
   const recipe = useLiveQuery(() => getRecipe(recipeId), [recipeId])
   const foods = useLiveQuery(listFoods, []) ?? []
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getTemplate, createTemplate, updateTemplate, allExercises } from '../db/repo'
 import { ExercisePicker } from './ExercisePicker'
@@ -8,6 +9,7 @@ const TYPES: WorkoutType[] = ['push', 'pull', 'legs', 'upper', 'lower', 'fullbod
 
 /** templateId null = nuovo template (creato solo al salvataggio → niente template vuoti). */
 export function TemplateEditor({ templateId, onBack }: { templateId: string | null; onBack: () => void }) {
+  useIndietro(onBack)
   const tpl = useLiveQuery(() => (templateId ? getTemplate(templateId) : undefined), [templateId])
   const exercises = useLiveQuery(allExercises, []) ?? []
   const nameOf = (id: string) => exercises.find((e) => e.id === id)?.name ?? '—'

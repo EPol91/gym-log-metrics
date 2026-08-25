@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseDetail } from '../scores/exerciseStats'
@@ -28,6 +29,7 @@ const MUSCLES: MuscleGroup[] = [
 export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
   exerciseId: string; onBack: () => void; startEditing?: boolean
 }) {
+  useIndietro(onBack)
   const d = useLiveQuery(() => computeExerciseDetail(exerciseId), [exerciseId])
   const [metric, setMetric] = useState<Metric>('e1rm')
   const [editing, setEditing] = useState(startEditing)

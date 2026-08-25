@@ -18,6 +18,7 @@ import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../r
 import { sedutaRs } from '../rs/allenamento'
 import { cicloValido, indiceGiorno, GIORNI } from '../rs/ciclo'
 import { DayCalendar } from './DayCalendar'
+import { useIndietro } from './useBloccoScroll'
 import { numeriSettimana, testoSettimana, periodo, checkSettimana, salvaCheck, aggiungiFoto, togliFoto, settimanaCorrente } from '../rs/settimana'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
@@ -298,6 +299,7 @@ function CiclizzazioneCard({ ciclo }: { ciclo: string }) {
 
 /** Impostazioni: cosa comanda il calendario, e a che punto è il collegamento. */
 function RsImpostazioni({ onClose }: { onClose: () => void }) {
+  useIndietro(onClose)
   const user = useLiveQuery(getUser, [])
   const inizio = user?.rsStart ?? RS_START_DEFAULT
   const attivo = user?.rsActive ?? true

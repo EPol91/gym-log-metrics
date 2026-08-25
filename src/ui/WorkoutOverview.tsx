@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useIndietro } from './useBloccoScroll'
 import { Cuore } from './Cuore'
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
@@ -54,6 +55,7 @@ export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
   onBack: () => void
   onOpenBlock: (index: number) => void
 }) {
+  useIndietro(onBack)
   const d = useLiveQuery(() => computeOverview(sessionId), [sessionId])
   // Nota: la lettura passa da db per restare reattiva agli inserimenti in corso.
   useLiveQuery(() => db.sets.where('userId').equals(LOCAL_USER_ID).count(), [])

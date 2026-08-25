@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -18,6 +19,7 @@ import { consiglioGiornata } from '../rs/ciclo'
  * Applicare è sempre annullabile: riempire un giorno per sbaglio si disfa in un tocco.
  */
 export function DayTemplates({ date, onClose }: { date: string; onClose: () => void }) {
+  useIndietro(onClose)
   const modelli = useLiveQuery(listDayTemplates, []) ?? []
   const diario = useLiveQuery(() => computeDiary(date), [date])
   const [esito, setEsito] = useState<string | null>(null)

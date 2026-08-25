@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 
 /**
@@ -28,6 +29,7 @@ export function Inclinometro({ valore, onSalva, onClose }: {
   onSalva: (gradi: number | undefined) => void
   onClose: () => void
 }) {
+  useIndietro(onClose)
   const [gradi, setGradi] = useState<number | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [fermo, setFermo] = useState(false)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { createPortal, flushSync } from 'react-dom'
 import { slideRicetta, type Formato, type Lingua } from '../util/slideRicetta'
 import { condividi, inGalleria, nativo } from '../util/condividi'
@@ -45,6 +46,7 @@ export function SlideSheet({ recipe, calc, foods, onClose }: {
   foods: Food[]
   onClose: () => void
 }) {
+  useIndietro(onClose)
   const [formato, setFormato] = useState<Formato>('post')
   const [lingua, setLingua] = useState<Lingua>(() => (localStorage.getItem(LINGUA) === 'en' ? 'en' : 'it'))
   // Il testo tradotto vive qui, non nella ricetta: le slide in inglese non

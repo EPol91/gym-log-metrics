@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { ScoreRing } from './anim'
 import type { ScoreResult } from '../scores/types'
@@ -14,6 +14,7 @@ export function ScoreDetail({ title, subtitle, score, footer, onClose }: {
 }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
+  useIndietro(onClose)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { hrStartRecording, hrFlush } from '../util/heartRate'
 import { TastoFascia, ChiediFascia } from './fascia'
 import { Inclinometro } from './Inclinometro'
@@ -727,6 +728,7 @@ function GroupPicker({ fromEntryId, entries, nameOf, onClose }: {
   sessionId: string; fromEntryId: string; entries: ExerciseEntry[]
   nameOf: (id: string) => string; onClose: () => void
 }) {
+  useIndietro(onClose)
   const [sel, setSel] = useState<string[]>([])
   const others = entries.filter((e) => e.id !== fromEntryId && !e.groupId)
   const from = entries.find((e) => e.id === fromEntryId)

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 
 /**
@@ -54,6 +55,7 @@ export function perLato(peso: number, barra: number, disponibili: number[]): { d
 const n = (v: number) => String(Math.round(v * 100) / 100).replace('.', ',')
 
 export function Dischi({ peso, onClose }: { peso: number; onClose: () => void }) {
+  useIndietro(onClose)
   const [barra, setBarra] = useState(bilanciere())
   const [lista, setLista] = useState(dischiDisponibili())
   const [modifica, setModifica] = useState(false)

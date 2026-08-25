@@ -18,7 +18,7 @@ import { pastoCopiato } from '../util/appuntiPasto'
 import { computeRecipe, macrosForAmount, type RecipeAmount } from '../db/recipes'
 import { FoodChooser } from './FoodChooser'
 import { GIORNATE_RS } from '../rs/protocollo'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros, Recipe } from '../db/schema'
 
 const VUOTO: Macros = { kcal: 0, carbs: 0, protein: 0, fat: 0 }
@@ -61,6 +61,7 @@ function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
   onGrammi: (g: number) => void; onSostituisci: () => void; onElimina: () => void; onClose: () => void
 }) {
   useBloccoScroll()
+  useIndietro(onClose)
   const [g, setG] = useState(String(it.grams))
   const originale = it.rsOriginale
   const cambiata = originale != null && (originale.nome !== nome || originale.g !== it.grams)
@@ -118,6 +119,7 @@ function QuantitaRicetta({ ricetta, cibi, onConferma, onClose }: {
   onConferma: (item: DayTemplateItem) => void; onClose: () => void
 }) {
   useBloccoScroll()
+  useIndietro(onClose)
   const aPorzioni = ricetta.mode === 'servings'
   const [q, setQ] = useState(aPorzioni ? '1' : '150')
   const calc = computeRecipe(ricetta, cibi)
@@ -156,6 +158,7 @@ function QuantitaRicetta({ ricetta, cibi, onConferma, onClose }: {
 }
 
 export function GiornataEditor({ templateId, onClose }: { templateId: string; onClose: () => void }) {
+  useIndietro(onClose)
   const modello = useLiveQuery(() => getDayTemplate(templateId), [templateId])
   const cibiElenco = useLiveQuery(listFoods, []) ?? []
   const tipi = useLiveQuery(listDayTypes, []) ?? []

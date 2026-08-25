@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { loggedDates, listDayTypes, todayDiet } from '../db/diet'
@@ -17,6 +17,7 @@ export function DayCalendar({ date, onPick, onClose }: {
 }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
+  useIndietro(onClose)
   const [cursor, setCursor] = useState(() => {
     const d = new Date(date + 'T00:00:00')
     return { y: d.getFullYear(), m: d.getMonth() }

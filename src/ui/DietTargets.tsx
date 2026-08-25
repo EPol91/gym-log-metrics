@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listDayTypes, updateDayType, addDayType, deleteDayType } from '../db/diet'
@@ -68,6 +69,7 @@ function TargetEditor({ d, suggested }: { d: DayType; suggested: MacroTargets | 
 }
 
 export function DietTargets({ onBack, suggested }: { onBack: () => void; suggested: MacroTargets | null }) {
+  useIndietro(onBack)
   const dayTypes = useLiveQuery(listDayTypes, []) ?? []
 
   return (

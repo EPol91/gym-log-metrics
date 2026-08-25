@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { registraStrato } from '../util/indietro'
 
 /**
  * Blocca lo scorrimento della pagina finché la finestra è aperta.
@@ -26,4 +27,21 @@ export function useBloccoScroll(): void {
       if (aperte === 0) document.body.style.overflow = prima
     }
   }, [])
+}
+
+/**
+ * «Questa finestra e' aperta, e si chiude cosi'»: il tasto indietro del
+ * telefono chiude prima l'ultima aperta, come ci si aspetta da qualsiasi app.
+ *
+ * Sta qui accanto al blocco dello scorrimento perche' le due cose vanno quasi
+ * sempre insieme, ma restano separate: una finestra puo' voler comparire
+ * nell'elenco dell'indietro senza per forza bloccare la pagina sotto.
+ */
+export function useIndietro(chiudi: () => void): void {
+  // Il riferimento tiene l'ultima versione della funzione senza rifare
+  // l'iscrizione a ogni render: rifarla sposterebbe la finestra in cima
+  // all'elenco a ogni battito, e l'ordine non sarebbe piu' quello di apertura.
+  const ultimo = useRef(chiudi)
+  ultimo.current = chiudi
+  useEffect(() => registraStrato(() => ultimo.current()), [])
 }

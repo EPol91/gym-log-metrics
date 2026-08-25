@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureMeals, mealsOfDate, todayDiet, listFoods } from '../db/diet'
@@ -31,6 +32,7 @@ export function AddRecipeSheet({ recipe, date: initialDate, mealId: initialMeal,
   /** 🦠RS: invece di aggiungere una riga, prende il posto di quella indicata. */
   sostituisci?: { id: string; onFatto: () => void; piano?: { nome: string; g: number } }
 }) {
+  useIndietro(onClose)
   const [date, setDate] = useState(initialDate ?? todayDiet())
   const [mealId, setMealId] = useState<string | null>(initialMeal ?? null)
   const [showCal, setShowCal] = useState(false)

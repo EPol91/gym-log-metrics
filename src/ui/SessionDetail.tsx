@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { fmtData } from '../util/format'
 import { OrarioSeduta } from './OrarioSeduta'
 import { Cuore } from './Cuore'
@@ -88,6 +89,7 @@ async function load(sessionId: string) {
 export function SessionDetail({ sessionId, onBack, onReopen }: {
   sessionId: string; onBack: () => void; onReopen?: (id: string) => void
 }) {
+  useIndietro(onBack)
   const d = useLiveQuery(() => load(sessionId), [sessionId])
   const [editType, setEditType] = useState(false)
   const [edit, setEdit] = useState(false)

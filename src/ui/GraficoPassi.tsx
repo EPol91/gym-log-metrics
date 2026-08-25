@@ -35,12 +35,22 @@ export function GraficoPassi() {
   const obiettivo = habit?.target ?? 10000
   const da = inizioDi(periodo)
 
-  const righe = useLiveQuery(async () => {
+  /**
+   * Tutti i giorni del periodo, chiunque li abbia contati.
+   *
+   * Le medie e il confronto restano roba del WHOOP — mescolare strumenti diversi
+   * darebbe un andamento fra numeri non confrontabili. Ma un giorno contato dal
+   * telefono non e' un giorno vuoto: se sparisce e basta, guardi il grafico e
+   * pensi di non aver camminato. Si vede, in tinta smorzata, e toccandolo dice
+   * chi l'ha contato.
+   */
+  const giorni = useLiveQuery(async () => {
     const tutte = await db.habitEntries.where('habitKey').equals(STEPS).toArray()
     return tutte
-      .filter((r) => r.date >= da && r.source === 'whoop')
+      .filter((r) => r.date >= da && r.value > 0)
       .sort((a, b) => a.date.localeCompare(b.date))
   }, [da])
+  const righe = giorni?.filter((r) => r.source === 'whoop')
 
   // Il periodo lungo puo' chiedere giorni mai scaricati: si scaricano una volta
   // sola e restano nel database — la sincronizzazione di ogni giorno tocca solo
@@ -61,9 +71,13 @@ export function GraficoPassi() {
       .finally(() => setScarico(false))
   }, [periodo, righe?.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!righe) return null
+  if (!giorni || !righe) return null
 
-  const massimo = Math.max(obiettivo, ...righe.map((r) => r.value), 1)
+  // La scala tiene dentro anche le giornate smorzate: se restassero fuori,
+  // una barra alta uscirebbe dal riquadro.
+  const massimo = Math.max(obiettivo, ...giorni.map((r) => r.value), 1)
+  // Media e conteggio restano del WHOOP: sono un confronto, e un confronto
+  // regge solo fra numeri misurati dallo stesso strumento.
   const media = righe.length ? Math.round(righe.reduce((s, r) => s + r.value, 0) / righe.length) : 0
   const centrati = righe.filter((r) => r.value >= obiettivo).length
 
@@ -71,7 +85,7 @@ export function GraficoPassi() {
   // 3 px si vedrebbe una macchia. Sopra i 70 giorni le barre diventano una linea
   // sottile e si perde la spaziatura, che va bene per leggere l'andamento.
   const L = 320, H = 110
-  const larghezza = Math.max(1, L / Math.max(righe.length, 1) - (righe.length > 70 ? 0.3 : 1.4))
+  const larghezza = Math.max(1, L / Math.max(giorni.length, 1) - (giorni.length > 70 ? 0.3 : 1.4))
 
   return (
     <div className="card">
@@ -86,9 +100,9 @@ export function GraficoPassi() {
         </div>
       </div>
 
-      {righe.length === 0 ? (
+      {giorni.length === 0 ? (
         <p className="muted small" style={{ margin: '10px 0 0' }}>
-          {scarico ? 'Scarico lo storico…' : 'Nessun giorno del WHOOP in questo periodo.'}
+          {scarico ? 'Scarico lo storico…' : 'Nessun giorno con passi in questo periodo.'}
         </p>
       ) : (
         <>
@@ -96,12 +110,18 @@ export function GraficoPassi() {
               il numero dice quel giorno li'. */}
           <div className="row spread" style={{ marginTop: 10, minHeight: 18, alignItems: 'baseline' }}>
             {(() => {
-              const r = righe.find((x) => x.id === scelto)
+              const r = giorni.find((x) => x.id === scelto)
               if (!r) return <span className="muted small">Tocca una barra per il dettaglio.</span>
+              const suo = r.source === 'whoop'
               return (
                 <>
-                  <span className="small">{fmtData(r.date)}</span>
-                  <span className="small" style={{ color: r.value >= obiettivo ? 'var(--good)' : 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+                  <span className="small">
+                    {fmtData(r.date)}
+                    {/* Di chi e' il numero: senza, una barra bassa sembra una
+                        giornata ferma invece di un altro contatore. */}
+                    {!suo && <span className="muted"> · {r.origine ?? (r.source === 'manual' ? 'a mano' : 'telefono')}</span>}
+                  </span>
+                  <span className="small" style={{ color: !suo ? 'var(--muted)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
                     {r.value.toLocaleString('it-IT')} passi
                     {r.value >= obiettivo ? ' · obiettivo centrato' : ` · ${(obiettivo - r.value).toLocaleString('it-IT')} sotto`}
                   </span>
@@ -114,28 +134,38 @@ export function GraficoPassi() {
             {/* La linea dell'obiettivo: senza, le barre dicono solo "tanto o poco". */}
             <line x1="0" y1={H - (obiettivo / massimo) * H} x2={L} y2={H - (obiettivo / massimo) * H}
               stroke="var(--gold)" strokeWidth="1" strokeDasharray="3 3" opacity=".55" />
-            {righe.map((r, i) => {
+            {giorni.map((r, i) => {
               const h = Math.max(1, (r.value / massimo) * H)
+              const suo = r.source === 'whoop'
               return (
                 <g key={r.id} onClick={() => setScelto((p) => (p === r.id ? null : r.id))} style={{ cursor: 'pointer' }}>
                   {/* Con sei mesi di barre il dito e' piu' largo della barra:
                       l'area sensibile e' tutta la colonna, invisibile. */}
-                  <rect x={(i * L) / righe.length} y={0} width={L / righe.length} height={H} fill="transparent" />
-                  <rect x={(i * L) / righe.length} y={H - h} width={larghezza} height={h}
+                  <rect x={(i * L) / giorni.length} y={0} width={L / giorni.length} height={H} fill="transparent" />
+                  {/* Contate da un altro: barra vuota col solo contorno. Si vede
+                      che quel giorno hai camminato, e si vede che non e' lo
+                      stesso strumento delle altre. */}
+                  <rect x={(i * L) / giorni.length} y={H - h} width={larghezza} height={h}
                     rx={larghezza > 4 ? 1.5 : 0}
-                    fill={r.id === scelto ? 'var(--text)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold-dim)'} />
+                    fill={r.id === scelto ? 'var(--text)' : !suo ? 'var(--gold-dim)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold-dim)'}
+                    opacity={suo || r.id === scelto ? 1 : 0.3} />
                 </g>
               )
             })}
           </svg>
 
           <div className="row spread" style={{ marginTop: 8 }}>
-            <span className="muted small">{fmtData(righe[0].date)} → {fmtData(righe[righe.length - 1].date)}</span>
-            <span className="muted small">{righe.length} giorni</span>
+            <span className="muted small">{fmtData(giorni[0].date)} → {fmtData(giorni[giorni.length - 1].date)}</span>
+            <span className="muted small">
+              {giorni.length} giorni
+              {giorni.length > righe.length && ` · ${giorni.length - righe.length} non dal WHOOP`}
+            </span>
           </div>
           <div className="row spread" style={{ marginTop: 2 }}>
-            <span className="muted small">Media</span>
-            <span className="small" style={{ fontVariantNumeric: 'tabular-nums' }}>{media.toLocaleString('it-IT')} passi</span>
+            <span className="muted small">Media WHOOP</span>
+            <span className="small" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {righe.length ? `${media.toLocaleString('it-IT')} passi` : '—'}
+            </span>
           </div>
           <div className="row spread">
             <span className="muted small">Obiettivo centrato</span>

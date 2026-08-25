@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useBloccoScroll } from './useBloccoScroll'
+import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allExercises, getOrCreateExercise } from '../db/repo'
@@ -9,6 +9,7 @@ import type { Exercise, MuscleGroup } from '../db/schema'
 export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
+  useIndietro(onClose)
   const [q, setQ] = useState('')
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
   const list = useLiveQuery(allExercises, []) ?? []

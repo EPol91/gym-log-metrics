@@ -5,6 +5,7 @@
 // senza passare dallo storico, che e' un elenco e non un colpo d'occhio.
 
 import { useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createPortal } from 'react-dom'
 import { calendario, type GiornoCalendario } from '../rs/allenamento'
@@ -58,6 +59,7 @@ export function Calendario({ onClose, onApriSeduta }: {
   onApriSeduta?: (sessionId: string) => void
 }) {
   const oggi = todayLocal()
+  useIndietro(onClose)
   const [mesiIndietro, setMesiIndietro] = useState(0)
   const [scelto, setScelto] = useState<string | null>(null)
 

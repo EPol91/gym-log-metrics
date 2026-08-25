@@ -1,5 +1,6 @@
 import { useHoldDrag } from './useHoldDrag'
 import { useEffect, useRef, useState } from 'react'
+import { useIndietro } from './useBloccoScroll'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listFoods, macrosFor } from '../db/diet'
 import { addRecipe, updateRecipe, deleteRecipe, getRecipe, type RecipeDraft } from '../db/recipes'
@@ -32,6 +33,7 @@ export function RecipeEditor({ recipeId, onBack, onSaved }: {
   onBack: () => void
   onSaved: (id: string) => void
 }) {
+  useIndietro(onBack)
   const existing = useLiveQuery(async () => (recipeId ? await getRecipe(recipeId) : undefined), [recipeId])
   const foods = useLiveQuery(listFoods, []) ?? []
   const foodName = (id: string) => foods.find((f) => f.id === id)?.name
