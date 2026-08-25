@@ -253,6 +253,7 @@ export function DietScreen() {
     // lo schermo spento il fotogramma non arriva e la riga resterebbe indietro.
     // Una misura ogni 100 ms basta e avanza.
     let ultima = 0
+    let coda: number | undefined
     const guarda = () => {
       const el = ancora.current
       if (!el) return
@@ -260,9 +261,22 @@ export function DietScreen() {
       // esattamente al limite.
       setFuori(el.getBoundingClientRect().top < -8)
     }
+    /**
+     * Al massimo una misura ogni 100 ms, ma l'ULTIMA non si perde.
+     *
+     * Prima gli eventi dentro la finestra di attesa venivano buttati via e
+     * basta: se lo scorrimento finiva li' dentro — ed e' quello che succede
+     * quando torni in cima con una scivolata — l'ultima misura utile non veniva
+     * mai fatta, e la riga restava appesa in alto finche' non muovevi ancora il
+     * dito. Adesso quella misura viene solo rimandata a fine finestra.
+     */
     const suScroll = () => {
       const ora = Date.now()
-      if (ora - ultima < 100) return
+      const manca = 100 - (ora - ultima)
+      if (manca > 0) {
+        if (coda == null) coda = window.setTimeout(() => { coda = undefined; ultima = Date.now(); guarda() }, manca)
+        return
+      }
       ultima = ora
       guarda()
     }
@@ -270,6 +284,7 @@ export function DietScreen() {
     window.addEventListener('scroll', suScroll, { capture: true, passive: true })
     window.addEventListener('resize', suScroll)
     return () => {
+      if (coda != null) clearTimeout(coda)
       window.removeEventListener('scroll', suScroll, { capture: true } as EventListenerOptions)
       window.removeEventListener('resize', suScroll)
     }
@@ -460,23 +475,33 @@ export function DietScreen() {
             margin: 0, padding: '8px 10px', background: '#101010',
             boxShadow: '0 6px 18px rgba(0,0,0,.55)',
           }}>
-            <div className="row" style={{ gap: 8, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
-              <MacroDonut m={totals} size={26} />
+            {/* Sette cose in fila su un telefono stretto: coi numeri veri —
+                2593, C 289/289 — la somma superava la card, e da quando c'e'
+                anche il bicchiere usciva dal bordo.
+                Niente numeri tolti: acqua e macro stanno insieme in un blocco
+                solo, e se la larghezza non basta e' quel blocco intero ad
+                andare a capo — non un pezzo qualsiasi a sbordare. */}
+            <div className="row" style={{ gap: 4, alignItems: 'center', flexWrap: 'wrap', fontVariantNumeric: 'tabular-nums' }}>
+              <MacroDonut m={totals} size={24} />
+              {/* Le calorie senza il loro obiettivo: quanto manca lo dice gia'
+                  la barra qui sotto, e sono i macro ad avere bisogno dei numeri
+                  — il loro obiettivo non e' scritto da nessun'altra parte. */}
               <span style={{ flex: 'none' }}>
                 <strong style={{ color: 'var(--gold)', fontSize: 15 }}>{totals.kcal}</strong>
-                <span className="muted" style={{ fontSize: 10 }}>/{t?.kcal ?? '—'}</span>
+                <span className="muted" style={{ fontSize: 9.5 }}> kcal</span>
               </span>
-              <span style={{ flex: 1 }} />
-              <Bicchiere date={date} acqua={nutri?.water ?? 0} compatto />
-              {([
-                ['C', totals.carbs, t?.carbs, 'var(--carb)'],
-                ['P', totals.protein, t?.protein, 'var(--prot)'],
-                ['G', totals.fat, t?.fat, 'var(--fat)'],
-              ] as const).map(([et, v, tg, col]) => (
-                <span key={et} style={{ fontSize: 12, color: col, flex: 'none' }}>
-                  {et} {Math.round(v)}<span className="muted" style={{ fontSize: 10 }}>/{tg ? Math.round(tg) : '—'}</span>
-                </span>
-              ))}
+              <span className="row" style={{ gap: 4, alignItems: 'center', marginLeft: 'auto', flex: 'none' }}>
+                <Bicchiere date={date} acqua={nutri?.water ?? 0} compatto />
+                {([
+                  ['C', totals.carbs, t?.carbs, 'var(--carb)'],
+                  ['P', totals.protein, t?.protein, 'var(--prot)'],
+                  ['G', totals.fat, t?.fat, 'var(--fat)'],
+                ] as const).map(([et, v, tg, col]) => (
+                  <span key={et} style={{ fontSize: 11.5, color: col, flex: 'none', whiteSpace: 'nowrap' }}>
+                    {et} {Math.round(v)}<span className="muted" style={{ fontSize: 9.5 }}>/{tg ? Math.round(tg) : '—'}</span>
+                  </span>
+                ))}
+              </span>
             </div>
             <div style={{ height: 3, borderRadius: 999, background: 'var(--surface-2)', marginTop: 6, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${kcalPct}%`, background: 'var(--gold)', borderRadius: 999 }} />
@@ -849,10 +874,12 @@ function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; com
 
   return (
     <>
+      {/* Nella riga compatta la «L» si toglie: accanto a una goccia, litri si
+          capisce — e li' ogni carattere e' spazio tolto ai macro. */}
       <button className="chip" aria-label="Acqua bevuta"
-        style={compatto ? { padding: '3px 8px', fontSize: 11, flex: 'none' } : { marginTop: 8 }}
+        style={compatto ? { padding: '3px 6px', fontSize: 11, flex: 'none' } : { marginTop: 8 }}
         onClick={() => setApri(true)}>
-        💧{acqua > 0 ? ` ${String(acqua).replace('.', ',')} L` : ''}
+        💧{acqua > 0 ? ` ${String(acqua).replace('.', ',')}${compatto ? '' : ' L'}` : ''}
       </button>
 
       {apri && createPortal(
