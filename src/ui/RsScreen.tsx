@@ -8,10 +8,10 @@ import { useState } from 'react'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser, updateUser } from '../db/repo'
-import { todayLocal, shiftDate } from '../util/date'
+import { todayLocal, shiftDate, etichettaGiorno } from '../util/date'
 import { CAMPI, GRUPPI, DEF, type RsCampo, type RsGruppo } from '../rs/campi'
 import {
-  computeRs, conteggio, settimanaGiorno, setRs, resetRs, rsDay, setNotaRs,
+  computeRs, conteggio, settimanaGiorno, setRs, resetRs, rsDay, setNotaRs, dettagliRs,
   notaAutomatica, RS_START_DEFAULT, type RsValore,
 } from '../rs/rs'
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
@@ -47,6 +47,7 @@ export function RsScreen() {
   const giornata = useLiveQuery(() => computeRs(date), [date])
   const riga = useLiveQuery(() => rsDay(date), [date])
   const nota = useLiveQuery(() => notaAutomatica(date), [date])
+  const dettagli = useLiveQuery(() => dettagliRs(date), [date]) ?? {}
 
   const sg = settimanaGiorno(date, inizio)
   const conta = giornata ? conteggio(giornata) : null
@@ -100,7 +101,7 @@ export function RsScreen() {
           {/* La data si tocca e apre il calendario, come in Cibo: per tornare a
               lunedi' scorso, un passo alla volta erano sei tocchi. */}
           <button className="chip" style={{ fontSize: 13 }} onClick={() => setCalendario(true)}>
-            📅 {date === todayLocal() ? 'oggi' : fmtData(date)}
+            📅 {etichettaGiorno(date)}
           </button>
           <button className="chip" disabled={date >= todayLocal()} onClick={() => setDate(shiftDate(date, 1))}>giorno dopo ›</button>
         </div>
@@ -132,7 +133,7 @@ export function RsScreen() {
             <span style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase' }}>{g.label}</span>
           </div>
           {CAMPI.filter((c) => c.gruppo === g.key).map((c) => (
-            <Riga key={c.key} campo={c.key} v={giornata[c.key]} date={date}
+            <Riga key={c.key} campo={c.key} v={giornata[c.key]} date={date} dettaglio={dettagli[c.key]}
               aperto={inModifica === c.key} onApri={() => setInModifica(inModifica === c.key ? null : c.key)} />
           ))}
         </div>
@@ -166,8 +167,10 @@ function leggibile(campo: RsCampo, valore: string | null | undefined): string {
 }
 
 /** Una riga: etichetta, valore, e da dove arriva. Si tocca per correggerla. */
-function Riga({ campo, v, date, aperto, onApri }: {
+function Riga({ campo, v, date, aperto, onApri, dettaglio }: {
   campo: RsCampo; v: RsValore; date: string; aperto: boolean; onApri: () => void
+  /** il contorno del numero: chi l'ha contato, o quanto ne prevedeva la giornata */
+  dettaglio?: string
 }) {
   const def = DEF.get(campo)!
   const [testo, setTesto] = useState('')
@@ -179,8 +182,11 @@ function Riga({ campo, v, date, aperto, onApri }: {
       <div className="row" onClick={onApri}
         style={{ gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
         <span className={'pallino ' + v.fonte} />
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {def.label}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {def.label}
+          </span>
+          {dettaglio && <span className="muted" style={{ fontSize: 10.5 }}>{dettaglio}</span>}
         </span>
         {v.fonte === 'mio' && <span className="muted" style={{ fontSize: 10 }}>corretto</span>}
         <span style={{ fontSize: 15, color: colore, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 70 }}>

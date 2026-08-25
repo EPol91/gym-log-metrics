@@ -20,7 +20,7 @@ import { FoodPicker } from './FoodPicker'
 import { FoodSheet, MacroDonut } from './FoodSheet'
 import { DayCalendar } from './DayCalendar'
 import { usePersistedState } from '../util/persist'
-import { shiftDate } from '../util/date'
+import { shiftDate, etichettaGiorno } from '../util/date'
 import type { DiaryEntry, DiaryMeal } from '../db/diet'
 import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
@@ -29,13 +29,7 @@ import { copiaPasto } from '../util/appuntiPasto'
 import { acquaDelPiano } from '../rs/protocollo'
 
 const shift = shiftDate
-const labelFor = (iso: string) => {
-  if (iso === todayDiet()) return 'Oggi'
-  if (iso === shift(todayDiet(), -1)) return 'Ieri'
-  const d = new Date(iso + 'T00:00:00')
-  const gg = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][d.getDay()]
-  return `${gg} ${d.getDate()}/${d.getMonth() + 1}`
-}
+const labelFor = (iso: string) => etichettaGiorno(iso, todayDiet())
 
 /** Barra macro con il colore del macro e i grammi presi/obiettivo. */
 function MacroTrack({ label, value, target, color }: { label: string; value: number; target: number; color: string }) {

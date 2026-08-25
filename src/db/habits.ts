@@ -69,17 +69,23 @@ export async function setHabitActive(key: string, active: boolean): Promise<void
  */
 export async function setHabitValue(
   habitKey: string, date: string, value: number, source: HabitSource = 'manual',
+  /** l'app che ha contato, col suo nome: «WHOOP», «Samsung Health» */
+  origine?: string,
 ): Promise<void> {
   const ts = nowISO()
   const existing = await db.habitEntries.where('[habitKey+date]').equals([habitKey, date]).first()
   if (existing) {
     if (source === 'manual' && existing.source !== 'manual') return
-    await db.habitEntries.update(existing.id, { value, source, updatedAt: ts })
+    // A mano vuol dire a mano: il nome dell'app di prima non deve restare
+    // appiccicato a un numero che hai scritto tu. Si riscrive tutta la riga,
+    // perche' `update` con un campo a `undefined` lo lascia dov'e'.
+    const { origine: _via, ...resto } = existing
+    await db.habitEntries.put({ ...resto, value, source, ...(origine ? { origine } : {}), updatedAt: ts })
     return
   }
   await db.habitEntries.add({
     id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    habitKey, date, value, source,
+    habitKey, date, value, source, ...(origine ? { origine } : {}),
   })
 }
 

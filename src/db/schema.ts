@@ -506,6 +506,12 @@ export interface HabitEntry extends BaseRecord {
   value: number
   /** chi ha scritto il valore: un dato automatico non va sovrascritto da uno a mano */
   source: HabitSource
+  /**
+   * L'app che ha contato davvero, col nome che ha sul telefono («WHOOP»,
+   * «Samsung Health»). `source` dice solo se è WHOOP o no; qui c'è il nome,
+   * perché 13.974 passi senza sapere chi li ha contati non si giudicano.
+   */
+  origine?: string
 }
 
 /**

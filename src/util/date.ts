@@ -31,3 +31,19 @@ export function dateMs(iso: string): number {
 export function daysBetween(a: string, b: string): number {
   return Math.round((dateMs(b) - dateMs(a)) / 86_400_000)
 }
+
+/**
+ * Il giorno come lo leggi tu: «Oggi», «Ieri», oppure «mar 15/8».
+ *
+ * Il giorno della settimana c'e' perche' e' quello che stai cercando davvero:
+ * «15.08.2026» ti dice il numero, non se era un sabato. `oggi` si passa da
+ * fuori perche' non tutte le schermate cambiano giorno alla stessa ora — la
+ * dieta ha la sua mezzanotte.
+ */
+export function etichettaGiorno(iso: string, oggi: string = todayLocal()): string {
+  if (iso === oggi) return 'Oggi'
+  if (iso === shiftDate(oggi, -1)) return 'Ieri'
+  const d = new Date(iso + 'T00:00:00')
+  const gg = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][d.getDay()]
+  return `${gg} ${d.getDate()}/${d.getMonth() + 1}`
+}

@@ -12,13 +12,14 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
-import { computeDiary, saleDelDiario } from '../db/diet'
+import { computeDiary, saleDelDiario, saleDelPiano } from '../db/diet'
 import { getNutrition } from '../db/repo'
 import { getHabitValue, STEPS } from '../db/habits'
 import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
 import { statoDieta, sostituzioni } from './dieta'
+import { acquaDelPiano } from './protocollo'
 import { sedutaRs, aderenzaDelCoach } from './allenamento'
 import type { RsDay } from '../db/schema'
 
@@ -302,4 +303,35 @@ export async function notaAutomatica(date: string): Promise<string> {
   const w = await whoopDay(date)
   if (w?.recovery != null) pezzi.push(`recupero ${w.recovery}%`)
   return pezzi.join('. ') + (pezzi.length ? '.' : '')
+}
+
+/**
+ * Il contorno di una riga: quel poco che serve per giudicare il numero.
+ *
+ * Non entra nella giornata (al coach va il valore, non il contorno) e non
+ * finisce da nessuna parte: si legge e basta. Tre casi, e sono i tre dove il
+ * numero da solo non basta — chi ha contato i passi, e quanto sale e acqua
+ * prevedeva la giornata che hai scelto.
+ */
+export async function dettagliRs(date: string): Promise<Partial<Record<RsCampo, string>>> {
+  const out: Partial<Record<RsCampo, string>> = {}
+
+  const passi = await getHabitValue(STEPS, date)
+  if (passi) {
+    out.passi = passi.source === 'manual'
+      ? 'scritti a mano'
+      : `da ${passi.origine ?? (passi.source === 'whoop' ? 'WHOOP' : 'Health Connect')}`
+  }
+
+  const nutri = await getNutrition(date)
+  if (nutri?.dayType) {
+    const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
+    if (tipo) {
+      const acqua = acquaDelPiano(tipo.name)
+      if (acqua != null) out.acqua = `target ${String(acqua).replace('.', ',')} L`
+      const sale = await saleDelPiano(tipo.name)
+      if (sale != null) out.sale = `target ${String(sale).replace('.', ',')} g`
+    }
+  }
+  return out
 }

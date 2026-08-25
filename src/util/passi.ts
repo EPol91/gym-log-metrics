@@ -156,7 +156,8 @@ function giornoLocale(iso: string): string {
   return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
 }
 
-export interface GiornoPassi { date: string; passi: number; da?: string }
+/** `da` e' l'identificativo dell'app, `nome` come si chiama sul telefono. */
+export interface GiornoPassi { date: string; passi: number; da?: string; nome?: string }
 
 export async function leggiPassi(daISO: string, aISO: string, sorgente?: string): Promise<GiornoPassi[]> {
   const h = await health()
@@ -221,7 +222,7 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
        * nessun taglio.
        */
       const PASSO = 3
-      const record: { startDate: string; endDate?: string; value: number; sourceBundleId: string }[] = []
+      const record: { startDate: string; endDate?: string; value: number; sourceBundleId: string; sourceName?: string }[] = []
       for (let t = largo(inizio, -1).getTime(); t <= largo(fine, 1).getTime(); t += PASSO * 86_400_000) {
         const fineBlocco = Math.min(t + PASSO * 86_400_000, largo(fine, 1).getTime())
         const parte = await conTempo(h.queryRecords({
@@ -238,10 +239,13 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
       // giorno verrebbe contato doppio.
       const per = new Map<string, Map<string, number>>()
       const visti = new Set<string>()
+      /** Come si chiama l'app, non come si chiama il suo pacchetto. */
+      const nomi = new Map<string, string>()
       for (const x of record) {
         const id = `${x.startDate}|${x.sourceBundleId}|${x.value}`
         if (visti.has(id)) continue
         visti.add(id)
+        if (x.sourceName?.trim()) nomi.set(x.sourceBundleId, x.sourceName.trim())
         const g = giornoDelRecord(x)
         if (g < daISO || g > aISO) continue
         const perGiorno = per.get(g) ?? new Map<string, number>()
@@ -281,7 +285,8 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
         for (let g = new Date(inizio); g <= fine; g.setDate(g.getDate() + 1)) {
           const d = giornoLocale(new Date(g.getFullYear(), g.getMonth(), g.getDate(), 12).toISOString())
           const v = valore(d)
-          out.push({ date: d, passi: Math.round(v.passi), ...(v.da ? { da: v.da } : {}) })
+          const nome = v.da ? nomi.get(v.da) : undefined
+          out.push({ date: d, passi: Math.round(v.passi), ...(v.da ? { da: v.da } : {}), ...(nome ? { nome } : {}) })
         }
         return out
       }
@@ -336,7 +341,7 @@ export async function sincronizzaPassi(giorni = 7): Promise<number> {
     if (r.passi > 0) {
       // 'whoop' o 'healthConnect': il grafico mostra solo le barre del WHOOP, e
       // senza questa distinzione non potrebbe saperlo.
-      await setHabitValue(STEPS, r.date, r.passi, /whoop/i.test(r.da ?? '') ? 'whoop' : 'healthConnect')
+      await setHabitValue(STEPS, r.date, r.passi, /whoop/i.test(r.da ?? '') ? 'whoop' : 'healthConnect', r.nome ?? r.da)
       scritti++; continue
     }
     // Zero: si corregge solo se quel giorno era stato scritto in automatico.
