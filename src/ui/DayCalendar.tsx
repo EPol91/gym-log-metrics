@@ -65,7 +65,9 @@ export function DayCalendar({ date, onPick, onClose }: {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, textAlign: 'center' }}>
-          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((d, i) => (
+          {/* Due lettere, non una: con la singola il lunedi' e il martedi'
+              erano tutt'e due una M, e la colonna non la distinguevi. */}
+          {['Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa', 'Do'].map((d, i) => (
             <span key={i} className="muted" style={{ fontSize: 9 }}>{d}</span>
           ))}
           {cells.map((d, i) => {

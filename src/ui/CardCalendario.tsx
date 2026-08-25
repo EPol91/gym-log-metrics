@@ -16,7 +16,8 @@ import type { SetEntry } from '../db/schema'
 import { todayLocal, shiftDate } from '../util/date'
 import { fmtData } from '../util/format'
 
-const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
+// Due lettere: con la singola, lunedi' e martedi' erano la stessa M.
+const GIORNI = ['Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa', 'Do']
 const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
   'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
 
