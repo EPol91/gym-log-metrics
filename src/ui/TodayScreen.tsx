@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
-import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser } from '../db/repo'
-import { computeDiary, todayDiet } from '../db/diet'
+import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser, getNutrition } from '../db/repo'
+import { computeDiary, todayDiet, listDayTypes } from '../db/diet'
 import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { useHoldDrag } from './useHoldDrag'
@@ -244,10 +244,29 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
 function CardNutrizione({ onOpen }: { onOpen: () => void }) {
   const diary = useLiveQuery(() => computeDiary(todayDiet()), [])
   const t = diary?.totals
+  // Che giornata e' oggi. Quattrocento grammi di carboidrati non vogliono dire
+  // niente se non sai se e' una HIGH o una LOW: il tipo e' il metro dei numeri
+  // che gli stanno accanto. Si sceglie in Cibo, qui si legge soltanto.
+  const giornata = useLiveQuery(async () => {
+    const n = await getNutrition(todayDiet())
+    if (!n?.dayType) return null
+    return (await listDayTypes()).find((d) => d.key === n.dayType) ?? null
+  }, [])
+  const dalCoach = giornata?.name.startsWith('🦠') ?? false
 
   return (
     <>
-      <div className="row spread"><span style={LBL}>Nutrizione</span><span className="muted small">≡</span></div>
+      <div className="row spread">
+        <span className="row" style={{ gap: 6, alignItems: 'baseline', minWidth: 0 }}>
+          <span style={LBL}>Nutrizione</span>
+          <span className="small" style={{
+            minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            fontWeight: giornata ? 700 : 400,
+            color: giornata ? (dalCoach ? 'var(--rs)' : 'var(--gold)') : 'var(--muted)',
+          }}>{giornata ? giornata.name : '—'}</span>
+        </span>
+        <span className="muted small">≡</span>
+      </div>
       <div className="row" style={{ marginTop: 8 }}>
         {cella(t ? t.kcal : '—', 'kcal')}
         <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
