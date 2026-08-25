@@ -66,9 +66,14 @@ export function RsScreen() {
         </div>
         <button className="ghost" aria-label="Impostazioni RS" onClick={() => setImpostazioni(true)}
           style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}>
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <circle cx="12" cy="12" r="3.2" />
-            <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6L18 18M18 6l-1.4 1.4M7.4 16.6L6 18" />
+          {/* Un ingranaggio, non un sole: quello che li distingue e' il corpo
+              tondo con i denti attaccati sopra — senza l'anello esterno restano
+              otto raggi, e sembra la levetta del tema chiaro. */}
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="7.4" />
+            <circle cx="12" cy="12" r="3.1" />
+            <path strokeWidth="2.5" d="M19.4 12h1.9M12 19.4v1.9M4.6 12H2.7M12 4.6V2.7M17.2 17.2l1.4 1.4M6.8 17.2l-1.4 1.4M6.8 6.8 5.4 5.4M17.2 6.8l1.4-1.4" />
           </svg>
         </button>
       </div>
@@ -182,11 +187,16 @@ function Riga({ campo, v, date, aperto, onApri, dettaglio }: {
       <div className="row" onClick={onApri}
         style={{ gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
         <span className={'pallino ' + v.fonte} />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {def.label}
-          </span>
-          {dettaglio && <span className="muted" style={{ fontSize: 10.5 }}>{dettaglio}</span>}
+        {/* Etichetta e contorno sulla stessa riga, divisi dal punto medio: e' il
+            segno con cui il coach separa le sue prescrizioni. Se lo spazio non
+            basta e' il contorno ad accorciarsi — l'etichetta dice cos'e'. */}
+        <span className="row" style={{ flex: 1, minWidth: 0, gap: 5, alignItems: 'baseline' }}>
+          <span style={{ flex: 'none', fontSize: 13.5, whiteSpace: 'nowrap' }}>{def.label}</span>
+          {dettaglio && (
+            <span className="muted" style={{ fontSize: 11, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              · {dettaglio}
+            </span>
+          )}
         </span>
         {v.fonte === 'mio' && <span className="muted" style={{ fontSize: 10 }}>corretto</span>}
         <span style={{ fontSize: 15, color: colore, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 70 }}>
