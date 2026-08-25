@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
+import android.media.AudioDeviceInfo;
 import android.media.AudioFocusRequest;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -194,12 +195,23 @@ public class ServizioSeduta extends Service {
     int durataMs = 0;
     for (int[] n : sequenza) durataMs += n[1];
 
+    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+
+    // Con le cuffie il beep NON deve uscire anche dall'altoparlante.
+    //
+    // Non era un difetto nostro: Android manda la sveglia sempre anche allo
+    // scatolotto, apposta, perche' una sveglia nelle sole cuffie sfilate non
+    // sveglia nessuno. In palestra pero' non stai dormendo: hai le cuffie, e il
+    // telefono che squilla in sala e' solo roba tua sparata agli altri.
+    //
+    // Con le cuffie collegate il beep diventa audio normale, che segue il
+    // percorso delle cuffie e basta. Senza cuffie resta sveglia: cosi' regge
+    // col volume dei media a zero e col telefono in tasca.
     AudioAttributes attributi = new AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_ALARM)
+        .setUsage(inCuffia(am) ? AudioAttributes.USAGE_MEDIA : AudioAttributes.USAGE_ALARM)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build();
 
-    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
     synchronized (this) {
       if (fuocoAttivo == null) {
         fuocoAttivo = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
@@ -236,6 +248,32 @@ public class ServizioSeduta extends Service {
     }
 
     manoAudio.postDelayed(this::rilasciaFuoco, durataMs + 600L);
+  }
+
+  /**
+   * Stai ascoltando in cuffia? Jack, USB o Bluetooth: per noi sono la stessa
+   * cosa — un'uscita privata, dove il suono resta tuo.
+   */
+  private boolean inCuffia(AudioManager am) {
+    if (am == null) return false;
+    try {
+      for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+        switch (d.getType()) {
+          case AudioDeviceInfo.TYPE_WIRED_HEADSET:
+          case AudioDeviceInfo.TYPE_WIRED_HEADPHONES:
+          case AudioDeviceInfo.TYPE_USB_HEADSET:
+          case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
+          case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
+          case AudioDeviceInfo.TYPE_HEARING_AID:
+            return true;
+          default:
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && (d.getType() == AudioDeviceInfo.TYPE_BLE_HEADSET
+                 || d.getType() == AudioDeviceInfo.TYPE_BLE_SPEAKER)) return true;
+        }
+      }
+    } catch (RuntimeException ignored) { }
+    return false;
   }
 
   /** La sequenza scritta come onda quadra, con attacco e coda smussati. */
