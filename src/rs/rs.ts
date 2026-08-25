@@ -15,6 +15,7 @@ import { todayLocal } from '../util/date'
 import { computeDiary, saleDelDiario, saleDelPiano } from '../db/diet'
 import { getNutrition } from '../db/repo'
 import { getHabitValue, STEPS } from '../db/habits'
+import { nomeSorgente } from '../util/passi'
 import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
@@ -318,9 +319,9 @@ export async function dettagliRs(date: string): Promise<Partial<Record<RsCampo, 
 
   const passi = await getHabitValue(STEPS, date)
   if (passi) {
-    out.passi = passi.source === 'manual'
-      ? 'scritti a mano'
-      : `da ${passi.origine ?? (passi.source === 'whoop' ? 'WHOOP' : 'Health Connect')}`
+    // Il nome si ripulisce anche in lettura: i giorni scritti prima hanno
+    // dentro il pacchetto, e «com.sec.android.app.shealth» non e' una risposta.
+    out.passi = passi.source === 'manual' ? 'scritti a mano' : `da ${nomeSorgente(passi.origine)}`
   }
 
   const nutri = await getNutrition(date)

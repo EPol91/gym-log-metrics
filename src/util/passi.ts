@@ -156,6 +156,40 @@ function giornoLocale(iso: string): string {
   return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
 }
 
+/**
+ * Il nome dell'app come lo diresti tu.
+ *
+ * Health Connect a volte da' il nome leggibile e a volte solo il pacchetto:
+ * «com.sec.android.app.shealth» accanto a un'etichetta non si legge e non ci
+ * sta. Le app che contano passi sono quattro gatti, quindi le chiamo per nome;
+ * per le altre tengo l'ultimo pezzo del pacchetto, che e' sempre meglio della
+ * riga intera.
+ */
+const NOMI: [RegExp, string][] = [
+  [/whoop/i, 'WHOOP'],
+  [/shealth|samsung/i, 'Samsung Health'],
+  [/google.*fit|com.google.android.apps.fitness|com.google.android.gms/i, 'Google Fit'],
+  [/garmin/i, 'Garmin'],
+  [/fitbit/i, 'Fitbit'],
+  [/polar/i, 'Polar'],
+  [/strava/i, 'Strava'],
+  [/huawei/i, 'Huawei Health'],
+  [/xiaomi|mi.health|mifit/i, 'Mi Fitness'],
+  [/oura/i, 'Oura'],
+  [/etphealth/i, 'ETP HEALTH'],
+  [/healthconnect|com.google.android.apps.healthdata/i, 'Health Connect'],
+]
+
+export function nomeSorgente(id?: string | null): string {
+  const s = (id ?? '').trim()
+  if (!s) return 'Health Connect'
+  for (const [re, nome] of NOMI) if (re.test(s)) return nome
+  if (!s.includes('.')) return s
+  // Ultimo pezzo del pacchetto, con l'iniziale grande: «com.tizio.passiapp» → «Passiapp».
+  const ultimo = s.split('.').filter(Boolean).pop() ?? s
+  return ultimo.charAt(0).toUpperCase() + ultimo.slice(1)
+}
+
 /** `da` e' l'identificativo dell'app, `nome` come si chiama sul telefono. */
 export interface GiornoPassi { date: string; passi: number; da?: string; nome?: string }
 
@@ -341,7 +375,7 @@ export async function sincronizzaPassi(giorni = 7): Promise<number> {
     if (r.passi > 0) {
       // 'whoop' o 'healthConnect': il grafico mostra solo le barre del WHOOP, e
       // senza questa distinzione non potrebbe saperlo.
-      await setHabitValue(STEPS, r.date, r.passi, /whoop/i.test(r.da ?? '') ? 'whoop' : 'healthConnect', r.nome ?? r.da)
+      await setHabitValue(STEPS, r.date, r.passi, /whoop/i.test(r.da ?? '') ? 'whoop' : 'healthConnect', nomeSorgente(r.nome ?? r.da))
       scritti++; continue
     }
     // Zero: si corregge solo se quel giorno era stato scritto in automatico.
@@ -378,7 +412,7 @@ export async function sorgentiPassi(giorni = 7): Promise<SorgentePassi[]> {
     if (!id) continue
     const gia = per.get(id)
     if (gia) gia.passi += Math.round(x.value)
-    else per.set(id, { id, nome: x.sourceName?.trim() || id, passi: Math.round(x.value) })
+    else per.set(id, { id, nome: nomeSorgente(x.sourceName?.trim() || id), passi: Math.round(x.value) })
   }
   return [...per.values()].sort((p, q) => q.passi - p.passi)
 }

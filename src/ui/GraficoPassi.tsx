@@ -11,7 +11,7 @@ import { db } from '../db/db'
 import { STEPS, getHabit } from '../db/habits'
 import { todayLocal, shiftDate } from '../util/date'
 import { fmtData } from '../util/format'
-import { sincronizzaPassi } from '../util/passi'
+import { sincronizzaPassi, nomeSorgente } from '../util/passi'
 
 type Periodo = 'S' | 'M' | '3M' | '6M' | 'YTD'
 
@@ -119,7 +119,7 @@ export function GraficoPassi() {
                     {fmtData(r.date)}
                     {/* Di chi e' il numero: senza, una barra bassa sembra una
                         giornata ferma invece di un altro contatore. */}
-                    {!suo && <span className="muted"> · {r.origine ?? (r.source === 'manual' ? 'a mano' : 'telefono')}</span>}
+                    {!suo && <span className="muted"> · {r.source === 'manual' ? 'a mano' : nomeSorgente(r.origine)}</span>}
                   </span>
                   <span className="small" style={{ color: !suo ? 'var(--muted)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
                     {r.value.toLocaleString('it-IT')} passi
