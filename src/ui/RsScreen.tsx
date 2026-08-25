@@ -17,6 +17,7 @@ import {
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
 import { sedutaRs } from '../rs/allenamento'
 import { cicloValido, indiceGiorno, GIORNI } from '../rs/ciclo'
+import { DayCalendar } from './DayCalendar'
 import { numeriSettimana, testoSettimana, periodo, checkSettimana, salvaCheck, aggiungiFoto, togliFoto, settimanaCorrente } from '../rs/settimana'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
@@ -39,6 +40,7 @@ export function RsScreen() {
   const [impostazioni, setImpostazioni] = useState(false)
   const [sezione, setSezione] = useState<'giornata'|'allenamento'|'settimana'>('giornata')
   const [inModifica, setInModifica] = useState<RsCampo | null>(null)
+  const [calendario, setCalendario] = useState(false)
 
   const inizio = user?.rsStart ?? RS_START_DEFAULT
   const attivo = user?.rsActive ?? true
@@ -85,12 +87,21 @@ export function RsScreen() {
         ))}
       </div>
 
+      {calendario && (
+        <DayCalendar date={date} onPick={(d) => { if (d <= todayLocal()) setDate(d); setCalendario(false) }}
+          onClose={() => setCalendario(false)} />
+      )}
+
       {sezione === 'settimana' && <CheckSettimanale inizio={inizio} />}
 
       {sezione !== 'settimana' && (
         <div className="row spread" style={{ marginTop: 2 }}>
           <button className="chip" onClick={() => setDate(shiftDate(date, -1))}>‹ giorno prima</button>
-          <span className="small">{date === todayLocal() ? 'oggi' : fmtData(date)}</span>
+          {/* La data si tocca e apre il calendario, come in Cibo: per tornare a
+              lunedi' scorso, un passo alla volta erano sei tocchi. */}
+          <button className="chip" style={{ fontSize: 13 }} onClick={() => setCalendario(true)}>
+            📅 {date === todayLocal() ? 'oggi' : fmtData(date)}
+          </button>
           <button className="chip" disabled={date >= todayLocal()} onClick={() => setDate(shiftDate(date, 1))}>giorno dopo ›</button>
         </div>
       )}

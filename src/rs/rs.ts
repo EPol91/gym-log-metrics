@@ -144,6 +144,15 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   // Il sale: i grammi delle righe «Sale» — spuntate, se la giornata e' del
   // coach. L'acqua la segni col bicchiere. Quello che scrivi a mano vince.
   const nutri = await getNutrition(date)
+
+  // Che giornata hai seguito. E' la stessa scelta che fai in Cibo — qui si
+  // riporta e basta. Il virus davanti al nome e' un segno mio, serve a me per
+  // distinguere le sue giornate dalle tue: a lui va il nome e basta.
+  if (nutri?.dayType) {
+    const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
+    if (tipo) out.giornata = tipo.name.replace(/^🦠\s*/, '')
+  }
+
   const sale = stato.attiva ? stato.saleG : await saleDelDiario(date)
   out.acqua = num(nutri?.water, 2)
   // Il valore scritto a mano vale se c'e' davvero: uno zero salvato una volta

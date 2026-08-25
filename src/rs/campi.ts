@@ -5,7 +5,7 @@
 // non ci sarà niente da tradurre.
 
 export type RsCampo =
-  | 'peso' | 'precisione' | 'sale' | 'acqua' | 'pasti_extra' | 'kcal' | 'pro' | 'cho' | 'fat'
+  | 'giornata' | 'peso' | 'precisione' | 'sale' | 'acqua' | 'pasti_extra' | 'kcal' | 'pro' | 'cho' | 'fat'
   | 'appetito' | 'problemi_dig' | 'dettagli_dig'
   | 'passi' | 'cardio_min' | 'cardio_fc' | 'workout' | 'aderenza_logistica'
   | 'motivazione' | 'perf_up' | 'doms' | 'energia' | 'stress' | 'malattia'
@@ -34,6 +34,9 @@ export const GRUPPI: { key: RsGruppo; label: string }[] = [
 ]
 
 export const CAMPI: RsDefinizione[] = [
+  // Prima di tutto il resto: senza sapere se era una LOW o una HIGH, i macro
+  // qui sotto non si leggono. La scegli in Cibo, questa la riporta.
+  { key: 'giornata', label: 'Giornata seguita', gruppo: 'nutrizione', tipo: 'testo', auto: true },
   { key: 'peso', label: 'Peso (kg)', gruppo: 'nutrizione', tipo: 'numero', auto: true },
   { key: 'precisione', label: 'Precisione nutri (%)', gruppo: 'nutrizione', tipo: 'numero', auto: true },
   { key: 'sale', label: 'Sale (g)', gruppo: 'nutrizione', tipo: 'numero', auto: true },
