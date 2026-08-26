@@ -1,6 +1,7 @@
 // Readiness Score — chiesto a inizio workout. Vedi SCORE_FORMULE.md §1.
-// Base = 35% sonno + 25% stanchezza + 20% indolenzimento + 20% energia, poi × aggiustamento carico (ACWR).
-// Sedute vecchie senza indolenzimento → vecchia formula 40/35/25 (nessun ricalcolo che sposti lo storico).
+// Base = 30% sonno + 25% stanchezza + 20% indolenzimento + 15% energia + 10% stress, poi × aggiustamento carico (ACWR).
+// Check senza stress → formula 35/25/20/20; senza indolenzimento → 40/35/25. Ogni epoca
+// tiene la sua: ricalcolare con dati mai raccolti sposterebbe lo storico inventando.
 import { clamp } from '../metrics/metrics'
 import type { ReadinessCheck } from '../db/schema'
 import type { ScoreResult } from './types'
@@ -32,9 +33,20 @@ export function computeReadiness(
   if (!check) {
     return { value: null, reliability: 'insufficiente', note: 'Check pre-workout non compilato.' }
   }
+  /**
+   * Tre formule, una per epoca. Ognuna vale per i check che hanno davvero
+   * risposto a quelle domande: ricalcolare all'indietro con una formula che
+   * usa dati mai raccolti vorrebbe dire spostare lo storico inventando.
+   *
+   * Lo stress entra perche' e' recupero mancato, e sul corpo pesa come una
+   * notte storta. La motivazione no: e' spinta, non recupero — con quella
+   * dentro, un corpo a pezzi in una bella giornata risulterebbe pronto.
+   */
   const base = check.soreness == null
     ? 0.4 * check.sleep + 0.35 * check.fatigue + 0.25 * check.energy // sedute vecchie: formula originale
-    : 0.35 * check.sleep + 0.25 * check.fatigue + 0.2 * check.soreness + 0.2 * check.energy
+    : check.stress == null
+      ? 0.35 * check.sleep + 0.25 * check.fatigue + 0.2 * check.soreness + 0.2 * check.energy
+      : 0.3 * check.sleep + 0.25 * check.fatigue + 0.2 * check.soreness + 0.15 * check.energy + 0.1 * check.stress
 
   const parts = check.soreness == null
     ? [
@@ -42,12 +54,20 @@ export function computeReadiness(
       { label: 'Stanchezza', value: check.fatigue, weight: 0.35 },
       { label: 'Energia', value: check.energy, weight: 0.25 },
     ]
-    : [
-      { label: 'Sonno', value: check.sleep, weight: 0.35 },
-      { label: 'Stanchezza', value: check.fatigue, weight: 0.25 },
-      { label: 'Indolenzimento', value: check.soreness, weight: 0.2 },
-      { label: 'Energia', value: check.energy, weight: 0.2 },
-    ]
+    : check.stress == null
+      ? [
+        { label: 'Sonno', value: check.sleep, weight: 0.35 },
+        { label: 'Stanchezza', value: check.fatigue, weight: 0.25 },
+        { label: 'Indolenzimento', value: check.soreness, weight: 0.2 },
+        { label: 'Energia', value: check.energy, weight: 0.2 },
+      ]
+      : [
+        { label: 'Sonno', value: check.sleep, weight: 0.3 },
+        { label: 'Stanchezza', value: check.fatigue, weight: 0.25 },
+        { label: 'Indolenzimento', value: check.soreness, weight: 0.2 },
+        { label: 'Energia', value: check.energy, weight: 0.15 },
+        { label: 'Stress', value: check.stress, weight: 0.1 },
+      ]
 
   // Aggiustamento carico solo con almeno 14 giorni di storico.
   if (load && load.historyDays >= 14) {

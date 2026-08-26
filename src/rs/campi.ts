@@ -57,11 +57,12 @@ export const CAMPI: RsDefinizione[] = [
   { key: 'workout', label: 'Sessione allenamento', gruppo: 'attivita', tipo: 'testo', auto: true },
   { key: 'aderenza_logistica', label: 'Aderenza logistica (%)', gruppo: 'attivita', tipo: 'numero', auto: false },
 
-  { key: 'motivazione', label: 'Motivazione (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: false },
+  // Motivazione e stress ora li dici nel check del giorno: qui arrivano da soli.
+  { key: 'motivazione', label: 'Motivazione (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: true },
   { key: 'perf_up', label: 'Aumento prestazione', gruppo: 'biofeedback', tipo: 'sinoo', auto: true },
   { key: 'doms', label: 'Dolori muscolari DOMS (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: true },
   { key: 'energia', label: 'Energia (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: true },
-  { key: 'stress', label: 'Stress (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: false },
+  { key: 'stress', label: 'Stress (1-5)', gruppo: 'biofeedback', tipo: 'scala5', auto: true },
   { key: 'malattia', label: 'Malattia', gruppo: 'biofeedback', tipo: 'sinoo', auto: false },
 
   { key: 'ora_letto', label: 'Ora a letto', gruppo: 'sonno', tipo: 'ora', auto: true },

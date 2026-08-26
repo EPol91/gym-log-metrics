@@ -204,6 +204,11 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   if (check?.check) {
     out.energia = a5(check.check.energy)
     if (check.check.soreness != null) out.doms = a5inv(check.check.soreness)
+    // Stress e motivazione: prima li scrivevi qui a mano dopo averli gia' detti
+    // nel check. Sulla sua scala 5 = tanto, quindi lo stress si rovescia come i
+    // DOMS — da noi 100 vuol dire «per niente».
+    if (check.check.stress != null) out.stress = a5inv(check.check.stress)
+    if (check.check.motivation != null) out.motivazione = a5(check.check.motivation)
   }
 
   const w = await whoopDay(date)

@@ -1,6 +1,6 @@
 // Scale del check pre-workout (vedi SCORE_FORMULE.md). Ogni opzione mappa a 0-100.
 export interface OptScale {
-  key: 'sleep' | 'fatigue' | 'soreness' | 'energy'
+  key: 'sleep' | 'fatigue' | 'soreness' | 'energy' | 'stress' | 'motivation'
   label: string
   /**
    * Cosa misura davvero, in una riga.
@@ -45,6 +45,22 @@ export const READINESS_QUESTIONS: OptScale[] = [
     options: [
       { text: 'Scarica', value: 0 }, { text: 'Poca', value: 25 },
       { text: 'Media', value: 50 }, { text: 'Buona', value: 75 }, { text: 'Al massimo', value: 100 },
+    ],
+  },
+  {
+    key: 'stress', label: '🧠 Quanto sei sotto stress?',
+    aiuto: 'Testa e vita fuori dalla palestra: lavoro, casa, pensieri. Pesa sul recupero come una notte storta.',
+    options: [
+      { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
+      { text: 'Medio', value: 50 }, { text: 'Molto', value: 25 }, { text: 'Sotto pressione', value: 0 },
+    ],
+  },
+  {
+    key: 'motivation', label: '🔥 Quanta voglia di allenarti hai?',
+    aiuto: 'La voglia, non la forza. Non tocca il Readiness — è spinta, non recupero — ma al coach interessa.',
+    options: [
+      { text: 'Nessuna', value: 0 }, { text: 'Poca', value: 25 },
+      { text: 'Media', value: 50 }, { text: 'Buona', value: 75 }, { text: 'Carichissimo', value: 100 },
     ],
   },
 ]

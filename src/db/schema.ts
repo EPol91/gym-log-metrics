@@ -169,6 +169,21 @@ export interface ReadinessCheck {
   fatigue: number // 0-100 (già invertito: 100 = nessuna stanchezza sistemica)
   soreness?: number // 0-100 (già invertito: 100 = nessun indolenzimento/DOMS). Assente nelle sedute pre-2026-07.
   energy: number // 0-100
+  /**
+   * 0-100, già invertito: 100 = per niente stressato.
+   *
+   * Assente nei check di prima: senza, il Readiness resta sulla formula vecchia
+   * — un punteggio che si sposta da solo sullo storico non è un miglioramento,
+   * è un confronto rotto.
+   */
+  stress?: number
+  /**
+   * 0-100: la voglia di allenarti. NON entra nel Readiness: è spinta, non
+   * recupero. Un corpo distrutto in una bella giornata resta un corpo distrutto,
+   * e sommarla all'energia sarebbe contare due volte la stessa cosa. Serve al
+   * coach e a leggere la giornata.
+   */
+  motivation?: number
 }
 
 /**

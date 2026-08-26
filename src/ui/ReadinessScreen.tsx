@@ -9,7 +9,7 @@ import { PesoOggi } from './PesoOggi'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReadinessCheck } from '../db/schema'
 
-type Answers = Partial<Record<'sleep' | 'fatigue' | 'soreness' | 'energy', number>>
+type Answers = Partial<Record<'sleep' | 'fatigue' | 'soreness' | 'energy' | 'stress' | 'motivation', number>>
 
 /**
  * Check "come stai oggi".
@@ -49,14 +49,20 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
     let alive = true
     getTodayReadiness().then((c) => {
       if (!alive || !c) return
-      setA({ sleep: c.sleep, fatigue: c.fatigue, soreness: c.soreness, energy: c.energy })
+      setA({ sleep: c.sleep, fatigue: c.fatigue, soreness: c.soreness, energy: c.energy, stress: c.stress, motivation: c.motivation })
       setPrefilled(true)
     })
     return () => { alive = false }
   }, [])
 
+  // Stress e motivazione non bloccano il salvataggio: sono arrivate dopo, e un
+  // check a meta' e' comunque meglio di un check saltato.
   const complete = a.sleep != null && a.fatigue != null && a.soreness != null && a.energy != null
-  const answer = (): ReadinessCheck => ({ sleep: a.sleep!, fatigue: a.fatigue!, soreness: a.soreness!, energy: a.energy! })
+  const answer = (): ReadinessCheck => ({
+    sleep: a.sleep!, fatigue: a.fatigue!, soreness: a.soreness!, energy: a.energy!,
+    ...(a.stress != null ? { stress: a.stress } : {}),
+    ...(a.motivation != null ? { motivation: a.motivation } : {}),
+  })
   const preview = complete ? computeReadiness(answer(), null) : null
 
   async function confirm() {
