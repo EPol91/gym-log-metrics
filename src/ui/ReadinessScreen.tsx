@@ -121,6 +121,9 @@ export function ReadinessScreen({ onStart, mode = 'workout', onCancel }: {
       {READINESS_QUESTIONS.map((q) => (
         <div className="card" key={q.key}>
           <label className="fl">{q.label}</label>
+          {/* Una riga sotto la domanda: senza, stanchezza ed energia sembrano
+              la stessa cosa chiesta due volte. */}
+          <p className="muted" style={{ fontSize: 11, margin: '0 0 8px', lineHeight: 1.4 }}>{q.aiuto}</p>
           <div className="opts">
             {q.options.map((o) => (
               <button
