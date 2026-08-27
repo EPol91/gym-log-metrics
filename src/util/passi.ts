@@ -190,6 +190,43 @@ export function nomeSorgente(id?: string | null): string {
   return ultimo.charAt(0).toUpperCase() + ultimo.slice(1)
 }
 
+
+/**
+ * Chi conta i passi di una giornata, quando piu' app li hanno contati.
+ *
+ * Comanda il WHOOP: nei giorni chiusi il suo totale vince sempre, anche quando
+ * e' piu' basso di quello del telefono. E' il dato definitivo, non una gara a
+ * chi fa il numero piu' grosso — e la fascia sta al polso anche quando il
+ * telefono resta sul tavolo (o viaggia in tasca contando passi che non hai
+ * fatto).
+ *
+ * OGGI e' l'eccezione: il WHOOP chiude la giornata col sonno, quindi finche' e'
+ * in corso non ha ancora scritto niente. Vale il massimo fra le sorgenti, cioe'
+ * quella che ti stava addosso davvero. Non la somma: orologio e telefono
+ * contano gli stessi passi, sommarli li raddoppia. Stanotte arriva il totale
+ * della fascia e riscrive la riga — la rilettura ripassa sempre dai giorni
+ * recenti, quindi il ripiego dura al massimo una notte.
+ *
+ * Una sorgente scelta da te in Profilo comanda su tutto, WHOOP compreso: se l'hai
+ * scelta, e' perche' sai tu qual e' quella giusta.
+ */
+export function scegliSorgente(
+  perGiorno: Map<string, number> | undefined,
+  inCorso: boolean,
+  sorgente?: string,
+): { passi: number; da?: string } {
+  if (!perGiorno) return { passi: 0 }
+  const migliore = () => {
+    let quale: string | undefined, quanto = 0
+    for (const [k, v] of perGiorno) if (v > quanto) { quanto = v; quale = k }
+    return { passi: quanto, ...(quale ? { da: quale } : {}) }
+  }
+  if (sorgente) return { passi: perGiorno.get(sorgente) ?? 0, da: sorgente }
+  if (inCorso) return migliore()
+  for (const [k, v] of perGiorno) if (/whoop/i.test(k) && v > 0) return { passi: v, da: k }
+  return migliore()
+}
+
 /** `da` e' l'identificativo dell'app, `nome` come si chiama sul telefono. */
 export interface GiornoPassi { date: string; passi: number; da?: string; nome?: string }
 
@@ -287,31 +324,9 @@ export async function leggiPassi(daISO: string, aISO: string, sorgente?: string)
         per.set(g, perGiorno)
       }
 
-      /**
-       * Il valore di una giornata.
-       *
-       * Nei giorni passati comanda il WHOOP — o la sorgente che hai scelto — e
-       * basta: e' il dato definitivo. OGGI il WHOOP non ha ancora scritto
-       * niente, perche' chiude la giornata col sonno: allora vale il MASSIMO
-       * fra le sorgenti, cioe' quella che ti stava addosso davvero. Non la
-       * somma: orologio e telefono contano gli stessi passi, sommarli li
-       * raddoppia. Stanotte il WHOOP arriva e prende il suo posto.
-       */
       const oggi = giornoLocale(new Date().toISOString())
-      /** Il valore della giornata E chi l'ha contata: al grafico serve sapere
-       *  quali barre vengono dal WHOOP e quali da un ripiego. */
-      const valore = (g: string): { passi: number; da?: string } => {
-        const perGiorno = per.get(g)
-        if (!perGiorno) return { passi: 0 }
-        const migliore = () => {
-          let quale: string | undefined, quanto = 0
-          for (const [k, v] of perGiorno) if (v > quanto) { quanto = v; quale = k }
-          return { passi: quanto, ...(quale ? { da: quale } : {}) }
-        }
-        if (g === oggi) return migliore()
-        if (sorgente) return { passi: perGiorno.get(sorgente) ?? 0, da: sorgente }
-        return migliore()
-      }
+      const valore = (g: string) => scegliSorgente(per.get(g), g === oggi, sorgente)
+
       if (per.size) {
         // Anche i giorni rimasti a zero: servono a correggere un valore vecchio
         // sbagliato invece di lasciarlo li'.
