@@ -154,7 +154,7 @@ function AppScreens() {
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
             onOpenCheck={() => push({ check: true })}
             onGo={(dove, sezione) => push({ tab: dove, seduta: null, salute: sezione ?? null, salutePasso: navRef.current.salutePasso + 1 })}
-            onApriSeduta={(id) => push({ tab: 'health', seduta: id })}
+            onApriSeduta={(id) => push({ tab: 'train', seduta: id })}
           />
         )}
         {nav.tab === 'train' && (nav.exercise
@@ -162,9 +162,10 @@ function AppScreens() {
           : <TrainScreen
             onStartWorkout={() => push({ workingOut: true, resumeId: null })}
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
-            onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })} />)}
+            onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })}
+            apriSeduta={nav.seduta} />)}
         {nav.tab === 'food' && <DietScreen />}
-        {nav.tab === 'health' && <HealthScreen apriSeduta={nav.seduta} vai={nav.salute} vaiNonce={nav.salutePasso} onReopen={(id) => push({ workingOut: true, resumeId: id })} />}
+        {nav.tab === 'health' && <HealthScreen vai={nav.salute} vaiNonce={nav.salutePasso} />}
         {nav.tab === 'rs' && <RsScreen />}
         {nav.tab === 'profile' && (
           <ProfileScreen
