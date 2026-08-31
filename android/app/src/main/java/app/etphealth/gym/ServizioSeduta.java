@@ -207,8 +207,9 @@ public class ServizioSeduta extends Service {
     // Con le cuffie collegate il beep diventa audio normale, che segue il
     // percorso delle cuffie e basta. Senza cuffie resta sveglia: cosi' regge
     // col volume dei media a zero e col telefono in tasca.
+    boolean cuffie = inCuffia(am);
     AudioAttributes attributi = new AudioAttributes.Builder()
-        .setUsage(inCuffia(am) ? AudioAttributes.USAGE_MEDIA : AudioAttributes.USAGE_ALARM)
+        .setUsage(cuffie ? AudioAttributes.USAGE_MEDIA : AudioAttributes.USAGE_ALARM)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build();
 
@@ -238,7 +239,11 @@ public class ServizioSeduta extends Service {
           .setTransferMode(AudioTrack.MODE_STATIC)
           .build();
       tr.write(pcm, 0, pcm.length);
-      tr.setVolume(AudioTrack.getMaxVolume());
+      // In cuffia il beep te lo ritrovi dentro l'orecchio, non a mezzo metro:
+      // a volume pieno spacca i timpani. Un terzo basta e avanza, tanto la
+      // musica in quel momento e' gia' abbassata dal ducking. Dall'altoparlante
+      // resta pieno: li' il telefono e' in tasca e deve bucare la sala.
+      tr.setVolume(cuffie ? AudioTrack.getMaxVolume() * 0.33f : AudioTrack.getMaxVolume());
       tr.play();
       // Il lettore si butta quando ha finito, non prima: rilasciarlo subito
       // taglierebbe il suono a meta'.
