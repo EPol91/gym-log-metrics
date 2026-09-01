@@ -104,9 +104,11 @@ function CardioRow({ c, age, restingHr, maxHr, hrSeduta }: { c: CardioSession; a
   )
 }
 
-export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
+export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }: {
   sessionId: string; flushRef?: React.MutableRefObject<(() => Promise<void>) | null>
   open: boolean; onOpenChange: (b: boolean) => void
+  /** Chiudere la seduta da qui: senza, per finire dovevi prima uscire dal cardio. */
+  onFine?: () => void
 }) {
   const list = useLiveQuery(() => cardioOf(sessionId), [sessionId]) ?? []
   // Le letture stanno sulla seduta: il cardio ci pesca dentro la sua finestra.
@@ -367,6 +369,16 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange }: {
 
                 {list.length > 0 && <label className="fl">In questa seduta</label>}
                 {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} />)}
+
+                {/* Finire da qui: prima toccava chiudere il cardio, tornare agli
+                    esercizi e cercare il tasto in fondo. Il cardio in sospeso lo
+                    salva chi chiude, come fa il tasto dell'altra schermata. */}
+                {onFine && (
+                  <button className="primary" style={{ marginTop: 6, padding: 13 }}
+                    onClick={() => { onOpenChange(false); onFine() }}>
+                    ✓ Fine allenamento
+                  </button>
+                )}
               </>
             )}
           </div>

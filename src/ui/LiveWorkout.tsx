@@ -1144,7 +1144,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
           onClose={() => setGrouping(null)} />
       )}
 
-      <CardioBlock sessionId={sessionId} flushRef={cardioFlush} open={cardioOpen} onOpenChange={setCardioOpen} />
+      <CardioBlock sessionId={sessionId} flushRef={cardioFlush} open={cardioOpen} onOpenChange={setCardioOpen} onFine={finishAll} />
 
       {notesOpen ? (
         <div className="card">
