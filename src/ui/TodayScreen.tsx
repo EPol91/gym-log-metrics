@@ -5,6 +5,7 @@ import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser, ge
 import { computeDiary, todayDiet, listDayTypes } from '../db/diet'
 import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
+import { cicloRs, GIORNI_CICLO } from '../rs/cicloSedute'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre, fmtData } from '../util/format'
@@ -294,10 +295,54 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
   onResume: (id: string) => void
 }) {
   const g = home?.weekGoal
+  // Il ciclo del coach, se lo stai seguendo: e' piu' preciso dell'obiettivo a
+  // finestra, perche' sa QUALE seduta tocca e se stai allungando.
+  const ciclo = useLiveQuery(() => cicloRs(), [])
+  const [storico, setStorico] = useState(false)
+  const scavalcate = ciclo?.passi.filter((p) => p.stato === 'scavalcata') ?? []
+
   return (
     <>
       <div className="row spread"><span style={LBL}>Allenamento</span><span className="muted small">≡</span></div>
-      {g && (
+
+      {ciclo ? (
+        <>
+          <div className="row spread small" style={{ marginTop: 8, alignItems: 'baseline' }}>
+            <span>
+              Ciclo {ciclo.numero}
+              {ciclo.prossima
+                ? <> · tocca <strong style={{ color: 'var(--gold)' }}>{ciclo.prossima}</strong></>
+                : <> · <span style={{ color: 'var(--good)' }}>chiuso</span></>}
+            </span>
+            <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{ciclo.fatte} / {ciclo.totale}</strong>
+          </div>
+
+          {/* Le cinque sedute in fila: a colpo d'occhio quali hai fatto, quale
+              tocca e quale hai scavalcato — che e' un'altra cosa dal ritardo. */}
+          <div className="row" style={{ gap: 4, marginTop: 7 }}>
+            {ciclo.passi.map((p) => (
+              <span key={p.codice} style={{
+                flex: 1, height: 18, borderRadius: 5, fontSize: 10,
+                display: 'grid', placeItems: 'center',
+                ...(p.stato === 'fatta' ? { background: 'var(--gold)', color: '#1a1400' }
+                  : p.stato === 'tocca' ? { background: 'var(--gold-bg)', border: '1px solid var(--gold)', color: 'var(--gold)' }
+                    : p.stato === 'scavalcata' ? { background: '#2a0e0c', border: '1px solid var(--rs)', color: 'var(--rs)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--muted)' }),
+              }}>{p.codice}</span>
+            ))}
+          </div>
+
+          <div className="muted" style={{ fontSize: 11, marginTop: 7 }}>
+            giorno {ciclo.giorno} di {ciclo.giorniPrevisti} ·{' '}
+            {scavalcate.length > 0
+              ? <span style={{ color: 'var(--rs)' }}>{scavalcate.map((p) => p.codice).join(', ')} da recuperare</span>
+              : ciclo.oltre > 0
+                ? <span style={{ color: '#e0a030' }}>+{ciclo.oltre} · lo chiudi in ritardo, non lo perdi</span>
+                : <span style={{ color: 'var(--good)' }}>nei tempi</span>}
+            {ciclo.ultima && ` · ultima ${ciclo.ultima.codice} il ${ciclo.ultima.date.slice(8)}.${ciclo.ultima.date.slice(5, 7)}`}
+          </div>
+        </>
+      ) : g && (
         <>
           <div className="row spread small" style={{ marginTop: 8 }}>
             <span className="muted">Obiettivo ciclo <span style={{ opacity: .7 }}>· giorno {g.giorno} di {g.giorni}</span></span>
@@ -308,15 +353,67 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
           </div>
         </>
       )}
-      {home?.lastSession && (
+
+      {!ciclo && home?.lastSession && (
         <div className="muted small" style={{ marginTop: 6 }}>
           Ultima: {home.lastSession.type} · {fmtData(home.lastSession.date)}
         </div>
       )}
+
       {ongoing ? (
         <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
       ) : (
-        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={onStart}>＋ Inizia allenamento</button>
+        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={onStart}>
+          {scavalcate.some((p) => p.codice === ciclo?.prossima)
+            ? `＋ Recupera ${ciclo!.prossima}`
+            : `＋ Inizia${ciclo?.prossima ? ' ' + ciclo.prossima : ' allenamento'}`}
+        </button>
+      )}
+
+      {/* I cicli chiusi si guardano ogni tanto, non ogni giorno: stanno qui
+          dentro, chiusi, invece di rubare mezzo schermo tutti i giorni. */}
+      {ciclo && ciclo.chiusi.length > 0 && (
+        <div style={{ marginTop: 9, borderTop: '1px solid var(--line)', paddingTop: 7 }}>
+          <button onClick={() => setStorico((v) => !v)}
+            style={{ width: '100%', background: 'none', border: 0, padding: 0, textAlign: 'left' }}>
+            <span className="row spread muted" style={{ fontSize: 11 }}>
+              <span>Cicli chiusi</span><span>{storico ? '▴' : '▾'}</span>
+            </span>
+          </button>
+          {storico && (
+            <>
+              <div className="row" style={{ gap: 10, marginTop: 9, textAlign: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={NUM}>{ciclo.storico.inTempo}</div>
+                  <div className="muted" style={{ fontSize: 10 }}>nei tempi</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...NUM, color: '#e0a030' }}>{ciclo.storico.allungati}</div>
+                  <div className="muted" style={{ fontSize: 10 }}>allungati</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...NUM, color: 'var(--text)' }}>{ciclo.storico.giorniMedi ?? '—'}</div>
+                  <div className="muted" style={{ fontSize: 10 }}>giorni medi</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...NUM, color: 'var(--rs)' }}>{ciclo.storico.saltate}</div>
+                  <div className="muted" style={{ fontSize: 10 }}>fuori ordine</div>
+                </div>
+              </div>
+              <div className="muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.6 }}>
+                {ciclo.chiusi.map((c) => (
+                  <div key={c.numero}>
+                    Ciclo {c.numero} · {c.giorni} giorni ·{' '}
+                    {c.giorni <= GIORNI_CICLO
+                      ? <span style={{ color: 'var(--good)' }}>nei tempi</span>
+                      : <span style={{ color: '#e0a030' }}>+{c.giorni - GIORNI_CICLO}</span>}
+                    {c.fuoriOrdine.length > 0 && ` · ${c.fuoriOrdine.join(', ')} fuori ordine`}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </>
   )

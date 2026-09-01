@@ -104,11 +104,11 @@ function Vitali() {
             { v: media((r) => r.recovery), l: 'recupero', s: '%' },
             { v: media((r) => r.hrv), l: 'HRV', s: '' },
             { v: media((r) => r.restingHr), l: 'FC riposo', s: '' },
-            { v: media((r) => r.sleepHours), l: 'sonno', s: 'h' },
+            { v: media((r) => r.sleepHours), l: 'sonno', s: 'h', ore: true },
           ].map((x) => (
             <div key={x.l} style={{ flex: 1, minWidth: 0 }}>
               <div style={{ color: 'var(--gold)', fontSize: 18, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                {x.v != null ? `${x.v}${x.s}` : '—'}
+                {x.v == null ? '—' : x.ore ? oreMinuti(x.v) : `${x.v}${x.s}`}
               </div>
               <div className="muted" style={{ fontSize: 10 }}>{x.l}</div>
             </div>
@@ -119,9 +119,9 @@ function Vitali() {
       <Grafico titolo="Recupero" righe={righe} sedute={d.sedute} prendi={(r) => r.recovery}
         colore="var(--gold)" suffisso="%" zone />
       <Grafico titolo="HRV" righe={righe} sedute={d.sedute} prendi={(r) => r.hrv}
-        colore="var(--prot)" suffisso=" ms" />
+        colore="var(--prot)" suffisso=" ms" bande />
       <Grafico titolo="Sonno" righe={righe} sedute={d.sedute} prendi={(r) => r.sleepHours}
-        colore="var(--gold-dim)" suffisso="h" barre />
+        colore="var(--gold-dim)" suffisso="h" barre media formato={oreMinuti} />
       <Grafico titolo="Sforzo" righe={righe} sedute={d.sedute} prendi={(r) => r.strain}
         colore="var(--carb)" suffisso="" />
 
@@ -151,7 +151,14 @@ function Vitali() {
  * Un grafico. Solo linee e rettangoli: niente archi, così non può deformarsi.
  * I giorni di allenamento sono trattini sotto l'asse, per leggerli insieme al dato.
  */
-function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre }: {
+/** Ore in ore e minuti: «7h04» si legge, «7.1h» va tradotto a mente ogni volta. */
+function oreMinuti(v: number): string {
+  const h = Math.floor(v)
+  const m = Math.round((v - h) * 60)
+  return m === 60 ? `${h + 1}h00` : `${h}h${String(m).padStart(2, '0')}`
+}
+
+function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre, bande, media, formato }: {
   titolo: string
   righe: WhoopDay[]
   sedute: Set<string>
@@ -160,6 +167,19 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre 
   suffisso: string
   zone?: boolean
   barre?: boolean
+  /**
+   * Bande sulla TUA normalità, non su una soglia universale.
+   *
+   * L'HRV non ha un "buono" valido per tutti: 48 ms puo' essere ottimo per te e
+   * scarso per un altro. Quindi la fascia normale e' media ± mezza deviazione
+   * del periodo che stai guardando, e i numeri si scrivono sotto: colorare
+   * senza dire rispetto a cosa sarebbe solo decorazione.
+   */
+  bande?: boolean
+  /** Riga tratteggiata sulla media del periodo. */
+  media?: boolean
+  /** Come si scrive un valore, quando il numero nudo non si legge (le ore). */
+  formato?: (v: number) => string
 }) {
   const W = 320, H = 88, pad = 6, base = H - 12
   const punti = righe.map((r, i) => ({ i, v: prendi(r), date: r.date })).filter((p) => p.v != null) as { i: number; v: number; date: string }[]
@@ -178,6 +198,12 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre 
   const x = (i: number) => pad + (i * (W - 2 * pad)) / Math.max(1, righe.length - 1)
   const y = (v: number) => pad + (1 - (v - min) / span) * (base - 2 * pad)
 
+  const mediaV = vals.reduce((a, b) => a + b, 0) / vals.length
+  const scarto = Math.sqrt(vals.reduce((a, b) => a + (b - mediaV) ** 2, 0) / vals.length)
+  const basso = mediaV - scarto / 2
+  const alto = mediaV + scarto / 2
+  const scrivi = (v: number) => (formato ? formato(v) : `${Math.round(v * 10) / 10}${suffisso}`)
+
   const ultimo = punti[punti.length - 1]
   const linea = punti.map((p, k) => `${k === 0 ? 'M' : 'L'} ${x(p.i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' ')
 
@@ -186,7 +212,8 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre 
       <div className="row spread" style={{ marginBottom: 4 }}>
         <span className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase' }}>{titolo}</span>
         <span className="small" style={{ color: colore, fontVariantNumeric: 'tabular-nums' }}>
-          {ultimo.v}{suffisso} <span className="muted">oggi</span>
+          {media && <span className="muted" style={{ marginRight: 8 }}>media {scrivi(mediaV)}</span>}
+          {scrivi(ultimo.v)} <span className="muted">oggi</span>
         </span>
       </div>
 
@@ -197,6 +224,17 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre 
             <rect x="0" y={y(100)} width={W} height={Math.max(0, y(66) - y(100))} fill="var(--good)" opacity=".07" />
             <rect x="0" y={y(34)} width={W} height={Math.max(0, y(0) - y(34))} fill="#e74c3c" opacity=".07" />
           </>
+        )}
+        {/* Bande personali: sopra la tua normalità e' verde, sotto e' rossa. */}
+        {bande && (
+          <>
+            <rect x="0" y={y(max)} width={W} height={Math.max(0, y(alto) - y(max))} fill="var(--good)" opacity=".07" />
+            <rect x="0" y={y(basso)} width={W} height={Math.max(0, y(min) - y(basso))} fill="#e74c3c" opacity=".07" />
+          </>
+        )}
+        {(media || bande) && (
+          <line x1="0" y1={y(mediaV)} x2={W} y2={y(mediaV)} stroke="var(--muted)" strokeWidth="1"
+            strokeDasharray="4 4" opacity=".7" />
         )}
         {barre
           ? punti.map((p) => (
@@ -215,9 +253,16 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre 
 
       <div className="row spread">
         <span className="muted" style={{ fontSize: 10 }}>{righe[0].date.slice(5)}</span>
-        <span className="muted" style={{ fontSize: 10 }}>min {min}{suffisso} · max {max}{suffisso}</span>
+        <span className="muted" style={{ fontSize: 10 }}>min {scrivi(min)} · max {scrivi(max)}</span>
         <span className="muted" style={{ fontSize: 10 }}>{righe[righe.length - 1].date.slice(5)}</span>
       </div>
+
+      {bande && (
+        <p className="muted" style={{ fontSize: 10, margin: '4px 0 0', lineHeight: 1.5 }}>
+          La tua normalità in questo periodo: <strong>{scrivi(basso)} – {scrivi(alto)}</strong>.
+          Sopra è verde, sotto è rosso — è il confronto con te, non con una soglia da manuale.
+        </p>
+      )}
     </div>
   )
 }
