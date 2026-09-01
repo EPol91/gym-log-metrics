@@ -5,7 +5,7 @@ import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser, ge
 import { computeDiary, todayDiet, listDayTypes } from '../db/diet'
 import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
-import { cicloRs, GIORNI_CICLO } from '../rs/cicloSedute'
+import { cicloRs, chiudiCicloAMano, annullaChiusuraAMano, GIORNI_CICLO } from '../rs/cicloSedute'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre, fmtData } from '../util/format'
@@ -299,6 +299,8 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
   // finestra, perche' sa QUALE seduta tocca e se stai allungando.
   const ciclo = useLiveQuery(() => cicloRs(), [])
   const [storico, setStorico] = useState(false)
+  // Solo per mostrare l'annulla subito dopo la chiusura: e' un ripensamento, non uno stato da salvare.
+  const [chiuso, setChiuso] = useState(false)
   const scavalcate = ciclo?.passi.filter((p) => p.stato === 'scavalcata') ?? []
 
   return (
@@ -309,7 +311,7 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
         <>
           <div className="row spread small" style={{ marginTop: 8, alignItems: 'baseline' }}>
             <span>
-              Ciclo {ciclo.numero}
+              Ciclo {ciclo.numero} <span className="muted" style={{ fontSize: 10 }}>dal {ciclo.dal.slice(8)}.{ciclo.dal.slice(5, 7)}</span>
               {ciclo.prossima
                 ? <> · tocca <strong style={{ color: 'var(--gold)' }}>{ciclo.prossima}</strong></>
                 : <> · <span style={{ color: 'var(--good)' }}>chiuso</span></>}
@@ -403,14 +405,33 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
               <div className="muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.6 }}>
                 {ciclo.chiusi.map((c) => (
                   <div key={c.numero}>
-                    Ciclo {c.numero} · {c.giorni} giorni ·{' '}
-                    {c.giorni <= GIORNI_CICLO
-                      ? <span style={{ color: 'var(--good)' }}>nei tempi</span>
-                      : <span style={{ color: '#e0a030' }}>+{c.giorni - GIORNI_CICLO}</span>}
+                    Ciclo {c.numero} · {c.dal.slice(8)}.{c.dal.slice(5, 7)}→{c.al.slice(8)}.{c.al.slice(5, 7)} · {c.giorni} giorni ·{' '}
+                    {c.aMano
+                      ? <span style={{ color: 'var(--muted)' }}>chiuso a mano · {c.fatte.length} su {ciclo.totale}</span>
+                      : c.giorni <= GIORNI_CICLO
+                        ? <span style={{ color: 'var(--good)' }}>nei tempi</span>
+                        : <span style={{ color: '#e0a030' }}>+{c.giorni - GIORNI_CICLO}</span>}
                     {c.fuoriOrdine.length > 0 && ` · ${c.fuoriOrdine.join(', ')} fuori ordine`}
                   </div>
                 ))}
               </div>
+
+              {/* Chiudere un giro saltato non e' barare: e' l'unico modo per non
+                  lasciare il conteggio appeso a un ciclo che non finirai mai. */}
+              <div className="row" style={{ gap: 6, marginTop: 10 }}>
+                <button className="chip" onClick={async () => { await chiudiCicloAMano(); setChiuso(true) }}>
+                  Chiudi qui il ciclo
+                </button>
+                {chiuso && (
+                  <button className="chip" onClick={async () => { await annullaChiusuraAMano(); setChiuso(false) }}>
+                    ↺ annulla
+                  </button>
+                )}
+              </div>
+              <p className="muted" style={{ fontSize: 10, margin: '5px 0 0', lineHeight: 1.5 }}>
+                Il ciclo si archivia com'è e il prossimo parte da domani. Serve quando un giro salta
+                del tutto o riparti da capo.
+              </p>
             </>
           )}
         </div>

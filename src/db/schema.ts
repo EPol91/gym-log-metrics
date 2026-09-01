@@ -84,6 +84,11 @@ export interface User extends BaseRecord {
   rsActive?: boolean
   /** Data d'inizio della settimana 1 del protocollo del coach. */
   rsStart?: ISODate
+  /**
+   * I cicli che hai chiuso a mano, per data: quando salti un giro o riparti da
+   * capo, il conteggio non si perde e riprende dal giorno dopo.
+   */
+  cicliChiusiAMano?: ISODate[]
   /** Chiedere conferma di RS al primo rientro della giornata. */
   rsAskDaily?: boolean
   /**

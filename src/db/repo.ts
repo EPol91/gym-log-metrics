@@ -416,7 +416,7 @@ export async function updateUser(
     onboarded?: boolean; waterTarget?: number; saltTarget?: number; sex?: 'm' | 'f'
     activityLevel?: ActivityLevel; bmrFormula?: BmrFormula; coachBlocks?: CoachBlock[]
     todayCards?: string[]; rsActive?: boolean; rsStart?: string; rsAskDaily?: boolean
-    suonoTimer?: string; volumeBip?: number
+    suonoTimer?: string; volumeBip?: number; cicliChiusiAMano?: string[]
     /** ciclizzazione carbo, sette lettere L/H da lunedi' */
     rsCiclo?: string
     cicloSedute?: number; cicloGiorni?: number; cicloInizio?: string
