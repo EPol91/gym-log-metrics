@@ -24,6 +24,10 @@ import android.os.VibratorManager;
 
 import androidx.core.app.NotificationCompat;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * La seduta che resta viva anche quando esci dall'app.
  *
@@ -54,6 +58,10 @@ public class ServizioSeduta extends Service {
   public static final String EXTRA_ISTANTI = "istanti"; // millisecondi da adesso
   public static final String EXTRA_TIPI = "tipi";       // via | riposo | fine
   public static final String EXTRA_TICK = "tick";       // quanti tic prima di ciascuno
+  /** Le note dei quattro segnali, scritte dalla pagina: {"tic":{...},"via":{...}} */
+  public static final String EXTRA_SUONO = "suono";
+  /** Quanto forte in cuffia, in centesimi. Dall'altoparlante resta pieno. */
+  public static final String EXTRA_VOLUME = "volume";
 
   /** Sei ore: nessuna seduta dura di piu', e un blocco dimenticato non deve prosciugare la batteria. */
   private static final long TETTO_MS = 6 * 60 * 60 * 1000L;
@@ -69,6 +77,9 @@ public class ServizioSeduta extends Service {
    */
   private final Handler manoAudio = new Handler(Looper.getMainLooper());
   private AudioFocusRequest fuocoAttivo;
+  /** L'ultima tabella dei suoni ricevuta. Vuota = le note di riserva qui sotto. */
+  private JSONObject suoni;
+  private int volumeCuffie = 35;
   private String testoCorrente = "Seduta in corso";
 
   @Override
@@ -98,6 +109,11 @@ public class ServizioSeduta extends Service {
       mano.removeCallbacksAndMessages(null);
       rilasciaFuoco();
     } else if (AZIONE_BIP.equals(azione)) {
+      String tabella = intent.getStringExtra(EXTRA_SUONO);
+      if (tabella != null) {
+        try { suoni = new JSONObject(tabella); } catch (JSONException e) { suoni = null; }
+      }
+      volumeCuffie = Math.max(0, Math.min(100, intent.getIntExtra(EXTRA_VOLUME, volumeCuffie)));
       programma(
           intent.getLongArrayExtra(EXTRA_ISTANTI),
           intent.getStringArrayExtra(EXTRA_TIPI),
@@ -146,31 +162,55 @@ public class ServizioSeduta extends Service {
   }
 
   /**
-   * Un segnale: suono sul canale sveglia + vibrazione.
+   * Un segnale: suono + vibrazione.
    *
-   * Il tono non arriva da ToneGenerator ma se lo scrive questo servizio, nota
-   * per nota: cosi' si sa esattamente com'e' fatto — onda quadra, che ha le
-   * armoniche acute che bucano la musica dove un fischio pulito sparisce — e
-   * non dipende da un pezzo di Android che ogni tanto resta muto senza dirlo.
+   * Le note non stanno qui: arrivano dalla pagina insieme ai tempi, perche' il
+   * suono lo scegli tu e deve essere lo stesso dentro e fuori dall'app. Quelle
+   * scritte sotto sono solo la riserva per il caso — raro — in cui il servizio
+   * riparta da solo senza aver ancora ricevuto niente.
    */
   private void suona(String tipo) {
+    if (suoni != null) {
+      JSONObject v = suoni.optJSONObject(tipo);
+      if (v != null) { suonaVoce(v); return; }
+    }
     switch (tipo) {
       case "tic":
-        nota(new int[][]{{1000, 90}});
+        nota(new int[][]{{1000, 90}}, "square", false);
         vibra(new long[]{0, 30});
         break;
       case "riposo":
-        nota(new int[][]{{660, 170}, {0, 30}, {480, 300}});
+        nota(new int[][]{{660, 170}, {0, 30}, {480, 300}}, "square", false);
         vibra(new long[]{0, 140});
         break;
       case "fine":
-        nota(new int[][]{{784, 180}, {988, 180}, {1175, 180}, {0, 60}, {1568, 550}});
+        nota(new int[][]{{784, 180}, {988, 180}, {1175, 180}, {0, 60}, {1568, 550}}, "square", false);
         vibra(new long[]{0, 150, 70, 250, 70, 250});
         break;
       default: // via
-        nota(new int[][]{{1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1600, 520}});
+        nota(new int[][]{{1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1320, 160}, {0, 70}, {1600, 520}}, "square", false);
         vibra(new long[]{0, 200, 80, 200, 80, 200});
         break;
+    }
+  }
+
+  /** Una voce come l'ha scritta la pagina: note, forma dell'onda, coda, vibrazione. */
+  private void suonaVoce(JSONObject v) {
+    JSONArray note = v.optJSONArray("note");
+    if (note != null) {
+      int[][] seq = new int[note.length()][2];
+      for (int i = 0; i < note.length(); i++) {
+        JSONArray n = note.optJSONArray(i);
+        seq[i][0] = n == null ? 0 : n.optInt(0, 0);
+        seq[i][1] = n == null ? 0 : n.optInt(1, 0);
+      }
+      nota(seq, v.optString("onda", "square"), v.optBoolean("decadi", false));
+    }
+    JSONArray vib = v.optJSONArray("vibra");
+    if (vib != null) {
+      long[] schema = new long[vib.length()];
+      for (int i = 0; i < vib.length(); i++) schema[i] = vib.optLong(i, 0);
+      vibra(schema);
     }
   }
 
@@ -191,7 +231,7 @@ public class ServizioSeduta extends Service {
    * secondo. Senza, il beep parte davvero ma finisce sotto la canzone — che e'
    * esattamente come suonava prima.
    */
-  private void nota(int[][] sequenza) {
+  private void nota(int[][] sequenza, String forma, boolean decadi) {
     int durataMs = 0;
     for (int[] n : sequenza) durataMs += n[1];
 
@@ -227,7 +267,7 @@ public class ServizioSeduta extends Service {
     manoAudio.removeCallbacksAndMessages(null);
 
     try {
-      byte[] pcm = onda(sequenza);
+      byte[] pcm = onda(sequenza, forma, decadi);
       AudioTrack tr = new AudioTrack.Builder()
           .setAudioAttributes(attributi)
           .setAudioFormat(new AudioFormat.Builder()
@@ -243,7 +283,7 @@ public class ServizioSeduta extends Service {
       // a volume pieno spacca i timpani. Un terzo basta e avanza, tanto la
       // musica in quel momento e' gia' abbassata dal ducking. Dall'altoparlante
       // resta pieno: li' il telefono e' in tasca e deve bucare la sala.
-      tr.setVolume(cuffie ? AudioTrack.getMaxVolume() * 0.33f : AudioTrack.getMaxVolume());
+      tr.setVolume(cuffie ? AudioTrack.getMaxVolume() * (volumeCuffie / 100f) : AudioTrack.getMaxVolume());
       tr.play();
       // Il lettore si butta quando ha finito, non prima: rilasciarlo subito
       // taglierebbe il suono a meta'.
@@ -281,8 +321,14 @@ public class ServizioSeduta extends Service {
     return false;
   }
 
-  /** La sequenza scritta come onda quadra, con attacco e coda smussati. */
-  private byte[] onda(int[][] sequenza) {
+  /**
+   * La sequenza scritta come onda, con attacco e coda smussati.
+   *
+   * La forma cambia il carattere: quadra e' ricca di acuti e buca la musica,
+   * sinusoide e' tonda, triangolare sta in mezzo. Col decadimento la nota si
+   * spegne mentre suona — e' quello che distingue una campana da un beep.
+   */
+  private byte[] onda(int[][] sequenza, String forma, boolean decadi) {
     int totale = 0;
     for (int[] n : sequenza) totale += (int) (CAMPIONI * (n[1] / 1000.0));
     byte[] out = new byte[totale * 2];
@@ -298,9 +344,16 @@ public class ServizioSeduta extends Service {
         double v = 0;
         if (freq > 0) {
           double fase = (c * freq / (double) CAMPIONI) % 1.0;
-          v = fase < 0.5 ? 1.0 : -1.0;              // onda quadra: ricca di acuti
+          if ("sine".equals(forma)) {
+            v = Math.sin(2 * Math.PI * fase);
+          } else if ("triangle".equals(forma)) {
+            v = fase < 0.5 ? (4 * fase - 1) : (3 - 4 * fase);
+          } else {
+            v = fase < 0.5 ? 1.0 : -1.0;            // quadra: ricca di acuti
+          }
+          if (decadi) v *= Math.pow(1.0 - (c / (double) campioni), 2.2);
           if (c < rampa) v *= c / (double) rampa;
-          if (c > campioni - rampa) v *= (campioni - c) / (double) rampa;
+          if (!decadi && c > campioni - rampa) v *= (campioni - c) / (double) rampa;
         }
         short s = (short) (v * 0.85 * Short.MAX_VALUE);
         out[i * 2] = (byte) (s & 0xff);

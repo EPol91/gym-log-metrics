@@ -21,10 +21,12 @@
  */
 export interface Bip { ms: number; tipo: 'via' | 'riposo' | 'fine'; tick?: number }
 
+import { sceltaCorrente } from './suoni'
+
 interface Servizio {
   accendi(o: { testo?: string }): Promise<void>
   spegni(): Promise<void>
-  programmaBip(o: { bip: Bip[] }): Promise<void>
+  programmaBip(o: { bip: Bip[]; suono?: string; volume?: number }): Promise<void>
   annullaBip(): Promise<void>
 }
 
@@ -83,7 +85,10 @@ function invia(): void {
   const p = plugin()
   if (!p?.programmaBip) return
   const tutti = [...fonti.values()].flat().filter((b) => b.ms > 0)
-  if (tutti.length) void p.programmaBip({ bip: tutti }).catch(() => { /* pazienza */ })
+  // Le note viaggiano col comando: il servizio non ha una sua lista di suoni, e
+  // cosi' non puo' esistere il caso «in palestra ne senti uno, in mano un altro».
+  const { suono, volume } = sceltaCorrente()
+  if (tutti.length) void p.programmaBip({ bip: tutti, suono: JSON.stringify(suono.voci), volume }).catch(() => { /* pazienza */ })
   else void p.annullaBip?.().catch(() => { /* pazienza */ })
 }
 

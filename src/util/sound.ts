@@ -56,13 +56,15 @@ function buzz(pattern: number | number[]) {
 type Wave = 'sine' | 'triangle' | 'square' | 'sawtooth'
 
 // Nota con doppio oscillatore (fondamentale + ottava): più ricca di armoniche acute → buca meglio.
-function note(c: AudioContext & { _bus?: GainNode }, freq: number, start: number, dur: number, gain = 0.6, type: Wave = 'square') {
+function note(c: AudioContext & { _bus?: GainNode }, freq: number, start: number, dur: number, gain = 0.6, type: Wave = 'square', decadi = false) {
   const dest = c._bus ?? c.destination
   const t = c.currentTime + start
   const g = c.createGain(); g.connect(dest)
   g.gain.setValueAtTime(0.0001, t)
   g.gain.exponentialRampToValueAtTime(gain, t + 0.006)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+  // Con la coda che si spegne il calo comincia subito e dura tutta la nota: e'
+  // quello che fa sembrare una campana quella che altrimenti e' un beep.
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (decadi ? dur * 0.98 : dur))
   for (const [f, gy] of [[freq, 1], [freq * 2, 0.5]] as const) {
     const o = c.createOscillator(); const og = c.createGain()
     o.type = type; o.frequency.value = f; og.gain.value = gy
@@ -70,34 +72,46 @@ function note(c: AudioContext & { _bus?: GainNode }, freq: number, start: number
   }
 }
 
-/** Tick del conto alla rovescia: acuto e squadrato per bucare la musica. */
-export function tick() { const c = ctx(); if (c) note(c, 1000, 0, 0.09, 0.7) }
 
-/** Fine recupero / inizio lavoro: allarme deciso a beep ripetuti + vibrazione forte. */
-export function goSound() {
+// --- Quale suono, e quanto forte ------------------------------------------
+//
+// La scelta sta nel profilo, ma qui dentro non si legge il database: chi la sa
+// la passa (all'avvio e a ogni cambio). Cosi' questo file resta quello che e' —
+// un pezzo di audio — e non si porta dietro mezza app.
+
+import { impostaScelta, sceltaCorrente, suonoDi, type Voce } from './suoni'
+
+export const impostaSuono = impostaScelta
+
+/**
+ * Suona una voce del suono scelto (o di un altro, per l'anteprima).
+ *
+ * Il volume qui e' quello della manopola: dentro l'app l'audio esce dalle
+ * cuffie come qualsiasi altro suono, quindi vale la stessa regola del servizio.
+ */
+export function suonaVoce(quale: 'tic' | 'via' | 'riposo' | 'fine', key?: string, vol?: number): void {
+  const ora = sceltaCorrente()
+  const voce: Voce = (key ? suonoDi(key) : ora.suono).voci[quale]
+  const g = Math.max(0.02, (vol ?? ora.volume) / 100)
+  if (voce.vibra) buzz(voce.vibra)
   const c = ctx()
-  buzz([200, 80, 200, 80, 200])
   if (!c) return
-  const beeps = [0, 0.2, 0.4]
-  beeps.forEach((s) => note(c, 1320, s, 0.16, 0.95))
-  note(c, 1600, 0.6, 0.5, 1.0) // coda lunga e alta
+  let t = 0
+  for (const [hz, ms] of voce.note) {
+    const dur = ms / 1000
+    if (hz > 0) note(c, hz, t, dur, g, voce.onda, voce.decadi)
+    t += dur
+  }
 }
 
-/** Segnale di riposo: due note discendenti + breve vibrazione. */
-export function restCue() {
-  const c = ctx()
-  buzz(140)
-  if (!c) return
-  note(c, 660, 0, 0.16, 0.7); note(c, 480, 0.17, 0.3, 0.6)
-}
+/** Tic del conto alla rovescia. */
+export function tick() { suonaVoce('tic') }
 
-/** Fine sessione: fanfara + allarme a beep ripetuti (più lungo e ben udibile) + vibrazione. */
-export function finishCue() {
-  const c = ctx()
-  buzz([150, 70, 250, 70, 250])
-  if (!c) return
-  const fanfara: [number, number][] = [[784, 0], [988, 0.14], [1175, 0.28], [1568, 0.44]]
-  fanfara.forEach(([f, s]) => note(c, f, s, s === 0.44 ? 0.55 : 0.2, 0.85, 'triangle'))
-  const beeps = [0.95, 1.18, 1.5, 1.73]
-  beeps.forEach((s, i) => note(c, i % 2 ? 1175 : 1480, s, 0.2, 0.95))
-}
+/** Fine recupero: si riparte. */
+export function goSound() { suonaVoce('via') }
+
+/** Fine lavoro: si respira. */
+export function restCue() { suonaVoce('riposo') }
+
+/** Seduta o cardio chiusi. */
+export function finishCue() { suonaVoce('fine') }

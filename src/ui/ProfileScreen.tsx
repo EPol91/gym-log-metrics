@@ -7,6 +7,7 @@ import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { CsvImport } from './CsvImport'
 import { GymSettings } from './GymSettings'
+import { SuoniSettings } from './SuoniSettings'
 import { WhoopSettings } from './WhoopSettings'
 import { CoachSettings } from './CoachSettings'
 import { TemplatesSettings } from './TemplatesSettings'
@@ -270,6 +271,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
       <div className="col" style={{ gap: 7 }}>
         <Section title="⭐ Template di allenamento"><TemplatesSettings onEdit={onEditTemplate} onNew={onNewTemplate} /></Section>
         <Section title="🏋️ Palestra"><GymSettings /></Section>
+        <Section title="🔔 Suoni dei timer"><SuoniSettings /></Section>
         <Section title="⌚ WHOOP"><WhoopSettings /></Section>
         <Section title="💡 Coach"><CoachSettings /></Section>
         <Section title="🤖 AI"><AiSettings /></Section>

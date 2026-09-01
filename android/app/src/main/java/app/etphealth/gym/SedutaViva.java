@@ -77,6 +77,10 @@ public class SedutaViva extends Plugin {
     i.putExtra(ServizioSeduta.EXTRA_ISTANTI, istanti);
     i.putExtra(ServizioSeduta.EXTRA_TIPI, tipi);
     i.putExtra(ServizioSeduta.EXTRA_TICK, tick);
+    // Il suono arriva dalla pagina, nota per nota: qui non c'e' nessuna lista
+    // di melodie, e non puo' divergere da quella che senti dentro l'app.
+    i.putExtra(ServizioSeduta.EXTRA_SUONO, call.getString("suono"));
+    i.putExtra(ServizioSeduta.EXTRA_VOLUME, call.getInt("volume", 35));
     ContextCompat.startForegroundService(getContext(), i);
     call.resolve();
   }

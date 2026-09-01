@@ -76,6 +76,10 @@ export interface User extends BaseRecord {
    * dell'app e viaggiare nel backup insieme al resto.
    */
   todayCards?: string[]
+  /** Quale suono fanno i timer: la chiave di una voce in `util/suoni`. */
+  suonoTimer?: string
+  /** Volume dei segnali in cuffia, in centesimi. Dall'altoparlante restano pieni. */
+  volumeBip?: number
   /** 🦠RS acceso. Assente = acceso: e' il comportamento voluto, si spegne apposta. */
   rsActive?: boolean
   /** Data d'inizio della settimana 1 del protocollo del coach. */

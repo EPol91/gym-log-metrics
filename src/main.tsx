@@ -6,6 +6,7 @@ import { initPwaUpdate } from './util/pwaUpdate'
 import { initViewportVars } from './util/viewport'
 import { allineaCoppieRs } from './rs/coppie'
 import { ascoltaIndietro } from './util/indietro'
+import { caricaSceltaSuoni } from './util/suoni'
 
 // Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
 // se le compensasse anche la pagina, il margine finirebbe contato due volte
@@ -22,6 +23,8 @@ void allineaCoppieRs()
 // qualsiasi altra app: prima non arrivava alla pagina e restavi col pollice
 // costretto alla ✕ in alto.
 ascoltaIndietro()
+// Il suono e il volume che hai scelto valgono dal primo bip, non dal secondo.
+void caricaSceltaSuoni()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
