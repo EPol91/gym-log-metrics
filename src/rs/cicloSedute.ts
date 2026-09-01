@@ -118,9 +118,22 @@ export async function cicloRs(oggi = todayLocal()): Promise<CicloRs | null> {
   }
   while (daChiudere.length) chiudiQui(daChiudere.shift()!)
 
+  /**
+   * Da quando comincia un ciclo: NON dalla sua prima seduta.
+   *
+   * Il giro scorre di continuo — l'orologio riparte da dove e' finito quello
+   * prima, anche se poi ti alleni due giorni dopo. Contando dalla prima seduta,
+   * i giorni di riposo fra un giro e l'altro sparivano dal conto: un ciclo
+   * cominciato il 17 e chiuso il 25 risultava di 8 giorni invece di 9.
+   *
+   * Il primo parte dall'inizio del protocollo, gli altri dal giorno dopo la
+   * chiusura del precedente.
+   */
+  let cursore = inizioProtocollo
   const daGiro = (g: { sedute: Seduta[]; aMano?: boolean; fino?: string }, numero: number): CicloChiuso => {
-    const dal = g.sedute[0]?.date ?? g.fino ?? inizioProtocollo
+    const dal = cursore
     const al = g.aMano ? (g.fino ?? dal) : g.sedute[g.sedute.length - 1].date
+    cursore = shiftDate(al, 1)
     return {
       numero,
       dal,
@@ -157,13 +170,9 @@ export async function cicloRs(oggi = todayLocal()): Promise<CicloRs | null> {
     return { codice, stato: codice === prossima ? 'tocca' as const : 'dopo' as const }
   })
 
-  // Da quando conta il ciclo aperto: la sua prima seduta, o il giorno dopo la
-  // chiusura precedente, o l'inizio del protocollo se non e' successo ancora nulla.
-  const ultimoChiuso = tuttiChiusi[tuttiChiusi.length - 1]
-  const dal = corrente[0]?.date
-    // shiftDate e non new Date(+1): quello passa da UTC e in Italia torna
-    // indietro di un giorno (e' il motivo per cui esiste util/date).
-    ?? (ultimoChiuso ? shiftDate(ultimoChiuso.al, 1) : inizioProtocollo)
+  // Il ciclo aperto parte dove il cursore e' arrivato: giorno dopo l'ultima
+  // chiusura, o inizio protocollo se non se n'e' chiuso ancora nessuno.
+  const dal = cursore
   const giorno = Math.max(1, daysBetween(dal, oggi) + 1)
   const ultimaSeduta = sedute[sedute.length - 1]
 
