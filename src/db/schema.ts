@@ -158,6 +158,8 @@ export interface GiornataPianoRs {
 export interface PianoRsSalvato {
   /** Quando l'hai aggiornato: senza, non sai se stai guardando il piano di oggi. */
   aggiornato: ISODate
+  /** Quando il coach ha pubblicato questa versione: dice se ce n'è una più nuova. */
+  pubblicato?: ISODateTime
   giornate: GiornataPianoRs[]
 }
 

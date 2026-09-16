@@ -4,8 +4,8 @@
 // copia, quindi quando il coach cambiava HIGH ON e HIGH OFF l'app restava sul
 // vecchio — e poteva cambiarlo solo chi tocca il codice.
 //
-// Adesso il piano e' un dato: lo aggiorni tu, incollando la sua pagina «Stampa
-// la dieta». E un aggiornamento tocca SOLO il piano del coach — i totali di ogni
+// Adesso il piano e' un dato: lo legge l'app dal suo archivio, col tuo accesso
+// (vedi rs/coach.ts). E un aggiornamento tocca SOLO il piano del coach — i totali di ogni
 // giornata, cioe' l'obiettivo che insegui in Cibo, e le sue righe di
 // riferimento. I tuoi pasti, i tuoi alimenti e le tue grammature non si
 // toccano mai: ne' nelle Giornate tipo ne' nel diario. Cosa e' cambiato negli
@@ -14,7 +14,7 @@
 import { db, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
-import { GIORNATE_RS, NOMI_DEL_COACH } from './protocollo'
+import { GIORNATE_RS } from './protocollo'
 import type { GiornataPianoRs, PianoRsSalvato, User, Macros, DayTemplate, Food } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -35,107 +35,6 @@ export async function pianoRs(): Promise<GiornataPianoRs[]> {
 
 export function giornataDelPiano(piano: GiornataPianoRs[], nome: string): GiornataPianoRs | undefined {
   return piano.find((g) => g.nome === nome)
-}
-
-// --- Leggere il piano incollato ------------------------------------------------
-
-/** Come si chiamano le sue giornate nella sua pagina, e come si chiamano qui. */
-const GIORNATE_COACH: Record<string, { key: string; nome: string }> = {
-  'LOW ON': { key: 'rs_low_on', nome: '🦠 LOW ON' },
-  'LOW OFF': { key: 'rs_low_off', nome: '🦠 LOW OFF' },
-  'HIGH ON': { key: 'rs_high_on', nome: '🦠 HIGH ON' },
-  'HIGH OFF': { key: 'rs_high_off', nome: '🦠 HIGH OFF' },
-}
-
-export interface PianoLetto {
-  giornate: GiornataPianoRs[]
-  /** Quello che non si e' capito. Se c'e' qualcosa qui, non si salva niente. */
-  problemi: string[]
-}
-
-const numero = (s: string) => Number(s.replace(',', '.'))
-const TOTALE = /(\d+(?:[.,]\d+)?)\s*kcal\s*·\s*(\d+(?:[.,]\d+)?)\s*C\s*·\s*(\d+(?:[.,]\d+)?)\s*P\s*·\s*(\d+(?:[.,]\d+)?)\s*F/
-const GRAMMI = /^(\d+(?:[.,]\d+)?)\s*gr?$/i
-const GIORNATA = /^(LOW|HIGH)\s+(ON|OFF)$/i
-
-/**
- * Il testo copiato, riga per riga.
- *
- * Copiando da un telefono le righe possono arrivare separate («Mirtilli» e sotto
- * «100gr») o incollate insieme («Mirtilli100gr»): si riportano tutte alla forma
- * a righe prima di leggere, cosi' vanno bene entrambe.
- */
-function righeDi(testo: string): string[] {
-  let t = testo.replace(/ /g, ' ').replace(/\r/g, '')
-  t = t.replace(/((?:LOW|HIGH)\s+(?:ON|OFF))/g, '\n$1\n')
-  t = t.replace(new RegExp(TOTALE.source, 'g'), (x) => `\n${x}\n`)
-  // «Mirtilli100gr» → «Mirtilli» / «100gr». Dopo «gr» non c'e' un confine di
-  // parola quando la riga seguente e' incollata («50grAlbume»): si controlla
-  // solo che non prosegua in minuscolo.
-  t = t.replace(/([^\n\d\s])\s*(\d+(?:[.,]\d+)?\s*gr)(?![a-zà-ÿ])/g, '$1\n$2\n')
-  // Intestazione di pasto incollata al suo numero: «Pasto 11» = «Pasto 1» + «1»
-  t = t.replace(/(Pasto \d+(?: · [^\n\d]+)?|Pre-workout|Intra-workout|Post-workout)(\d+)(?=\n|[A-Za-zÀ-ÿ])/g, '$1\n$2\n')
-  return t.split('\n').map((r) => r.trim()).filter(Boolean)
-}
-
-export function leggiPianoIncollato(testo: string, attuale: GiornataPianoRs[] = GIORNATE_RS): PianoLetto {
-  const righe = righeDi(testo)
-  const problemi: string[] = []
-  const giornate: GiornataPianoRs[] = []
-  let g: GiornataPianoRs | null = null
-  let pasto: GiornataPianoRs['pasti'][number] | null = null
-  let totaleDellaGiornata = false
-
-  for (let i = 0; i < righe.length; i++) {
-    const t = righe[i]
-    const intestazione = t.match(GIORNATA)
-    if (intestazione) {
-      const chi = GIORNATE_COACH[`${intestazione[1].toUpperCase()} ${intestazione[2].toUpperCase()}`]
-      // L'acqua non sta nella sua pagina: resta quella del piano in uso.
-      const prima = attuale.find((x) => x.key === chi.key)
-      g = { key: chi.key, nome: chi.nome, targets: { kcal: 0, carbs: 0, protein: 0, fat: 0 }, acqua: prima?.acqua ?? 5.5, pasti: [] }
-      giornate.push(g)
-      pasto = null
-      totaleDellaGiornata = false
-      continue
-    }
-    if (!g) continue
-
-    const tot = t.match(TOTALE)
-    if (tot) {
-      const valori: Totali = { kcal: numero(tot[1]), carbs: numero(tot[2]), protein: numero(tot[3]), fat: numero(tot[4]) }
-      // Il primo totale dopo il nome e' quello della giornata; gli altri chiudono un pasto.
-      if (!totaleDellaGiornata && !pasto) { g.targets = valori; totaleDellaGiornata = true }
-      pasto = null
-      continue
-    }
-
-    // Un pasto: il suo nome, seguito dal numero d'ordine.
-    if (/^\d+$/.test(righe[i + 1] ?? '') && !GRAMMI.test(t)) {
-      pasto = { nome: t, righe: [] }
-      g.pasti.push(pasto)
-      i++
-      continue
-    }
-
-    const gr = (righe[i + 1] ?? '').match(GRAMMI)
-    if (pasto && gr) {
-      pasto.righe.push({ alimento: NOMI_DEL_COACH[t] ?? t, g: numero(gr[1]) })
-      i++
-    }
-  }
-
-  if (!giornate.length) {
-    problemi.push('Non trovo nessuna giornata (LOW ON, LOW OFF, HIGH ON, HIGH OFF). Hai copiato la pagina «Stampa la dieta»?')
-  }
-  for (const x of giornate) {
-    if (!x.targets.kcal) problemi.push(`${x.nome.replace('🦠 ', '')}: non trovo i totali (kcal · C · P · F).`)
-    if (!x.pasti.length) problemi.push(`${x.nome.replace('🦠 ', '')}: non trovo i pasti.`)
-  }
-  const doppie = giornate.map((x) => x.key).filter((k, i, a) => a.indexOf(k) !== i)
-  if (doppie.length) problemi.push('La stessa giornata compare due volte: copia la pagina una volta sola.')
-
-  return { giornate, problemi }
 }
 
 // --- Il confronto prima di salvare ---------------------------------------------
@@ -248,16 +147,16 @@ function confrontaAlimenti(prima: GiornataPianoRs['pasti'], dopo: GiornataPianoR
  * Salva il piano nuovo. Tocca due cose sole: il piano del coach e l'obiettivo di
  * ogni sua giornata in Cibo, che passa ai suoi macro nuovi. Nient'altro.
  */
-export async function applicaPiano(nuovo: GiornataPianoRs[]): Promise<void> {
+export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string | null): Promise<void> {
   const u = await db.users.get(U)
-  // Si parte dal piano in uso: se hai incollato una giornata sola, le altre restano.
+  // Si parte dal piano in uso: se ne arriva solo una parte, il resto non si perde.
   const base = pianoDi(u).map((g) => ({ ...g }))
   for (const g of nuovo) {
     const i = base.findIndex((x) => x.key === g.key)
     if (i >= 0) base[i] = g
     else base.push(g)
   }
-  const piano: PianoRsSalvato = { aggiornato: todayLocal(), giornate: base }
+  const piano: PianoRsSalvato = { aggiornato: todayLocal(), giornate: base, ...(pubblicato ? { pubblicato } : {}) }
   const ts = nowISO()
   await db.transaction('rw', db.users, db.dayTypes, async () => {
     await db.users.update(U, { rsPiano: piano, updatedAt: ts })

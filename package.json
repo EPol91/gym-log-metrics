@@ -19,6 +19,7 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.2.1",
     "@capacitor/share": "^8.0.1",
+    "@supabase/supabase-js": "^2.116.0",
     "capacitor-health": "^8.1.2",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
