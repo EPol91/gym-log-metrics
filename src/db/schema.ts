@@ -92,6 +92,14 @@ export interface User extends BaseRecord {
   /** Chiedere conferma di RS al primo rientro della giornata. */
   rsAskDaily?: boolean
   /**
+   * Il piano alimentare del coach com'è adesso.
+   *
+   * Prima stava scritto nel codice, e solo chi tocca il codice poteva
+   * aggiornarlo: il coach cambiava HIGH ON e l'app continuava col vecchio. Qui
+   * lo aggiorni tu, incollandolo dalla sua app. Assente = il piano di fabbrica.
+   */
+  rsPiano?: PianoRsSalvato
+  /**
    * La ciclizzazione dei carboidrati, sette lettere da lunedi' a domenica:
    * L = giornata LOW, H = giornata HIGH. Vive qui e non nel codice perche' il
    * coach la cambia, e cambiarla deve costare dieci secondi.
@@ -137,6 +145,22 @@ export interface RsCheck extends BaseRecord {
 }
 
 /** Livello di attivita quotidiana: moltiplica il metabolismo basale. */
+/** Una giornata del piano del coach: i suoi totali e i suoi pasti, coi suoi grammi. */
+export interface GiornataPianoRs {
+  key: string
+  nome: string
+  targets: { kcal: number; protein: number; carbs: number; fat: number }
+  /** Litri d'acqua al giorno. */
+  acqua: number
+  pasti: { nome: string; righe: { alimento: string; g: number }[] }[]
+}
+
+export interface PianoRsSalvato {
+  /** Quando l'hai aggiornato: senza, non sai se stai guardando il piano di oggi. */
+  aggiornato: ISODate
+  giornate: GiornataPianoRs[]
+}
+
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh'
 /** Formula per il metabolismo basale. */
 export type BmrFormula = 'mifflin' | 'harris' | 'katch'

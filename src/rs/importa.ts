@@ -13,6 +13,7 @@ import { LOCAL_USER_ID } from '../db/seed'
 import { addFood, macrosFor } from '../db/diet'
 import { getOrCreateExercise, findExercise } from '../db/repo'
 import { ALIMENTI_RS, GIORNATE_RS, SEDUTE_RS, RINOMINE } from './protocollo'
+import { pianoRs } from './piano'
 import type { DayTemplate, DayTemplateMeal, Food, Macros, MuscleGroup, WorkoutTemplate, WorkoutType } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -92,16 +93,17 @@ async function giornate(mappa: Map<string, Food>): Promise<{ fatte: string[]; tu
   // sono state create: LOW ON, LOW OFF, HIGH ON, HIGH OFF. Vale anche quando si
   // aggiorna, altrimenti al secondo import tornano sparse.
   const primoPosto = Math.max(0, ...tipiEsistenti.filter((t) => !t.name.startsWith('🦠')).map((t) => t.order + 1))
-  for (const [i, g] of GIORNATE_RS.entries()) {
+  // Il piano in uso, non quello di fabbrica: se l'hai aggiornato, reimportare
+  // non deve riportarti indietro.
+  const piano = await pianoRs()
+  for (const [i, g] of piano.entries()) {
     const posto = primoPosto + i
     const tipo = tipiEsistenti.find((t) => t.key === g.key)
-    // Giornata corretta da te: gli obiettivi sono i totali della TUA versione,
-    // non quelli del coach. Reimportare non deve rimetterli come stavano.
-    const tua = modelliEsistenti.find((m) => m.name === g.nome)?.modificata === true
+    // L'obiettivo di una giornata del coach e' il suo piano, anche quando la
+    // giornata l'hai corretta tu: la tua versione si confronta con questo.
     if (tipo) {
       await db.dayTypes.update(tipo.id, {
-        name: g.nome, order: posto, updatedAt: ts,
-        ...(tua ? {} : { targets: g.targets, manual: true }),
+        name: g.nome, order: posto, updatedAt: ts, targets: g.targets, manual: true,
       })
     } else {
       await db.dayTypes.add({
@@ -133,7 +135,10 @@ async function giornate(mappa: Map<string, Food>): Promise<{ fatte: string[]; tu
       tue.push(g.nome)
       if (diverso(modello.meals, meals)) cambiate.push(g.nome)
     } else if (modello) {
-      await db.dayTemplates.update(modello.id, { meals, updatedAt: ts })
+      // I pasti di una giornata che c'e' gia' non si riscrivono: anche se non
+      // l'hai mai toccata, e' quella che usi. Se il coach l'ha cambiata lo
+      // segnala il confronto, e decidi tu.
+      if (diverso(modello.meals, meals)) cambiate.push(g.nome)
     } else {
       const nuovo: DayTemplate = { id: newId(), userId: U, createdAt: ts, updatedAt: ts, name: g.nome, meals }
       await db.dayTemplates.add(nuovo)

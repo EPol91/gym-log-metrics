@@ -26,7 +26,7 @@ import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 import { GiornataConsigliata } from './GiornataConsigliata'
 import { copiaPasto } from '../util/appuntiPasto'
-import { acquaDelPiano } from '../rs/protocollo'
+import { pianoDi as pianoInUso, giornataDelPiano } from '../rs/piano'
 
 const shift = shiftDate
 const labelFor = (iso: string) => etichettaGiorno(iso, todayDiet())
@@ -208,7 +208,7 @@ export function DietScreen() {
   // obiettivo nel Profilo, perche' nel piano del coach non c'e'.
   const acqua = nutri?.water ?? 0
   // L'acqua del coach vince sulla tua: 5,5 L al giorno, ON e OFF uguale.
-  const obiettivoAcqua = (activeType ? acquaDelPiano(activeType.name) : null) ?? user?.waterTarget ?? null
+  const obiettivoAcqua = (activeType ? giornataDelPiano(pianoInUso(user), activeType.name)?.acqua : null) ?? user?.waterTarget ?? null
   const acquaOk = obiettivoAcqua != null && acqua >= obiettivoAcqua
   const sale = useLiveQuery(() => saleDelDiario(date), [date]) ?? 0
   const salePiano = useLiveQuery(

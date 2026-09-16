@@ -566,6 +566,11 @@ export async function sincronizzaObiettivo(id: string): Promise<void> {
   if (!t) return
   const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((x) => x.name === t.name)
   if (!tipo) return
+  // Le giornate del coach no: il loro obiettivo e' il suo piano, anche quando
+  // la tua versione l'hai corretta. Seguire i tuoi totali voleva dire che,
+  // aggiornando il piano, bastava riaprire la giornata per tornare ai numeri
+  // vecchi. La differenza fra te e lui la mostrano l'editor e il confronto.
+  if (tipo.name.startsWith('🦠')) return
 
   const cibi = new Map((await db.foods.where('userId').equals(U).toArray()).map((f) => [f.id, f]))
   const tot = { kcal: 0, carbs: 0, protein: 0, fat: 0 }

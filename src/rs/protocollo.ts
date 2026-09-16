@@ -1,6 +1,8 @@
 // 🦠RS — il protocollo del coach, in forma di dati.
 //
-// Estratto dalla sua app il 31.07.2026 (vedi docs/RS_PROTOCOLLO_*.md).
+// Estratto dalla sua app il 31.07.2026 (vedi docs/RS_PROTOCOLLO_*.md); HIGH ON e
+// HIGH OFF riletti il 16.09.2026. Questo e' solo il piano DI FABBRICA: quello
+// in uso lo aggiorni tu dall'app (vedi rs/piano.ts).
 // Lui manda i GRAMMI, non i valori per 100 g: quelli vengono dal tuo database di
 // EP Coaching, dalla libreria Ciqual dell'app e — dove serviva — da tabelle
 // pubbliche. Ogni valore porta scritto da dove viene, cosi' si puo' contestare.
@@ -8,7 +10,7 @@
 // Dove il valore non c'e' resta VUOTO. Un numero inventato qui diventerebbe un
 // numero sbagliato nel diario, e da li' finirebbe dritto al coach.
 
-import type { Macros } from '../db/schema'
+import type { Macros, GiornataPianoRs } from '../db/schema'
 
 export interface AlimentoRs {
   nome: string
@@ -62,14 +64,20 @@ export const ALIMENTI_RS: AlimentoRs[] = [
 ]
 
 export interface PastoRs { nome: string; righe: { alimento: string; g: number }[] }
-export interface GiornataRs {
-  key: string
-  nome: string
-  targets: { kcal: number; protein: number; carbs: number; fat: number }
-  /** Litri d'acqua al giorno: il coach ne prescrive 5,5 in tutte le giornate. */
-  acqua: number
-  pasti: PastoRs[]
+
+/**
+ * I nomi che il coach usa per un alimento che da te si chiama in un altro modo.
+ *
+ * Il suo "Vitello" e il suo "Carpaccio di manzo" nel tuo piano sono "Manzo":
+ * leggendo il suo piano si traduce, altrimenti quelle righe non verrebbero piu'
+ * riconosciute come righe sue.
+ */
+export const NOMI_DEL_COACH: Record<string, string> = {
+  'Vitello': 'Manzo',
+  'Carpaccio di manzo': 'Manzo',
 }
+/** Una giornata del piano: la forma e' la stessa di quella che salvi aggiornandolo. */
+export type GiornataRs = GiornataPianoRs
 
 const r = (alimento: string, g: number) => ({ alimento, g })
 
@@ -101,27 +109,27 @@ export const GIORNATE_RS: GiornataRs[] = [
   },
   {
     key: 'rs_high_on', nome: '🦠 HIGH ON',
-    targets: { kcal: 2772, carbs: 353, protein: 209, fat: 59 },
+    targets: { kcal: 2951, carbs: 402, protein: 205, fat: 61 },
     acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r("Albume d'uovo", 150), r('Burro di mandorle', 25), r('Mirtilli', 50), r('Rice Meal Tsunami Nutrition', 20), r('Proteine isolate Isopure', 15), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Pane arabo', 80), r('Petto di pollo', 140), r('Avocado', 70), r('Zucchine', 50), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Cous cous (crudo)', 50), r('Petto di pollo', 150), r("Olio extravergine d'oliva", 15), r('Zucchine', 100), r('Sale', 1)] },
-      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 80), r('Proteine isolate Isopure', 30), r('Banana', 120), r('Sale', 1.5)] },
+      { nome: 'Pre-workout', righe: [r('Rice Meal Tsunami Nutrition', 100), r('Proteine isolate Isopure', 30), r('Banana', 120), r('Sale', 1.5)] },
       { nome: 'Intra-workout', righe: [r('Ciclodestrine', 25), r('Sale', 1)] },
-      { nome: 'Post-workout', righe: [r('Pasta di riso (cruda)', 120), r('Gamberetti', 180), r("Olio extravergine d'oliva", 5), r('Zucchine', 50), r('Pomodori datterini', 50), r('Sale', 1.5)] },
+      { nome: 'Post-workout', righe: [r('Pasta di riso (cruda)', 150), r('Gamberetti', 180), r("Olio extravergine d'oliva", 5), r('Zucchine', 50), r('Pomodori datterini', 50), r('Sale', 1.5)] },
     ],
   },
   {
     key: 'rs_high_off', nome: '🦠 HIGH OFF',
-    targets: { kcal: 2778, carbs: 353, protein: 211, fat: 58 },
+    targets: { kcal: 2616, carbs: 319, protein: 205, fat: 59 },
     acqua: 5.5,
     pasti: [
       { nome: 'Pasto 1', righe: [r("Fiocchi d'avena", 50), r('Proteine isolate Isopure', 30), r('Burro di mandorle', 10), r('Mirtilli', 50), r('Marmellata biologica', 30), r('Rice Meal Tsunami Nutrition', 50), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Zucchine', 50), r('Sale', 1)] },
       { nome: 'Pasto 3', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 140), r("Olio extravergine d'oliva", 10), r('Lattuga', 100), r('Sale', 1)] },
-      { nome: 'Pasto 4', righe: [r('Corn flakes', 70), r('Proteine isolate Isopure', 35), r('Latte di mandorla senza zuccheri', 300), r('Kiwi', 100), r('Sale', 1)] },
-      { nome: 'Pasto 5', righe: [r('Patate dolci', 300), r('Manzo', 200), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1)] },
+      { nome: 'Pasto 4', righe: [r('Corn flakes', 40), r('Proteine isolate Isopure', 30), r('Latte di mandorla senza zuccheri', 300), r('Kiwi', 100), r('Sale', 1)] },
+      { nome: 'Pasto 5', righe: [r('Patate dolci', 200), r('Manzo', 200), r("Olio extravergine d'oliva", 5), r('Fagiolini', 120), r('Sale', 1)] },
     ],
   },
 ]
@@ -245,15 +253,3 @@ export const SEDUTE_RS: SedutaRs[] = [
     ],
   },
 ]
-
-/**
- * L'acqua che il coach prescrive per una giornata.
- *
- * Sta scritta nel protocollo, non nei pasti: 5,5 litri al giorno, ON e OFF
- * uguale — «le due variabili che tengono leggibile tutto il resto». Il sale
- * invece e' dentro i pasti come ingrediente pesato, quindi quello si somma
- * dalle righe (vedi saleDelPiano).
- */
-export function acquaDelPiano(nomeGiornata: string): number | null {
-  return GIORNATE_RS.find((g) => g.nome === nomeGiornata)?.acqua ?? null
-}

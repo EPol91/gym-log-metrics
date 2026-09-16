@@ -17,7 +17,8 @@ import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTy
 import { pastoCopiato } from '../util/appuntiPasto'
 import { computeRecipe, macrosForAmount, type RecipeAmount } from '../db/recipes'
 import { FoodChooser } from './FoodChooser'
-import { GIORNATE_RS } from '../rs/protocollo'
+import { pianoDi, giornataDelPiano } from '../rs/piano'
+import { getUser } from '../db/repo'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros, Recipe } from '../db/schema'
 
@@ -162,6 +163,7 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
   const modello = useLiveQuery(() => getDayTemplate(templateId), [templateId])
   const cibiElenco = useLiveQuery(listFoods, []) ?? []
   const tipi = useLiveQuery(listDayTypes, []) ?? []
+  const utente = useLiveQuery(getUser, [])
   const cibi = useMemo(() => new Map(cibiElenco.map((f) => [f.id, f])), [cibiElenco])
 
   // La bozza: si tocca qui e si scrive solo con Salva. Applicare per sbaglio
@@ -193,7 +195,7 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
   const obiettivi = tipi.find((t) => t.name === modello.name)?.targets
   // Quello che ha scritto il coach per questa giornata, com'e' arrivato: e' il
   // metro del controllo, e non lo tocca nessuno — nemmeno le tue correzioni.
-  const g = GIORNATE_RS.find((x) => x.nome === modello.name)
+  const g = giornataDelPiano(pianoDi(utente), modello.name)
   const piano: Macros | null = g
     ? { kcal: g.targets.kcal, carbs: g.targets.carbs, protein: g.targets.protein, fat: g.targets.fat }
     : null

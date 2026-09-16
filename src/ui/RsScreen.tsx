@@ -19,6 +19,7 @@ import { sedutaRs } from '../rs/allenamento'
 import { cicloValido, indiceGiorno, GIORNI } from '../rs/ciclo'
 import { DayCalendar } from './DayCalendar'
 import { useIndietro } from './useBloccoScroll'
+import { AggiornaPiano } from './AggiornaPiano'
 import { numeriSettimana, testoSettimana, periodo, checkSettimana, salvaCheck, aggiungiFoto, togliFoto, settimanaCorrente } from '../rs/settimana'
 
 /** Icone dei gruppi: disegnate, non emoji — e il virus resta solo di RS. */
@@ -374,6 +375,9 @@ function RsImpostazioni({ onClose }: { onClose: () => void }) {
       </div>
 
       <ImportProtocollo />
+      {/* Il piano alimentare cambia piu' spesso del resto: si aggiorna da qui,
+          incollandolo dalla sua app, senza reimportare tutto. */}
+      <AggiornaPiano />
     </div>
   )
 }
@@ -415,8 +419,8 @@ function ImportProtocollo() {
           )}
           {esito.giornateCambiate.length > 0 && (
             <p className="small" style={{ margin: '6px 0 0', color: 'var(--gold)' }}>
-              ⚠ Il coach ha cambiato {esito.giornateCambiate.join(', ')}, ma le hai corrette tu e non le
-              ho toccate. Aprile da Cibo → Giornate tipo e allineale a mano, o eliminale e reimporta.
+              Nei pasti, {esito.giornateCambiate.join(', ')} del coach non coincide con le tue giornate. I
+              tuoi pasti non li tocco mai, l'obiettivo sì: cosa è cambiato lo vedi in «Aggiorna dal coach».
             </p>
           )}
           {esito.daCompletare.length > 0 && (

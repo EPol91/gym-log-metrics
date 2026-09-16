@@ -11,7 +11,7 @@ import { db, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { computeDiary, macrosFor } from '../db/diet'
 import { getNutrition } from '../db/repo'
-import { GIORNATE_RS } from './protocollo'
+import { pianoRs, giornataDelPiano } from './piano'
 import type { FoodLog, Macros } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -99,7 +99,7 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
   // Le voci del piano si leggono dal PROTOCOLLO del coach, pasto per pasto.
   // Non dalla giornata tipo: quella e' la tua versione, dove al posto del suo
   // alimento puoi aver messo il tuo prodotto con la tua marca.
-  const protocollo = attiva ? GIORNATE_RS.find((x) => x.nome === tipo!.name) : undefined
+  const protocollo = attiva ? giornataDelPiano(await pianoRs(), tipo!.name) : undefined
   const voci = new Map<string, { nome: string; g: number }[]>()
   if (protocollo) {
     for (const p of protocollo.pasti) voci.set(p.nome, p.righe.map((r) => ({ nome: r.alimento, g: r.g })))

@@ -20,7 +20,7 @@ import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
 import { statoDieta, sostituzioni } from './dieta'
-import { acquaDelPiano } from './protocollo'
+import { pianoRs, giornataDelPiano } from './piano'
 import { sedutaRs, aderenzaDelCoach } from './allenamento'
 import type { RsDay } from '../db/schema'
 
@@ -333,7 +333,7 @@ export async function dettagliRs(date: string): Promise<Partial<Record<RsCampo, 
   if (nutri?.dayType) {
     const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
     if (tipo) {
-      const acqua = acquaDelPiano(tipo.name)
+      const acqua = giornataDelPiano(await pianoRs(), tipo.name)?.acqua ?? null
       if (acqua != null) out.acqua = `target ${String(acqua).replace('.', ',')} L`
       const sale = await saleDelPiano(tipo.name)
       if (sale != null) out.sale = `target ${String(sale).replace('.', ',')} g`
