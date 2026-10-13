@@ -7,6 +7,9 @@ import { initViewportVars } from './util/viewport'
 import { allineaCoppieRs } from './rs/coppie'
 import { ascoltaIndietro } from './util/indietro'
 import { caricaSceltaSuoni } from './util/suoni'
+import { recuperaSerieInSospeso } from './db/serieInSospeso'
+import { riparaOrdiniSerie } from './db/riparaSerie'
+import { pushAvviso } from './util/undo'
 
 // Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
 // se le compensasse anche la pagina, il margine finirebbe contato due volte
@@ -25,6 +28,16 @@ void allineaCoppieRs()
 ascoltaIndietro()
 // Il suono e il volume che hai scelto valgono dal primo bip, non dal secondo.
 void caricaSceltaSuoni()
+// Una serie registrata che non e' arrivata nel database torna al suo posto
+// adesso, e te lo diciamo: e' un tuo gesto rimasto a meta', non un dato nuovo.
+// Poi le serie che erano finite nello stesso posto tornano in fila.
+void recuperaSerieInSospeso()
+  .then(async (n) => {
+    if (n) pushAvviso(`✓ ${n} ${n === 1 ? 'serie recuperata' : 'serie recuperate'} dall'ultima seduta`)
+    const sistemate = await riparaOrdiniSerie()
+    if (sistemate && !n) pushAvviso(`✓ ${sistemate} serie rimesse in ordine nello storico`)
+  })
+  .catch(() => { /* il database parla alla prossima apertura */ })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

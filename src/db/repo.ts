@@ -5,6 +5,7 @@ import { normalizeName } from './catalog'
 import { todayLocal } from '../util/date'
 import { bestE1rm } from '../metrics/metrics'
 import { snapshotAndDelete, type Trash } from './trash'
+import { annota, conferma } from './serieInSospeso'
 import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
@@ -594,16 +595,51 @@ export interface SetInput { weight: number; reps: number; rir?: number; isWarmup
 
 export async function addSet(entryId: string, inp: SetInput): Promise<string> {
   const ts = nowISO()
-  const order = await db.sets.where({ entryId }).count()
   const s: SetEntry = {
     id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    entryId, order, weight: inp.weight, reps: inp.reps,
+    entryId, order: 0, weight: inp.weight, reps: inp.reps,
     ...(inp.rir != null ? { rir: inp.rir } : {}),
     ...(inp.isWarmup ? { isWarmup: true } : {}),
     ...(inp.restSec != null ? { restSec: inp.restSec } : {}),
   }
-  await db.sets.add(s)
+  // Prima la copia sincrona, poi il database: se l'app muore nel mezzo la serie
+  // torna al prossimo avvio invece di sparire.
+  annota(s)
+  await scriviSerie(s)
+  conferma(s.id)
   return s.id
+}
+
+/**
+ * Scrive la serie: posto in fila e scrittura nella stessa transazione, poi la
+ * rilegge.
+ *
+ * Il numero di serie si leggeva prima e si scriveva dopo, fuori da qualsiasi
+ * transazione. Due tocchi ravvicinati su «Registra serie» — cioe' esattamente
+ * quello che fai quando sembra che non abbia preso — leggevano lo stesso numero
+ * e nascevano due serie con lo stesso posto: da li' la tabella smetteva di
+ * mostrare le serie nuove e una sembrava non essere mai stata registrata.
+ * Dentro una transazione esplicita le scritture sulla stessa tabella si mettono
+ * in coda, e Dexie non risponde dalla sua cache: il posto e' sempre quello
+ * giusto. Il ✓ a schermo, poi, dice qualcosa solo se la riga si rilegge.
+ */
+async function scriviSerie(s: SetEntry): Promise<void> {
+  let ultimo: unknown = null
+  for (let tentativo = 0; tentativo < 2; tentativo++) {
+    try {
+      await db.transaction('rw', db.sets, async () => {
+        const esistenti = await db.sets.where({ entryId: s.entryId }).toArray()
+        const posti = esistenti.filter((x) => x.id !== s.id).map((x) => x.order ?? 0)
+        s.order = posti.length ? Math.max(...posti) + 1 : 0
+        await db.sets.put(s)
+      })
+      if (await db.transaction('r', db.sets, () => db.sets.get(s.id))) return
+    } catch (e) {
+      ultimo = e
+    }
+  }
+  const perche = ultimo instanceof Error ? ` (${ultimo.message})` : ''
+  throw new Error(`La serie non e' stata salvata${perche}.`)
 }
 
 /** Storico recente di un esercizio: ultime sedute (solo serie di lavoro) per confronto durante l'allenamento. */

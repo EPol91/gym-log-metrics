@@ -586,6 +586,8 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
   const [rir, setRir] = useState<number | null>(null)
   const [warmup, setWarmup] = useState(false)
   const [hint, setHint] = useState<SetEntry | null>(null)
+  /** La serie che non e' entrata nel database: va detto subito, non il giorno dopo. */
+  const [guasto, setGuasto] = useState<string | null>(null)
   const [histBest, setHistBest] = useState(0)
   const [prevSets, setPrevSets] = useState<SetEntry[]>([])
   // Finche' lo storico non e' arrivato non si precompila niente: riempire coi
@@ -632,9 +634,15 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
     // Se durante il recupero cambi preset, il parent aggiorna questa serie via l'id qui sotto.
     // RIR lasciato vuoto su una serie di lavoro = 0 (a esaurimento); sul riscaldamento resta assente.
     const rirToSave = warmup ? (rir ?? undefined) : (rir ?? 0)
-    const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rirToSave, isWarmup: warmup, restSec: warmup ? undefined : restSec })
-    setRir(null); setWarmup(false)
-    if (!warmup) onLogged(restSec, entry.exerciseId, id)
+    try {
+      const id = await addSet(entry.id, { weight: wn, reps: rn, rir: rirToSave, isWarmup: warmup, restSec: warmup ? undefined : restSec })
+      setGuasto(null)
+      setRir(null); setWarmup(false)
+      if (!warmup) onLogged(restSec, entry.exerciseId, id)
+    } catch (e) {
+      // Kg e reps restano dove sono: ritocchi il tasto e basta.
+      setGuasto((e as Error).message)
+    }
   }
 
   let wIdx = 0
@@ -713,8 +721,22 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
         <VoiceButton onFill={fillFromVoice} />
       </div>
 
+      {guasto && <AvvisoSerie testo={guasto} />}
+
       {/* Registra serie */}
       <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 15 }} disabled={!canAdd} onClick={add}>✓ Registra serie</button>
+    </div>
+  )
+}
+
+/** Il peggio non e' una serie non salvata: e' una serie non salvata in silenzio. */
+function AvvisoSerie({ testo }: { testo: string }) {
+  return (
+    <div className="card" style={{ margin: 0, padding: '8px 10px', borderColor: '#e57373' }}>
+      <p className="small" style={{ margin: 0, color: '#e57373' }}>⚠ {testo} Riprova col tasto qui sotto.</p>
+      <p className="muted" style={{ fontSize: 11, margin: '4px 0 0' }}>
+        Se l'app si chiude prima, la serie non e' persa: torna al riavvio.
+      </p>
     </div>
   )
 }
@@ -892,6 +914,7 @@ function GroupCard({ entries, nameOf, datiOf, restSec, pos, total, restNode, onL
 }) {
   const sorted = [...entries].sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))
   const [vals, setVals] = useState<Record<string, { w: string; r: string; rir: number | null }>>({})
+  const [guasto, setGuasto] = useState<string | null>(null)
   const [prevByEntry, setPrevByEntry] = useState<Record<string, SetEntry[]>>({})
   const ids = sorted.map((e) => e.id).join(',')
   // Serie di tutti gli esercizi del gruppo, reattive: giri e precompilazione restano allineati.
@@ -953,8 +976,16 @@ function GroupCard({ entries, nameOf, datiOf, restSec, pos, total, restNode, onL
       // fermi — e' il senso del superset. Scriverlo su tutti metteva nel report
       // un recupero che non hai mai fatto.
       const ultimo = i === sorted.length - 1
-      await addSet(e.id, { weight: wn, reps: rn, rir: v.rir ?? 0, restSec: ultimo ? restSec : 0 })
+      try {
+        await addSet(e.id, { weight: wn, reps: rn, rir: v.rir ?? 0, restSec: ultimo ? restSec : 0 })
+      } catch (err) {
+        // Il giro si ferma qui: meglio un giro a meta' dichiarato che due serie
+        // fantasma. Quello che e' entrato resta, il resto lo ripeti.
+        setGuasto(`${nameOf(e.exerciseId)}: ${(err as Error).message}`)
+        return
+      }
     }
+    setGuasto(null)
     setVals((old) => {
       const next = { ...old }
       for (const e of sorted) next[e.id] = { ...next[e.id], rir: null }
@@ -994,6 +1025,8 @@ function GroupCard({ entries, nameOf, datiOf, restSec, pos, total, restNode, onL
       ))}
 
       {restNode}
+
+      {guasto && <AvvisoSerie testo={guasto} />}
 
       <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 15 }} disabled={!ready} onClick={closeRound}>
         ✓ Chiudi giro {rounds + 1}

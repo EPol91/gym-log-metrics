@@ -20,7 +20,7 @@ export function UndoToast() {
       <span className="small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {action.label}
       </span>
-      <button className="chip on" style={{ flex: 'none' }} onClick={() => runUndo()}>Annulla</button>
+      {action.run && <button className="chip on" style={{ flex: 'none' }} onClick={() => runUndo()}>Annulla</button>}
       <button className="ghost small" style={{ flex: 'none', padding: '4px 8px' }} onClick={clearUndo}>✕</button>
     </div>,
     document.body,

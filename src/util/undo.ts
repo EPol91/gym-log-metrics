@@ -3,7 +3,8 @@
 
 export interface UndoAction {
   label: string
-  run: () => Promise<void> | void
+  /** Assente = avviso e basta: niente da annullare. */
+  run?: () => Promise<void> | void
 }
 
 let current: UndoAction | null = null
@@ -26,12 +27,20 @@ export function pushUndo(label: string, run: UndoAction['run'], ttlMs = 12000): 
   timer = window.setTimeout(() => { current = null; emit() }, ttlMs)
 }
 
+/** Solo una cosa da dire, nello stesso posto dove compare l'annulla. */
+export function pushAvviso(label: string, ttlMs = 12000): void {
+  current = { label }
+  emit()
+  if (timer) clearTimeout(timer)
+  timer = window.setTimeout(() => { current = null; emit() }, ttlMs)
+}
+
 export async function runUndo(): Promise<void> {
   const a = current
   current = null
   if (timer) clearTimeout(timer)
   emit()
-  if (a) await a.run()
+  if (a?.run) await a.run()
 }
 
 export function clearUndo(): void {

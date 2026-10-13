@@ -40,7 +40,27 @@ export class GymLogDB extends Dexie {
   rsChecks!: Table<RsCheck, string>
 
   constructor() {
-    super('gym-log-metrics')
+    /*
+     * `strict`: una scrittura dichiarata finita e' finita davvero, sul disco.
+     *
+     * Senza questo Chrome usa la durabilita' «relaxed»: la transazione si
+     * chiude, l'app mostra il dato, e se il telefono chiude l'app o si spegne
+     * in quella finestra la riga non c'e' mai stata. E' cosi' che si perdevano
+     * le ultime serie di un esercizio — quelle dopo le quali esci dall'app.
+     * Costa un fsync per scrittura: su qualche decina di scritture al minuto
+     * non si sente, e un allenamento non si riscrive.
+     */
+    /*
+     * `cache: 'disabled'`: ogni domanda al database va al database.
+     *
+     * Dexie 4 tiene una copia in memoria dei risultati e la aggiorna da sola
+     * quando qualcosa cambia. Quando quella copia non corrisponde piu' —
+     * succedeva dopo due serie finite nello stesso posto — la tabella in
+     * allenamento continuava a mostrare i dati di prima: la serie c'era, a
+     * schermo no. Un'app con un po' di righe per volta non ha niente da
+     * guadagnare da quella copia, e tutto da perdere.
+     */
+    super('gym-log-metrics', { chromeTransactionDurability: 'strict', cache: 'disabled' })
     // Ogni indice include userId in testa: query sempre filtrate per utente (multi-tenant-ready).
     this.version(1).stores({
       users: 'id',

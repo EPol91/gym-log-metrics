@@ -41,12 +41,27 @@ function SetEditRow({ s }: { s: SetEntry }) {
 function AddSetRow({ entryId }: { entryId: string }) {
   const [w, setW] = useState('')
   const [r, setR] = useState('')
+  const [guasto, setGuasto] = useState<string | null>(null)
+  // Anche qui la serie o entra o te lo dice: i campi restano pieni per riprovare.
+  const aggiungi = async () => {
+    const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true })
+    if (wn == null || rn == null) return
+    try {
+      await addSet(entryId, { weight: wn, reps: rn })
+      setGuasto(null); setW(''); setR('')
+    } catch (e) {
+      setGuasto((e as Error).message)
+    }
+  }
   return (
-    <div className="row" style={{ gap: 6, marginTop: 6 }}>
-      <input placeholder="kg" inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ width: 64 }} />
-      <input placeholder="reps" inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ width: 56 }} />
-      <button className="ghost small" onClick={async () => { const wn = parseNum(w, { min: 0 }), rn = parseNum(r, { min: 1, int: true }); if (wn != null && rn != null) { await addSet(entryId, { weight: wn, reps: rn }); setW(''); setR('') } }}>＋ set</button>
-    </div>
+    <>
+      <div className="row" style={{ gap: 6, marginTop: 6 }}>
+        <input placeholder="kg" inputMode="decimal" value={w} onChange={(e) => setW(e.target.value)} style={{ width: 64 }} />
+        <input placeholder="reps" inputMode="numeric" value={r} onChange={(e) => setR(e.target.value)} style={{ width: 56 }} />
+        <button className="ghost small" onClick={aggiungi}>＋ set</button>
+      </div>
+      {guasto && <p className="small" style={{ margin: '4px 0 0', color: '#e57373' }}>⚠ {guasto} Riprova.</p>}
+    </>
   )
 }
 
