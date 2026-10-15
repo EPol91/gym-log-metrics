@@ -17,7 +17,7 @@ import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTy
 import { pastoCopiato } from '../util/appuntiPasto'
 import { computeRecipe, macrosForAmount, type RecipeAmount } from '../db/recipes'
 import { FoodChooser } from './FoodChooser'
-import { pianoDi, giornataDelPiano } from '../rs/piano'
+import { pianoDi, giornataDelPiano, rigaDelCoach, righeMancanti, type RigaCoach } from '../rs/piano'
 import { getUser } from '../db/repo'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros, Recipe } from '../db/schema'
@@ -57,15 +57,18 @@ function Macro({ m, grande }: { m: Macros; grande?: boolean }) {
 }
 
 /** Il pannello di una riga: grammi, sostituzione, ritorno al coach, elimina. */
-function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
+function RigaSheet({ it, nome, suo, onGrammi, onSostituisci, onElimina, onClose }: {
   it: DayTemplateItem; nome: string
+  /** La voce del coach dietro questa riga, com'e' nel piano di adesso. */
+  suo: RigaCoach | undefined
   onGrammi: (g: number) => void; onSostituisci: () => void; onElimina: () => void; onClose: () => void
 }) {
   useBloccoScroll()
   useIndietro(onClose)
   const [g, setG] = useState(String(it.grams))
   const originale = it.rsOriginale
-  const cambiata = originale != null && (originale.nome !== nome || originale.g !== it.grams)
+  const tolta = originale != null && suo == null
+  const cambiata = suo != null && (suo.alimento !== nome || suo.g !== it.grams)
 
   function salva() {
     const n = Number(g.replace(',', '.'))
@@ -78,9 +81,14 @@ function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
       onClick={onClose}>
       <div className="card" style={{ width: 'min(420px, 100%)', margin: 0 }} onClick={(e) => e.stopPropagation()}>
         <strong style={{ display: 'block' }}>{nome}</strong>
-        {originale && (
+        {suo && (
           <p className="muted small" style={{ margin: '2px 0 0' }}>
-            Il coach qui scrive: {originale.nome} · {originale.g} g
+            Il coach qui scrive: {suo.alimento} · {suo.g} g
+          </p>
+        )}
+        {tolta && (
+          <p className="small" style={{ margin: '2px 0 0', color: 'var(--rs)' }}>
+            Questa riga il coach l'ha tolta dal suo piano (c'era: {originale!.nome} · {originale!.g} g).
           </p>
         )}
 
@@ -100,7 +108,8 @@ function RigaSheet({ it, nome, onGrammi, onSostituisci, onElimina, onClose }: {
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
           <button className="chip" style={{ flex: 1 }} onClick={onSostituisci}>⇄ Sostituisci</button>
-          {cambiata && <button className="chip" style={{ flex: 1 }} onClick={() => { onClose(); onGrammi(originale!.g) }}>↺ Come il coach</button>}
+          {/* Torna ai grammi che chiede ADESSO, non a quelli di quando hai importato. */}
+          {cambiata && <button className="chip" style={{ flex: 1 }} onClick={() => { onClose(); onGrammi(suo!.g) }}>↺ Come il coach</button>}
         </div>
 
         <div className="row" style={{ gap: 6, marginTop: 10 }}>
@@ -306,7 +315,11 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
             {m.items.map((it, ii) => {
               const nome = nomeDi(it, cibi)
               const orig = it.rsOriginale
-              const cambiata = orig != null && (orig.nome !== nome || orig.g !== it.grams)
+              // Cosa chiede il coach qui adesso: se ha cambiato i grammi, la nota
+              // cambia con lui senza reimportare niente.
+              const suo = orig ? rigaDelCoach(g, m.name, orig.nome) : undefined
+              const tolta = orig != null && suo == null
+              const cambiata = suo != null && (suo.alimento !== nome || suo.g !== it.grams)
               return (
                 <div key={ii} onClick={() => setApri({ m: mi, i: ii })}
                   className="row spread"
@@ -315,18 +328,36 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
                       {it.recipeId ? '📖 ' : ''}{nome}
                       {cambiata && <span style={{ color: 'var(--rs)', fontSize: 11 }}> · corretta</span>}
+                      {tolta && <span style={{ color: 'var(--rs)', fontSize: 11 }}> · fuori piano</span>}
                     </span>
                     <span className="muted" style={{ fontSize: 11 }}>
                       {it.recipeId && it.portions != null
                         ? `${String(it.portions).replace('.', ',')} ${it.portions === 1 ? 'porzione' : 'porzioni'}`
                         : `${it.grams} g`}
-                      {cambiata && orig ? ` · coach: ${orig.nome} ${orig.g} g` : ''}
+                      {cambiata && suo ? ` · coach: ${suo.alimento} ${suo.g} g` : ''}
+                      {tolta ? ' · il coach l\'ha tolta' : ''}
                     </span>
                   </span>
                   <Macro m={macroDi(it, cibi)} />
                 </div>
               )
             })}
+
+            {/* Quello che lui ha qui e tu no: righe aggiunte dopo, o che hai
+                tolto. Si dice e basta — cosa farne lo decidi tu. */}
+            {(() => {
+              const nomiTuoi = m.items.flatMap((it) => [it.rsOriginale?.nome ?? '', nomeDi(it, cibi)])
+              const mancanti = righeMancanti(g, m.name, nomiTuoi)
+              if (!mancanti.length) return null
+              return (
+                <p className="small" style={{ margin: '7px 0 0', paddingTop: 7, borderTop: '1px solid var(--line)', color: 'var(--rs)', lineHeight: 1.5 }}>
+                  Il coach qui ha anche: {mancanti.map((r) => `${r.alimento} ${r.g} g`).join(' · ')}
+                  <span className="muted" style={{ display: 'block', fontSize: 11 }}>
+                    Non c'è nella tua versione. Aggiungila se vuoi: non la mette nessuno al posto tuo.
+                  </span>
+                </p>
+              )
+            })()}
 
             <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
               <button className="chip" onClick={() => setScegli({ m: mi, i: null })}>＋ Aggiungi alimento</button>
@@ -401,7 +432,8 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
         <RigaSheet
           it={aperta}
           nome={nomeDi(aperta, cibi)}
-          onGrammi={(g) => tocca(apri.m, apri.i, { grams: g })}
+          suo={aperta.rsOriginale ? rigaDelCoach(g, pasti[apri.m].name, aperta.rsOriginale.nome) : undefined}
+          onGrammi={(gr) => tocca(apri.m, apri.i, { grams: gr })}
           onSostituisci={() => { setScegli({ m: apri.m, i: apri.i }); setApri(null) }}
           onElimina={() => elimina(apri.m, apri.i)}
           onClose={() => setApri(null)}

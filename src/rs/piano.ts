@@ -37,6 +37,38 @@ export function giornataDelPiano(piano: GiornataPianoRs[], nome: string): Giorna
   return piano.find((g) => g.nome === nome)
 }
 
+// --- Cosa chiede il coach ADESSO, riga per riga --------------------------------
+//
+// La riga della tua giornata tipo porta scritto a quale voce del coach
+// corrisponde (`rsOriginale`): quello e' un legame e non si tocca, altrimenti
+// non si saprebbe piu' che la tua avena di marca sta al posto dei suoi fiocchi.
+// I grammi invece non si fotografano: si chiedono al piano in uso ogni volta.
+// Prima erano fermi al giorno dell'importazione, e dopo un aggiornamento del
+// protocollo la nota sotto la riga diceva ancora i numeri vecchi.
+
+const norm = (s: string) => s.trim().toLowerCase()
+
+export type RigaCoach = GiornataPianoRs['pasti'][number]['righe'][number]
+
+/** Le righe che il coach scrive in quel pasto, oggi. */
+export function pastoDelCoach(g: GiornataPianoRs | undefined, nomePasto: string): RigaCoach[] | undefined {
+  return g?.pasti.find((p) => norm(p.nome) === norm(nomePasto))?.righe
+}
+
+/** La voce del coach dietro una tua riga, come la scrive adesso. */
+export function rigaDelCoach(g: GiornataPianoRs | undefined, nomePasto: string, nomeOriginale: string): RigaCoach | undefined {
+  return pastoDelCoach(g, nomePasto)?.find((r) => norm(r.alimento) === norm(nomeOriginale))
+}
+
+/**
+ * Quello che il coach ha in quel pasto e che la tua versione non copre: righe
+ * che ha aggiunto dopo, o che tu hai tolto. Promemoria, non si applica niente.
+ */
+export function righeMancanti(g: GiornataPianoRs | undefined, nomePasto: string, nomiTuoi: string[]): RigaCoach[] {
+  const tue = new Set(nomiTuoi.filter(Boolean).map(norm))
+  return (pastoDelCoach(g, nomePasto) ?? []).filter((r) => !tue.has(norm(r.alimento)))
+}
+
 // --- Il confronto prima di salvare ---------------------------------------------
 
 export interface CambioAlimento {

@@ -5,13 +5,27 @@ import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { todayLocal } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
-import type { DayTemplateItem, DayTemplateMeal, DayType, Food, FoodLog, Macros, Meal } from './schema'
+import type { DayTemplateItem, DayTemplateMeal, DayType, Food, FoodLog, GiornataPianoRs, Macros, Meal } from './schema'
+import { pianoRs, giornataDelPiano, rigaDelCoach } from '../rs/piano'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
 
 /** Pasti creati per una giornata nuova. Da qui in poi li gestisci tu. */
 const DEFAULT_MEALS = ['Colazione', 'Pranzo', 'Cena', 'Spuntini']
+
+/**
+ * Cosa aveva prescritto il coach per questa riga, applicandola oggi.
+ *
+ * Il nome lo dice `rsOriginale` (il legame fra la tua riga e la sua voce), i
+ * grammi il piano in uso. Se la sua voce non c'e' piu' nel piano resta scritto
+ * quello che c'era: una riga nata dal suo piano non diventa roba tua.
+ */
+function prescrizione(it: DayTemplateItem, nomePasto: string, g?: GiornataPianoRs): { nome: string; g: number } {
+  const suo = it.rsOriginale ? rigaDelCoach(g, nomePasto, it.rsOriginale.nome) : undefined
+  if (suo) return { nome: suo.alimento, g: suo.g }
+  return it.rsOriginale ?? { nome: it.nameSnapshot ?? '', g: it.grams }
+}
 
 // --- Alimenti ---------------------------------------------------------------
 
@@ -635,6 +649,10 @@ export async function applyDayTemplate(
   // Le giornate del coach segnano da dove viene ogni riga: e' quello che poi
   // distingue "piano" da "fuori piano" quando si tirano le somme per lui.
   const dalCoach = t.name.startsWith('🦠')
+  // La prescrizione che finisce sulla riga del diario e' quella del piano di
+  // ADESSO, non la fotografia del giorno dell'importazione: se il coach ha
+  // cambiato i grammi, il confronto di quel giorno misura sul numero nuovo.
+  const suaGiornata = dalCoach ? giornataDelPiano(await pianoRs(), t.name) : undefined
   for (const m of [...t.meals].sort((a, b) => a.order - b.order)) {
     const mealId = newId()
     await db.meals.add({ id: mealId, userId: U, createdAt: ts, updatedAt: ts, date, name: m.name, order: base + m.order })
@@ -643,9 +661,9 @@ export async function applyDayTemplate(
       date, mealId, foodId: it.foodId, grams: it.grams, order: i,
       ...(it.recipeId ? { recipeId: it.recipeId, nameSnapshot: it.nameSnapshot, macrosSnapshot: it.macrosSnapshot } : {}),
       ...(it.portions != null ? { portions: it.portions } : {}),
-      // Il confronto col piano guarda quello che ha prescritto LUI: se hai
-      // corretto la riga, l'originale e' in rsOriginale ed e' quello che conta.
-      ...(dalCoach ? { rsPlanned: it.rsOriginale ?? { nome: it.nameSnapshot ?? '', g: it.grams } } : {}),
+      // Il confronto col piano guarda quello che prescrive LUI: `rsOriginale`
+      // dice quale sua voce e', il piano in uso dice con quanti grammi.
+      ...(dalCoach ? { rsPlanned: prescrizione(it, m.name, suaGiornata) } : {}),
     }))
     if (righe.length) await db.foodLogs.bulkAdd(righe)
     creati.push(...righe.map((r) => r.id))
