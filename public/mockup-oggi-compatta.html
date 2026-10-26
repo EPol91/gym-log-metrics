@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oggi compatta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-hi: #ead27a; --gold-bg: #231e0e; --rs: #e1251b; --good: #5bc27a;
+    --carb: #ffc63d; --prot: #2ecc71; --fat: #e74c3c;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; font-variant-numeric: lining-nums; }
+  .intro { max-width: 820px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 26px; margin: 6px 0 6px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 64ch; }
+  .telefoni { display: flex; flex-wrap: wrap; gap: 34px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  /* Il telefono: 360 di larghezza, 36 di barra di stato, 700 di schermo utile, 44 di tasti Android */
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 14px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+  .tasti { height: 44px; display: flex; justify-content: space-around; align-items: center; color: #8a8a8a; font-size: 18px; background: #000; }
+  .misura { position: absolute; right: 4px; top: 0; bottom: 70px; width: 2px; background: repeating-linear-gradient(#d4af3755 0 6px, transparent 6px 12px); }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 9px 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+
+  /* testata */
+  .anello { position: relative; width: 52px; height: 52px; }
+  .anello svg { transform: rotate(-90deg); }
+  .anello b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-num); font-weight: 600; font-size: 20px; color: var(--faint); }
+  .sotto-anello { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--muted); text-align: center; margin-top: 2px; }
+
+  /* coach chiuso */
+  .coach { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 0 2px; }
+  .coach .eyebrow { color: var(--gold); display: inline-flex; gap: 7px; align-items: center; flex: none; }
+  .coach .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .coach .testo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* seduta compatta */
+  .eroe { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); padding: 10px 12px 11px; }
+  .eroe .stato-ciclo { font-size: 11px; font-weight: 600; color: #ff6b5f; white-space: nowrap; }
+  .eroe .stato-ciclo .ok { color: var(--good); }
+  .eroe .cicli { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .eroe h2 { font-size: 21px; margin: 6px 0 0; }
+  .eroe .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .azione { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 9px; }
+  .striscia { display: grid; grid-template-columns: repeat(5, 27px); gap: 4px; }
+  .striscia span { height: 30px; border-radius: 8px; display: grid; place-items: center; font-family: var(--f-num); font-weight: 600; font-size: 12.5px; border: 1px dashed #3a3730; color: var(--faint); }
+  .striscia span.tocca { border: 1.5px solid var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .btn { height: 40px; border-radius: 12px; border: 0; font: 700 15px var(--f-testo); color: #1a1400; background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #b8952f); box-shadow: 0 4px 14px #d4af3722, inset 0 1px 0 #fff5; }
+
+  /* riquadri */
+  .quattro { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin-top: 6px; }
+  .quattro .v { font-family: var(--f-num); font-weight: 600; font-size: 23px; line-height: 1; }
+  .quattro .v small { font-size: 12px; color: var(--muted); margin-left: 1px; }
+  .quattro .l { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .chip { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface-2); }
+  .chip.rs { color: #ff6b5f; border-color: #5a1a14; background: #2a0f0c; }
+  .due { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grande { font-family: var(--f-num); font-weight: 600; font-size: 28px; line-height: 1; }
+  .barra { height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; margin-top: 7px; }
+  .barra i { display: block; height: 100%; border-radius: 99px; background: var(--gold); }
+
+  /* avviso compatto */
+  .avviso { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+  .avviso .t { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
+  .avviso .t b { font-weight: 600; }
+  .avviso .t span { color: var(--muted); }
+  .x { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 12px; flex: none; }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 7px 4px 0; }
+  .tab div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="ey">ETP HEALTH · Oggi compatta</div>
+  <h1>Tutto in una schermata, col coach chiuso</h1>
+  <p>Il tuo telefono a grandezza vera: 360 di larghezza, 700 di schermo utile tra la barra di stato e i tasti di Android. La linea tratteggiata a destra è lo spazio sopra la barra in basso: tutto ci sta dentro, senza scorrere.</p>
+</header>
+
+<main class="telefoni">
+
+  <!-- ============ SENZA AVVISI ============ -->
+  <section class="blocco">
+    <div class="nome">1 · Una giornata normale</div>
+    <div class="tel">
+      <div class="stato"><span>11:23</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="misura"></div>
+        <div class="contenuto">
+
+          <div class="riga spazia" style="align-items:flex-start">
+            <div>
+              <div class="eyebrow">Lunedì 26 ottobre <span style="color:var(--faint)">›</span></div>
+              <h1 style="font-size:26px;margin-top:3px">Ciao Emanuel</h1>
+            </div>
+            <div>
+              <div class="anello"><svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" stroke="#2a2824" stroke-width="5" fill="none"/></svg><b>—</b></div>
+              <div class="sotto-anello">fai il check</div>
+            </div>
+          </div>
+
+          <div class="coach"><span class="eyebrow">Coach</span><span class="testo">Nessun check pre-workout di oggi.</span><span style="color:var(--faint);font-size:12px">▾</span></div>
+
+          <div class="card eroe">
+            <div class="riga spazia">
+              <span class="stato-ciclo">🦠 Ciclo 2 · giorno 2 di 8 · <span class="ok">nei tempi</span></span>
+              <span class="cicli">Cicli chiusi ▾</span>
+            </div>
+            <h2>D1 · Pull A</h2>
+            <div class="sub">Upper back · rear delts · bicipiti · 7 esercizi</div>
+            <div class="azione">
+              <div class="striscia"><span class="tocca">D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span></div>
+              <button class="btn">Inizia D1</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="riga spazia"><span class="eyebrow">Vitali · WHOOP</span><span style="font-size:10.5px;color:var(--faint)">alle 07:12 ↻</span></div>
+            <div class="quattro">
+              <div><div class="v" style="color:var(--gold)">64<small>%</small></div><div class="l">recupero</div></div>
+              <div><div class="v">7h 04</div><div class="l">sonno</div></div>
+              <div><div class="v">11,4</div><div class="l">sforzo</div></div>
+              <div><div class="v">58</div><div class="l">HRV</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="riga spazia"><span class="eyebrow">Nutrizione</span><span class="chip rs">LOW ON</span></div>
+            <div class="quattro">
+              <div><div class="v" style="color:var(--gold)">955</div><div class="l">kcal</div></div>
+              <div><div class="v" style="color:var(--carb)">88</div><div class="l">carbo</div></div>
+              <div><div class="v" style="color:var(--prot)">83</div><div class="l">proteine</div></div>
+              <div><div class="v" style="color:var(--fat)">27</div><div class="l">grassi</div></div>
+            </div>
+          </div>
+
+          <div class="due">
+            <div class="card">
+              <div class="eyebrow">Corpo</div>
+              <div class="riga" style="gap:5px;align-items:baseline;margin-top:6px">
+                <span class="grande">82,4</span><span style="font-size:12px;color:var(--muted)">kg</span>
+                <span style="font-size:11px;color:var(--muted);margin-left:auto">−0,3</span>
+              </div>
+              <div style="margin-top:7px"><span class="chip">✓ pesato oggi</span></div>
+            </div>
+            <div class="card">
+              <div class="eyebrow">Passi</div>
+              <div style="margin-top:6px"><span class="grande">8.450</span></div>
+              <div class="barra"><i style="width:84%"></i></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:4px">di 10.000</div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tab">
+          <div class="on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+          <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+          <div><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+        </nav>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>La seduta passa da circa 250 a circa 130 di altezza: una riga piccola col ciclo, il titolo coi muscoli, e striscia + tasto sulla stessa riga.</li>
+      <li>«Ultima D5 il…» non c'è più; ritardo o seduta da recuperare compaiono al posto di «nei tempi», in arancio o in rosso.</li>
+      <li>Vitali e Nutrizione restano coi quattro numeri, solo con meno aria. Il peso ha la variazione accanto, sulla stessa riga.</li>
+    </ul>
+  </section>
+
+  <!-- ============ CON UN AVVISO ============ -->
+  <section class="blocco">
+    <div class="nome">2 · Con un avviso aperto</div>
+    <div class="tel">
+      <div class="stato"><span>11:23</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="misura"></div>
+        <div class="contenuto">
+
+          <div class="riga spazia" style="align-items:flex-start">
+            <div>
+              <div class="eyebrow">Lunedì 26 ottobre <span style="color:var(--faint)">›</span></div>
+              <h1 style="font-size:26px;margin-top:3px">Ciao Emanuel</h1>
+            </div>
+            <div>
+              <div class="anello"><svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" stroke="#2a2824" stroke-width="5" fill="none"/><circle cx="26" cy="26" r="22" stroke="#d4af37" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="99.5 138.2"/></svg><b style="color:var(--gold)">72</b></div>
+              <div class="sotto-anello" style="color:var(--gold)">ready</div>
+            </div>
+          </div>
+
+          <div class="coach"><span class="eyebrow">Coach</span><span class="testo">Recupero 64%: fascia gialla di WHOOP.</span><span style="color:var(--faint);font-size:12px">▾</span></div>
+
+          <div class="card eroe">
+            <div class="riga spazia">
+              <span class="stato-ciclo">🦠 Ciclo 2 · giorno 4 di 8 · <span style="color:#ff6b5f">D2 da recuperare</span></span>
+              <span class="cicli">Cicli chiusi ▾</span>
+            </div>
+            <h2>D3 · Lower Completo</h2>
+            <div class="sub">Quadricipiti · femorali · glutei · polpacci · 7 esercizi</div>
+            <div class="azione">
+              <div class="striscia"><span class="tocca" style="background:var(--gold);color:#1a1400;border-style:solid">D1</span><span style="border:1px solid var(--rs);color:var(--rs);background:#2a0e0c">D2</span><span class="tocca">D3</span><span>D4</span><span>D5</span></div>
+              <button class="btn">Inizia D3</button>
+            </div>
+          </div>
+
+          <div class="card avviso">
+            <span style="font-size:15px">🔔</span>
+            <div class="t"><b>Backup vecchio</b> · <span>i tuoi dati stanno su un telefono solo.</span></div>
+            <span class="x">✕</span>
+          </div>
+
+          <div class="card">
+            <div class="riga spazia"><span class="eyebrow">Vitali · WHOOP</span><span style="font-size:10.5px;color:var(--faint)">alle 07:12 ↻</span></div>
+            <div class="quattro">
+              <div><div class="v" style="color:var(--gold)">64<small>%</small></div><div class="l">recupero</div></div>
+              <div><div class="v">7h 04</div><div class="l">sonno</div></div>
+              <div><div class="v">11,4</div><div class="l">sforzo</div></div>
+              <div><div class="v">58</div><div class="l">HRV</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="riga spazia"><span class="eyebrow">Nutrizione</span><span class="chip rs">LOW ON</span></div>
+            <div class="quattro">
+              <div><div class="v" style="color:var(--gold)">955</div><div class="l">kcal</div></div>
+              <div><div class="v" style="color:var(--carb)">88</div><div class="l">carbo</div></div>
+              <div><div class="v" style="color:var(--prot)">83</div><div class="l">proteine</div></div>
+              <div><div class="v" style="color:var(--fat)">27</div><div class="l">grassi</div></div>
+            </div>
+          </div>
+
+          <div class="due">
+            <div class="card">
+              <div class="eyebrow">Corpo</div>
+              <div class="riga" style="gap:5px;align-items:baseline;margin-top:6px">
+                <span class="grande">82,4</span><span style="font-size:12px;color:var(--muted)">kg</span>
+                <span style="font-size:11px;color:var(--muted);margin-left:auto">−0,3</span>
+              </div>
+              <div style="margin-top:7px"><span class="chip" style="color:var(--gold);border-color:var(--gold)">＋ pesati oggi</span></div>
+            </div>
+            <div class="card">
+              <div class="eyebrow">Passi</div>
+              <div style="margin-top:6px"><span class="grande">3.120</span></div>
+              <div class="barra"><i style="width:31%"></i></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:4px">di 10.000</div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tab">
+          <div class="on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+          <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+          <div><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+        </nav>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>L'avviso diventa una riga sola, con la ✕ a destra: anche così entra tutto.</li>
+      <li>Qui una seduta saltata: D2 in rosso nella striscia e nella riga in alto, al posto di «nei tempi».</li>
+      <li>La spiegazione «tornano domani…» degli avvisi resta in Profilo → Coach, dove si spengono.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
