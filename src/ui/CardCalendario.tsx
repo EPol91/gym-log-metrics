@@ -36,18 +36,19 @@ export function DataDiOggi({ onApri, altezza }: { onApri: () => void; altezza?: 
   return (
     <button onClick={onApri} aria-label="Calendario"
       style={{
-        background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 12,
-        padding: '6px 10px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.15,
+        background: 'linear-gradient(180deg, #181714, var(--surface) 60%)', border: '1px solid var(--line)', borderRadius: 12,
+        boxShadow: 'inset 0 1px 0 #ffffff08',
+        padding: '4px 10px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.1, minWidth: 52,
         ...(altezza ? { height: altezza, display: 'grid', alignContent: 'center' } : {}),
       }}>
-      <div className="muted" style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+      <div className="muted" style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 600 }}>
         {['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][oggi.getDay()]}
       </div>
-      <div style={{ fontSize: 22, color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontWeight: 600 }}>
+      <div style={{ fontSize: 26, lineHeight: 1, color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontWeight: 600, margin: '1px 0' }}>
         {oggi.getDate()}
       </div>
-      <div className="muted" style={{ fontSize: 9 }}>
-        {MESI[oggi.getMonth()].slice(0, 3)} {oggi.getFullYear()}
+      <div className="muted" style={{ fontSize: 9.5 }}>
+        {MESI[oggi.getMonth()].slice(0, 3)}
       </div>
     </button>
   )

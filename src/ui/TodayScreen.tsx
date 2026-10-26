@@ -15,7 +15,7 @@ import { ScoreRing } from './anim'
 import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
 import { usePesoOggi } from './PesoOggi'
-import { Calendario } from './CardCalendario'
+import { Calendario, DataDiOggi } from './CardCalendario'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }
@@ -70,8 +70,6 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   const { press, inDragOrder, liftStyle } = useHoldDrag((_, ids) => setOrdine(ids))
 
   const nome = (user?.name ?? '').trim().split(' ')[0]
-  // «lunedì 26 ottobre»: la data si legge come la diresti. Toccandola si apre il calendario.
-  const data = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 
   // Se un domani si aggiungono riquadri, quelli nuovi entrano in coda invece di sparire.
   const chiavi = [...ordine.filter((k) => ORDINE_DEFAULT.includes(k)), ...ORDINE_DEFAULT.filter((k) => !ordine.includes(k))]
@@ -104,12 +102,14 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     <div className="col" style={{ gap: 9 }}>
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0 }}>
-          <button onClick={() => setCalendario(true)} aria-label="Calendario"
-            style={{ ...LBL, background: 'none', border: 0, padding: '2px 0', borderRadius: 0 }}>
-            {data} <span style={{ color: 'var(--faint)' }}>›</span>
-          </button>
+          {/* La data sta nel quadratino accanto all'anello: qui il nome dell'app. */}
+          <div style={{ ...LBL, padding: '2px 0' }}>ETP Health</div>
           <h1 style={{ fontSize: 'clamp(22px, 7.2vw, 26px)', marginTop: 3 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
         </div>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-start', flex: 'none' }}>
+        {/* Il calendarietto: giorno, numero, mese. Col tocco apre il calendario.
+            Alto quanto l'anello col suo nome sotto, cosi' i due combaciano. */}
+        <DataDiOggi onApri={() => setCalendario(true)} altezza={64} />
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <span className={home?.todayReady == null && vitaliOggi ? 'ring-invito' : undefined}>
@@ -119,6 +119,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
             {home?.todayReady == null ? 'fai il check' : 'ready'}
           </div>
         </button>
+        </div>
       </div>
 
       {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={(id) => { setCalendario(false); onApriSeduta(id) }} />}
