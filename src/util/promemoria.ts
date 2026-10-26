@@ -30,7 +30,7 @@ export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
   { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Se non sincronizza da due giorni.' },
   { tipo: 'backup', nome: 'Backup vecchio', nota: 'Se l’ultimo ha più di quattordici giorni.' },
   { tipo: 'pasto', nome: 'Ora dei pasti', nota: 'Un quarto d’ora dopo la fine della fascia, se il pasto non ha l’ora. Arriva anche ad app chiusa.' },
-  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: un tocco se esci più tardi.' },
+  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: «Esco ora» o «Uscito alle…» se esci più tardi.' },
 ]
 
 function spente(): Set<string> {
@@ -195,7 +195,7 @@ async function tutti(): Promise<Avviso[]> {
   if (l && l.giorni.includes(giorno) && !user?.uscite?.[oggi]) {
     const adesso = minuti(oraAdesso())
     if (adesso >= minuti(l.uscita) && adesso <= minuti(l.uscitaFinoA ?? l.uscita) + 30) {
-      out.push({ tipo: 'uscita', titolo: 'Uscito dall’ufficio?', testo: `Se esci dopo le ${l.uscita}, tocca «Esco ora».` })
+      out.push({ tipo: 'uscita', titolo: 'Uscito dall’ufficio?', testo: `Di solito alle ${l.uscita}: se è più tardi, segnalo.` })
     }
   }
 
