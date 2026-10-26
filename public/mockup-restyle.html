@@ -129,6 +129,11 @@
   .macro3 .r em { font-style: normal; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   .macro3 .r em strong { color: var(--text); font-weight: 600; }
 
+  .stat4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; text-align: center; }
+  .stat4 .v { font-size: 25px; line-height: 1; }
+  .stat4 .v small { font-size: 13px; color: var(--muted); margin-left: 1px; }
+  .stat4 .l { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+
   /* --- SEDUTA --- */
   .barra-top { display: flex; align-items: center; gap: 8px; }
   .pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; display: flex; gap: 6px; align-items: center; }
@@ -191,6 +196,25 @@
   .alimenti div { display: flex; justify-content: space-between; padding: 7px 0 0; font-size: 13px; }
   .alimenti div span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
   .alimenti div em { font-style: normal; color: var(--muted); margin-left: 6px; font-size: 12px; }
+  .tracce { display: grid; grid-template-columns: 52px repeat(3, 1fr); gap: 10px; align-items: center; }
+  .traccia .l { font-size: 10.5px; color: var(--muted); }
+  .traccia .v { font-size: 13px; margin: 1px 0 4px; font-variant-numeric: tabular-nums; }
+  .traccia .v b { font-family: var(--f-num); font-size: 18px; font-weight: 600; }
+  .traccia .v span { color: var(--muted); }
+  .traccia .barra { height: 4px; }
+  .totale { text-align: center; font-size: 13px; margin-top: 5px; color: var(--muted); }
+  .totale b { color: var(--gold); font-family: var(--f-num); font-size: 17px; font-weight: 600; }
+  .acquasale { display: flex; justify-content: center; gap: 18px; margin-top: 5px; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .acquasale b { color: var(--gold); font-weight: 700; }
+  .pasto .testa { display: flex; align-items: center; gap: 8px; }
+  .pasto .apri { color: var(--faint); font-size: 15px; transform: rotate(90deg); display: inline-block; }
+  .alimenti .cibo-r { display: grid; grid-template-columns: 1fr 40px 20px; gap: 8px; align-items: center; padding: 7px 0 0; font-size: 13px; }
+  .cibo-r em { font-style: normal; color: var(--muted); font-size: 12px; margin-left: 5px; }
+  .cibo-r .k { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .tick { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #3a3730; display: grid; place-items: center; font-size: 10px; color: transparent; }
+  .tick.si { background: #16301f; border-color: #2c6b41; color: var(--good); font-weight: 800; }
+  .aggiungi-cibo { margin-top: 9px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+  .aggiungi-cibo span { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; background: var(--surface-2); }
   .pasto.dafare { border-style: dashed; background: transparent; box-shadow: none; }
 
   @media (max-width: 440px) {
@@ -259,20 +283,21 @@
         <div class="griglia">
           <div class="card intera">
             <div class="riga spazia"><span class="eyebrow">Vitali · WHOOP</span><span style="font-size:11px;color:var(--faint)">alle 07:12</span></div>
-            <div class="stat3">
+            <div class="stat4">
               <div><div class="v num" style="color:var(--gold)">64<small>%</small></div><div class="l">recupero</div></div>
-              <div><div class="v num">58<small>ms</small></div><div class="l">HRV · nella fascia</div></div>
               <div><div class="v num">7h04</div><div class="l">sonno</div></div>
+              <div><div class="v num">11,4</div><div class="l">sforzo</div></div>
+              <div><div class="v num">58<small>ms</small></div><div class="l">HRV</div></div>
             </div>
           </div>
 
           <div class="card intera">
             <div class="riga spazia"><span class="eyebrow">Nutrizione</span><span class="chip rs">LOW ON</span></div>
-            <div style="margin-top:6px"><span class="grande num">955</span><span class="grande"><small>/ 2 435 kcal</small></span></div>
-            <div class="macro3">
-              <div class="r"><b style="color:var(--carb)">C</b><div class="barra"><i style="width:29%;background:var(--carb)"></i></div><em><strong>88</strong> / 300</em></div>
-              <div class="r"><b style="color:var(--prot)">P</b><div class="barra"><i style="width:41%;background:var(--prot)"></i></div><em><strong>83</strong> / 201</em></div>
-              <div class="r"><b style="color:var(--fat)">G</b><div class="barra"><i style="width:55%;background:var(--fat)"></i></div><em><strong>27</strong> / 49</em></div>
+            <div class="stat4">
+              <div><div class="v num" style="color:var(--gold)">955</div><div class="l">kcal</div></div>
+              <div><div class="v num" style="color:var(--carb)">88</div><div class="l">carbo</div></div>
+              <div><div class="v num" style="color:var(--prot)">83</div><div class="l">proteine</div></div>
+              <div><div class="v num" style="color:var(--fat)">27</div><div class="l">grassi</div></div>
             </div>
           </div>
 
@@ -301,7 +326,7 @@
     <ul class="note">
       <li>In primo piano una cosa sola: la prossima seduta, col tasto per partire. Il resto viene dopo.</li>
       <li>Il coach in due righe, senza riquadro: si legge, non pesa.</li>
-      <li>Riquadri in griglia con numeri grandi; le etichette piccole e maiuscole si leggono a colpo d'occhio.</li>
+      <li>Riquadri in griglia con numeri grandi. Vitali coi suoi quattro dati; Nutrizione solo coi numeri, come adesso.</li>
       <li>Via la riga «I tuoi riquadri · tieni premuto»: il riordino resta, la scritta no.</li>
     </ul>
   </section>
@@ -399,42 +424,45 @@
           <span style="font-size:12px;color:var(--gold);font-weight:600">cambia ›</span>
         </div>
 
-        <div class="card">
-          <div class="sommario">
-            <div class="kcal">
-              <svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="48" stroke="#24221e" stroke-width="9" fill="none"/><circle cx="56" cy="56" r="48" stroke="#d4af37" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="160 301.6"/></svg>
-              <div class="dentro"><b class="num">1 292</b><span>di 2 435 kcal</span></div>
-            </div>
-            <div class="macro3" style="margin-top:0">
-              <div class="r"><b style="color:var(--carb)">C</b><div class="barra"><i style="width:43%;background:var(--carb)"></i></div><em><strong>128</strong> / 300</em></div>
-              <div class="r"><b style="color:var(--prot)">P</b><div class="barra"><i style="width:60%;background:var(--prot)"></i></div><em><strong>121</strong> / 201</em></div>
-              <div class="r"><b style="color:var(--fat)">G</b><div class="barra"><i style="width:59%;background:var(--fat)"></i></div><em><strong>29</strong> / 49</em></div>
-              <div style="font-size:11.5px;color:var(--muted)">mancano <span style="color:var(--text)">1 143 kcal</span></div>
-            </div>
+        <div class="card" style="padding:10px 14px">
+          <div class="tracce">
+            <svg width="52" height="52" viewBox="0 0 52 52" style="transform:rotate(-90deg)">
+              <circle cx="26" cy="26" r="20" stroke="#24221e" stroke-width="8" fill="none"/>
+              <circle cx="26" cy="26" r="20" stroke="#ffc63d" stroke-width="8" fill="none" stroke-dasharray="49.5 125.7"/>
+              <circle cx="26" cy="26" r="20" stroke="#2ecc71" stroke-width="8" fill="none" stroke-dasharray="46.8 125.7" stroke-dashoffset="-49.5"/>
+              <circle cx="26" cy="26" r="20" stroke="#e74c3c" stroke-width="8" fill="none" stroke-dasharray="25.4 125.7" stroke-dashoffset="-96.3"/>
+            </svg>
+            <div class="traccia"><div class="l">Carboidrati</div><div class="v"><b style="color:var(--carb)">128</b><span> / 300</span></div><div class="barra"><i style="width:43%;background:var(--carb)"></i></div></div>
+            <div class="traccia"><div class="l">Proteine</div><div class="v"><b style="color:var(--prot)">121</b><span> / 201</span></div><div class="barra"><i style="width:60%;background:var(--prot)"></i></div></div>
+            <div class="traccia"><div class="l">Grassi</div><div class="v"><b style="color:var(--fat)">29</b><span> / 49</span></div><div class="barra"><i style="width:59%;background:var(--fat)"></i></div></div>
           </div>
-          <div class="acqua">
-            <span style="color:var(--water);font-weight:700" class="num">2,1</span><span style="color:var(--muted)">/ 5,5 L</span>
-            <span class="gocce"><i class="p"></i><i class="p"></i><i class="p"></i><i class="p"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            <span class="aggiungi">+ 250 ml</span>
-          </div>
+          <div class="barra" style="height:5px;margin-top:9px"><i style="width:53%;background:var(--gold)"></i></div>
+          <div class="totale"><b>1 292</b> / 2 435 kcal · restano 1 143</div>
+          <div class="acquasale"><span>💧 <b>2,1</b> / 5,5 L</span><span>🧂 <b>3,5</b> / 7 g</span></div>
         </div>
 
         <div class="card pasto">
-          <div class="riga"><span class="ora">07:30</span><div style="flex:1"><div class="n">Pasto 1</div><div class="m">478 kcal · <span class="c">C 42</span> · <span class="pp">P 42</span> · <span class="g">G 14</span></div></div><span class="spunta">✓</span></div>
-        </div>
-        <div class="card pasto">
-          <div class="riga"><span class="ora">10:45</span><div style="flex:1"><div class="n">Pasto 2</div><div class="m">477 kcal · <span class="c">C 46</span> · <span class="pp">P 41</span> · <span class="g">G 13</span></div></div><span class="spunta">✓</span></div>
-        </div>
-        <div class="card pasto">
-          <div class="riga"><span class="ora">13:20</span><div style="flex:1"><div class="n">Pasto 3</div><div class="m">337 kcal finora · 2 di 5 segnati</div></div><span class="spunta" style="background:var(--gold-bg);color:var(--gold)">½</span></div>
+          <div class="testa"><span class="ora">07:30</span><div style="flex:1"><div class="n">Pasto 1</div><div class="m">478 kcal · <span class="c">C 42</span> · <span class="pp">P 42</span> · <span class="g">G 14</span></div></div><span class="apri">›</span></div>
           <div class="alimenti">
-            <div><span>Patate dolci <em>200 g</em></span><span>172</span></div>
-            <div><span>Petto di pollo <em>150 g</em></span><span>165</span></div>
-            <div><span style="color:var(--muted)">Olio evo <em>10 g</em> · da segnare</span><span>—</span></div>
+            <div class="cibo-r"><span>Fiocchi d'avena<em>50 g</em></span><span class="k">188</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Albume d'uovo<em>150 g</em></span><span class="k">71</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Tuorlo d'uovo<em>15 g</em></span><span class="k">44</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Mirtilli<em>100 g</em></span><span class="k">58</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Burro di mandorle<em>10 g</em></span><span class="k">63</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Proteine isolate Isopure<em>15 g</em></span><span class="k">54</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Sale<em>1 g</em></span><span class="k">0</span><span class="tick si">✓</span></div>
           </div>
+          <div class="aggiungi-cibo"><span>＋ Aggiungi cibo</span><span>💧</span></div>
         </div>
-        <div class="card pasto dafare">
-          <div class="riga"><span class="ora vuota">—:—</span><div style="flex:1"><div class="n" style="color:var(--muted)">Pre-workout</div><div class="m">dal piano · 4 alimenti</div></div><span class="chip oro">Applica</span></div>
+        <div class="card pasto">
+          <div class="testa"><span class="ora">10:45</span><div style="flex:1"><div class="n">Pasto 2</div><div class="m">477 kcal · <span class="c">C 46</span> · <span class="pp">P 41</span> · <span class="g">G 13</span></div></div><span class="apri">›</span></div>
+          <div class="alimenti">
+            <div class="cibo-r"><span>Gallette di riso<em>50 g</em></span><span class="k">193</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Petto di pollo<em>150 g</em></span><span class="k">153</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Avocado<em>50 g</em></span><span class="k">103</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Pomodori<em>100 g</em></span><span class="k">18</span><span class="tick si">✓</span></div>
+            <div class="cibo-r"><span>Sale<em>1 g</em></span><span class="k">0</span><span class="tick si">✓</span></div>
+          </div>
         </div>
       </div>
       <nav class="tab">
@@ -448,8 +476,8 @@
     </div>
     <ul class="note">
       <li>In alto solo la data in una pillola; ricette, giornate tipo, pulizia e impostazioni vanno in «⋯». Niente più tasti che escono dallo schermo.</li>
-      <li>Calorie nell'anello, macro in barre con l'obiettivo accanto, sempre C, P, G.</li>
-      <li>I pasti fatti stanno chiusi in una riga; quello in corso è aperto; quelli da fare sono tratteggiati.</li>
+      <li>Il riepilogo resta com'è oggi — anellino, i tre macro col loro obiettivo, barra delle calorie, acqua e sale — solo ridisegnato.</li>
+      <li>I pasti restano aperti: la dieta si vede tutta a colpo d'occhio. Un tocco sull'intestazione lo chiude, un altro lo riapre.</li>
       <li>L'ora a sinistra di ogni pasto è già al suo posto: è il dato che serve al progetto del tempo.</li>
     </ul>
   </section>
