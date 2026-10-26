@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuovo stile ETP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Il nero resta nero, ma i grigi tirano verso l'oro: oggi sono grigi neutri. */
+    --bg: #0a0a09;
+    --surface: #141311;
+    --surface-2: #1c1b18;
+    --surface-3: #24221e;
+    --line: #2a2824;
+    --line-soft: #201f1c;
+    --text: #f3f1ec;
+    --muted: #8f8a80;
+    --faint: #5d5951;
+    --gold: #d4af37;
+    --gold-hi: #ead27a;
+    --gold-bg: #231e0e;
+    --rs: #e1251b;
+    --rs-bg: #2a0f0c;
+    --good: #5bc27a;
+    --carb: #ffc63d;
+    --prot: #2ecc71;
+    --fat: #e74c3c;
+    --water: #4fc3f7;
+    --f-body: 'Figtree', system-ui, sans-serif;
+    --f-num: 'Barlow Condensed', 'Figtree', sans-serif;
+    --f-title: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: #050505; color: var(--text); font-family: var(--f-body);
+    -webkit-font-smoothing: antialiased; padding: 28px 16px 60px;
+  }
+
+  /* --- La pagina del mockup --- */
+  .intro { max-width: 1240px; margin: 0 auto 26px; }
+  .intro .eyebrow { color: var(--gold); }
+  .intro h1 { font-family: var(--f-title); font-size: 30px; margin: 6px 0 8px; font-weight: 700; }
+  .intro p { color: var(--muted); max-width: 70ch; line-height: 1.55; margin: 0; font-size: 15px; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-top: 18px; align-items: center; }
+  .sw { display: flex; gap: 6px; align-items: center; }
+  .sw i { width: 22px; height: 22px; border-radius: 6px; display: inline-block; border: 1px solid #ffffff14; }
+  .sw span { font-size: 12px; color: var(--muted); }
+  .tipi { display: flex; gap: 22px; align-items: baseline; flex-wrap: wrap; }
+  .tipi div { font-size: 12px; color: var(--muted); }
+  .tipi b { display: block; color: var(--text); font-weight: 600; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px 34px; justify-content: center; }
+  .blocco { width: 390px; max-width: 100%; }
+  .blocco > .nome { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { margin: 16px 4px 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 16px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  /* --- Il telefono --- */
+  .tel {
+    width: 390px; max-width: 100%; height: 844px; border-radius: 46px; background: var(--bg);
+    border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 30px 80px #000c;
+    overflow: hidden; position: relative; display: flex; flex-direction: column;
+  }
+  .stato { height: 42px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 6px 26px 0; font-size: 14px; font-weight: 600; }
+  .stato .ic { display: flex; gap: 6px; align-items: center; }
+  .stato .batt { width: 24px; height: 12px; border: 1.5px solid var(--text); border-radius: 3px; position: relative; }
+  .stato .batt::after { content: ''; position: absolute; inset: 1.5px; right: 6px; background: var(--text); border-radius: 1px; }
+  .schermo { flex: 1; overflow: hidden; padding: 6px 18px 0; display: flex; flex-direction: column; gap: 12px; }
+
+  /* --- Componenti comuni --- */
+  .eyebrow { font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  /* Playfair di serie usa numeri «antichi»: in D1 l'1 sembrava una i. */
+  h1, h2 { font-variant-numeric: lining-nums; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+  .card {
+    background: linear-gradient(180deg, #181714, var(--surface) 40%);
+    border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px;
+    box-shadow: inset 0 1px 0 #ffffff08;
+  }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .chip { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface-2); white-space: nowrap; }
+  .chip.rs { color: #ff6b5f; border-color: #5a1a14; background: var(--rs-bg); }
+  .chip.oro { color: var(--gold); border-color: #5a4a18; background: var(--gold-bg); }
+  .chip.ok { color: var(--good); border-color: #1f4a2c; background: #0f1f14; }
+  .btn { border: 0; border-radius: 14px; font-family: var(--f-body); font-weight: 700; font-size: 16px; padding: 15px; width: 100%; cursor: pointer; }
+  .btn.primario { background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #b8952f); color: #1a1400; box-shadow: 0 6px 18px #d4af3726, inset 0 1px 0 #fff6; }
+  .barra { height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .barra i { display: block; height: 100%; border-radius: 99px; }
+  .tab { height: 74px; flex: none; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 8px 6px 16px; }
+  .tab div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10.5px; color: var(--faint); font-weight: 500; }
+  .tab div.on { color: var(--gold); }
+  .tab div.on.rsd { color: var(--rs); }
+  .tab svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .mini-ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* --- OGGI --- */
+  .saluto h1 { font-family: var(--f-title); font-size: 29px; margin: 4px 0 0; font-weight: 700; letter-spacing: .2px; }
+  .anello { position: relative; width: 66px; height: 66px; flex: none; }
+  .anello svg { transform: rotate(-90deg); }
+  .anello .dentro { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; line-height: 1; }
+  .anello .dentro b { font-size: 25px; }
+  .anello .dentro span { display: block; font-size: 8.5px; letter-spacing: .14em; color: var(--muted); margin-top: 1px; font-weight: 600; }
+  .coach { font-size: 13.5px; line-height: 1.5; color: #d8d3c8; }
+  .coach .eyebrow { color: var(--gold); display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+  .coach .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .eroe { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); }
+  .eroe h2 { font-family: var(--f-title); font-size: 24px; margin: 8px 0 1px; font-weight: 700; }
+  .eroe .sub { font-size: 13px; color: var(--muted); }
+  .striscia { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 10px 0 10px; }
+  .striscia span { height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 600; font-family: var(--f-num); letter-spacing: .04em; border: 1px dashed #3a3730; color: var(--faint); }
+  .striscia span.tocca { border: 1.5px solid var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .intera { grid-column: span 2; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 7px; }
+  .stat3 .v { font-size: 27px; line-height: 1; }
+  .stat3 .v small { font-size: 14px; color: var(--muted); margin-left: 2px; }
+  .stat3 .l { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .grande { font-size: 36px; line-height: .95; }
+  .grande small { font-size: 15px; color: var(--muted); font-family: var(--f-body); font-weight: 500; margin-left: 4px; }
+  .macro3 { display: grid; gap: 6px; margin-top: 8px; }
+  .macro3 .r { display: grid; grid-template-columns: 14px 1fr 68px; gap: 8px; align-items: center; font-size: 12px; }
+  .macro3 .r b { font-weight: 700; }
+  .macro3 .r em { font-style: normal; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .macro3 .r em strong { color: var(--text); font-weight: 600; }
+
+  /* --- SEDUTA --- */
+  .barra-top { display: flex; align-items: center; gap: 8px; }
+  .pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .pill.cuore { color: var(--gold); border-color: #5a4a18; }
+  .punti { display: flex; gap: 4px; flex: 1; justify-content: center; }
+  .punti i { width: 6px; height: 6px; border-radius: 50%; background: #3a3730; }
+  .punti i.fatto { background: #6b5a24; }
+  .punti i.qui { width: 16px; border-radius: 4px; background: var(--gold); }
+  .es-titolo { text-align: center; }
+  .es-titolo h2 { font-family: var(--f-title); font-size: 31px; margin: 3px 0 8px; font-weight: 700; }
+  .strumenti { display: flex; justify-content: center; gap: 8px; }
+  .strumenti button { width: 44px; height: 38px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); color: #cfc9bc; display: grid; place-items: center; }
+  .prescr { text-align: center; font-size: 12.5px; color: #e9776d; }
+  .tabella { padding: 4px 14px 6px; }
+  .tabella .t { display: grid; grid-template-columns: 30px 1fr 64px 92px 22px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+  .tabella .t.testa { border-top: 0; font-size: 10px; letter-spacing: .12em; color: var(--muted); font-weight: 600; text-transform: uppercase; padding-bottom: 6px; }
+  .tabella .t .p { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tabella .t .k, .tabella .t .rp { font-family: var(--f-num); font-weight: 600; font-size: 19px; }
+  .tabella .t .rp small { font-family: var(--f-body); font-size: 10.5px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .tabella .t .ok { color: var(--good); font-weight: 700; text-align: right; }
+  .tabella .t.ora { margin: 2px -10px 0; padding: 9px 10px; border-radius: 12px; background: var(--gold-bg); border: 1px solid #4a3e18; }
+  .tabella .t.ora .k, .tabella .t.ora .rp, .tabella .t.ora .n { color: var(--gold); }
+  .tabella .t.ora .ok { color: var(--gold); font-weight: 400; }
+  .recupero { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+  .recupero .tempo { font-size: 30px; color: var(--gold); line-height: 1; min-width: 64px; }
+  .recupero .barra { height: 5px; }
+  .passi3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .passo { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 9px 8px 8px; text-align: center; }
+  .passo .v { font-size: 31px; line-height: 1.05; }
+  .passo .v.vuoto { color: var(--faint); }
+  .passo .l { font-size: 11px; color: var(--muted); }
+  .passo .pm { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 7px; }
+  .passo .pm span { height: 32px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); display: grid; place-items: center; font-size: 18px; color: #d8d2c5; }
+
+  /* --- CIBO --- */
+  .data-pill { display: flex; align-items: center; justify-content: space-between; flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 8px; }
+  .data-pill b { font-size: 14px; }
+  .data-pill small { color: var(--muted); font-size: 12px; margin-left: 6px; font-weight: 500; }
+  .tondo { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #cfc9bc; }
+  .tondo.bordo { border: 1px solid var(--line); background: var(--surface); width: 40px; height: 40px; flex: none; }
+  .sommario { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; }
+  .kcal { position: relative; width: 112px; height: 112px; }
+  .kcal svg { transform: rotate(-90deg); }
+  .kcal .dentro { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+  .kcal .dentro b { font-size: 30px; }
+  .kcal .dentro span { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .acqua { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line-soft); font-size: 13px; }
+  .gocce { display: flex; gap: 3px; flex: 1; }
+  .gocce i { flex: 1; height: 8px; border-radius: 3px; background: var(--surface-3); }
+  .gocce i.p { background: var(--water); }
+  .aggiungi { font-size: 12px; font-weight: 700; color: var(--water); border: 1px solid #1d4556; background: #0d1f28; border-radius: 999px; padding: 5px 10px; white-space: nowrap; }
+  .pasto { padding: 11px 14px; }
+  .pasto .ora { font-family: var(--f-num); font-weight: 600; font-size: 15px; color: var(--gold); min-width: 44px; }
+  .pasto .ora.vuota { color: var(--faint); }
+  .pasto .n { font-weight: 600; font-size: 15px; }
+  .pasto .m { white-space: nowrap; font-size: 11.5px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .pasto .m .c { color: var(--carb); } .pasto .m .pp { color: var(--prot); } .pasto .m .g { color: var(--fat); }
+  .spunta { width: 22px; height: 22px; border-radius: 50%; background: #16301f; color: var(--good); display: grid; place-items: center; font-size: 12px; font-weight: 800; flex: none; }
+  .alimenti { margin-top: 9px; border-top: 1px solid var(--line-soft); }
+  .alimenti div { display: flex; justify-content: space-between; padding: 7px 0 0; font-size: 13px; }
+  .alimenti div span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .alimenti div em { font-style: normal; color: var(--muted); margin-left: 6px; font-size: 12px; }
+  .pasto.dafare { border-style: dashed; background: transparent; box-shadow: none; }
+
+  @media (max-width: 440px) {
+    body { padding: 18px 10px 40px; }
+    .tel { border-width: 7px; border-radius: 38px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="eyebrow">ETP HEALTH · proposta di nuovo stile</div>
+  <h1>Stessa app, più ordine e più carattere</h1>
+  <p>Tre schermate, con i tuoi dati di questi giorni. Restano il nero, l'oro e il rosso del coach; cambiano i caratteri (oggi il telefono non carica quelli previsti e usa i suoi), la gerarchia — una cosa importante per schermata — e la pulizia dei comandi.</p>
+  <div class="legenda">
+    <div class="sw"><i style="background:#0a0a09"></i><i style="background:#141311"></i><i style="background:#24221e"></i><span>neri caldi, non grigi</span></div>
+    <div class="sw"><i style="background:#d4af37"></i><span>oro: azione e numeri chiave</span></div>
+    <div class="sw"><i style="background:#e1251b"></i><span>rosso: il coach</span></div>
+    <div class="sw"><i style="background:#ffc63d"></i><i style="background:#2ecc71"></i><i style="background:#e74c3c"></i><span>C · P · G invariati</span></div>
+    <div class="tipi">
+      <div><b style="font-family:var(--f-title);font-size:20px">Playfair</b>titoli</div>
+      <div><b style="font-family:var(--f-num);font-size:22px">2 435 kcal</b>numeri</div>
+      <div><b style="font-family:var(--f-body);font-size:16px">Figtree</b>testo</div>
+    </div>
+  </div>
+</header>
+
+<main class="telefoni">
+
+  <!-- ==================== OGGI ==================== -->
+  <section class="blocco">
+    <div class="nome">1 · Oggi</div>
+    <div class="tel">
+      <div class="stato"><span>11:23</span><span class="ic"><svg class="mini-ic" viewBox="0 0 24 24" style="width:15px"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/></svg><span class="batt"></span></span></div>
+      <div class="schermo" style="gap:10px">
+
+        <div class="riga spazia" style="align-items:flex-start">
+          <div class="saluto">
+            <div class="eyebrow">Lunedì 26 ottobre</div>
+            <h1>Ciao Emanuel</h1>
+          </div>
+          <div style="text-align:center">
+            <div class="anello">
+              <svg width="66" height="66" viewBox="0 0 66 66"><circle cx="33" cy="33" r="28" stroke="#24221e" stroke-width="6" fill="none"/><circle cx="33" cy="33" r="28" stroke="#d4af37" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="126.7 175.9"/></svg>
+              <div class="dentro"><div><b class="num">72</b><span>READY</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="coach">
+          <div class="eyebrow">Coach</div>
+          Recupero al 64% e HRV nella tua fascia: la D1 si fa piena. Oggi è LOW ON, 2 435 kcal.
+        </div>
+
+        <div class="card eroe">
+          <div class="riga spazia">
+            <span class="chip rs">🦠 Ciclo 9</span>
+            <span class="chip ok">giorno 2 di 8 · nei tempi</span>
+          </div>
+          <h2>D1 · Pull A</h2>
+          <div class="sub">Upper back, rear delts, bicipiti · 7 esercizi</div>
+          <div class="striscia"><span class="tocca">D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span></div>
+          <button class="btn primario" style="padding:13px">Inizia D1</button>
+        </div>
+
+        <div class="griglia">
+          <div class="card intera">
+            <div class="riga spazia"><span class="eyebrow">Vitali · WHOOP</span><span style="font-size:11px;color:var(--faint)">alle 07:12</span></div>
+            <div class="stat3">
+              <div><div class="v num" style="color:var(--gold)">64<small>%</small></div><div class="l">recupero</div></div>
+              <div><div class="v num">58<small>ms</small></div><div class="l">HRV · nella fascia</div></div>
+              <div><div class="v num">7h04</div><div class="l">sonno</div></div>
+            </div>
+          </div>
+
+          <div class="card intera">
+            <div class="riga spazia"><span class="eyebrow">Nutrizione</span><span class="chip rs">LOW ON</span></div>
+            <div style="margin-top:6px"><span class="grande num">955</span><span class="grande"><small>/ 2 435 kcal</small></span></div>
+            <div class="macro3">
+              <div class="r"><b style="color:var(--carb)">C</b><div class="barra"><i style="width:29%;background:var(--carb)"></i></div><em><strong>88</strong> / 300</em></div>
+              <div class="r"><b style="color:var(--prot)">P</b><div class="barra"><i style="width:41%;background:var(--prot)"></i></div><em><strong>83</strong> / 201</em></div>
+              <div class="r"><b style="color:var(--fat)">G</b><div class="barra"><i style="width:55%;background:var(--fat)"></i></div><em><strong>27</strong> / 49</em></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="eyebrow">Corpo</div>
+            <div style="margin-top:8px"><span class="grande num">82,4</span><span class="grande"><small>kg</small></span></div>
+            <div style="font-size:11.5px;color:var(--good);margin-top:5px">−0,3 kg in 7 giorni</div>
+          </div>
+          <div class="card">
+            <div class="eyebrow">Passi</div>
+            <div style="margin-top:8px"><span class="grande num">8 450</span></div>
+            <div class="barra" style="margin-top:9px"><i style="width:84%;background:var(--gold)"></i></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px">di 10 000 · WHOOP</div>
+          </div>
+        </div>
+      </div>
+      <nav class="tab">
+        <div class="on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+        <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+        <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+        <div><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+        <div class="rsd"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+      </nav>
+    </div>
+    <ul class="note">
+      <li>In primo piano una cosa sola: la prossima seduta, col tasto per partire. Il resto viene dopo.</li>
+      <li>Il coach in due righe, senza riquadro: si legge, non pesa.</li>
+      <li>Riquadri in griglia con numeri grandi; le etichette piccole e maiuscole si leggono a colpo d'occhio.</li>
+      <li>Via la riga «I tuoi riquadri · tieni premuto»: il riordino resta, la scritta no.</li>
+    </ul>
+  </section>
+
+  <!-- ==================== SEDUTA ==================== -->
+  <section class="blocco">
+    <div class="nome">2 · Allena · seduta in corso</div>
+    <div class="tel">
+      <div class="stato"><span>21:40</span><span class="ic"><svg class="mini-ic" viewBox="0 0 24 24" style="width:15px"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/></svg><span class="batt"></span></span></div>
+      <div class="schermo" style="gap:11px">
+
+        <div class="barra-top">
+          <span class="pill">‹ Riepilogo</span>
+          <span class="punti"><i class="fatto"></i><i class="fatto"></i><i class="fatto"></i><i class="fatto"></i><i class="fatto"></i><i class="qui"></i><i></i></span>
+          <span class="pill cuore">♥ <span class="num" style="font-size:16px">105</span></span>
+          <span class="num" style="font-size:18px;color:var(--muted)">1:20</span>
+        </div>
+
+        <div class="es-titolo">
+          <div class="eyebrow">Esercizio 6 di 7</div>
+          <h2>Bayesian curl</h2>
+          <div class="riga" style="justify-content:center;gap:6px">
+            <span class="chip">4ª · scorsa 11,25 × 8</span>
+            <span class="chip oro">PR 15</span>
+          </div>
+        </div>
+
+        <div class="strumenti">
+          <button aria-label="Regolazioni"><svg class="mini-ic" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+          <button aria-label="Storico"><svg class="mini-ic" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg></button>
+          <button aria-label="Superset"><svg class="mini-ic" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 1 0-5.6l2.8-2.8a4 4 0 0 1 5.6 5.6L17 12.6M14 10a4 4 0 0 1 0 5.6l-2.8 2.8a4 4 0 0 1-5.6-5.6L7 11.4"/></svg></button>
+          <button aria-label="Sposta"><svg class="mini-ic" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></svg></button>
+          <button aria-label="Altro"><svg class="mini-ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+        </div>
+
+        <div class="prescr">🦠 D1 · @A|B|C · 8-12 · RIR1 · rec 90″</div>
+
+        <div class="card tabella">
+          <div class="t testa"><span>Set</span><span>Prec.</span><span>Kg</span><span>Reps</span><span></span></div>
+          <div class="t"><span class="n">1</span><span class="p">11,25×10</span><span class="k">11,25</span><span class="rp">10<small>R0</small></span><span class="ok">✓</span></div>
+          <div class="t"><span class="n">2</span><span class="p">11,25×8</span><span class="k">11,25</span><span class="rp">9<small>R0</small></span><span class="ok">✓</span></div>
+          <div class="t"><span class="n">3</span><span class="p">11,25×8</span><span class="k">11,25</span><span class="rp">8<small>R0</small></span><span class="ok">✓</span></div>
+          <div class="t ora"><span class="n num" style="font-size:16px">4</span><span class="p">11,25×8</span><span class="k">11,25</span><span class="rp">8</span><span class="ok">○</span></div>
+        </div>
+
+        <div class="card recupero">
+          <div><div class="eyebrow" style="font-size:9.5px">Recupero</div><div class="tempo num">1:12</div></div>
+          <div style="flex:1">
+            <div class="barra"><i style="width:20%;background:var(--gold)"></i></div>
+            <div class="riga" style="gap:5px;margin-top:8px"><span class="chip">−15</span><span class="chip">+15</span><span class="chip">⏸</span><span class="chip oro" style="margin-left:auto">1:30</span></div>
+          </div>
+        </div>
+
+        <div class="passi3">
+          <div class="passo"><div class="v num">11,25</div><div class="l">kg</div><div class="pm"><span>−</span><span>+</span></div></div>
+          <div class="passo"><div class="v num">8</div><div class="l">reps</div><div class="pm"><span>−</span><span>+</span></div></div>
+          <div class="passo"><div class="v num vuoto">0</div><div class="l">RIR</div><div class="pm"><span>−</span><span>+</span></div></div>
+        </div>
+
+        <div class="riga" style="gap:6px">
+          <span class="chip" style="padding:8px 12px">Risc.</span>
+          <span class="chip" style="padding:8px 12px">−20% da 11,25</span>
+          <span class="chip" style="padding:8px 12px">🎤</span>
+        </div>
+
+        <button class="btn primario">✓ Registra serie 4</button>
+      </div>
+    </div>
+    <ul class="note">
+      <li>Gli otto tasti emoji diventano cinque icone uguali; inclinometro, dischi ed elimina vanno in «⋯».</li>
+      <li>La serie che stai per fare è evidenziata dentro la tabella, non sciolta in fondo.</li>
+      <li>Il recupero diventa una barra che scorre, coi preset a portata di pollice.</li>
+      <li>Il tasto dice quale serie registra: «Registra serie 4». Se non entra, lo vedi subito.</li>
+    </ul>
+  </section>
+
+  <!-- ==================== CIBO ==================== -->
+  <section class="blocco">
+    <div class="nome">3 · Cibo</div>
+    <div class="tel">
+      <div class="stato"><span>14:05</span><span class="ic"><svg class="mini-ic" viewBox="0 0 24 24" style="width:15px"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/></svg><span class="batt"></span></span></div>
+      <div class="schermo">
+
+        <div class="riga">
+          <div class="data-pill">
+            <span class="tondo">‹</span>
+            <span><b>Oggi</b><small>lun 26/10</small></span>
+            <span class="tondo">›</span>
+          </div>
+          <span class="tondo bordo"><svg class="mini-ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></span>
+        </div>
+
+        <div class="riga spazia">
+          <span class="riga" style="gap:7px"><span class="chip rs">🦠 LOW ON</span><span style="font-size:12px;color:var(--muted)">obiettivo del coach</span></span>
+          <span style="font-size:12px;color:var(--gold);font-weight:600">cambia ›</span>
+        </div>
+
+        <div class="card">
+          <div class="sommario">
+            <div class="kcal">
+              <svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="48" stroke="#24221e" stroke-width="9" fill="none"/><circle cx="56" cy="56" r="48" stroke="#d4af37" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="160 301.6"/></svg>
+              <div class="dentro"><b class="num">1 292</b><span>di 2 435 kcal</span></div>
+            </div>
+            <div class="macro3" style="margin-top:0">
+              <div class="r"><b style="color:var(--carb)">C</b><div class="barra"><i style="width:43%;background:var(--carb)"></i></div><em><strong>128</strong> / 300</em></div>
+              <div class="r"><b style="color:var(--prot)">P</b><div class="barra"><i style="width:60%;background:var(--prot)"></i></div><em><strong>121</strong> / 201</em></div>
+              <div class="r"><b style="color:var(--fat)">G</b><div class="barra"><i style="width:59%;background:var(--fat)"></i></div><em><strong>29</strong> / 49</em></div>
+              <div style="font-size:11.5px;color:var(--muted)">mancano <span style="color:var(--text)">1 143 kcal</span></div>
+            </div>
+          </div>
+          <div class="acqua">
+            <span style="color:var(--water);font-weight:700" class="num">2,1</span><span style="color:var(--muted)">/ 5,5 L</span>
+            <span class="gocce"><i class="p"></i><i class="p"></i><i class="p"></i><i class="p"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="aggiungi">+ 250 ml</span>
+          </div>
+        </div>
+
+        <div class="card pasto">
+          <div class="riga"><span class="ora">07:30</span><div style="flex:1"><div class="n">Pasto 1</div><div class="m">478 kcal · <span class="c">C 42</span> · <span class="pp">P 42</span> · <span class="g">G 14</span></div></div><span class="spunta">✓</span></div>
+        </div>
+        <div class="card pasto">
+          <div class="riga"><span class="ora">10:45</span><div style="flex:1"><div class="n">Pasto 2</div><div class="m">477 kcal · <span class="c">C 46</span> · <span class="pp">P 41</span> · <span class="g">G 13</span></div></div><span class="spunta">✓</span></div>
+        </div>
+        <div class="card pasto">
+          <div class="riga"><span class="ora">13:20</span><div style="flex:1"><div class="n">Pasto 3</div><div class="m">337 kcal finora · 2 di 5 segnati</div></div><span class="spunta" style="background:var(--gold-bg);color:var(--gold)">½</span></div>
+          <div class="alimenti">
+            <div><span>Patate dolci <em>200 g</em></span><span>172</span></div>
+            <div><span>Petto di pollo <em>150 g</em></span><span>165</span></div>
+            <div><span style="color:var(--muted)">Olio evo <em>10 g</em> · da segnare</span><span>—</span></div>
+          </div>
+        </div>
+        <div class="card pasto dafare">
+          <div class="riga"><span class="ora vuota">—:—</span><div style="flex:1"><div class="n" style="color:var(--muted)">Pre-workout</div><div class="m">dal piano · 4 alimenti</div></div><span class="chip oro">Applica</span></div>
+        </div>
+      </div>
+      <nav class="tab">
+        <div><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+        <div class="on"><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+        <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+        <div><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+        <div class="rsd"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+      </nav>
+    </div>
+    <ul class="note">
+      <li>In alto solo la data in una pillola; ricette, giornate tipo, pulizia e impostazioni vanno in «⋯». Niente più tasti che escono dallo schermo.</li>
+      <li>Calorie nell'anello, macro in barre con l'obiettivo accanto, sempre C, P, G.</li>
+      <li>I pasti fatti stanno chiusi in una riga; quello in corso è aperto; quelli da fare sono tratteggiati.</li>
+      <li>L'ora a sinistra di ogni pasto è già al suo posto: è il dato che serve al progetto del tempo.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
