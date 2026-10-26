@@ -10,7 +10,7 @@ import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
   CardioSession, CardioMethod, CardioType, NutritionContext, NutritionDayType, NutritionStatus,
-  ActivityLevel, BmrFormula, CoachBlock,
+  ActivityLevel, BmrFormula, CoachBlock, OrariUtente,
 } from './schema'
 
 const U = LOCAL_USER_ID
@@ -424,6 +424,8 @@ export async function updateUser(
     /** da quale app leggere i passi; undefined = tutte sommate */
     passiSorgente?: string
     schermoAcceso?: boolean
+    orari?: OrariUtente
+    uscite?: Record<string, string>
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

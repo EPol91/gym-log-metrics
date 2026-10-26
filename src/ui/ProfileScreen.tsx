@@ -10,6 +10,8 @@ import { GymSettings } from './GymSettings'
 import { SuoniSettings } from './SuoniSettings'
 import { WhoopSettings } from './WhoopSettings'
 import { CoachSettings } from './CoachSettings'
+import { OrariSettings } from './OrariSettings'
+import { orariDi } from '../tempo/orari'
 import { TemplatesSettings } from './TemplatesSettings'
 import { parseNum } from '../util/validate'
 import { fmtRest, fmtData } from '../util/format'
@@ -264,6 +266,11 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
           </div>
         </div>
       </div>
+      </Section>
+
+      <Section title="🕐 I tuoi orari"
+        valore={(() => { const l = orariDi(user).lavoro; return l ? `lavoro ${l.entrata}–${l.uscita} · ${orariDi(user).pasti.length} pasti` : `${orariDi(user).pasti.length} pasti` })()}>
+        <OrariSettings />
       </Section>
       </div>
 

@@ -139,6 +139,10 @@ h1 { font-size: 26px; letter-spacing: .3px; }
 .coach-testo .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
 /* La prossima seduta: l'unico riquadro con la luce, perche' e' quello che vieni a fare. */
 .card.eroe { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); }
+/* L'ora del pasto davanti al nome, in Cibo. */
+.ora-pasto { flex: none; font-family: var(--f-numeri); font-weight: 600; font-size: 15px; line-height: 1.35; padding: 2px 8px; border-radius: 9px; border: 1px solid #4a3e18; background: var(--gold-bg); color: var(--gold); }
+.ora-pasto.vuota { border-style: dashed; border-color: #3a3730; background: transparent; color: var(--faint); font-size: 13.5px; }
+.ora-pasto.saltato { border-color: var(--line); background: var(--surface-2); color: var(--muted); font-family: var(--f-testo); font-size: 11px; }
 /* Gli strumenti dell'esercizio: tasti quadrati tutti uguali, icona a filo. */
 .strumento { width: 44px; min-width: 34px; height: 38px; padding: 0; border-radius: 12px; display: grid; place-items: center; flex: 0 1 44px; background: var(--surface); color: #cfc9bc; }
 .strumento.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }

@@ -26,6 +26,8 @@ import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 import { GiornataConsigliata } from './GiornataConsigliata'
 import { copiaPasto } from '../util/appuntiPasto'
+import { FoglioOra } from './FoglioOra'
+import { orariDi, fasceDeiPasti, oreDiSolito, propostaOra } from '../tempo/orari'
 import { pianoDi as pianoInUso, giornataDelPiano } from '../rs/piano'
 
 const shift = shiftDate
@@ -56,6 +58,13 @@ function MacroTrack({ label, value, target, color }: { label: string; value: num
  * tornano tutti aperti. Per questo sta in memoria e non su disco.
  */
 const pastiChiusi = new Set<string>()
+
+/**
+ * I pasti per cui hai chiuso il foglio dell'ora senza scegliere: alla spunta
+ * dopo non si riapre da solo. L'ora resta da segnare — c'e' il promemoria —
+ * ma il foglio non ti insegue riga per riga.
+ */
+const foglioRifiutato = new Set<string>()
 
 /**
  * Elemento in movimento: `group` è la lista che stai riordinando (l'id del pasto
@@ -198,6 +207,13 @@ export function DietScreen() {
   const nutri = useLiveQuery(() => getNutrition(date), [date])
   const user = useLiveQuery(getUser, [])
   const meas = useLiveQuery(listMeasurements, []) ?? []
+
+  // L'ora dei pasti: in quale fascia cade ciascuno, a che ora lo mangi di
+  // solito, e il foglio «a che ora?» aperto o no.
+  const orari = orariDi(user)
+  const fasce = fasceDeiPasti((diary?.meals ?? []).map((m) => m.meal), orari.pasti)
+  const diSolito = useLiveQuery(() => oreDiSolito(orari), [JSON.stringify(orari.pasti), date]) ?? []
+  const [foglioOra, setFoglioOra] = useState<{ mealId: string; nome: string; proposta: string; giaSegnato: boolean } | null>(null)
   const phase = useLiveQuery(getCurrentPhase, [])
 
   const activeType = dayTypes.find((d) => d.key === nutri?.dayType)
@@ -612,7 +628,25 @@ export function DietScreen() {
             boxShadow: cardLifted ? '0 10px 28px rgba(0,0,0,.6)' : undefined,
             position: 'relative', zIndex: cardLifted ? 6 : undefined,
           }}>
-          <div className="row spread" style={{ alignItems: 'center', gap: 6 }}>
+          <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
+            {/* L'ora del pasto, davanti al nome: oro se c'e', tratteggiata col
+                «di solito» se manca, grigia se l'hai saltato. Si tocca per
+                segnarla o correggerla. */}
+            {(() => {
+              const f = fasce.get(m.meal.id)
+              const solito = f ? diSolito[f.indice] : undefined
+              const cls = m.meal.ora ? 'ora-pasto' : m.meal.saltato ? 'ora-pasto saltato' : 'ora-pasto vuota'
+              return (
+                <button className={cls} aria-label={`Ora di ${m.meal.name}`}
+                  onClick={() => setFoglioOra({
+                    mealId: m.meal.id, nome: m.meal.name,
+                    proposta: m.meal.ora ?? propostaOra(date === todayDiet(), f?.fascia, solito),
+                    giaSegnato: !!(m.meal.ora || m.meal.saltato),
+                  })}>
+                  {m.meal.ora ?? (m.meal.saltato ? 'saltato' : solito ? `~${solito}` : '—:—')}
+                </button>
+              )
+            })()}
             {/* Tocca il nome per chiudere il pasto o riaprirlo: i totali restano
                 in vista accanto, cosi' anche chiuso si legge quanto vale. */}
             <button onClick={() => { if (skipClick.current) { skipClick.current = false; return } apriChiudiPasto(m.meal.id) }}
@@ -686,7 +720,16 @@ export function DietScreen() {
                   spuntata: !!e.log.rsDone,
                   dalPiano: !!e.log.rsPlanned,
                   sostituita: !!e.log.rsPlanned && !!e.log.rsPlanned.nome && e.log.rsPlanned.nome !== e.food.name,
-                  onSpunta: () => spunta(e.log.id, !e.log.rsDone),
+                  onSpunta: () => {
+                    void spunta(e.log.id, !e.log.rsDone)
+                    // Hai appena mangiato: e' il momento giusto per l'ora. Solo
+                    // oggi, solo spuntando (non togliendo), e solo se il pasto
+                    // non ce l'ha e non hai gia' chiuso il foglio una volta.
+                    if (!e.log.rsDone && date === todayDiet() && !m.meal.ora && !m.meal.saltato && !foglioRifiutato.has(m.meal.id)) {
+                      const f = fasce.get(m.meal.id)
+                      setFoglioOra({ mealId: m.meal.id, nome: m.meal.name, proposta: propostaOra(true, f?.fascia, f ? diSolito[f.indice] : undefined), giaSegnato: false })
+                    }
+                  },
                 } : undefined} />
             )
           })}
@@ -719,6 +762,18 @@ export function DietScreen() {
             onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
         : <EditEntrySheet entry={editEntry} piano={pianoDi.get(editEntry.log.id)} onClose={() => setEditEntry(null)}
             onDelete={async () => { const e = editEntry; setEditEntry(null); await removeEntries([e.log.id]) }} />
+      )}
+
+      {foglioOra && (
+        <FoglioOra {...foglioOra}
+          diSolito={(() => { const f = fasce.get(foglioOra.mealId); return f ? diSolito[f.indice] : undefined })()}
+          onFatto={() => foglioRifiutato.delete(foglioOra.mealId)}
+          onClose={() => {
+            // Chiuso senza scegliere: alla prossima spunta non si riapre da solo.
+            const p = diary?.meals.find((x) => x.meal.id === foglioOra.mealId)?.meal
+            if (p && !p.ora && !p.saltato) foglioRifiutato.add(foglioOra.mealId)
+            setFoglioOra(null)
+          }} />
       )}
 
       {showCal && (

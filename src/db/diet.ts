@@ -143,6 +143,27 @@ export async function addMeal(date: string, name = 'Nuovo pasto'): Promise<strin
   return id
 }
 
+/**
+ * L'ora di un pasto. Togliere l'ora (null) toglie anche il «saltato»: il pasto
+ * torna da segnare. Tocca solo il pasto — righe, spunte e RS non cambiano.
+ */
+export async function impostaOraPasto(id: string, ora: string | null): Promise<void> {
+  await db.meals.where('id').equals(id).modify((m) => {
+    delete m.saltato
+    if (ora) m.ora = ora; else delete m.ora
+    m.updatedAt = nowISO()
+  })
+}
+
+/** Pasto saltato: conta solo per l'analisi del tempo. Diario e RS restano come sono. */
+export async function segnaPastoSaltato(id: string): Promise<void> {
+  await db.meals.where('id').equals(id).modify((m) => {
+    delete m.ora
+    m.saltato = true
+    m.updatedAt = nowISO()
+  })
+}
+
 export async function renameMeal(id: string, name: string): Promise<void> {
   await db.meals.update(id, { name: name.trim() || 'Pasto', updatedAt: nowISO() })
 }

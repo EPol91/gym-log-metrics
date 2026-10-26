@@ -89,6 +89,10 @@ export interface User extends BaseRecord {
    * capo, il conteggio non si perde e riprende dal giorno dopo.
    */
   cicliChiusiAMano?: ISODate[]
+  /** Lavoro e fasce dei pasti. Assente = quelli di partenza (vedi tempo/orari). */
+  orari?: OrariUtente
+  /** Le uscite dall'ufficio piu' tardi del solito, giorno per giorno: «HH:MM». */
+  uscite?: Record<ISODate, string>
   /** Chiedere conferma di RS al primo rientro della giornata. */
   rsAskDaily?: boolean
   /**
@@ -422,6 +426,37 @@ export interface Meal extends BaseRecord {
   date: ISODate
   name: string
   order: number
+  /**
+   * A che ora l'hai mangiato, «HH:MM». Serve all'analisi del tempo — fra cena
+   * e letto, fra allenamento e cena — e non tocca né il diario né RS.
+   */
+  ora?: string
+  /** Pasto saltato: solo per l'analisi del tempo. Diario e RS restano come sono. */
+  saltato?: boolean
+}
+
+/** Una fascia oraria in cui di solito mangi: «Pranzo 12:30 → 13:30». */
+export interface FasciaPasto { nome: string; dalle: string; alle: string }
+
+/**
+ * Gli orari che l'app non puo' sapere da sola.
+ *
+ * Sonno (WHOOP), allenamento (le sedute) e pasti (l'ora in Cibo) arrivano da
+ * soli: qui ci sono il lavoro e le fasce in cui di solito mangi, che servono a
+ * disegnare la giornata e a ricordarti l'ora di un pasto che non hai segnato.
+ */
+export interface OrariUtente {
+  lavoro?: {
+    /** giorni della settimana come Date.getDay(): 0 = domenica, 1 = lunedi' */
+    giorni: number[]
+    entrata: string
+    uscita: string
+    /** fino a quando a volte esci piu' tardi */
+    uscitaFinoA?: string
+    pausa?: { dalle: string; alle: string }
+  }
+  /** le fasce dei pasti, in ordine: la prima va al primo pasto del giorno, l'ultima all'ultimo */
+  pasti: FasciaPasto[]
 }
 
 /**
