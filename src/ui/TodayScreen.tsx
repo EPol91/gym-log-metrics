@@ -3,39 +3,48 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
 import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser, getNutrition } from '../db/repo'
 import { computeDiary, todayDiet, listDayTypes } from '../db/diet'
+import { db } from '../db/db'
 import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { cicloRs, chiudiCicloAMano, annullaChiusuraAMano, GIORNI_CICLO } from '../rs/cicloSedute'
+import { SEDUTE_RS } from '../rs/protocollo'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre, fmtData } from '../util/format'
 import { ScoreRing } from './anim'
-import { dailyPhrase } from '../util/phrases'
 import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
 import { usePesoOggi } from './PesoOggi'
-import { DataDiOggi, Calendario } from './CardCalendario'
+import { Calendario } from './CardCalendario'
 import { useEffect } from 'react'
-
-// L'anello del check: la data accanto si misura su questo.
-const ANELLO = 82
 
 const LBL: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }
 // Numeri da tabellone: stretti, si leggono da lontano e stanno nella mezza riga.
 const NUM: React.CSSProperties = { color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }
+const GRANDE: React.CSSProperties = { ...NUM, color: 'var(--text)', fontSize: 34, lineHeight: 1 }
 
-const cella = (v: string | number, l: string) => (
+/** Una cifra con la sua etichetta sotto: quattro in fila stanno in un riquadro intero. */
+const cella = (v: string | number, l: string, colore = 'var(--text)') => (
   <div key={l} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-    <div style={NUM}>{v}</div>
-    <div className="muted" style={{ fontSize: 10 }}>{l}</div>
+    <div style={{ ...NUM, fontSize: 25, color: colore }}>{v}</div>
+    <div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{l}</div>
   </div>
 )
 
-const ORDINE_DEFAULT = ['vitali', 'corpo', 'nutrizione', 'allenamento', 'abitudini']
+/** Il decimale all'italiana: 82,4 e non 82.4. */
+const virgola = (n: number) => String(n).replace('.', ',')
+
+// L'allenamento non e' piu' fra i riquadri da riordinare: sta in cima, fisso.
+// Un ordine salvato che lo conteneva lo perde da solo (vedi `chiavi`).
+const ORDINE_DEFAULT = ['vitali', 'nutrizione', 'corpo', 'abitudini']
 
 /**
  * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
- * in Salute. I riquadri si riordinano tenendoli premuti, come le righe della dieta.
+ * in Salute.
+ *
+ * Una cosa sola in primo piano: la prossima seduta, col tasto per partire. Sopra
+ * il coach in due righe, sotto i riquadri — che si riordinano tenendoli premuti,
+ * come le righe della dieta.
  */
 export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo, onApriSeduta }: {
   onStartWorkout: () => void
@@ -51,33 +60,31 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   const ongoing = useLiveQuery(getOngoingSession, [])
   const [calendario, setCalendario] = useState(false)
   // L'ordine dei riquadri e' una tua scelta, non uno stato temporaneo: sta nel
-  // profilo, quindi resiste alla chiusura dell'app e finisce nel backup. Prima
-  // viveva nella memoria di sessione e a ogni riavvio tornava quello di fabbrica.
+  // profilo, quindi resiste alla chiusura dell'app e finisce nel backup.
   const ordine = user?.todayCards ?? ORDINE_DEFAULT
   const setOrdine = (ids: string[]) => { void updateUser({ todayCards: ids }) }
   // Se WHOOP ha già i dati di stanotte il check è mezzo compilato: l'anello
-  // respira per farsi notare, senza allungare la riga sotto.
+  // respira per farsi notare.
   const vitali = useLiveQuery(() => whoopDay(), [])
   const vitaliOggi = !!vitali && (vitali.recovery != null || vitali.sleepPerf != null)
   const { press, inDragOrder, liftStyle } = useHoldDrag((_, ids) => setOrdine(ids))
 
   const nome = (user?.name ?? '').trim().split(' ')[0]
+  // «lunedì 26 ottobre»: la data si legge come la diresti. Toccandola si apre il calendario.
+  const data = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 
   // Se un domani si aggiungono riquadri, quelli nuovi entrano in coda invece di sparire.
   const chiavi = [...ordine.filter((k) => ORDINE_DEFAULT.includes(k)), ...ORDINE_DEFAULT.filter((k) => !ordine.includes(k))]
 
-// Passi e Corpo stanno in mezza riga: sono due numeri e una barra, e a tutta
-  // larghezza sprecavano schermo. Affiancandoli si vedono insieme senza
-  // scorrere. Gli altri riquadri restano interi, perche' dentro hanno piu' roba.
+  // Passi e Corpo stanno in mezza riga: sono un numero e una barra, e a tutta
+  // larghezza sprecavano schermo. Gli altri riquadri restano interi.
   const META = ['abitudini', 'corpo']
 
   const card = (key: string, corpo: React.ReactNode) => (
     <div key={key} className="card" data-drag-id={key}
       onPointerDown={press('today', key)}
       style={{
-        // I due a meta' larghezza hanno dentro un numero e un tasto: l'aria di
-        // un riquadro intero li faceva sembrare mezzi vuoti.
-        padding: META.includes(key) ? '9px 12px' : '11px 12px', marginBottom: 0,
+        padding: '11px 13px', marginBottom: 0,
         flex: META.includes(key) ? '1 1 calc(50% - 4px)' : '1 1 100%',
         minWidth: 0,
         ...liftStyle('today', key),
@@ -90,52 +97,44 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     vitali: <CardVitali onOpen={() => onGo('health', 'vitali')} />,
     corpo: <CardCorpo peso={home?.bodyWeight ?? null} />,
     nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
-    allenamento: <CardAllenamento home={home} ongoing={ongoing ?? null}
-      onStart={onStartWorkout} onResume={onResumeWorkout} />,
-    abitudini: <CardAbitudini onOpen={() => onGo('health', 'habits')} />,
+    abitudini: <CardPassi onOpen={() => onGo('health', 'habits')} />,
   }
 
   return (
-    <div className="col" style={{ gap: 8 }}>
+    <div className="col" style={{ gap: 10 }}>
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
-        <div>
-          <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
-          {/* Il corpo si stringe un po' sui telefoni stretti per restare in riga. */}
-          <h1 style={{ fontSize: 'clamp(19px, 6.1vw, 26px)', fontWeight: 600 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
-          <p className="muted small" style={{ marginTop: 2 }}>{dailyPhrase()}</p>
+        <div style={{ minWidth: 0 }}>
+          <button onClick={() => setCalendario(true)} aria-label="Calendario"
+            style={{ ...LBL, background: 'none', border: 0, padding: '2px 0', borderRadius: 0 }}>
+            {data} <span style={{ color: 'var(--faint)' }}>›</span>
+          </button>
+          <h1 style={{ fontSize: 'clamp(24px, 7.6vw, 30px)', marginTop: 2 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
         </div>
-        {/* La data al posto del saluto: un "👋" occupa spazio e non dice niente,
-            una data la guardi — e col tocco apre il calendario. */}
-        {/* La data alta quanto l'anello: cosi' i due riquadri combaciano invece
-            di stare uno alto e uno basso. */}
-        <div className="row" style={{ gap: 8, alignItems: 'flex-start', flex: '0 0 auto' }}>
-        <DataDiOggi onApri={() => setCalendario(true)} altezza={ANELLO} />
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <span className={home?.todayReady == null && vitaliOggi ? 'ring-invito' : undefined}>
-            <ScoreRing value={home?.todayReady ?? null} size={ANELLO} />
+            <ScoreRing value={home?.todayReady ?? null} size={66} />
           </span>
-          <div className="small" style={{ marginTop: 1, letterSpacing: '.04em', color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
-            {home?.todayReady == null ? 'Oggi · fai il check' : 'Oggi'}
+          <div style={{ fontSize: 10, marginTop: 2, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
+            {home?.todayReady == null ? 'fai il check' : 'ready'}
           </div>
         </button>
-        </div>
       </div>
 
       {calendario && <Calendario onClose={() => setCalendario(false)} onApriSeduta={(id) => { setCalendario(false); onApriSeduta(id) }} />}
 
       {home && <CoachCard home={home} />}
 
-      {/* Sotto il coach: prima cosa fai oggi, poi cosa e rimasto indietro. */}
+      {/* La cosa che vieni a fare: la prossima seduta, sempre in cima. */}
+      <CardAllenamento home={home} ongoing={ongoing ?? null}
+        onStart={onStartWorkout} onResume={onResumeWorkout} />
+
+      {/* Sotto la seduta: cosa e' rimasto indietro. */}
       <Avvisi onGo={onGo} />
 
-      <div className="row spread" style={{ marginTop: 2 }}>
-        <span className="muted small">I tuoi riquadri</span>
-        <span className="muted small">tieni premuto per riordinare</span>
-      </div>
-
       {/* I riquadri scorrono in fila e vanno a capo: due da meta' larghezza
-          finiscono affiancati, gli altri prendono la riga intera. */}
+          finiscono affiancati, gli altri prendono la riga intera. Il riordino
+          (tieni premuto) resta; la riga che lo spiegava no. */}
       <div className="row wrap" style={{ gap: 8, alignItems: 'stretch' }}>
         {inDragOrder('today', chiavi, (k) => k).map((k) => card(k, contenuto[k]))}
       </div>
@@ -144,6 +143,13 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
 }
 
 // --- I riquadri -------------------------------------------------------------
+
+/** «alle 07:12» se e' di oggi, altrimenti anche il giorno: un dato di ieri non deve sembrare di stanotte. */
+function quandoSync(iso: string | null): string | null {
+  if (!iso) return null
+  const ora = iso.slice(11, 16)
+  return iso.slice(0, 10) === todayISO() ? `alle ${ora}` : `${fmtData(iso).slice(0, 5)} ${ora}`
+}
 
 function CardVitali({ onOpen }: { onOpen: () => void }) {
   const d = useLiveQuery(() => whoopDay(), [])
@@ -160,6 +166,7 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
             a cercare il tasto nel Profilo per un dato che stai guardando adesso
             e' un giro inutile. */}
         <span className="row" style={{ gap: 8, alignItems: 'center', flex: 'none' }}>
+          {ha && quando && <span style={{ fontSize: 11, color: 'var(--faint)' }}>{quandoSync(quando)}</span>}
           <button className="chip" style={{ padding: '2px 9px', fontSize: 12 }} disabled={sync}
             aria-label="Aggiorna i dati WHOOP"
             onPointerDown={(e) => e.stopPropagation()}
@@ -167,30 +174,22 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
               setSync(true)
               try { await syncWhoop(3) } finally { setSync(false); setQuando(lastAutoSync()) }
             }}>{sync ? '…' : '↻'}</button>
-          <span className="muted small">≡</span>
         </span>
       </div>
       {ha ? (
         <>
-          <div className="row" style={{ marginTop: 8 }}>
-            {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero')}
+          {/* Tocca i numeri e vai all'andamento: il tasto «Andamento ›» rubava una riga. */}
+          <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
+            {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero', 'var(--gold)')}
             {cella(fmtOre(d!.sleepHours), 'sonno')}
-            {cella(d!.strain != null ? `${d!.strain}` : '—', 'sforzo')}
+            {cella(d!.strain != null ? virgola(d!.strain) : '—', 'sforzo')}
             {cella(d!.hrv != null ? `${d!.hrv}` : '—', 'HRV')}
           </div>
           {w && w.length > 0 && (
-            <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+            <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line-soft)', paddingTop: 6 }}>
               {w.map((x) => x.sport ?? 'Attività').join(' · ')} registrati dal WHOOP
             </div>
           )}
-          {/* Quando sono stati presi: senza, un recupero fermo a ieri sembra
-              quello di stanotte. */}
-          {quando && (
-            <p className="muted small" style={{ margin: '8px 0 0' }}>
-              Aggiornati il {fmtData(quando)} alle {quando.slice(11, 16)}
-            </p>
-          )}
-          <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Andamento ›</button>
         </>
       ) : (
         <VitaliAssenti />
@@ -208,31 +207,29 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
 
   return (
     <>
-      <div className="row spread"><span style={LBL}>Corpo</span><span className="muted small">≡</span></div>
-      {/* A meta' larghezza due colonne stanno strette: il peso resta grande e la
-          variazione gli si mette accanto piccola — e' un contorno, non il dato. */}
-      <div className="row" style={{ marginTop: 6, gap: 6, alignItems: 'baseline', justifyContent: 'center' }}>
-        <span style={{ ...NUM, fontSize: 24 }}>{peso ? peso.weight : '—'}</span>
-        <span className="muted" style={{ fontSize: 10 }}>kg</span>
-        {peso?.delta != null && (
-          <span className="muted" style={{ fontSize: 11, marginLeft: 2 }}>
-            {peso.delta > 0 ? '+' : ''}{peso.delta}
-          </span>
-        )}
+      <span style={LBL}>Corpo</span>
+      <div style={{ marginTop: 8 }}>
+        <span style={GRANDE}>{peso ? virgola(peso.weight) : '—'}</span>
+        <span className="muted" style={{ fontSize: 13, marginLeft: 4 }}>kg</span>
       </div>
+      {peso?.delta != null && (
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+          {peso.delta > 0 ? '+' : peso.delta < 0 ? '−' : ''}{virgola(Math.abs(peso.delta))} kg dalla pesata prima
+        </div>
+      )}
       {!apri ? (
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
         // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
         <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
-          style={{ marginTop: 6, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
+          style={{ marginTop: 8, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
           onClick={() => setApri(true)}>
           {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
         </button>
       ) : (
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
           <input inputMode="decimal" value={w} placeholder={peso ? String(peso.weight) : 'kg'}
-            onChange={(e) => { setW(e.target.value); setSalvato(false) }} style={{ flex: 1, textAlign: 'center' }} />
-          <button className="primary" style={{ padding: '9px 16px' }} disabled={n == null}
+            onChange={(e) => { setW(e.target.value); setSalvato(false) }} style={{ flex: 1, minWidth: 0, textAlign: 'center' }} />
+          <button className="primary" style={{ padding: '9px 12px' }} disabled={n == null}
             onClick={async () => { if (n == null) return; await upsertMeasurement(todayISO(), { weight: n }); setSalvato(true); setW('') }}>
             Salva
           </button>
@@ -255,38 +252,37 @@ function CardNutrizione({ onOpen }: { onOpen: () => void }) {
     return (await listDayTypes()).find((d) => d.key === n.dayType) ?? null
   }, [])
   const dalCoach = giornata?.name.startsWith('🦠') ?? false
+  const tondo = (v: number | undefined) => (v == null ? '—' : Math.round(v))
 
   return (
     <>
-      <div className="row spread">
-        <span className="row" style={{ gap: 6, alignItems: 'baseline', minWidth: 0 }}>
-          <span style={LBL}>Nutrizione</span>
-          <span className="small" style={{
-            minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            fontWeight: giornata ? 700 : 400,
-            color: giornata ? (dalCoach ? 'var(--rs)' : 'var(--gold)') : 'var(--muted)',
-          }}>{giornata ? giornata.name : '—'}</span>
-        </span>
-        <span className="muted small">≡</span>
+      <div className="row spread" style={{ gap: 8 }}>
+        <span style={LBL}>Nutrizione</span>
+        {giornata && (
+          <span className="chip" style={{
+            padding: '3px 9px', fontSize: 11, fontWeight: 600, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            ...(dalCoach
+              ? { color: '#ff6b5f', borderColor: '#5a1a14', background: '#2a0f0c' }
+              : { color: 'var(--gold)', borderColor: '#5a4a18', background: 'var(--gold-bg)' }),
+          }}>{giornata.name.replace('🦠 ', '')}</span>
+        )}
       </div>
-      <div className="row" style={{ marginTop: 8 }}>
-        {cella(t ? t.kcal : '—', 'kcal')}
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-          <div style={{ ...NUM, color: 'var(--carb)' }}>{t ? t.carbs : '—'}</div>
-          <div className="muted" style={{ fontSize: 10 }}>carbo</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-          <div style={{ ...NUM, color: 'var(--prot)' }}>{t ? t.protein : '—'}</div>
-          <div className="muted" style={{ fontSize: 10 }}>proteine</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-          <div style={{ ...NUM, color: 'var(--fat)' }}>{t ? t.fat : '—'}</div>
-          <div className="muted" style={{ fontSize: 10 }}>grassi</div>
-        </div>
+      {/* Solo i numeri: le barre sono in Cibo, qui rubavano spazio. Tocca e vai al diario. */}
+      <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
+        {cella(tondo(t?.kcal), 'kcal', 'var(--gold)')}
+        {cella(tondo(t?.carbs), 'carbo', 'var(--carb)')}
+        {cella(tondo(t?.protein), 'proteine', 'var(--prot)')}
+        {cella(tondo(t?.fat), 'grassi', 'var(--fat)')}
       </div>
-      <button className="chip" style={{ marginTop: 8 }} onClick={onOpen}>Diario di oggi ›</button>
     </>
   )
+}
+
+/** Il nome della seduta come si legge: «PULL A» diventa «Pull A», «ARMS + BACK C» «Arms + Back C». */
+function titoloSeduta(nome: string): string {
+  return nome.replace('🦠 ', '').split(' · ').slice(1).join(' · ')
+    .split(' ').map((p) => (p.length > 1 ? p[0] + p.slice(1).toLowerCase() : p)).join(' ')
 }
 
 function CardAllenamento({ home, ongoing, onStart, onResume }: {
@@ -304,81 +300,107 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
   const [chiuso, setChiuso] = useState(false)
   const scavalcate = ciclo?.passi.filter((p) => p.stato === 'scavalcata') ?? []
 
-  return (
-    <>
-      <div className="row spread"><span style={LBL}>Allenamento</span><span className="muted small">≡</span></div>
+  // La seduta che tocca: nome, muscoli e quanti esercizi ha la TUA scheda (che
+  // puo' averne uno in piu' o in meno del protocollo).
+  const seduta = SEDUTE_RS.find((s) => s.codice === ciclo?.prossima)
+  const esercizi = useLiveQuery(async () => {
+    if (!seduta) return null
+    const t = (await db.templates.toArray()).find((x) => x.name === seduta.nome)
+    return t?.items.length ?? seduta.esercizi.length
+  }, [seduta?.nome])
 
+  const tono = scavalcate.length > 0 ? 'rosso' : (ciclo?.oltre ?? 0) > 0 ? 'ambra' : 'ok'
+  const CHIP: Record<string, React.CSSProperties> = {
+    ok: { color: 'var(--good)', borderColor: '#1f4a2c', background: '#0f1f14' },
+    ambra: { color: '#e0a030', borderColor: '#5a4214', background: '#241a08' },
+    rosso: { color: '#ff6b5f', borderColor: '#5a1a14', background: '#2a0f0c' },
+  }
+
+  return (
+    <div className="card eroe" style={{ marginBottom: 0, padding: '13px 14px' }}>
       {ciclo ? (
         <>
-          <div className="row spread small" style={{ marginTop: 8, alignItems: 'baseline' }}>
-            <span>
-              Ciclo {ciclo.numero} <span className="muted" style={{ fontSize: 10 }}>dal {ciclo.dal.slice(8)}.{ciclo.dal.slice(5, 7)}</span>
-              {ciclo.prossima
-                ? <> · tocca <strong style={{ color: 'var(--gold)' }}>{ciclo.prossima}</strong></>
-                : <> · <span style={{ color: 'var(--good)' }}>chiuso</span></>}
+          <div className="row spread" style={{ gap: 8 }}>
+            <span className="chip" style={{ ...CHIP.rosso, fontWeight: 600, padding: '3px 9px', fontSize: 11 }}>
+              🦠 Ciclo {ciclo.numero} · dal {ciclo.dal.slice(8)}.{ciclo.dal.slice(5, 7)}
             </span>
-            <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{ciclo.fatte} / {ciclo.totale}</strong>
+            <span className="chip" style={{ ...CHIP[tono], fontWeight: 600, padding: '3px 9px', fontSize: 11 }}>
+              giorno {ciclo.giorno} di {ciclo.giorniPrevisti}{tono === 'ok' ? ' · nei tempi' : ''}
+            </span>
+          </div>
+
+          <h2 style={{ fontSize: 24, margin: '10px 0 1px' }}>
+            {ciclo.prossima ? `${ciclo.prossima}${seduta ? ' · ' + titoloSeduta(seduta.nome) : ''}` : 'Ciclo completo'}
+          </h2>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {seduta
+              ? `${seduta.focus}${esercizi ? ` · ${esercizi} esercizi` : ''}`
+              : `${ciclo.fatte} su ${ciclo.totale} · il prossimo parte da domani`}
           </div>
 
           {/* Le cinque sedute in fila: a colpo d'occhio quali hai fatto, quale
               tocca e quale hai scavalcato — che e' un'altra cosa dal ritardo. */}
-          <div className="row" style={{ gap: 4, marginTop: 7 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ciclo.passi.length}, 1fr)`, gap: 5, marginTop: 11 }}>
             {ciclo.passi.map((p) => (
               <span key={p.codice} style={{
-                flex: 1, height: 18, borderRadius: 5, fontSize: 10,
+                height: 24, borderRadius: 8, fontSize: 13, fontFamily: 'var(--f-numeri)', fontWeight: 600, letterSpacing: '.04em',
                 display: 'grid', placeItems: 'center',
                 ...(p.stato === 'fatta' ? { background: 'var(--gold)', color: '#1a1400' }
-                  : p.stato === 'tocca' ? { background: 'var(--gold-bg)', border: '1px solid var(--gold)', color: 'var(--gold)' }
+                  : p.stato === 'tocca' ? { background: 'var(--gold-bg)', border: '1.5px solid var(--gold)', color: 'var(--gold)' }
                     : p.stato === 'scavalcata' ? { background: '#2a0e0c', border: '1px solid var(--rs)', color: 'var(--rs)' }
-                      : { background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--muted)' }),
+                      : { border: '1px dashed #3a3730', color: 'var(--faint)' }),
               }}>{p.codice}</span>
             ))}
           </div>
 
+          {/* Cosa non torna, solo quando qualcosa non torna. L'ultima seduta resta sempre. */}
           <div className="muted" style={{ fontSize: 11, marginTop: 7 }}>
-            giorno {ciclo.giorno} di {ciclo.giorniPrevisti} ·{' '}
             {scavalcate.length > 0
-              ? <span style={{ color: 'var(--rs)' }}>{scavalcate.map((p) => p.codice).join(', ')} da recuperare</span>
+              ? <span style={{ color: 'var(--rs)' }}>{scavalcate.map((p) => p.codice).join(', ')} da recuperare · </span>
               : ciclo.oltre > 0
-                ? <span style={{ color: '#e0a030' }}>+{ciclo.oltre} · lo chiudi in ritardo, non lo perdi</span>
-                : <span style={{ color: 'var(--good)' }}>nei tempi</span>}
-            {ciclo.ultima && ` · ultima ${ciclo.ultima.codice} il ${ciclo.ultima.date.slice(8)}.${ciclo.ultima.date.slice(5, 7)}`}
+                ? <span style={{ color: '#e0a030' }}>+{ciclo.oltre} · lo chiudi in ritardo, non lo perdi · </span>
+                : null}
+            {ciclo.ultima ? `ultima ${ciclo.ultima.codice} il ${ciclo.ultima.date.slice(8)}.${ciclo.ultima.date.slice(5, 7)}` : 'nessuna seduta in questo ciclo'}
           </div>
         </>
-      ) : g && (
+      ) : (
         <>
-          <div className="row spread small" style={{ marginTop: 8 }}>
-            <span className="muted">Obiettivo ciclo <span style={{ opacity: .7 }}>· giorno {g.giorno} di {g.giorni}</span></span>
-            <strong>{g.done} / {g.target}</strong>
-          </div>
-          <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
-            <div style={{ height: '100%', background: 'var(--gold)', width: `${g.target ? Math.min(100, g.done / g.target * 100) : 0}%` }} />
-          </div>
+          <span style={LBL}>Allenamento</span>
+          {g && (
+            <>
+              <div className="row spread small" style={{ marginTop: 8 }}>
+                <span className="muted">Obiettivo ciclo <span style={{ opacity: .7 }}>· giorno {g.giorno} di {g.giorni}</span></span>
+                <strong className="num" style={{ fontSize: 17 }}>{g.done} / {g.target}</strong>
+              </div>
+              <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 6 }}>
+                <div style={{ height: '100%', background: 'var(--gold)', width: `${g.target ? Math.min(100, g.done / g.target * 100) : 0}%` }} />
+              </div>
+            </>
+          )}
+          {home?.lastSession && (
+            <div className="muted small" style={{ marginTop: 6 }}>
+              Ultima: {home.lastSession.type} · {fmtData(home.lastSession.date)}
+            </div>
+          )}
         </>
-      )}
-
-      {!ciclo && home?.lastSession && (
-        <div className="muted small" style={{ marginTop: 6 }}>
-          Ultima: {home.lastSession.type} · {fmtData(home.lastSession.date)}
-        </div>
       )}
 
       {ongoing ? (
-        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
+        <button className="primary" style={{ width: '100%', marginTop: 11, padding: 13, fontSize: 16 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
       ) : (
-        <button className="primary" style={{ width: '100%', marginTop: 9 }} onClick={onStart}>
+        <button className="primary" style={{ width: '100%', marginTop: 11, padding: 13, fontSize: 16 }} onClick={onStart}>
           {scavalcate.some((p) => p.codice === ciclo?.prossima)
-            ? `＋ Recupera ${ciclo!.prossima}`
-            : `＋ Inizia${ciclo?.prossima ? ' ' + ciclo.prossima : ' allenamento'}`}
+            ? `Recupera ${ciclo!.prossima}`
+            : `Inizia${ciclo?.prossima ? ' ' + ciclo.prossima : ' allenamento'}`}
         </button>
       )}
 
       {/* I cicli chiusi si guardano ogni tanto, non ogni giorno: stanno qui
           dentro, chiusi, invece di rubare mezzo schermo tutti i giorni. */}
       {ciclo && ciclo.chiusi.length > 0 && (
-        <div style={{ marginTop: 9, borderTop: '1px solid var(--line)', paddingTop: 7 }}>
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
           <button onClick={() => setStorico((v) => !v)}
-            style={{ width: '100%', background: 'none', border: 0, padding: 0, textAlign: 'left' }}>
+            style={{ width: '100%', background: 'none', border: 0, padding: 0, textAlign: 'left', borderRadius: 0 }}>
             <span className="row spread muted" style={{ fontSize: 11 }}>
               <span>Cicli chiusi</span><span>{storico ? '▴' : '▾'}</span>
             </span>
@@ -437,11 +459,11 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
           )}
         </div>
       )}
-    </>
+    </div>
   )
 }
 
-function CardAbitudini({ onOpen }: { onOpen: () => void }) {
+function CardPassi({ onOpen }: { onOpen: () => void }) {
   const h = useLiveQuery(() => getHabit(STEPS), [])
   const oggi = useLiveQuery(() => getHabitValue(STEPS), [])
   useEffect(() => { ensureHabits() }, [])
@@ -450,19 +472,16 @@ function CardAbitudini({ onOpen }: { onOpen: () => void }) {
   const pct = Math.min(100, (fatti / target) * 100)
 
   return (
-    <>
-      <div className="row spread"><span style={LBL}>Abitudini</span><span className="muted small">≡</span></div>
-      {/* A meta' larghezza "1.330 / 10.000" su una riga sola si stringe troppo:
-          il numero di oggi resta grande, l'obiettivo va sotto. */}
-      <div style={{ marginTop: 6, textAlign: 'center' }}>
-        <span style={{ ...NUM, fontSize: 24 }}>{oggi ? fatti.toLocaleString('it-IT') : '—'}</span>
-        <div className="muted" style={{ fontSize: 10 }}>di {target.toLocaleString('it-IT')} passi</div>
+    <div role="button" tabIndex={0} onClick={onOpen} style={{ cursor: 'pointer' }}>
+      <span style={LBL}>Passi</span>
+      <div style={{ marginTop: 8 }}>
+        <span style={GRANDE}>{oggi ? fatti.toLocaleString('it-IT') : '—'}</span>
       </div>
-      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 6 }}>
-        <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%` }} />
+      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 9 }}>
+        <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%`, borderRadius: 999 }} />
       </div>
-      <button className="chip" style={{ marginTop: 6 }} onClick={onOpen}>Dettagli ›</button>
-    </>
+      <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>di {target.toLocaleString('it-IT')} passi</div>
+    </div>
   )
 }
 

@@ -133,6 +133,12 @@ h1 { font-size: 26px; letter-spacing: .3px; }
 
 .brand { color: var(--gold); }
 .num { font-family: var(--f-numeri); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+/* Il coach in Oggi: testo libero con un pallino d'oro accanto al nome. */
+.coach-testo { padding: 0 2px; }
+.coach-testo .eyebrow { color: var(--gold); display: inline-flex; gap: 7px; align-items: center; }
+.coach-testo .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+/* La prossima seduta: l'unico riquadro con la luce, perche' e' quello che vieni a fare. */
+.card.eroe { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); }
 .eyebrow { font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }

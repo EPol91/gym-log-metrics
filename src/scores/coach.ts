@@ -7,6 +7,7 @@
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
+import { cicloRs } from '../rs/cicloSedute'
 import { fmtOre } from '../util/format'
 import { bestE1rm, isWorkingSet, tonnage } from '../metrics/metrics'
 import type { SetEntry, WorkoutSession } from '../db/schema'
@@ -141,6 +142,14 @@ async function creditLine(home: HomeData, sessions: WorkoutSession[]): Promise<C
         return { fact: `PR su ${rec.name} l'ultima seduta 💪` }
       }
     }
+  }
+  // Col protocollo del coach il ciclo e' il suo — cinque sedute, a partire da
+  // quando e' finito il giro prima — non la finestra di giorni del Profilo. In
+  // Oggi le due cose stavano una sopra l'altra e dicevano giorni diversi.
+  const rs = await cicloRs()
+  if (rs) {
+    if (!rs.prossima) return { fact: `Ciclo ${rs.numero} completo: ${rs.fatte}/${rs.totale} sedute in ${rs.giorno} giorni.` }
+    return { fact: `${rs.fatte}/${rs.totale} sedute nel ciclo ${rs.numero}, giorno ${rs.giorno} di ${rs.giorniPrevisti}: tocca ${rs.prossima}.` }
   }
   const wk = home.weekGoal
   if (wk.target > 0 && wk.done >= wk.target) return { fact: `Obiettivo del ciclo centrato: ${wk.done}/${wk.target}.` }

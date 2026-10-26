@@ -49,9 +49,11 @@ export function CoachCard({ home }: { home: HomeData }) {
   }
 
   return (
-    <div className="card" style={{ borderColor: 'var(--gold-dim)' }}>
+    // Testo, non riquadro: il coach si legge in due righe e non deve pesare
+    // quanto la seduta che sta sotto.
+    <div className="coach-testo">
       <div className="row spread" style={{ alignItems: 'center' }}>
-        <span className="small" style={{ color: 'var(--gold)', letterSpacing: '.1em' }}>💡 COACH · OGGI</span>
+        <span className="eyebrow">Coach</span>
         {/* Un tondo piccolo invece di una barra larga: il coach AI è un extra,
             non deve prendere una riga intera. Bordo argento e non oro — un oro
             dentro il bordo oro della card non si distinguerebbe. */}
