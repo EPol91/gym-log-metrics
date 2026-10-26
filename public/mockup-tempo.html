@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Progetto tempo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-hi: #ead27a; --gold-bg: #231e0e; --rs: #e1251b; --good: #5bc27a; --amber: #e0a030;
+    --sonno: #7b8cde; --sonno-bg: #161a2e; --lavoro: #6f6a60; --lavoro-bg: #1b1a17;
+    --carb: #ffc63d; --prot: #2ecc71; --fat: #e74c3c;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2, h3 { font-family: var(--f-tit); font-weight: 700; margin: 0; font-variant-numeric: lining-nums; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0 0 6px; max-width: 74ch; }
+  .fasi { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .fase { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .fase.ora { color: var(--gold); border-color: #5a4a18; background: var(--gold-bg); font-weight: 600; }
+
+  .telefoni { max-width: 1640px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 14px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+  .tasti { height: 44px; display: flex; justify-content: space-around; align-items: center; color: #8a8a8a; font-size: 18px; background: #000; }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .chip { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface-2); white-space: nowrap; }
+  .chip.on { color: var(--gold); border-color: #5a4a18; background: var(--gold-bg); }
+  .chip.rs { color: #ff6b5f; border-color: #5a1a14; background: #2a0f0c; }
+  .seg { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; border-radius: 999px; color: var(--muted); }
+  .seg span.on { background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 7px 4px 0; }
+  .tab div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* --- Cibo: l'ora del pasto --- */
+  .pasto .testa { display: flex; align-items: center; gap: 9px; }
+  .ora { font-family: var(--f-num); font-weight: 600; font-size: 16px; padding: 3px 8px; border-radius: 9px; border: 1px solid #4a3e18; background: var(--gold-bg); color: var(--gold); flex: none; }
+  .ora.vuota { border-style: dashed; border-color: #3a3730; background: transparent; color: var(--faint); font-size: 13px; }
+  .meta { font-size: 11.5px; margin-top: 1px; }
+  .alim { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line-soft); font-size: 13.5px; }
+  .tick { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 11px; color: #fff; }
+  .tick.si { background: var(--rs); border-color: var(--rs); }
+  .alim em { font-style: normal; color: var(--muted); font-size: 11.5px; margin-left: 5px; }
+  .alim .k { font-family: var(--f-num); font-weight: 600; color: var(--gold); font-size: 16px; }
+  .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: #171613; border-top: 1px solid var(--line); border-radius: 22px 22px 0 0; padding: 14px 18px 18px; box-shadow: 0 -18px 40px #000a; }
+  .foglio .maniglia { width: 40px; height: 4px; border-radius: 9px; background: #3a3730; margin: 0 auto 12px; }
+  .grande-ora { font-family: var(--f-num); font-weight: 600; font-size: 54px; text-align: center; line-height: 1; color: var(--gold); margin: 6px 0 2px; }
+  .tasti-ora { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 12px; }
+  .tasti-ora span { text-align: center; padding: 9px 0; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); font-size: 14px; font-weight: 600; }
+  .btn { display: block; text-align: center; margin-top: 10px; padding: 12px; border-radius: 12px; font-weight: 700; color: #1a1400; background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #b8952f); }
+
+  /* --- Tempo: la giornata --- */
+  .linea { position: relative; height: 532px; margin-left: 38px; }
+  .ore { position: absolute; left: -38px; width: 34px; font-family: var(--f-num); font-size: 12px; color: var(--faint); text-align: right; transform: translateY(-7px); }
+  .tacca { position: absolute; left: 0; right: 0; border-top: 1px dashed #24221e; }
+  .blk { position: absolute; left: 0; right: 88px; border-radius: 9px; padding: 3px 8px; font-size: 11.5px; overflow: hidden; }
+  .blk b { font-weight: 600; }
+  .blk.sonno { background: var(--sonno-bg); border: 1px solid #2b3466; color: var(--sonno); }
+  .blk.lavoro { background: var(--lavoro-bg); border: 1px solid #34312b; color: #b9b3a6; }
+  .blk.uscita { background: repeating-linear-gradient(135deg, #1b1a17 0 5px, #24221e 5px 10px); border: 1px dashed #3a3730; color: var(--muted); }
+  .blk.allena { background: linear-gradient(180deg, #3a3012, #261f0c); border: 1px solid #6b5822; color: var(--gold); }
+  .blk.libero { background: transparent; border: 1px dashed #2f3a2f; color: #7fae8a; }
+  .pasto-pt { position: absolute; left: -5px; display: flex; align-items: center; gap: 7px; transform: translateY(-50%); font-size: 11.5px; }
+  .pasto-pt i { width: 10px; height: 10px; border-radius: 50%; background: var(--carb); box-shadow: 0 0 0 3px #ffc63d22; flex: none; }
+  .pasto-pt span { background: var(--bg); padding: 0 4px; border-radius: 4px; }
+  .pasto-pt b { font-family: var(--f-num); font-weight: 600; font-size: 13px; color: var(--carb); }
+  .intervallo { position: absolute; right: 0; width: 82px; border-right: 2px solid var(--gold); padding-right: 6px; text-align: right; font-size: 10.5px; line-height: 1.25; color: var(--muted); display: flex; flex-direction: column; justify-content: center; }
+  .intervallo b { font-family: var(--f-num); font-weight: 600; font-size: 15px; color: var(--gold); display: block; }
+  .intervallo.bene { border-color: var(--good); } .intervallo.bene b { color: var(--good); }
+
+  /* --- Tempo: cosa sta imparando --- */
+  .scoperta h3 { font-family: var(--f-testo); font-size: 14.5px; font-weight: 700; margin: 6px 0 3px; }
+  .scoperta p { margin: 0; font-size: 12.5px; color: #cfc9bc; line-height: 1.45; }
+  .barre { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 9px; align-items: end; }
+  .barra-v { text-align: center; }
+  .barra-v .col { height: 56px; display: flex; align-items: flex-end; justify-content: center; }
+  .barra-v .col i { width: 34px; border-radius: 6px 6px 2px 2px; background: #3a3730; display: block; }
+  .barra-v .col i.top { background: linear-gradient(180deg, var(--good), #2f7a48); }
+  .barra-v .v { font-family: var(--f-num); font-weight: 600; font-size: 15px; margin-top: 3px; }
+  .barra-v .l { font-size: 10px; color: var(--muted); }
+  .fiducia { font-size: 10.5px; color: var(--faint); margin-top: 7px; }
+  .proposta { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); }
+  .passi-sera { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin-top: 8px; font-size: 13px; align-items: baseline; }
+  .passi-sera b { font-family: var(--f-num); font-weight: 600; font-size: 17px; color: var(--gold); }
+
+  /* --- Profilo: i tuoi orari --- */
+  .voce { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 13.5px; }
+  .voce:first-of-type { border-top: 0; }
+  .voce .val { font-family: var(--f-num); font-weight: 600; font-size: 17px; color: var(--gold); white-space: nowrap; }
+  .voce .auto { font-size: 11.5px; color: var(--good); white-space: nowrap; }
+  .giorni { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 8px; }
+  .giorni span { text-align: center; font-size: 11.5px; padding: 5px 0; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+  .giorni span.on { border-color: #5a4a18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="ey">ETP HEALTH · progetto tempo</div>
+  <h1>Le tue giornate, misurate e rese più efficienti</h1>
+  <p>Gli orari che l'app sa già: quando dormi (WHOOP), quando ti alleni (le sedute). Quelli che metti tu una volta: il lavoro e la finestra d'uscita dall'ufficio. Il pezzo nuovo: l'ora di ogni pasto, che l'app ti propone e che col tempo impara.</p>
+  <p>Gli allenamenti non si toccano: li legge e basta. Le proposte riguardano quando mangiare e quando dormire, intorno a quello che fai.</p>
+  <div class="fasi">
+    <span class="fase ora">Fase 1 · ora dei pasti + i tuoi orari + la giornata</span>
+    <span class="fase">Fase 2 · cosa sta imparando, appena i dati bastano</span>
+  </div>
+</header>
+
+<main class="telefoni">
+
+  <!-- ===================== 1 · CIBO: L'ORA DEL PASTO ===================== -->
+  <section class="blocco">
+    <div class="nome">1 · Cibo · l'ora del pasto</div>
+    <div class="tel">
+      <div class="stato"><span>13:24</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="contenuto">
+          <div class="card pasto">
+            <div class="testa">
+              <span class="ora">07:10</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:15px">Pasto 1</div>
+                <div class="meta"><span style="color:var(--gold);font-weight:600">478 kcal</span> <span style="color:var(--muted)">·</span> <span style="color:var(--carb)">C 42</span> <span style="color:var(--muted)">·</span> <span style="color:var(--prot)">P 42</span> <span style="color:var(--muted)">·</span> <span style="color:var(--fat)">G 14</span></div>
+              </div>
+              <span style="color:var(--faint);font-size:12px">▴</span>
+            </div>
+            <div class="alim" style="margin-top:6px"><span class="tick si">✓</span><span>Fiocchi d'avena<em>50 g</em></span><span class="k">188</span></div>
+            <div class="alim"><span class="tick si">✓</span><span>Albume d'uovo<em>150 g</em></span><span class="k">71</span></div>
+          </div>
+
+          <div class="card pasto">
+            <div class="testa">
+              <span class="ora">10:40</span>
+              <div style="flex:1"><div style="font-weight:600;font-size:15px">Pasto 2</div><div class="meta" style="color:var(--muted)">477 kcal · chiuso</div></div>
+              <span style="color:var(--faint);font-size:12px">▾</span>
+            </div>
+          </div>
+
+          <div class="card pasto" style="border-color:#4a3e18">
+            <div class="testa">
+              <span class="ora vuota">—:—</span>
+              <div style="flex:1"><div style="font-weight:600;font-size:15px">Pasto 3</div><div class="meta" style="color:var(--faint)">di solito alle 13:15</div></div>
+              <span style="color:var(--faint);font-size:12px">▴</span>
+            </div>
+            <div class="alim" style="margin-top:6px"><span class="tick si">✓</span><span>Patate dolci<em>200 g</em></span><span class="k">172</span></div>
+          </div>
+        </div>
+
+        <!-- il foglio che si apre alla prima spunta del pasto -->
+        <div class="foglio">
+          <div class="maniglia"></div>
+          <div class="riga spazia"><span class="eyebrow">Pasto 3 · a che ora?</span><span style="font-size:11.5px;color:var(--faint)">di solito 13:15</span></div>
+          <div class="grande-ora">13:20</div>
+          <div style="text-align:center;font-size:12px;color:var(--muted)">proposta: adesso, alla prima spunta</div>
+          <div class="tasti-ora"><span>−15</span><span>−5</span><span>+5</span><span>+15</span></div>
+          <div class="btn">Va bene, 13:20</div>
+        </div>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>L'ora sta davanti al nome del pasto. Quando spunti il primo alimento l'app propone «adesso»; un tocco e confermi, oppure la sposti di 5 o 15 minuti.</li>
+      <li>Se non l'hai ancora segnata, al posto dell'ora vedi «di solito alle 13:15»: è la tua abitudine, e si affina col tempo.</li>
+      <li>L'ora si può sempre correggere toccandola.</li>
+    </ul>
+  </section>
+
+  <!-- ===================== 2 · SALUTE → TEMPO: LA GIORNATA ===================== -->
+  <section class="blocco">
+    <div class="nome">2 · Salute → Tempo · la giornata</div>
+    <div class="tel">
+      <div class="stato"><span>09:02</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="contenuto" style="gap:10px">
+          <div class="seg"><span>Vitali</span><span>Corpo</span><span>Abitudini</span><span class="on">Tempo</span></div>
+          <div class="riga spazia">
+            <div><div class="eyebrow">Ieri · domenica 25 ottobre</div></div>
+            <span style="font-size:12px;color:var(--muted)">‹ ›</span>
+          </div>
+
+          <div class="linea">
+            <!-- 06:00 = 0px, 1h = 28px; fino all'01:00 -->
+            <div class="ore" style="top:0">06</div><div class="tacca" style="top:0"></div>
+            <div class="ore" style="top:56px">08</div><div class="tacca" style="top:56px"></div>
+            <div class="ore" style="top:112px">10</div><div class="tacca" style="top:112px"></div>
+            <div class="ore" style="top:168px">12</div><div class="tacca" style="top:168px"></div>
+            <div class="ore" style="top:224px">14</div><div class="tacca" style="top:224px"></div>
+            <div class="ore" style="top:280px">16</div><div class="tacca" style="top:280px"></div>
+            <div class="ore" style="top:336px">18</div><div class="tacca" style="top:336px"></div>
+            <div class="ore" style="top:392px">20</div><div class="tacca" style="top:392px"></div>
+            <div class="ore" style="top:448px">22</div><div class="tacca" style="top:448px"></div>
+            <div class="ore" style="top:504px">24</div><div class="tacca" style="top:504px"></div>
+
+            <div class="blk sonno" style="top:0;height:21px"><b>sonno</b> · sveglia 06:45</div>
+            <div class="blk lavoro" style="top:70px;height:252px"><b>lavoro</b> · 08:30 → 17:30</div>
+            <div class="blk uscita" style="top:322px;height:22px">uscita 17:48</div>
+            <div class="blk libero" style="top:345px;height:20px">libero · 25 min</div>
+            <div class="blk allena" style="top:368px;height:52px"><b>D1 · Pull A</b><br>19:08 → 20:58 · 1h50</div>
+            <div class="blk sonno" style="top:494px;height:38px"><b>sonno</b> · 23:38 → 06:41<br>7h03 · recupero 71%</div>
+
+            <div class="pasto-pt" style="top:33px"><i></i><span><b>07:10</b> Pasto 1</span></div>
+            <div class="pasto-pt" style="top:131px"><i></i><span><b>10:40</b> Pasto 2</span></div>
+            <div class="pasto-pt" style="top:204px"><i></i><span><b>13:20</b> Pasto 3</span></div>
+            <div class="pasto-pt" style="top:351px"><i></i><span><b>18:30</b> Pre-wo</span></div>
+            <div class="pasto-pt" style="top:445px"><i></i><span><b>21:40</b> Cena</span></div>
+
+            <div class="intervallo" style="top:420px;height:25px"><b>42 min</b>allenam. → cena</div>
+            <div class="intervallo bene" style="top:449px;height:46px"><b>1h58</b>cena → letto</div>
+          </div>
+        </div>
+        <nav class="tab">
+          <div><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+          <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+          <div class="on"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+        </nav>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>La giornata si costruisce da sola: sonno da WHOOP, allenamento dalla seduta, pasti dalle loro ore, lavoro dai tuoi orari.</li>
+      <li>A destra gli intervalli che contano: fine allenamento → cena, cena → letto. Verde quando sono nella finestra in cui dormi meglio.</li>
+      <li>Il tratteggio è la finestra d'uscita dall'ufficio; «uscita 17:48» la segni tu solo quando esci tardi, sennò vale l'orario fisso.</li>
+      <li>Vive in Salute, come quarta scheda: Oggi resta in una schermata.</li>
+    </ul>
+  </section>
+
+  <!-- ===================== 3 · SALUTE → TEMPO: COSA STA IMPARANDO ===================== -->
+  <section class="blocco">
+    <div class="nome">3 · Salute → Tempo · cosa sta imparando</div>
+    <div class="tel">
+      <div class="stato"><span>09:03</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="contenuto" style="gap:10px">
+          <div class="seg"><span>Vitali</span><span>Corpo</span><span>Abitudini</span><span class="on">Tempo</span></div>
+
+          <div class="card proposta">
+            <div class="eyebrow" style="color:var(--gold)">Stasera · dopo la D2</div>
+            <div class="passi-sera">
+              <b>≤ 45′</b><span>dalla fine dell'allenamento alla cena</span>
+              <b>≥ 2h</b><span>dalla cena al letto</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px">Se finisci alle 21:00: cena entro le 21:45, a letto dalle 23:45.</div>
+          </div>
+
+          <div class="card scoperta">
+            <div class="riga spazia"><span class="eyebrow">Cena → letto</span><span class="chip on">23 notti</span></div>
+            <h3>Con 2 ore piene fra cena e letto dormi meglio</h3>
+            <p>HRV 63 contro 54 e recupero 70% contro 58%, rispetto alle notti in cui vai a letto meno di 1h30 dopo cena.</p>
+            <div class="barre">
+              <div class="barra-v"><div class="col"><i style="height:30px"></i></div><div class="v">58%</div><div class="l">meno di 1h30</div></div>
+              <div class="barra-v"><div class="col"><i style="height:41px"></i></div><div class="v">64%</div><div class="l">1h30 – 2h</div></div>
+              <div class="barra-v"><div class="col"><i class="top" style="height:52px"></i></div><div class="v" style="color:var(--good)">70%</div><div class="l">2h e oltre</div></div>
+            </div>
+            <div class="fiducia">recupero medio WHOOP · la differenza regge su 23 notti</div>
+          </div>
+
+          <div class="card scoperta">
+            <div class="riga spazia"><span class="eyebrow">Allenamento → cena</span><span class="chip">9 sere · pochi dati</span></div>
+            <h3>Quando aspetti più di un'ora, la cena slitta e il sonno pure</h3>
+            <p>Ancora pochi giorni per dirlo con sicurezza: lo confermo o lo smentisco con altre 6 sere.</p>
+          </div>
+        </div>
+        <nav class="tab">
+          <div><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+          <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+          <div class="on"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+        </nav>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>Esempio di fase 2: i numeri sono inventati, la forma no. Ogni scoperta dice su quanti giorni si regge, e se sono pochi lo dice.</li>
+      <li>In cima la proposta per oggi: solo cena e letto, costruiti intorno all'allenamento che fai tu — mai l'allenamento.</li>
+      <li>Più giorni registri, più le finestre si stringono sulle tue.</li>
+    </ul>
+  </section>
+
+  <!-- ===================== 4 · PROFILO: I TUOI ORARI ===================== -->
+  <section class="blocco">
+    <div class="nome">4 · Profilo · i tuoi orari</div>
+    <div class="tel">
+      <div class="stato"><span>09:05</span><span>▾ ▮</span></div>
+      <div class="utile">
+        <div class="contenuto" style="gap:10px">
+          <h2 style="font-size:22px">I tuoi orari</h2>
+          <p style="margin:-4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45">Li metti una volta. Quello che l'app sa già da sola non te lo chiede.</p>
+
+          <div class="card">
+            <div class="eyebrow">Lavoro</div>
+            <div class="giorni"><span class="on">Lu</span><span class="on">Ma</span><span class="on">Me</span><span class="on">Gi</span><span class="on">Ve</span><span>Sa</span><span>Do</span></div>
+            <div class="voce" style="margin-top:6px"><span>Entrata</span><span class="val">08:30</span></div>
+            <div class="voce"><span>Uscita</span><span class="val">17:30</span></div>
+            <div class="voce"><span>Finestra d'uscita<br><span style="font-size:11.5px;color:var(--muted)">a volte esci più tardi</span></span><span class="val">17:30 → 18:30</span></div>
+          </div>
+
+          <div class="card">
+            <div class="eyebrow">Li sa già l'app</div>
+            <div class="voce" style="margin-top:4px"><span>Sonno</span><span class="auto">da WHOOP ✓</span></div>
+            <div class="voce"><span>Allenamento</span><span class="auto">dalle sedute ✓</span></div>
+            <div class="voce"><span>Pasti</span><span class="auto">dall'ora in Cibo ✓</span></div>
+          </div>
+
+          <div class="card">
+            <div class="eyebrow">Quando esci tardi</div>
+            <p style="margin:6px 0 0;font-size:12.5px;color:#cfc9bc;line-height:1.45">In Oggi, nei giorni di lavoro dopo le 17:30, compare una riga: «Uscito alle…?». Se la ignori vale l'orario fisso.</p>
+          </div>
+        </div>
+        <nav class="tab">
+          <div><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 7h3"/></svg>Cibo</div>
+          <div><svg viewBox="0 0 24 24"><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12"/></svg>Allena</div>
+          <div><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Salute</div>
+          <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>RS</div>
+          <div class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profilo</div>
+        </nav>
+      </div>
+      <div class="tasti"><span>|||</span><span>○</span><span>‹</span></div>
+    </div>
+    <ul class="note">
+      <li>Lavoro: giorni, entrata, uscita e la finestra in cui a volte esci più tardi.</li>
+      <li>Sonno, allenamento e pasti non si chiedono: arrivano da WHOOP, dalle sedute e da Cibo.</li>
+      <li>L'uscita tardiva si segna con un tocco solo quando capita; sennò vale l'orario fisso.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
