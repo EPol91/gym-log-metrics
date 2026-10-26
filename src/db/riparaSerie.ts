@@ -15,6 +15,7 @@
 import { db, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import type { SetEntry } from './schema'
+import { rinumeraEsercizi } from './repo'
 
 const CHIAVE = 'etp.serie.ordini.riparati'
 
@@ -53,4 +54,32 @@ export async function riparaOrdiniSerie(): Promise<number> {
     return sistemate // database non pronto: si riprova al prossimo avvio
   }
   return sistemate
+}
+
+const CHIAVE_ESERCIZI = 'etp.esercizi.ordini.riparati'
+
+/**
+ * Lo stesso difetto, un piano sopra: esercizi aggiunti a seduta in corso dopo
+ * averne tolto uno finivano nello stesso posto dell'ultimo. Le sedute che ne
+ * hanno si rinumerano una volta, senza cambiare l'ordine che vedi.
+ */
+export async function riparaOrdiniEsercizi(): Promise<number> {
+  try {
+    if (localStorage.getItem(CHIAVE_ESERCIZI)) return 0
+  } catch { /* senza localStorage si riprova: costa una lettura */ }
+
+  let sedute = 0
+  try {
+    const tutti = await db.exerciseEntries.where('userId').equals(LOCAL_USER_ID).toArray()
+    const perSeduta = new Map<string, number[]>()
+    for (const e of tutti) perSeduta.set(e.sessionId, [...(perSeduta.get(e.sessionId) ?? []), e.order ?? 0])
+    for (const [sessionId, posti] of perSeduta) {
+      if (new Set(posti).size === posti.length) continue
+      if (await rinumeraEsercizi(sessionId)) sedute++
+    }
+    try { localStorage.setItem(CHIAVE_ESERCIZI, nowISO()) } catch { /* ignore */ }
+  } catch {
+    return sedute // database non pronto: si riprova al prossimo avvio
+  }
+  return sedute
 }

@@ -508,15 +508,72 @@ export async function ungroupEntries(groupId: string): Promise<void> {
 }
 
 // --- Esercizi nella seduta ---
+
+/**
+ * Aggiunge un esercizio in fondo alla seduta.
+ *
+ * Il posto si contava («quanti ce ne sono») e si scriveva dopo: tolto un
+ * esercizio e aggiunto il successivo, il conto tornava indietro e il nuovo
+ * finiva nello stesso posto dell'ultimo. Con due esercizi allo stesso posto le
+ * frecce scambiavano 3 con 3, e quello nuovo non si spostava piu'. Adesso il
+ * posto e' il massimo piu' uno, deciso nella stessa transazione che scrive.
+ */
 export async function addExerciseEntry(sessionId: string, exerciseId: string): Promise<string> {
   const ts = nowISO()
-  const order = await db.exerciseEntries.where({ sessionId }).count()
   const e: ExerciseEntry = {
     id: newId(), userId: U, createdAt: ts, updatedAt: ts,
-    sessionId, exerciseId, order,
+    sessionId, exerciseId, order: 0,
   }
-  await db.exerciseEntries.add(e)
+  await db.transaction('rw', db.exerciseEntries, async () => {
+    const posti = (await db.exerciseEntries.where({ sessionId }).toArray()).map((x) => x.order ?? 0)
+    e.order = posti.length ? Math.max(...posti) + 1 : 0
+    await db.exerciseEntries.add(e)
+  })
   return e.id
+}
+
+/**
+ * La seduta come la vedi: blocchi in fila, un esercizio singolo o un superset
+ * intero. Il superset sta dove compare il suo primo esercizio, coi suoi dentro
+ * nell'ordine del giro (A, B, C) — come nella schermata dell'allenamento.
+ * A pari posto (i doppioni di prima) vale chi e' nato prima.
+ */
+function inBlocchi(righe: ExerciseEntry[]): ExerciseEntry[][] {
+  const fila = [...righe].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.createdAt.localeCompare(b.createdAt))
+  const blocchi: ExerciseEntry[][] = []
+  const gruppi = new Map<string, ExerciseEntry[]>()
+  for (const x of fila) {
+    if (!x.groupId) { blocchi.push([x]); continue }
+    const b = gruppi.get(x.groupId)
+    if (b) { b.push(x); continue }
+    const nuovo = [x]
+    gruppi.set(x.groupId, nuovo)
+    blocchi.push(nuovo)
+  }
+  for (const b of gruppi.values()) b.sort((a, b2) => (a.groupOrder ?? 0) - (b2.groupOrder ?? 0))
+  return blocchi
+}
+
+/** Riscrive i posti 0, 1, 2… nell'ordine dei blocchi; tocca solo chi cambia. */
+async function rimettiInFila(blocchi: ExerciseEntry[][]): Promise<number> {
+  const ts = nowISO()
+  let cambiati = 0
+  const fila = blocchi.flat()
+  for (let i = 0; i < fila.length; i++) {
+    if (fila[i].order === i) continue
+    await db.exerciseEntries.update(fila[i].id, { order: i, updatedAt: ts })
+    cambiati++
+  }
+  return cambiati
+}
+
+/**
+ * Rinumera gli esercizi di una seduta senza cambiarne l'ordine visibile:
+ * serve alle sedute rimaste con due esercizi nello stesso posto.
+ */
+export async function rinumeraEsercizi(sessionId: string): Promise<number> {
+  return db.transaction('rw', db.exerciseEntries, async () =>
+    rimettiInFila(inBlocchi(await db.exerciseEntries.where({ sessionId }).toArray())))
 }
 
 export function entriesOf(sessionId: string) {
@@ -535,17 +592,25 @@ export async function deleteExerciseEntry(entryId: string): Promise<Trash> {
   ]
 }
 
-/** Sposta un esercizio su/giù nella seduta (scambio di order). */
+/**
+ * Sposta un esercizio su/giu' nella seduta, di un blocco alla volta.
+ *
+ * Prima si scambiava il posto con la riga accanto. Due difetti: con due
+ * esercizi nello stesso posto lo scambio non cambiava niente; e salendo sopra
+ * un superset l'esercizio finiva in mezzo ai due — a schermo il tocco sembrava
+ * a vuoto. Adesso si scavalca il blocco intero e poi la seduta si rinumera
+ * 0, 1, 2…: anche una seduta con posti doppi si sistema al primo tocco.
+ */
 export async function moveExerciseEntry(entryId: string, dir: -1 | 1): Promise<void> {
-  const e = await db.exerciseEntries.get(entryId)
-  if (!e) return
-  const siblings = await db.exerciseEntries.where({ sessionId: e.sessionId }).sortBy('order')
-  const i = siblings.findIndex((x) => x.id === entryId)
-  const j = i + dir
-  if (j < 0 || j >= siblings.length) return
-  const other = siblings[j]
-  await db.exerciseEntries.update(e.id, { order: other.order, updatedAt: nowISO() })
-  await db.exerciseEntries.update(other.id, { order: e.order, updatedAt: nowISO() })
+  await db.transaction('rw', db.exerciseEntries, async () => {
+    const e = await db.exerciseEntries.get(entryId)
+    if (!e) return
+    const blocchi = inBlocchi(await db.exerciseEntries.where({ sessionId: e.sessionId }).toArray())
+    const i = blocchi.findIndex((b) => b.some((x) => x.id === entryId))
+    const j = i + dir
+    if (i >= 0 && j >= 0 && j < blocchi.length) [blocchi[i], blocchi[j]] = [blocchi[j], blocchi[i]]
+    await rimettiInFila(blocchi)
+  })
 }
 
 /**

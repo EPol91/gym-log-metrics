@@ -107,8 +107,11 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
 
       <div className="card">
         <div className="muted small" style={{ marginBottom: 6 }}>Ultime sedute</div>
+        {/* La riga condivisa ha la prima colonna da 24 px, fatta per il numero
+            della serie: la data ci finiva sopra il resto. Qui la colonna e'
+            larga quanto la data, e le cifre restano incolonnate. */}
         {[...d.points].reverse().map((p, i) => (
-          <div className="setline" key={i}>
+          <div className="setline" key={i} style={{ gridTemplateColumns: 'auto 1fr auto', gap: 12, fontVariantNumeric: 'tabular-nums' }}>
             <span className="muted small">{fmtData(p.date)}</span>
             <span>{p.topWeight}kg × {p.topReps} · e1RM {p.bestE1rm}</span>
             <span className="muted small">{TYPE_LABEL[p.type] ?? p.type}</span>

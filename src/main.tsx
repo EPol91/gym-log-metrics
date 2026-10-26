@@ -8,7 +8,7 @@ import { allineaCoppieRs } from './rs/coppie'
 import { ascoltaIndietro } from './util/indietro'
 import { caricaSceltaSuoni } from './util/suoni'
 import { recuperaSerieInSospeso } from './db/serieInSospeso'
-import { riparaOrdiniSerie } from './db/riparaSerie'
+import { riparaOrdiniSerie, riparaOrdiniEsercizi } from './db/riparaSerie'
 import { pushAvviso } from './util/undo'
 
 // Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
@@ -36,6 +36,8 @@ void recuperaSerieInSospeso()
     if (n) pushAvviso(`✓ ${n} ${n === 1 ? 'serie recuperata' : 'serie recuperate'} dall'ultima seduta`)
     const sistemate = await riparaOrdiniSerie()
     if (sistemate && !n) pushAvviso(`✓ ${sistemate} serie rimesse in ordine nello storico`)
+    // Gli esercizi rimasti nello stesso posto: in silenzio, l'ordine visibile non cambia.
+    await riparaOrdiniEsercizi()
   })
   .catch(() => { /* il database parla alla prossima apertura */ })
 
