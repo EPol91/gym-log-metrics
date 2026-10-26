@@ -29,6 +29,34 @@ import type { ExerciseEntry, SetEntry } from '../db/schema'
 
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
+/** Il carico all'italiana: 11,25 e non 11.25. Solo da leggere: i campi accettano tutti e due. */
+const kg = (n: number) => String(n).replace('.', ',')
+/** Il recupero nella riga della tabella: «1:30» e non «1min 30s», che andava a capo. */
+const recuperoBreve = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+
+/**
+ * Le icone degli strumenti: a filo, tutte uguali. Prima erano emoji di
+ * famiglie diverse, otto in fila, e la riga sembrava un cassetto.
+ */
+const ICONE: Record<string, string> = {
+  regolazioni: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4',
+  storico: 'M4 19V5M4 19h16M8 15l4-4 3 3 5-6',
+  coppia: 'M10 14a4 4 0 0 1 0-5.6l2.8-2.8a4 4 0 0 1 5.6 5.6L17 12.6M14 10a4 4 0 0 1 0 5.6l-2.8 2.8a4 4 0 0 1-5.6-5.6L7 11.4',
+  // Le forbici, non una X: una X sembra «chiudi», e qui si taglia via dal giro.
+  stacca: 'M9 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12',
+  su: 'M12 19V5M6 11l6-6 6 6',
+  giu: 'M12 5v14M6 13l6 6 6-6',
+  altro: 'M5 12h.01M12 12h.01M19 12h.01',
+}
+function Icona({ nome }: { nome: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth={nome === 'altro' ? 3 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONE[nome]} />
+    </svg>
+  )
+}
+
 // Stato del timer tenuto FUORI dai componenti.
 //
 // Prima viveva nella schermata di allenamento: bastava andare al Riepilogo per
@@ -155,20 +183,20 @@ function RestTimer({ defaultSec, presets, store, sessionId, onPick, onClose }: {
   const mm = Math.floor(Math.max(0, left) / 60)
   const ss = Math.max(0, left) % 60
 
-  const ctrl = { flex: 1, padding: '7px 0', fontSize: 13 }
+  const ctrl = { flex: 1, padding: '6px 0', fontSize: 13, borderRadius: 999 }
   const pct = Math.max(0, Math.min(100, (left / total) * 100))
   return (
-    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold-dim)', transition: 'border-color .2s', padding: '9px 12px', margin: 0 }}>
+    <div className="card" style={{ borderColor: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--line)', transition: 'border-color .2s', padding: '9px 13px', margin: 0 }}>
       <div className="row spread" style={{ alignItems: 'center' }}>
-        <span className="muted small" style={{ letterSpacing: '.08em' }}>⏱ RECUPERO</span>
-        <span className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 24, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
+        <span>
+          <span className="eyebrow" style={{ display: 'block', fontSize: 9.5 }}>Recupero</span>
+          <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 32, lineHeight: 1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
             {done ? 'Vai! 💪' : `${mm}:${ss.toString().padStart(2, '0')}`}
           </span>
-          <button className="ghost small" onClick={onClose}>✕</button>
         </span>
+        <button className="ghost small" style={{ padding: '6px 10px' }} onClick={onClose} aria-label="Chiudi il recupero">✕</button>
       </div>
-      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', margin: '8px 0' }}>
+      <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', margin: '8px 0' }}>
         <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: warn ? '#e5484d' : 'var(--gold)', transition: 'width 1s linear, background .2s' }} />
       </div>
       <div className="row" style={{ gap: 4, alignItems: 'center' }}>
@@ -251,18 +279,27 @@ function StepCard({ label, value, onSet, onStep, placeholder = '—', info }: {
   return (
     <div className="card" style={{ flex: 1, minWidth: 0, padding: '6px 6px 8px', textAlign: 'center' }}>
       <input inputMode="decimal" value={value} placeholder={placeholder} onChange={(e) => onSet(e.target.value)}
-        style={{ width: '100%', fontSize: 22, fontWeight: 700, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '4px 0' }} />
+        style={{ width: '100%', fontFamily: 'var(--f-numeri)', fontSize: 30, fontWeight: 600, textAlign: 'center', fontVariantNumeric: 'tabular-nums', padding: '2px 0', background: 'transparent', border: '1px solid transparent' }} />
       {/* La spiegazione sta in un tooltip inline: aggiungere una riga alzerebbe solo questa card. */}
-      <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{label}{info && <Info text={info} />}</div>
-      <div className="row" style={{ gap: 4, marginTop: 5 }}>
-        <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(-1)}>−</button>
-        <button style={{ flex: 1, padding: '5px 0' }} onClick={() => onStep(1)}>＋</button>
+      <div className="muted" style={{ fontSize: 11, marginTop: 0 }}>{label}{info && <Info text={info} />}</div>
+      <div className="row" style={{ gap: 5, marginTop: 6 }}>
+        <button style={{ flex: 1, padding: '6px 0', fontSize: 18 }} onClick={() => onStep(-1)}>−</button>
+        <button style={{ flex: 1, padding: '6px 0', fontSize: 18 }} onClick={() => onStep(1)}>＋</button>
       </div>
     </div>
   )
 }
 
-const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '7px 2px', borderTop: '1px solid var(--line)', fontVariantNumeric: 'tabular-nums' } as const
+const SROW = { display: 'grid', gridTemplateColumns: '26px 1fr 1fr 1fr 22px', gap: 6, alignItems: 'center', padding: '8px 2px', borderTop: '1px solid var(--line-soft)', fontVariantNumeric: 'tabular-nums' } as const
+/** L'intestazione della tabella: etichette piccole, maiuscole, larghe. */
+const SROW_TESTA = { ...SROW, borderTop: 'none', color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 600 } as const
+/**
+ * La riga della serie che stai per fare: evidenziata DENTRO la tabella, dove
+ * finira' — non sciolta in fondo come una riga qualsiasi.
+ */
+const SROW_ORA = { ...SROW, color: 'var(--gold)', background: 'var(--gold-bg)', border: '1px solid #4a3e18', borderRadius: 12, margin: '3px -8px 0', padding: '8px 10px' } as const
+/** Kg e reps nella tabella: il carattere dei numeri. */
+const NUMT: React.CSSProperties = { fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 19 }
 
 // --- Back off -----------------------------------------------------------------
 //
@@ -416,17 +453,14 @@ function SetRowT({ s, index, prev, isPR }: { s: SetEntry; index: number; prev: s
     <div style={SROW} onClick={() => setEd(true)}>
       <span className="muted small">{s.isWarmup ? 'W' : index}</span>
       <span className="muted small">{prev}</span>
-      <span className="strong">{s.weight}</span>
-      <span className="strong">{s.reps}{isPR && <span style={{ color: 'var(--gold)' }}> PR</span>}
-        <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{s.rir != null ? ` R${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` ⏱${fmtRest(s.restSec)}` : ''}</span>
+      <span style={NUMT}>{kg(s.weight)}</span>
+      <span><span style={NUMT}>{s.reps}</span>{isPR && <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 12 }}> PR</span>}
+        <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{s.rir != null ? ` R${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` ⏱${recuperoBreve(s.restSec)}` : ''}</span>
       </span>
       <span style={{ textAlign: 'center', color: 'var(--good)' }}>✓</span>
     </div>
   )
 }
-
-/** I tasti secondari: stretti quanto basta a starci tutti in fila. */
-const MINI: React.CSSProperties = { padding: '6px 10px', flex: 'none' }
 
 /**
  * Lo storico dell'esercizio: lo stato sta qui, il tasto lo disegna chi lo usa.
@@ -451,7 +485,7 @@ function useStorico(exerciseId: string, sessionId: string) {
  * uguali dentro un superset: li' un esercizio resta un esercizio, e prima
  * perdeva tutto — storico, foto della macchina, prescrizione, tutto.
  */
-function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, isFirst, isLast, nelGruppo, onGroup, onUngroup }: {
+function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, isFirst, isLast, nelGruppo, onGroup, onUngroup, storicoAperto, onStorico }: {
   entry: ExerciseEntry; name: string; settings: string
   inclinazione?: number; foto?: string
   /** il carico scritto adesso: serve al calcolo dei dischi */
@@ -462,12 +496,16 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
   onGroup?: () => void
   /** stacca questo esercizio dal superset */
   onUngroup?: () => void
+  /** lo storico dell'esercizio: lo stato sta in chi lo mostra */
+  storicoAperto?: boolean
+  onStorico?: () => void
 }) {
   const [showSettings, setShowSettings] = useState(false)
   const [showCoach, setShowCoach] = useState(false)
   const [inclina, setInclina] = useState(false)
   const [dischi, setDischi] = useState(false)
   const [fotoGrande, setFotoGrande] = useState(false)
+  const [altro, setAltro] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
   // Le note stanno in un campo solo, ma sono di due mani diverse: quelle del
   // coach cominciano col 🦠 e le scrive l'import, le altre le scrivi tu.
@@ -478,48 +516,66 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
 
   return (
     <>
-      {/* Controlli secondari: una riga sola. A capo occupavano due righe di
-          schermo per sei icone; qui restano in fila e, se proprio non ci stanno,
-          scorrono di lato. */}
-      <div className="row" style={{ gap: 5, justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+      {/* Sei tasti uguali, a icona: regolazioni, storico, superset, su, giu' e
+          «⋯». Le cose che servono una volta ogni tanto — inclinazione, dischi,
+          togliere l'esercizio — stanno dentro «⋯». Prima erano otto emoji in
+          fila, di famiglie diverse, e la riga sembrava un cassetto. */}
+      <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'nowrap' }}>
         {/* Due taccuini diversi: quello che ha prescritto lui e quello che hai
-            capito tu della macchina. In un campo solo, per rileggere l'altezza
-            del sellino toccava scorrere mezza scheda del coach. */}
-        <button className={showSettings ? 'chip on' : 'chip'} style={MINI} onClick={() => { setShowSettings((v) => !v); setShowCoach(false) }}
-          aria-label="Le tue regolazioni">⚙</button>
-        {righeCoach.length > 0 && (
-          <button className={showCoach ? 'chip on' : 'chip'} style={MINI} onClick={() => { setShowCoach((v) => !v); setShowSettings(false) }}
-            aria-label="La scheda del coach">🦠</button>
+            capito tu della macchina. */}
+        <button className={showSettings ? 'strumento on' : 'strumento'} onClick={() => { setShowSettings((v) => !v); setShowCoach(false) }}
+          aria-label="Le tue regolazioni"><Icona nome="regolazioni" /></button>
+        {onStorico && (
+          <button className={storicoAperto ? 'strumento on' : 'strumento'} onClick={onStorico} aria-label="Storico">
+            <Icona nome="storico" />
+          </button>
         )}
-        {/* L'inclinazione dello schienale: «panca a 80°» regolata a occhio non e'
-            lo stesso esercizio della settimana prima. */}
-        <button className={inclinazione != null ? 'chip on' : 'chip'} style={MINI} onClick={() => setInclina(true)}
-          aria-label="Misura l'inclinazione">📐{inclinazione != null ? ` ${inclinazione}°` : ''}</button>
-        {/* I dischi da caricare: 82,5 kg col bilanciere da 20 sono 31,25 per
-            lato, e farlo a mente fra due serie e' come si sbaglia carico. */}
-        <button className="chip" style={MINI} onClick={() => setDischi(true)} aria-label="Che dischi caricare">⚖</button>
-        {onGroup && <button className="chip" style={MINI} onClick={onGroup} aria-label="Abbina in superset">🔗</button>}
+        {onGroup && <button className="strumento" onClick={onGroup} aria-label="Abbina in superset"><Icona nome="coppia" /></button>}
         {/* Dentro un giro «stacca» toglie questo esercizio dal superset; le
             frecce spostano dentro il giro (A↔B), non dentro la seduta. */}
-        {onUngroup && <button className="chip" style={MINI} onClick={onUngroup} aria-label="Stacca dal superset">✂</button>}
-        <button className="chip" style={MINI} disabled={isFirst}
-          onClick={() => (nelGruppo ? moveInGroup(entry.id, -1) : moveExerciseEntry(entry.id, -1))} aria-label="Sposta su">↑</button>
-        <button className="chip" style={MINI} disabled={isLast}
-          onClick={() => (nelGruppo ? moveInGroup(entry.id, 1) : moveExerciseEntry(entry.id, 1))} aria-label="Sposta giù">↓</button>
-        <button className="chip" style={MINI} aria-label="Rimuovi esercizio" onClick={() => { if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>🗑</button>
+        {onUngroup && <button className="strumento" onClick={onUngroup} aria-label="Stacca dal superset"><Icona nome="stacca" /></button>}
+        <button className="strumento" disabled={isFirst}
+          onClick={() => (nelGruppo ? moveInGroup(entry.id, -1) : moveExerciseEntry(entry.id, -1))} aria-label="Sposta su"><Icona nome="su" /></button>
+        <button className="strumento" disabled={isLast}
+          onClick={() => (nelGruppo ? moveInGroup(entry.id, 1) : moveExerciseEntry(entry.id, 1))} aria-label="Sposta giù"><Icona nome="giu" /></button>
+        <button className={altro ? 'strumento on' : 'strumento'} onClick={() => setAltro((v) => !v)} aria-label="Altro" aria-expanded={altro}>
+          <Icona nome="altro" />
+        </button>
       </div>
+      {altro && (
+        <div className="row" style={{ gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {/* L'inclinazione dello schienale: «panca a 80°» regolata a occhio non e'
+              lo stesso esercizio della settimana prima. */}
+          <button className={inclinazione != null ? 'chip on' : 'chip'} onClick={() => { setAltro(false); setInclina(true) }}>
+            📐 Inclinazione{inclinazione != null ? ` ${inclinazione}°` : ''}
+          </button>
+          {/* I dischi da caricare: 82,5 kg col bilanciere da 20 sono 31,25 per
+              lato, e farlo a mente fra due serie e' come si sbaglia carico. */}
+          <button className="chip" onClick={() => { setAltro(false); setDischi(true) }}>⚖ Dischi</button>
+          <button className="chip" style={{ color: '#e57373' }}
+            onClick={() => { setAltro(false); if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>
+            🗑 Rimuovi esercizio
+          </button>
+        </div>
+      )}
       {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
-      {!showSettings && (mieNote || foto) && (
+      {!showSettings && (mieNote || foto || inclinazione != null) && (
         <div className="row" style={{ gap: 8, justifyContent: 'center', alignItems: 'center' }}>
           {foto && (
             <img src={foto} alt="" onClick={() => setFotoGrande(true)}
               style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 7, display: 'block', flex: 'none', cursor: 'pointer' }} />
           )}
           {mieNote && <span className="muted small">⚙ {mieNote}</span>}
+          {inclinazione != null && <span className="muted small">📐 {inclinazione}°</span>}
         </div>
       )}
+      {/* La prescrizione si tocca per aprire la scheda intera del coach: il
+          tasto 🦠 nella fila non serve piu'. */}
       {!showCoach && righeCoach.length > 0 && (
-        <div className="muted small" style={{ textAlign: 'center' }}>{righeCoach.join(' · ')}</div>
+        <button onClick={() => { setShowCoach(true); setShowSettings(false) }}
+          style={{ background: 'none', border: 0, padding: 0, borderRadius: 0, fontSize: 12.5, color: '#e9776d', textAlign: 'center', lineHeight: 1.45 }}>
+          {righeCoach.join(' · ')}
+        </button>
       )}
       {showSettings && (
         <textarea defaultValue={mieNote} rows={2} placeholder="Regolazioni macchina: sellino, poggiapetto…" style={{ width: '100%' }}
@@ -559,7 +615,7 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
         document.body,
       )}
       {showCoach && (
-        <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--rs)' }}>
+        <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--rs)' }} onClick={() => setShowCoach(false)}>
           {righeCoach.map((r, i) => <p key={i} className="small" style={{ margin: i ? '6px 0 0' : 0 }}>{r}</p>)}
           <p className="muted" style={{ fontSize: 11, margin: '8px 0 0' }}>Scritte dal protocollo: si aggiornano da sole, non si modificano qui.</p>
         </div>
@@ -652,20 +708,15 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <button className="ghost" style={{ padding: '10px 12px', visibility: onPrev ? 'visible' : 'hidden' }} onClick={onPrev} aria-label="Esercizio precedente">‹</button>
         <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
-          <div className="muted small" style={{ letterSpacing: '.12em' }}>ESERCIZIO {pos} / {total}</div>
-          <h2 style={{ margin: '2px 0' }}>{name}</h2>
-          <div className="row" style={{ gap: 6, justifyContent: 'center', marginTop: 4 }}>
-            <span className="chip" style={{ padding: '3px 10px', color: 'var(--text)' }}>
+          <div className="eyebrow">Esercizio {pos} di {total}</div>
+          <h2 style={{ margin: '3px 0 7px', fontSize: 26, lineHeight: 1.15 }}>{name}</h2>
+          <div className="row" style={{ gap: 6, justifyContent: 'center' }}>
+            <span className="chip" style={{ padding: '3px 10px' }}>
               {/* Non «l'ultima serie» ma quella che stai per rifare: la stessa
                   serie della volta scorsa. */}
-              {daFare ? `${fatte + 1}ª volta scorsa ${daFare.weight}×${daFare.reps}` : 'Prima volta'}
+              {daFare ? `${fatte + 1}ª · scorsa ${kg(daFare.weight)} × ${daFare.reps}` : 'Prima volta'}
             </span>
-            {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px' }}>PR {Math.round(histBest)}</span>}
-            {/* Lo storico sta qui e non in fila coi tasti: li' erano nove icone
-                e sul telefono uscivano dallo schermo. */}
-            <button className={storico.aperto ? 'chip on' : 'chip'} aria-label="Storico"
-              style={{ padding: '3px 10px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
-              onClick={storico.cambia}>📊</button>
+            {histBest > 0 && <span className="chip on" style={{ padding: '3px 10px', fontWeight: 600 }}>PR {Math.round(histBest)}</span>}
           </div>
         </div>
         <button className="ghost" style={{ padding: '10px 12px', visibility: onNext ? 'visible' : 'hidden' }} onClick={onNext} aria-label="Esercizio successivo">›</button>
@@ -676,27 +727,28 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
       <StrumentiEsercizio entry={entry} name={name} settings={settings}
         inclinazione={inclinazione} foto={foto}
         peso={parseNum(w, { min: 0, max: 1000 }) ?? 0}
-        isFirst={isFirst} isLast={isLast} onGroup={onGroup} />
+        isFirst={isFirst} isLast={isLast} onGroup={onGroup}
+        storicoAperto={storico.aperto} onStorico={storico.cambia} />
       {storico.aperto && <HistoryPanel history={storico.righe} />}
 
       {/* Tabella set */}
       <div className="card" style={{ padding: '4px 12px 8px' }}>
-        <div style={{ ...SROW, borderTop: 'none', color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+        <div style={SROW_TESTA}>
           <span>Set</span><span>Prec.</span><span>Kg</span><span>Reps</span><span />
         </div>
         {sets.map((s) => {
           if (!s.isWarmup) wIdx++
           const idx = s.isWarmup ? 0 : wIdx
-          const prev = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${prevSets[idx - 1].weight}×${prevSets[idx - 1].reps}` : '—')
+          const prev = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${kg(prevSets[idx - 1].weight)}×${prevSets[idx - 1].reps}` : '—')
           return <SetRowT key={s.id} s={s} index={idx} prev={prev} isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest} />
         })}
-        <div style={{ ...SROW, color: 'var(--gold)' }}>
-          <span className="muted small">{sets.filter((x) => !x.isWarmup).length + 1}</span>
+        <div style={SROW_ORA}>
+          <span style={{ ...NUMT, fontSize: 16 }}>{warmup ? 'W' : sets.filter((x) => !x.isWarmup).length + 1}</span>
           {/* La riga che stai per registrare: il precedente e' la serie di pari
               numero della volta scorsa, come nelle righe gia' fatte sopra. */}
-          <span className="muted small">{daFare ? `${daFare.weight}×${daFare.reps}` : '—'}</span>
-          <span className="strong">{w === '' ? '—' : w}</span>
-          <span className="strong">{r === '' ? '—' : r}</span>
+          <span className="muted small">{daFare ? `${kg(daFare.weight)}×${daFare.reps}` : '—'}</span>
+          <span style={NUMT}>{w === '' ? '—' : w.replace('.', ',')}</span>
+          <span style={NUMT}>{r === '' ? '—' : r}</span>
           <span style={{ textAlign: 'center' }}>○</span>
         </div>
       </div>
@@ -724,7 +776,9 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
       {guasto && <AvvisoSerie testo={guasto} />}
 
       {/* Registra serie */}
-      <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 15 }} disabled={!canAdd} onClick={add}>✓ Registra serie</button>
+      <button className="primary" style={{ width: '100%', padding: '15px', fontSize: 16 }} disabled={!canAdd} onClick={add}>
+        {warmup ? '✓ Registra riscaldamento' : `✓ Registra serie ${fatte + 1}`}
+      </button>
     </div>
   )
 }
@@ -832,11 +886,8 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
         </span>
         <span className="row" style={{ gap: 6, alignItems: 'center', flex: 'none', marginLeft: 8 }}>
           <span className="muted small">
-            {prev ? `${fatte + 1}ª volta scorsa ${prev.weight}×${prev.reps}` : 'prima volta'}
+            {prev ? `${fatte + 1}ª · scorsa ${kg(prev.weight)} × ${prev.reps}` : 'prima volta'}
           </span>
-          <button className={storico.aperto ? 'chip on' : 'chip'} aria-label="Storico"
-            style={{ padding: '2px 8px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
-            onClick={storico.cambia}>📊</button>
         </span>
       </div>
       {storico.aperto && <HistoryPanel history={storico.righe} />}
@@ -847,18 +898,19 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
         <StrumentiEsercizio entry={entry} name={name} settings={settings}
           inclinazione={inclinazione} foto={foto}
           peso={parseNum(values.w, { min: 0, max: 1000 }) ?? 0}
-          isFirst={isFirst} isLast={isLast} nelGruppo onUngroup={onUngroup} />
+          isFirst={isFirst} isLast={isLast} nelGruppo onUngroup={onUngroup}
+          storicoAperto={storico.aperto} onStorico={storico.cambia} />
       </div>
 
       {sets.length > 0 && (
         <div style={{ marginTop: 6 }}>
-          <div style={{ ...SROW, borderTop: 'none', color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          <div style={SROW_TESTA}>
             <span>Set</span><span>Prec.</span><span>Kg</span><span>Reps</span><span />
           </div>
           {sets.map((s) => {
             if (!s.isWarmup) wIdx++
             const idx = s.isWarmup ? 0 : wIdx
-            const p = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${prevSets[idx - 1].weight}×${prevSets[idx - 1].reps}` : '—')
+            const p = s.isWarmup ? '—' : (prevSets[idx - 1] ? `${kg(prevSets[idx - 1].weight)}×${prevSets[idx - 1].reps}` : '—')
             return <SetRowT key={s.id} s={s} index={idx} prev={p} isPR={!s.isWarmup && histBest > 0 && e1rm(s.weight, s.reps) > histBest} />
           })}
         </div>
@@ -873,12 +925,12 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
             <TastoScarico base={baseScarico(sets, prev, values.w)} onSet={(kg) => onChange({ ...values, w: kg })} />
           </div>
           <input inputMode="decimal" value={values.w} onChange={(e) => onChange({ ...values, w: e.target.value })}
-            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+            style={{ textAlign: 'center', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, padding: '6px 4px', fontVariantNumeric: 'tabular-nums' }} />
         </div>
         <div style={{ flex: 1 }}>
           <label className="fl">reps</label>
           <input inputMode="numeric" value={values.r} onChange={(e) => onChange({ ...values, r: e.target.value })}
-            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+            style={{ textAlign: 'center', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, padding: '6px 4px', fontVariantNumeric: 'tabular-nums' }} />
         </div>
         <div style={{ flex: 1 }}>
           <label className="fl">RIR</label>
@@ -887,7 +939,7 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
               const n = parseNum(e.target.value, { min: 0, max: 10, int: true })
               onChange({ ...values, rir: e.target.value.trim() === '' ? null : (n ?? values.rir) })
             }}
-            style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, padding: '8px 4px' }} />
+            style={{ textAlign: 'center', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, padding: '6px 4px', fontVariantNumeric: 'tabular-nums' }} />
         </div>
       </div>
     </div>
@@ -1124,11 +1176,11 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
       {/* Barra fissa in alto: Home · pallini esercizi · Recupero + durata */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg)', margin: '-16px -16px 0', padding: '12px 16px 8px' }}>
         <div className="row spread" style={{ gap: 6 }}>
-          {onHome ? <button className="ghost small" style={{ flex: 'none', padding: '8px 10px' }} onClick={onHome} aria-label="Panoramica allenamento">‹ Riepilogo</button> : <span />}
+          {onHome ? <button className="ghost small" style={{ flex: 'none', padding: '7px 12px', borderRadius: 999, fontWeight: 600 }} onClick={onHome} aria-label="Panoramica allenamento">‹ Riepilogo</button> : <span />}
           {/* I pallini cedono spazio: con molti esercizi non devono spingere fuori l'orologio. */}
           <span className="row" style={{ gap: 5, flex: 1, minWidth: 0, justifyContent: 'center', overflow: 'hidden' }}>
             {entries.map((e, i) => (
-              <span key={e.id} onClick={() => setCur(i)} style={{ width: 8, height: 8, flex: 'none', borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-2)', border: '1px solid var(--line)' }} />
+              <span key={e.id} onClick={() => setCur(i)} style={{ width: i === current ? 16 : 7, height: 7, flex: 'none', borderRadius: 999, cursor: 'pointer', background: i === current ? 'var(--gold)' : 'var(--surface-3)', transition: 'width .2s' }} />
             ))}
           </span>
           <span className="row" style={{ gap: 6, alignItems: 'center', flex: 'none' }}>

@@ -139,6 +139,9 @@ h1 { font-size: 26px; letter-spacing: .3px; }
 .coach-testo .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
 /* La prossima seduta: l'unico riquadro con la luce, perche' e' quello che vieni a fare. */
 .card.eroe { border-color: #3d3420; background: radial-gradient(120% 90% at 100% 0%, #2a2312 0%, #17150f 45%, var(--surface) 100%); }
+/* Gli strumenti dell'esercizio: tasti quadrati tutti uguali, icona a filo. */
+.strumento { width: 44px; min-width: 34px; height: 38px; padding: 0; border-radius: 12px; display: grid; place-items: center; flex: 0 1 44px; background: var(--surface); color: #cfc9bc; }
+.strumento.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
 .eyebrow { font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
