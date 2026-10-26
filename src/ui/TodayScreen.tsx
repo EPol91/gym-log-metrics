@@ -21,13 +21,13 @@ import { useEffect } from 'react'
 const LBL: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }
 // Numeri da tabellone: stretti, si leggono da lontano e stanno nella mezza riga.
 const NUM: React.CSSProperties = { color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }
-const GRANDE: React.CSSProperties = { ...NUM, color: 'var(--text)', fontSize: 34, lineHeight: 1 }
+const GRANDE: React.CSSProperties = { ...NUM, color: 'var(--text)', fontSize: 28, lineHeight: 1 }
 
 /** Una cifra con la sua etichetta sotto: quattro in fila stanno in un riquadro intero. */
 const cella = (v: string | number, l: string, colore = 'var(--text)') => (
   <div key={l} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-    <div style={{ ...NUM, fontSize: 25, color: colore }}>{v}</div>
-    <div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{l}</div>
+    <div style={{ ...NUM, fontSize: 23, lineHeight: 1, color: colore }}>{v}</div>
+    <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>{l}</div>
   </div>
 )
 
@@ -84,7 +84,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     <div key={key} className="card" data-drag-id={key}
       onPointerDown={press('today', key)}
       style={{
-        padding: '11px 13px', marginBottom: 0,
+        padding: '9px 12px', marginBottom: 0,
         flex: META.includes(key) ? '1 1 calc(50% - 4px)' : '1 1 100%',
         minWidth: 0,
         ...liftStyle('today', key),
@@ -101,21 +101,21 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
   }
 
   return (
-    <div className="col" style={{ gap: 10 }}>
+    <div className="col" style={{ gap: 9 }}>
       <div className="row spread" style={{ alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0 }}>
           <button onClick={() => setCalendario(true)} aria-label="Calendario"
             style={{ ...LBL, background: 'none', border: 0, padding: '2px 0', borderRadius: 0 }}>
             {data} <span style={{ color: 'var(--faint)' }}>›</span>
           </button>
-          <h1 style={{ fontSize: 'clamp(24px, 7.6vw, 30px)', marginTop: 2 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
+          <h1 style={{ fontSize: 'clamp(22px, 7.2vw, 26px)', marginTop: 3 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
         </div>
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
           <span className={home?.todayReady == null && vitaliOggi ? 'ring-invito' : undefined}>
-            <ScoreRing value={home?.todayReady ?? null} size={66} />
+            <ScoreRing value={home?.todayReady ?? null} size={52} />
           </span>
-          <div style={{ fontSize: 10, marginTop: 2, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
+          <div style={{ fontSize: 9, marginTop: 1, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, color: home?.todayReady == null ? 'var(--muted)' : 'var(--gold)' }}>
             {home?.todayReady == null ? 'fai il check' : 'ready'}
           </div>
         </button>
@@ -167,7 +167,7 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
             e' un giro inutile. */}
         <span className="row" style={{ gap: 8, alignItems: 'center', flex: 'none' }}>
           {ha && quando && <span style={{ fontSize: 11, color: 'var(--faint)' }}>{quandoSync(quando)}</span>}
-          <button className="chip" style={{ padding: '2px 9px', fontSize: 12 }} disabled={sync}
+          <button className="chip" style={{ padding: '0 8px', fontSize: 11, lineHeight: '18px' }} disabled={sync}
             aria-label="Aggiorna i dati WHOOP"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={async () => {
@@ -179,7 +179,7 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
       {ha ? (
         <>
           {/* Tocca i numeri e vai all'andamento: il tasto «Andamento ›» rubava una riga. */}
-          <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
+          <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 6, cursor: 'pointer' }}>
             {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero', 'var(--gold)')}
             {cella(fmtOre(d!.sleepHours), 'sonno')}
             {cella(d!.strain != null ? virgola(d!.strain) : '—', 'sforzo')}
@@ -208,20 +208,21 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
   return (
     <>
       <span style={LBL}>Corpo</span>
-      <div style={{ marginTop: 8 }}>
+      {/* La variazione sta accanto al numero: sotto rubava una riga. È rispetto alla pesata prima. */}
+      <div className="row" style={{ gap: 5, alignItems: 'baseline', marginTop: 6 }}>
         <span style={GRANDE}>{peso ? virgola(peso.weight) : '—'}</span>
-        <span className="muted" style={{ fontSize: 13, marginLeft: 4 }}>kg</span>
+        <span className="muted" style={{ fontSize: 12 }}>kg</span>
+        {peso?.delta != null && (
+          <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }} title="rispetto alla pesata prima">
+            {peso.delta > 0 ? '+' : peso.delta < 0 ? '−' : ''}{virgola(Math.abs(peso.delta))}
+          </span>
+        )}
       </div>
-      {peso?.delta != null && (
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
-          {peso.delta > 0 ? '+' : peso.delta < 0 ? '−' : ''}{virgola(Math.abs(peso.delta))} kg dalla pesata prima
-        </div>
-      )}
       {!apri ? (
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
         // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
         <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
-          style={{ marginTop: 8, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
+          style={{ marginTop: 7, padding: '3px 10px', fontSize: 11, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
           onClick={() => setApri(true)}>
           {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
         </button>
@@ -260,7 +261,7 @@ function CardNutrizione({ onOpen }: { onOpen: () => void }) {
         <span style={LBL}>Nutrizione</span>
         {giornata && (
           <span className="chip" style={{
-            padding: '3px 9px', fontSize: 11, fontWeight: 600, minWidth: 0,
+            padding: '0 8px', fontSize: 10.5, lineHeight: '18px', fontWeight: 600, minWidth: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             ...(dalCoach
               ? { color: '#ff6b5f', borderColor: '#5a1a14', background: '#2a0f0c' }
@@ -269,7 +270,7 @@ function CardNutrizione({ onOpen }: { onOpen: () => void }) {
         )}
       </div>
       {/* Solo i numeri: le barre sono in Cibo, qui rubavano spazio. Tocca e vai al diario. */}
-      <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
+      <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 6, cursor: 'pointer' }}>
         {cella(tondo(t?.kcal), 'kcal', 'var(--gold)')}
         {cella(tondo(t?.carbs), 'carbo', 'var(--carb)')}
         {cella(tondo(t?.protein), 'proteine', 'var(--prot)')}
@@ -309,58 +310,62 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
     return t?.items.length ?? seduta.esercizi.length
   }, [seduta?.nome])
 
-  const tono = scavalcate.length > 0 ? 'rosso' : (ciclo?.oltre ?? 0) > 0 ? 'ambra' : 'ok'
-  const CHIP: Record<string, React.CSSProperties> = {
-    ok: { color: 'var(--good)', borderColor: '#1f4a2c', background: '#0f1f14' },
-    ambra: { color: '#e0a030', borderColor: '#5a4214', background: '#241a08' },
-    rosso: { color: '#ff6b5f', borderColor: '#5a1a14', background: '#2a0f0c' },
-  }
-
   return (
-    <div className="card eroe" style={{ marginBottom: 0, padding: '13px 14px' }}>
+    <div className="card eroe" style={{ marginBottom: 0, padding: '10px 12px 11px' }}>
       {ciclo ? (
         <>
+          {/* Una riga sola per il ciclo: numero, giorno e come stai andando. Il
+              ritardo o la seduta da recuperare prendono il posto di «nei tempi». */}
           <div className="row spread" style={{ gap: 8 }}>
-            <span className="chip" style={{ ...CHIP.rosso, fontWeight: 600, padding: '3px 9px', fontSize: 11 }}>
-              🦠 Ciclo {ciclo.numero} · dal {ciclo.dal.slice(8)}.{ciclo.dal.slice(5, 7)}
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, color: '#ff6b5f' }}>
+              🦠 Ciclo {ciclo.numero} · giorno {ciclo.giorno} di {ciclo.giorniPrevisti} ·{' '}
+              {scavalcate.length > 0
+                ? <span style={{ color: '#ff6b5f' }}>{scavalcate.map((p) => p.codice).join(', ')} da recuperare</span>
+                : ciclo.oltre > 0
+                  ? <span style={{ color: '#e0a030' }}>+{ciclo.oltre} in ritardo</span>
+                  : <span style={{ color: 'var(--good)' }}>nei tempi</span>}
             </span>
-            <span className="chip" style={{ ...CHIP[tono], fontWeight: 600, padding: '3px 9px', fontSize: 11 }}>
-              giorno {ciclo.giorno} di {ciclo.giorniPrevisti}{tono === 'ok' ? ' · nei tempi' : ''}
-            </span>
+            {ciclo.chiusi.length > 0 && (
+              <button onClick={() => setStorico((v) => !v)} aria-expanded={storico}
+                style={{ flex: 'none', background: 'none', border: 0, padding: 0, borderRadius: 0, fontSize: 11, color: 'var(--muted)' }}>
+                Cicli chiusi {storico ? '▴' : '▾'}
+              </button>
+            )}
           </div>
 
-          <h2 style={{ fontSize: 24, margin: '10px 0 1px' }}>
+          <h2 style={{ fontSize: 21, margin: '6px 0 0' }}>
             {ciclo.prossima ? `${ciclo.prossima}${seduta ? ' · ' + titoloSeduta(seduta.nome) : ''}` : 'Ciclo completo'}
           </h2>
-          <div className="muted" style={{ fontSize: 13 }}>
+          <div className="muted" style={{ fontSize: 12, marginTop: 1 }}>
             {seduta
               ? `${seduta.focus}${esercizi ? ` · ${esercizi} esercizi` : ''}`
               : `${ciclo.fatte} su ${ciclo.totale} · il prossimo parte da domani`}
           </div>
 
-          {/* Le cinque sedute in fila: a colpo d'occhio quali hai fatto, quale
-              tocca e quale hai scavalcato — che e' un'altra cosa dal ritardo. */}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ciclo.passi.length}, 1fr)`, gap: 5, marginTop: 11 }}>
-            {ciclo.passi.map((p) => (
-              <span key={p.codice} style={{
-                height: 24, borderRadius: 8, fontSize: 13, fontFamily: 'var(--f-numeri)', fontWeight: 600, letterSpacing: '.04em',
-                display: 'grid', placeItems: 'center',
-                ...(p.stato === 'fatta' ? { background: 'var(--gold)', color: '#1a1400' }
-                  : p.stato === 'tocca' ? { background: 'var(--gold-bg)', border: '1.5px solid var(--gold)', color: 'var(--gold)' }
-                    : p.stato === 'scavalcata' ? { background: '#2a0e0c', border: '1px solid var(--rs)', color: 'var(--rs)' }
-                      : { border: '1px dashed #3a3730', color: 'var(--faint)' }),
-              }}>{p.codice}</span>
-            ))}
-          </div>
-
-          {/* Cosa non torna, solo quando qualcosa non torna. L'ultima seduta resta sempre. */}
-          <div className="muted" style={{ fontSize: 11, marginTop: 7 }}>
-            {scavalcate.length > 0
-              ? <span style={{ color: 'var(--rs)' }}>{scavalcate.map((p) => p.codice).join(', ')} da recuperare · </span>
-              : ciclo.oltre > 0
-                ? <span style={{ color: '#e0a030' }}>+{ciclo.oltre} · lo chiudi in ritardo, non lo perdi · </span>
-                : null}
-            {ciclo.ultima ? `ultima ${ciclo.ultima.codice} il ${ciclo.ultima.date.slice(8)}.${ciclo.ultima.date.slice(5, 7)}` : 'nessuna seduta in questo ciclo'}
+          {/* Le cinque sedute e il tasto sulla stessa riga: a colpo d'occhio quali
+              hai fatto, quale tocca e quale hai scavalcato, e si parte da li'. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 10, alignItems: 'center', marginTop: 9 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ciclo.passi.length}, 27px)`, gap: 4 }}>
+              {ciclo.passi.map((p) => (
+                <span key={p.codice} style={{
+                  height: 30, borderRadius: 8, fontSize: 12.5, fontFamily: 'var(--f-numeri)', fontWeight: 600,
+                  display: 'grid', placeItems: 'center',
+                  ...(p.stato === 'fatta' ? { background: 'var(--gold)', color: '#1a1400' }
+                    : p.stato === 'tocca' ? { background: 'var(--gold-bg)', border: '1.5px solid var(--gold)', color: 'var(--gold)' }
+                      : p.stato === 'scavalcata' ? { background: '#2a0e0c', border: '1px solid var(--rs)', color: 'var(--rs)' }
+                        : { border: '1px dashed #3a3730', color: 'var(--faint)' }),
+                }}>{p.codice}</span>
+              ))}
+            </div>
+            {ongoing ? (
+              <button className="primary" style={{ height: 40, padding: '0 8px', fontSize: 15, whiteSpace: 'nowrap' }} onClick={() => onResume(ongoing.id)}>▶ Riprendi</button>
+            ) : (
+              <button className="primary" style={{ height: 40, padding: '0 8px', fontSize: 15, whiteSpace: 'nowrap' }} onClick={onStart}>
+                {scavalcate.some((p) => p.codice === ciclo.prossima)
+                  ? `Recupera ${ciclo.prossima}`
+                  : `Inizia${ciclo.prossima ? ' ' + ciclo.prossima : ''}`}
+              </button>
+            )}
           </div>
         </>
       ) : (
@@ -368,11 +373,11 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
           <span style={LBL}>Allenamento</span>
           {g && (
             <>
-              <div className="row spread small" style={{ marginTop: 8 }}>
+              <div className="row spread small" style={{ marginTop: 6 }}>
                 <span className="muted">Obiettivo ciclo <span style={{ opacity: .7 }}>· giorno {g.giorno} di {g.giorni}</span></span>
                 <strong className="num" style={{ fontSize: 17 }}>{g.done} / {g.target}</strong>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 6 }}>
+              <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 6 }}>
                 <div style={{ height: '100%', background: 'var(--gold)', width: `${g.target ? Math.min(100, g.done / g.target * 100) : 0}%` }} />
               </div>
             </>
@@ -382,30 +387,19 @@ function CardAllenamento({ home, ongoing, onStart, onResume }: {
               Ultima: {home.lastSession.type} · {fmtData(home.lastSession.date)}
             </div>
           )}
+          {ongoing ? (
+            <button className="primary" style={{ width: '100%', marginTop: 9, padding: 11, fontSize: 15 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
+          ) : (
+            <button className="primary" style={{ width: '100%', marginTop: 9, padding: 11, fontSize: 15 }} onClick={onStart}>Inizia allenamento</button>
+          )}
         </>
-      )}
-
-      {ongoing ? (
-        <button className="primary" style={{ width: '100%', marginTop: 11, padding: 13, fontSize: 16 }} onClick={() => onResume(ongoing.id)}>▶ Riprendi allenamento</button>
-      ) : (
-        <button className="primary" style={{ width: '100%', marginTop: 11, padding: 13, fontSize: 16 }} onClick={onStart}>
-          {scavalcate.some((p) => p.codice === ciclo?.prossima)
-            ? `Recupera ${ciclo!.prossima}`
-            : `Inizia${ciclo?.prossima ? ' ' + ciclo.prossima : ' allenamento'}`}
-        </button>
       )}
 
       {/* I cicli chiusi si guardano ogni tanto, non ogni giorno: stanno qui
           dentro, chiusi, invece di rubare mezzo schermo tutti i giorni. */}
-      {ciclo && ciclo.chiusi.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
-          <button onClick={() => setStorico((v) => !v)}
-            style={{ width: '100%', background: 'none', border: 0, padding: 0, textAlign: 'left', borderRadius: 0 }}>
-            <span className="row spread muted" style={{ fontSize: 11 }}>
-              <span>Cicli chiusi</span><span>{storico ? '▴' : '▾'}</span>
-            </span>
-          </button>
-          {storico && (
+      {ciclo && ciclo.chiusi.length > 0 && storico && (
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--line-soft)', paddingTop: 2 }}>
+          {(
             <>
               <div className="row" style={{ gap: 10, marginTop: 9, textAlign: 'center' }}>
                 <div style={{ flex: 1 }}>
@@ -474,13 +468,13 @@ function CardPassi({ onOpen }: { onOpen: () => void }) {
   return (
     <div role="button" tabIndex={0} onClick={onOpen} style={{ cursor: 'pointer' }}>
       <span style={LBL}>Passi</span>
-      <div style={{ marginTop: 8 }}>
-        <span style={GRANDE}>{oggi ? fatti.toLocaleString('it-IT') : '—'}</span>
+      <div style={{ marginTop: 6 }}>
+        <span style={GRANDE}>{oggi ? fatti.toLocaleString('it-IT', { useGrouping: 'always' } as Intl.NumberFormatOptions) : '—'}</span>
       </div>
-      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 9 }}>
+      <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden', marginTop: 7 }}>
         <div style={{ height: '100%', background: 'var(--gold)', width: `${pct}%`, borderRadius: 999 }} />
       </div>
-      <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>di {target.toLocaleString('it-IT')} passi</div>
+      <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>di {target.toLocaleString('it-IT')}</div>
     </div>
   )
 }

@@ -32,37 +32,29 @@ export function Avvisi({ onGo }: { onGo: (dove: 'food' | 'health' | 'train', sez
 
   if (!avvisi?.length) return null
 
+  // Una riga per avviso, con la ✕ a destra: in Oggi deve entrare tutto in una
+  // schermata. La spiegazione «tornano domani» sta in Profilo → Coach, dove si
+  // spengono.
   return (
-    <div className="card" style={{ borderColor: 'var(--line)' }}>
-      <div className="row spread" style={{ alignItems: 'center', marginBottom: 6 }}>
-        <span className="small" style={{ color: 'var(--muted)', letterSpacing: '.1em' }}>🔔 AVVISI</span>
-        <span className="muted small">{avvisi.length}</span>
-      </div>
-
-      {avvisi.map((a, i) => {
+    <div className="col" style={{ gap: 6 }}>
+      {avvisi.map((a) => {
         const azione = DOVE[a.tipo]
         return (
-          <div key={a.tipo} style={{ marginTop: i ? 10 : 0 }}>
-            <div className="row spread" style={{ alignItems: 'flex-start', gap: 8 }}>
-              <div style={{ minWidth: 0 }}>
-                <p className="small" style={{ margin: 0 }}>{a.titolo}</p>
-                <p className="muted" style={{ margin: '1px 0 0', fontSize: 12 }}>{a.testo}</p>
-              </div>
-              <span className="row" style={{ gap: 5, flex: 'none' }}>
-                {azione && (
-                  <button className="chip" style={{ padding: '4px 10px' }}
-                    onClick={() => { via(a.tipo); onGo(azione.dove, azione.sezione) }}>{azione.testo}</button>
-                )}
-                <button className="chip" style={{ padding: '4px 9px', color: 'var(--muted)' }}
-                  onClick={() => via(a.tipo)} aria-label="Metti via">✕</button>
-              </span>
+          <div key={a.tipo} className="card" style={{ margin: 0, padding: '7px 8px 7px 12px', display: 'flex', alignItems: 'center', gap: 9 }}>
+            <span style={{ fontSize: 14, flex: 'none' }}>🔔</span>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.35 }}>
+              <span style={{ fontWeight: 600 }}>{a.titolo}</span>
+              <span className="muted"> · {a.testo}</span>
             </div>
+            {azione && (
+              <button className="chip" style={{ padding: '4px 10px', flex: 'none' }}
+                onClick={() => { via(a.tipo); onGo(azione.dove, azione.sezione) }}>{azione.testo}</button>
+            )}
+            <button className="chip" style={{ padding: 0, width: 28, height: 28, borderRadius: '50%', flex: 'none', color: 'var(--muted)' }}
+              onClick={() => via(a.tipo)} aria-label="Metti via">✕</button>
           </div>
         )
       })}
-      <p className="muted" style={{ fontSize: 11, margin: '8px 0 0' }}>
-        Tornano domani se la cosa è ancora da fare. Si spengono in Profilo → Coach.
-      </p>
     </div>
   )
 }

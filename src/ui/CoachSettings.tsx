@@ -62,6 +62,9 @@ export function CoachSettings() {
           — perdendo anche gli avvisi che servivano. */}
       <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
         <label className="fl">Promemoria</label>
+        <p className="muted small" style={{ margin: '0 0 8px' }}>
+          Compaiono anche in Oggi, una riga ciascuno: con la ✕ li metti via, e tornano domani se la cosa è ancora da fare.
+        </p>
         <div className="col" style={{ gap: 5 }}>
           {PROMEMORIA.map((r) => {
             const on = acceso.has(r.tipo)
