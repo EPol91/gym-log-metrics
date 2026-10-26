@@ -10,6 +10,22 @@ import type { HomeData } from '../scores/dashboardScores'
 const ARGENTO = '#cfcfcf'
 
 /**
+ * Chiuso o aperto, lo decidi tu e resta com'era: in localStorage e non nella
+ * sessione, cosi' riaprendo l'app domani lo ritrovi come l'hai lasciato.
+ */
+const CHIAVE_CHIUSO = 'etp.coach.chiuso'
+function useCoachChiuso(): [boolean, () => void] {
+  const [chiuso, setChiuso] = useState(() => {
+    try { return localStorage.getItem(CHIAVE_CHIUSO) === '1' } catch { return false }
+  })
+  const cambia = () => setChiuso((v) => {
+    try { localStorage.setItem(CHIAVE_CHIUSO, v ? '0' : '1') } catch { /* resta per questa volta */ }
+    return !v
+  })
+  return [chiuso, cambia]
+}
+
+/**
  * Spezza la risposta dell'AI nelle sue righe.
  *
  * Il modello risponde «LETTURA: …», «ATTENZIONE: …», «CONSIGLIO: …»: qui
@@ -40,6 +56,7 @@ export function CoachCard({ home }: { home: HomeData }) {
   const [aiText, setAiText] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [chiuso, cambia] = useCoachChiuso()
 
   async function askAi() {
     setAiLoading(true); setAiError(null)
@@ -52,14 +69,29 @@ export function CoachCard({ home }: { home: HomeData }) {
     // Testo, non riquadro: il coach si legge in due righe e non deve pesare
     // quanto la seduta che sta sotto.
     <div className="coach-testo">
-      <div className="row spread" style={{ alignItems: 'center' }}>
-        <span className="eyebrow">Coach</span>
+      <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Tocca la riga per chiudere o riaprire. Da chiuso resta la prima
+            cosa che ha da dirti, su una riga sola. */}
+        <button onClick={cambia} aria-expanded={!chiuso} aria-label={chiuso ? 'Apri il coach' : 'Chiudi il coach'}
+          style={{ flex: 1, minWidth: 0, background: 'none', border: 0, padding: '2px 0', borderRadius: 0, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="eyebrow" style={{ flex: 'none' }}>Coach</span>
+          {chiuso && lines[0] && (
+            <span className="small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>
+              {lines[0].fact}
+            </span>
+          )}
+          <span style={{ flex: 'none', marginLeft: 'auto', color: 'var(--faint)', fontSize: 12 }}>{chiuso ? '▾' : '▴'}</span>
+        </button>
         {/* Un tondo piccolo invece di una barra larga: il coach AI è un extra,
             non deve prendere una riga intera. Bordo argento e non oro — un oro
             dentro il bordo oro della card non si distinguerebbe. */}
         {aiOn && (
           <button aria-label="Chiedi al coach AI"
-            onClick={() => (aiText ? setAiText(null) : askAi())} disabled={aiLoading}
+            onClick={() => {
+              // Da chiuso il 🤖 riapre il coach: la risposta deve vedersi.
+              if (chiuso) { cambia(); if (!aiText) void askAi(); return }
+              if (aiText) setAiText(null); else void askAi()
+            }} disabled={aiLoading}
             style={{
               width: 34, height: 34, flex: 'none', padding: 0, fontSize: 15,
               display: 'grid', placeItems: 'center', borderRadius: '50%',
@@ -70,14 +102,14 @@ export function CoachCard({ home }: { home: HomeData }) {
           </button>
         )}
       </div>
-      {lines.map((l, i) => (
+      {!chiuso && lines.map((l, i) => (
         <div key={i} style={{ marginTop: i ? 8 : 6 }}>
           <p className="small" style={{ margin: 0 }}>{l.fact}</p>
           {l.advice && <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>Consiglio: {l.advice}</p>}
         </div>
       ))}
-      {aiError && <p className="small" style={{ color: '#e57373', marginTop: 6 }}>Errore: {aiError}</p>}
-      {aiText && (
+      {!chiuso && aiError && <p className="small" style={{ color: '#e57373', marginTop: 6 }}>Errore: {aiError}</p>}
+      {!chiuso && aiText && (
         <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 8 }}>
           <div className="muted small" style={{ marginBottom: 4 }}>🤖 Coach AI</div>
           {spezza(aiText).map((r, i) => (
