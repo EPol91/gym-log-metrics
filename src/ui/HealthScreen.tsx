@@ -1,17 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BodyScreen } from './BodyScreen'
 import { HabitsScreen } from './HabitsScreen'
+import { TempoScreen } from './TempoScreen'
 import { usePersistedState } from '../util/persist'
 import { useEffect, useState } from 'react'
 import { whoopTrend } from '../db/whoop'
 import type { WhoopDay } from '../db/schema'
 
-type Sub = 'vitali' | 'body' | 'habits'
+type Sub = 'vitali' | 'body' | 'habits' | 'tempo'
 
 const TABS: { key: Sub; label: string }[] = [
   { key: 'vitali', label: 'Vitali' },
   { key: 'body', label: 'Corpo' },
   { key: 'habits', label: 'Abitudini' },
+  // La giornata misurata: quando dormi, lavori, ti alleni e mangi.
+  { key: 'tempo', label: 'Tempo' },
 ]
 
 /**
@@ -40,6 +43,7 @@ export function HealthScreen({ vai, vaiNonce }: {
       {sub === 'vitali' && <Vitali />}
       {sub === 'body' && <BodyScreen />}
       {sub === 'habits' && <HabitsScreen />}
+      {sub === 'tempo' && <TempoScreen />}
     </div>
   )
 }
