@@ -12,6 +12,7 @@ import { todayLocal, shiftDate } from '../util/date'
 import { cicloDi } from '../scores/consistency'
 import { getUser } from '../db/repo'
 import { ultimoBackup } from '../db/backupAuto'
+import { orariDi, fasceDeiPasti, minuti, oraAdesso } from '../tempo/orari'
 
 const U = LOCAL_USER_ID
 const SPENTE = 'gymlog.promemoria.spente'
@@ -20,7 +21,7 @@ const VISTE = 'gymlog.promemoria.viste'
 // una notifica letta nella tendina non deve far sparire la card, e viceversa.
 const VIA = 'gymlog.promemoria.via'
 
-export type Tipo = 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup'
+export type Tipo = 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
 
 export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
   { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Quando restano meno giorni delle sedute che ti mancano.' },
@@ -28,6 +29,8 @@ export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
   { tipo: 'peso', nome: 'Pesata', nota: 'Se non ti pesi da quattro giorni.' },
   { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Se non sincronizza da due giorni.' },
   { tipo: 'backup', nome: 'Backup vecchio', nota: 'Se l’ultimo ha più di quattordici giorni.' },
+  { tipo: 'pasto', nome: 'Ora dei pasti', nota: 'Un quarto d’ora dopo la fine della fascia, se il pasto non ha l’ora. Arriva anche ad app chiusa.' },
+  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: un tocco se esci più tardi.' },
 ]
 
 function spente(): Set<string> {
@@ -56,7 +59,8 @@ function segna(t: Tipo, oggi: string): void {
 
 interface Plugin {
   requestPermissions(): Promise<{ display?: string }>
-  schedule(o: { notifications: { id: number; title: string; body: string }[] }): Promise<unknown>
+  schedule(o: { notifications: { id: number; title: string; body: string; schedule?: { at: Date; allowWhileIdle?: boolean } }[] }): Promise<unknown>
+  cancel(o: { notifications: { id: number }[] }): Promise<unknown>
 }
 
 function plugin(): Plugin | null {
@@ -70,7 +74,11 @@ function plugin(): Plugin | null {
 export function promemoriaDisponibili(): boolean { return !!plugin() }
 
 /** Un messaggio da consegnare, se c'e' davvero qualcosa da dire. */
-export interface Avviso { tipo: Tipo; titolo: string; testo: string }
+export interface Avviso {
+  tipo: Tipo; titolo: string; testo: string
+  /** per «Ora dei pasti»: quali pasti sono senza ora */
+  pasti?: string[]
+}
 
 /**
  * Gli avvisi di oggi, per chi li vuole mostrare dentro l'app.
@@ -81,12 +89,29 @@ export interface Avviso { tipo: Tipo; titolo: string; testo: string }
  */
 export async function avvisiDiOggi(): Promise<Avviso[]> {
   const oggi = todayLocal()
-  return (await tutti()).filter((a) => attivo(a.tipo) && !messoVia(a.tipo, oggi))
+  const via = pastiMessiVia(oggi)
+  return (await tutti())
+    .filter((a) => attivo(a.tipo) && (a.tipo === 'pasto' ? (a.pasti ?? []).some((id) => !via.has(id)) : !messoVia(a.tipo, oggi)))
 }
 
-/** Mettilo via fino a domani: oggi l'hai letto. */
-export function mettiVia(t: Tipo): void {
-  try { localStorage.setItem(VIA, JSON.stringify({ ...letti(), [t]: todayLocal() })) } catch { /* ignore */ }
+/** Mettilo via fino a domani: oggi l'hai letto. Per i pasti, solo quelli che c'erano. */
+export function mettiVia(t: Tipo, a?: Avviso): void {
+  const oggi = todayLocal()
+  if (t === 'pasto') {
+    const via = pastiMessiVia(oggi)
+    for (const id of a?.pasti ?? []) via.add(id)
+    try { localStorage.setItem(PASTI_VIA, JSON.stringify({ data: oggi, ids: [...via] })) } catch { /* ignore */ }
+    return
+  }
+  try { localStorage.setItem(VIA, JSON.stringify({ ...letti(), [t]: oggi })) } catch { /* ignore */ }
+}
+
+const PASTI_VIA = 'gymlog.promemoria.pasti.via'
+function pastiMessiVia(oggi: string): Set<string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(PASTI_VIA) ?? 'null') as { data: string; ids: string[] } | null
+    return new Set(v && v.data === oggi ? v.ids : [])
+  } catch { return new Set() }
 }
 
 async function tutti(): Promise<Avviso[]> {
@@ -141,6 +166,39 @@ async function tutti(): Promise<Avviso[]> {
     out.push({ tipo: 'whoop', titolo: 'WHOOP fermo', testo: `Ultimi dati del ${ultimoW}.` })
   }
 
+  // Ora dei pasti: fascia finita da un quarto d'ora e il pasto non ha l'ora.
+  // Nei giorni col diario vuoto non si chiede niente.
+  const orari = orariDi(user)
+  const pasti = (await db.meals.where('date').equals(oggi).toArray()).filter((m) => m.userId === U)
+  const righe = await db.foodLogs.where('date').equals(oggi).count()
+  if (righe > 0) {
+    const adesso = minuti(oraAdesso())
+    const senza = [...fasceDeiPasti(pasti, orari.pasti)]
+      .map(([id, { fascia }]) => ({ m: pasti.find((x) => x.id === id)!, fascia }))
+      .filter(({ m, fascia }) => !m.ora && !m.saltato && adesso >= minuti(fascia.alle) + 15)
+    if (senza.length) {
+      out.push({
+        tipo: 'pasto',
+        titolo: senza.length === 1 ? `${senza[0].m.name}: a che ora?` : 'Pasti senza ora',
+        testo: senza.length === 1
+          ? `La fascia è finita alle ${senza[0].fascia.alle}. Segna l'ora, o che l'hai saltato.`
+          : `${senza.map((x) => x.m.name).join(', ')}: segna l'ora, o che li hai saltati.`,
+        pasti: senza.map((x) => x.m.id),
+      })
+    }
+  }
+
+  // Uscita dall'ufficio: nei giorni di lavoro, da quando dovresti uscire fino a
+  // mezz'ora dopo la fine della finestra. Ignorarla vuol dire «all'orario solito».
+  const l = orari.lavoro
+  const giorno = new Date(oggi + 'T12:00:00').getDay()
+  if (l && l.giorni.includes(giorno) && !user?.uscite?.[oggi]) {
+    const adesso = minuti(oraAdesso())
+    if (adesso >= minuti(l.uscita) && adesso <= minuti(l.uscitaFinoA ?? l.uscita) + 30) {
+      out.push({ tipo: 'uscita', titolo: 'Uscito dall’ufficio?', testo: `Se esci dopo le ${l.uscita}, tocca «Esco ora».` })
+    }
+  }
+
   const b = ultimoBackup()
   if (!b || Date.now() - Date.parse(b.quando) > 14 * 86_400_000) {
     out.push({ tipo: 'backup', titolo: 'Backup vecchio', testo: 'I tuoi dati stanno su un telefono solo.' })
@@ -160,7 +218,7 @@ export async function controllaPromemoria(): Promise<void> {
   const p = plugin()
   if (!p) return
   const oggiD = todayLocal()
-  const avvisi = (await tutti()).filter((a) => attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
+  const avvisi = (await tutti()).filter((a) => a.tipo !== 'pasto' && a.tipo !== 'uscita' && attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
   if (!avvisi.length) return
 
   try {
@@ -172,4 +230,49 @@ export async function controllaPromemoria(): Promise<void> {
     })
     avvisi.forEach((a) => segna(a.tipo, oggi))
   } catch { /* niente permesso o niente plugin: pazienza, non e' un guasto */ }
+}
+
+/** Le notifiche dei pasti: un numero per fascia, sempre lo stesso, cosi' si sostituiscono. */
+const ID_PASTO = 7000
+
+/**
+ * Programma sul telefono i promemoria dei pasti di oggi.
+ *
+ * A fine fascia piu' un quarto d'ora, per ogni pasto ancora senza ora. Li
+ * consegna il telefono anche ad app chiusa; quando segni l'ora (o che l'hai
+ * saltato) quello del pasto si toglie. Si richiama all'avvio, a ogni ora
+ * segnata e a ogni cambio del diario di oggi.
+ */
+export async function programmaPromemoriaPasti(): Promise<void> {
+  const p = plugin()
+  if (!p) return
+  const oggi = todayLocal()
+  const user = await getUser()
+  const orari = orariDi(user)
+  const tutti = orari.pasti.map((_, i) => ({ id: ID_PASTO + i }))
+  try {
+    await p.cancel({ notifications: tutti })
+    if (!attivo('pasto')) return
+    const righe = await db.foodLogs.where('date').equals(oggi).count()
+    if (!righe) return // diario vuoto: niente da chiedere
+    const pasti = (await db.meals.where('date').equals(oggi).toArray()).filter((m) => m.userId === U)
+    const adesso = Date.now()
+    const da: { id: number; title: string; body: string; schedule: { at: Date; allowWhileIdle: boolean } }[] = []
+    for (const [id, { fascia, indice }] of fasceDeiPasti(pasti, orari.pasti)) {
+      const m = pasti.find((x) => x.id === id)!
+      if (m.ora || m.saltato) continue
+      const quando = new Date(`${oggi}T${fascia.alle}:00`).getTime() + 15 * 60_000
+      if (quando <= adesso) continue // gia' passata: c'e' l'avviso in Oggi
+      da.push({
+        id: ID_PASTO + indice,
+        title: `${m.name}: a che ora?`,
+        body: `Segna l'ora in Cibo, o che l'hai saltato.`,
+        schedule: { at: new Date(quando), allowWhileIdle: true },
+      })
+    }
+    if (!da.length) return
+    const perm = await p.requestPermissions()
+    if (perm?.display && perm.display !== 'granted') return
+    await p.schedule({ notifications: da })
+  } catch { /* niente permesso o niente plugin: restano gli avvisi in Oggi */ }
 }

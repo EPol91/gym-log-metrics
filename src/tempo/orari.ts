@@ -8,6 +8,7 @@
 // Niente qui tocca il diario o RS: si legge e basta.
 
 import { db } from '../db/db'
+import { getUser, updateUser } from '../db/repo'
 import { LOCAL_USER_ID } from '../db/seed'
 import { shiftDate, todayLocal } from '../util/date'
 import type { FasciaPasto, Meal, OrariUtente, User } from '../db/schema'
@@ -116,4 +117,15 @@ export async function oreDiSolito(orari: OrariUtente, oggi = todayLocal()): Prom
     if (v.length < 3) return hhmm((minuti(f.dalle) + minuti(f.alle)) / 2)
     return hhmm(v[Math.floor(v.length / 2)])
   })
+}
+
+/**
+ * Uscito dall'ufficio piu' tardi del solito: l'ora di oggi. Le uscite si tengono
+ * per quattro mesi — piu' indietro alla giornata non servono.
+ */
+export async function segnaUscita(data: string, ora: string): Promise<void> {
+  const u = await getUser()
+  const limite = shiftDate(data, -120)
+  const uscite = Object.fromEntries(Object.entries({ ...(u?.uscite ?? {}), [data]: ora }).filter(([d]) => d >= limite))
+  await updateUser({ uscite })
 }

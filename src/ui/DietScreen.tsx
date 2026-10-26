@@ -27,6 +27,7 @@ import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 import { GiornataConsigliata } from './GiornataConsigliata'
 import { copiaPasto } from '../util/appuntiPasto'
 import { FoglioOra } from './FoglioOra'
+import { programmaPromemoriaPasti } from '../util/promemoria'
 import { orariDi, fasceDeiPasti, oreDiSolito, propostaOra } from '../tempo/orari'
 import { pianoDi as pianoInUso, giornataDelPiano } from '../rs/piano'
 
@@ -214,6 +215,12 @@ export function DietScreen() {
   const fasce = fasceDeiPasti((diary?.meals ?? []).map((m) => m.meal), orari.pasti)
   const diSolito = useLiveQuery(() => oreDiSolito(orari), [JSON.stringify(orari.pasti), date]) ?? []
   const [foglioOra, setFoglioOra] = useState<{ mealId: string; nome: string; proposta: string; giaSegnato: boolean } | null>(null)
+  // I promemoria dei pasti seguono il diario di oggi: righe aggiunte, ore
+  // segnate o tolte. Il telefono li consegna anche ad app chiusa.
+  const firmaOggi = date === todayDiet()
+    ? (diary?.meals ?? []).map((m) => `${m.meal.id}:${m.meal.ora ?? ''}:${m.meal.saltato ? 1 : 0}:${m.entries.length}`).join('|')
+    : ''
+  useEffect(() => { if (firmaOggi) void programmaPromemoriaPasti() }, [firmaOggi])
   const phase = useLiveQuery(getCurrentPhase, [])
 
   const activeType = dayTypes.find((d) => d.key === nutri?.dayType)
