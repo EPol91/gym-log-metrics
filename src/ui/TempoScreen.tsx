@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { giornataTempo, durata, type Blocco } from '../tempo/giornata'
+import { giornataTempo, durata, type Blocco, type PuntoPasto } from '../tempo/giornata'
 import { todayLocal, shiftDate, etichettaGiorno } from '../util/date'
 import { segnaUscita, togliUscita } from '../tempo/orari'
 import { FoglioOrario } from './FoglioOra'
@@ -15,6 +15,11 @@ import { FoglioOrario } from './FoglioOra'
 /** Pixel per ora: 19 ore stanno in poco piu' di mezzo schermo. */
 const PX = 28
 const LARGO_DESTRA = 88
+/** L'etichetta di un pasto: alta 16, e fra due ne servono 18 perche' non si tocchino. */
+const ALTO_PASTO = 16
+const PASSO_PASTI = 18
+/** Una riga di testo dentro un blocco. */
+const RIGA = 15
 
 const STILE: Record<Blocco['tipo'], React.CSSProperties> = {
   sonno: { background: '#161a2e', border: '1px solid #2b3466', color: '#8f9de6' },
@@ -36,6 +41,25 @@ export function TempoScreen() {
   const [foglioUscita, setFoglioUscita] = useState(false)
   const g = useLiveQuery(() => giornataTempo(data), [data])
   const y = (m: number) => ((m - (g?.inizio ?? 360)) / 60) * PX
+
+  // Le etichette dei pasti in ordine d'ora; se due sono troppo vicine la seconda
+  // scala sotto. Il pallino resta all'ora vera.
+  const etichette: { p: PuntoPasto; y: number }[] = []
+  for (const p of (g?.pasti ?? []).filter((x) => x.ora != null).sort((a, b) => a.ora! - b.ora!)) {
+    const sotto = etichette.length ? etichette[etichette.length - 1].y + PASSO_PASTI : -Infinity
+    etichette.push({ p, y: Math.max(y(p.ora!), sotto) })
+  }
+
+  /** Da dove parte il testo di un blocco: in cima, o sotto le etichette dei pasti che ci cadrebbero sopra. Null se non ci sta. */
+  function inizioTesto(top: number, alto: number, righe: number): number | null {
+    const h = righe * RIGA
+    let o = 2
+    for (const e of etichette) {
+      const su = e.y - ALTO_PASTO / 2 - top, giu = e.y + ALTO_PASTO / 2 - top
+      if (su < o + h && giu > o) o = giu + 1
+    }
+    return o + h <= alto + 2 ? o : null
+  }
 
   return (
     <div className="col" style={{ gap: 10 }}>
@@ -65,25 +89,31 @@ export function TempoScreen() {
             {/* i blocchi: sonno, lavoro, allenamento, tempo libero */}
             {g.blocchi.map((b, i) => {
               const alto = Math.max(16, y(b.alle) - y(b.dalle))
+              const conSotto = b.sotto ? inizioTesto(y(b.dalle), alto, 2) : null
+              // Se nemmeno una riga ci sta fra i pasti, il testo resta fuori: meglio che sovrapposto.
+              const su = conSotto ?? inizioTesto(y(b.dalle), alto, 1)
               const matita = b.uscita && <span style={{ color: 'var(--gold)', marginLeft: 4 }}>✎</span>
               return (
                 <div key={i} {...(b.uscita ? { role: 'button', onClick: () => setFoglioUscita(true), 'aria-label': `Correggi l'uscita dall'ufficio, ora ${g.uscita?.ora}` } : {})}
                   style={{
                     position: 'absolute', left: 0, right: LARGO_DESTRA, top: y(b.dalle), height: alto,
-                    borderRadius: 8, padding: '2px 8px', fontSize: 11.5, overflow: 'hidden', lineHeight: 1.3, ...STILE[b.tipo],
+                    borderRadius: 8, padding: `${su ?? 2}px 8px 2px`, fontSize: 11.5, overflow: 'hidden', lineHeight: 1.3, ...STILE[b.tipo],
                     ...(b.uscita ? { cursor: 'pointer' } : {}),
                   }}>
-                  <strong style={{ fontWeight: 600 }}>{b.testo}</strong>
-                  {b.sotto && alto >= 30 ? <div style={{ opacity: .85 }}>{b.sotto}{matita}</div> : matita}
+                  {su != null && <strong style={{ fontWeight: 600 }}>{b.testo}</strong>}
+                  {su != null && (b.sotto && conSotto != null ? <div style={{ opacity: .85 }}>{b.sotto}{matita}</div> : matita)}
                 </div>
               )
             })}
 
-            {/* i pasti: un punto all'ora in cui li hai mangiati */}
-            {g.pasti.filter((p) => p.ora != null).map((p) => (
-              <div key={p.id} style={{ position: 'absolute', left: -5, top: y(p.ora!), transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}>
-                <i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--carb)', boxShadow: '0 0 0 3px #ffc63d22', flex: 'none' }} />
-                <span style={{ background: 'var(--surface)', padding: '0 4px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+            {/* i pasti: un punto all'ora in cui li hai mangiati, e accanto l'etichetta */}
+            {etichette.map(({ p, y: ye }) => (
+              <div key={p.id}>
+                <i style={{ position: 'absolute', left: -5, top: y(p.ora!) - 5, width: 10, height: 10, borderRadius: '50%', background: 'var(--carb)', boxShadow: '0 0 0 3px #ffc63d22' }} />
+                <span style={{
+                  position: 'absolute', left: 12, top: ye, transform: 'translateY(-50%)', fontSize: 11.5,
+                  background: 'var(--surface)', padding: '0 4px', borderRadius: 4, whiteSpace: 'nowrap',
+                }}>
                   <b style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 13, color: 'var(--carb)' }}>{hh(p.ora!)}</b> {p.nome}
                 </span>
               </div>
