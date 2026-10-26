@@ -21,7 +21,7 @@ import { FoodSheet, MacroDonut } from './FoodSheet'
 import { DayCalendar } from './DayCalendar'
 import { usePersistedState } from '../util/persist'
 import { shiftDate, etichettaGiorno } from '../util/date'
-import type { DiaryEntry, DiaryMeal } from '../db/diet'
+import type { DiaryEntry } from '../db/diet'
 import type { DayType } from '../db/schema'
 import { statoDieta, spunta, spuntaTutte } from '../rs/dieta'
 import { GiornataConsigliata } from './GiornataConsigliata'
@@ -38,15 +38,24 @@ function MacroTrack({ label, value, target, color }: { label: string; value: num
   return (
     <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
       <div style={{ fontSize: 11, color }}>{label}</div>
-      <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', margin: '4px 0', overflow: 'hidden' }}>
+      <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-3)', margin: '4px 0', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 999, transition: 'width .3s' }} />
       </div>
-      <div style={{ fontSize: 14, fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>
-        {Math.round(value)} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>/ {target || '—'}</span>
+      <div style={{ fontFamily: 'var(--f-numeri)', fontSize: 18, fontWeight: 600, lineHeight: 1.1, color, fontVariantNumeric: 'tabular-nums' }}>
+        {Math.round(value)} <span className="muted" style={{ fontFamily: 'var(--f-testo)', fontSize: 11, fontWeight: 400 }}>/ {target || '—'}</span>
       </div>
     </div>
   )
 }
+
+/**
+ * I pasti che hai chiuso con un tocco.
+ *
+ * Aperti di default: e' una dieta, deve vedersi tutta a colpo d'occhio. Chiuderne
+ * uno vale finche' l'app resta aperta — anche cambiando scheda — e riaprendola
+ * tornano tutti aperti. Per questo sta in memoria e non su disco.
+ */
+const pastiChiusi = new Set<string>()
 
 /**
  * Elemento in movimento: `group` è la lista che stai riordinando (l'id del pasto
@@ -91,8 +100,9 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
   return (
     <div data-drag-id={e.log.id}
       style={{ position: 'relative', overflow: lifted ? 'visible' : 'hidden', borderTop: '1px solid var(--line)', zIndex: lifted ? 5 : undefined }}>
-      {/* Sfondo rosso che si scopre scorrendo */}
-      <div style={{ position: 'absolute', inset: 0, background: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 16, color: '#fff', fontSize: 18 }}>🗑</div>
+      {/* Sfondo rosso che si scopre scorrendo. C'e' solo mentre scorri: fermo,
+          sotto la riga, se ne vedeva il filo sui bordi. */}
+      <div style={{ position: 'absolute', inset: 0, background: '#e74c3c', opacity: dx < 0 ? 1 : 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 16, color: '#fff', fontSize: 18 }}>🗑</div>
       <div
         onPointerDown={onPress}
         onTouchStart={(ev) => { if (selectMode || lifted) return; start.current = ev.touches[0].clientX; moved.current = false }}
@@ -145,7 +155,7 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
         </span>
         {/* Calorie e macro incolonnati a destra: i numeri stanno insieme, non sparsi. */}
         <span style={{ flex: 'none', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-          <span style={{ display: 'block', color: 'var(--gold)' }}>{e.macros.kcal}</span>
+          <span style={{ display: 'block', color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 17, lineHeight: 1.1 }}>{e.macros.kcal}</span>
           <span style={{ fontSize: 11 }}>
             <span style={{ color: 'var(--carb)' }}>C: {e.macros.carbs}</span>,{' '}
             <span style={{ color: 'var(--prot)' }}>P: {e.macros.protein}</span>,{' '}
@@ -153,24 +163,6 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
           </span>
         </span>
       </div>
-    </div>
-  )
-}
-
-/** Recap a quattro numeri, usato in fondo a ogni pasto. */
-function MealRecap({ m }: { m: DiaryMeal }) {
-  const cell = (v: number, l: string, c: string) => (
-    <div style={{ flex: 1, textAlign: 'center' }}>
-      <div style={{ color: c, fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
-      <div className="muted" style={{ fontSize: 9 }}>{l}</div>
-    </div>
-  )
-  return (
-    <div className="row" style={{ padding: '7px 0 2px', borderTop: '1px solid var(--line)', marginTop: 5 }}>
-      {cell(m.totals.carbs, 'Carbo', 'var(--carb)')}
-      {cell(m.totals.protein, 'Proteine', 'var(--prot)')}
-      {cell(m.totals.fat, 'Grassi', 'var(--fat)')}
-      {cell(m.totals.kcal, 'kcal', 'var(--gold)')}
     </div>
   )
 }
@@ -184,6 +176,13 @@ export function DietScreen() {
   const [showCal, setShowCal] = useState(false)
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null)
   const [menuMeal, setMenuMeal] = useState<string | null>(null)
+  // Ricette, giornate tipo, svuota e obiettivi stanno in «⋯»: in testata resta la data.
+  const [menuGiornata, setMenuGiornata] = useState(false)
+  const [, ridisegna] = useState(0)
+  const apriChiudiPasto = (id: string) => {
+    if (pastiChiusi.has(id)) pastiChiusi.delete(id); else pastiChiusi.add(id)
+    ridisegna((n) => n + 1)
+  }
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [clipboard, setClipboard] = useState<{ mealId: string; name: string } | null>(null)
@@ -405,43 +404,53 @@ export function DietScreen() {
 
   return (
     <div className="col" style={{ gap: 8 }}>
-      {/* Ricette a sinistra, data al centro, obiettivi a destra: la data resta
-          centrata perche i due lati pesano uguale.
-          I lati non si allargano e non si stringono — sono bottoni, e un bottone
-          schiacciato non si preme piu'. Lo spazio che avanza va alla data, che
-          e' l'unica cosa qui dentro che puo' accorciarsi: cosi' la testata sta
-          dentro qualsiasi schermo senza spingere niente fuori. */}
-      <div className="row" style={{ alignItems: 'center', gap: 4 }}>
-        <div className="row" style={{ flex: 'none', gap: 4 }}>
-          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Ricette"
-            onClick={() => setShowRecipes(true)}>📖</button>
-          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Giornate tipo"
-            onClick={() => setShowDays(true)}>🗓</button>
-        </div>
-        <div className="row" style={{ gap: 2, alignItems: 'center', flex: 1, minWidth: 0, justifyContent: 'center' }}>
-          <button className="ghost" style={{ padding: '6px 7px', flex: 'none' }} onClick={() => setDate((d) => shift(d, -1))}>‹</button>
-          <button className="chip" onClick={() => setShowCal(true)}
-            style={{ fontSize: 15, padding: '7px 9px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            📅 {labelFor(date)}
+      {/* In testata solo la data, in una pillola: ‹ e › cambiano giorno, il centro
+          apre il calendario. Ricette, giornate tipo, svuota e obiettivi stanno in
+          «⋯». Prima erano sette tasti in fila e su un telefono stretto uscivano. */}
+      <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+        <div className="row" style={{
+          flex: 1, minWidth: 0, gap: 0, alignItems: 'center', justifyContent: 'space-between',
+          border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 999, padding: 3,
+        }}>
+          <button className="ghost" style={{ width: 34, height: 34, padding: 0, borderRadius: '50%', border: 0, flex: 'none' }}
+            onClick={() => setDate((d) => shift(d, -1))} aria-label="Giorno prima">‹</button>
+          <button onClick={() => setShowCal(true)} aria-label="Calendario"
+            style={{ background: 'none', border: 0, padding: '4px 6px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderRadius: 999 }}>
+            <strong style={{ fontSize: 15 }}>{labelFor(date)}</strong>
+            {/* Oggi e Ieri dicono quando, non che giorno: la data accanto, piccola. */}
+            {/^(Oggi|Ieri)$/.test(labelFor(date)) && (
+              <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>
+                {new Date(date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' })}
+              </span>
+            )}
           </button>
-          <button className="ghost" style={{ padding: '6px 7px', flex: 'none' }} onClick={() => setDate((d) => shift(d, 1))}>›</button>
+          <button className="ghost" style={{ width: 34, height: 34, padding: 0, borderRadius: '50%', border: 0, flex: 'none' }}
+            onClick={() => setDate((d) => shift(d, 1))} aria-label="Giorno dopo">›</button>
         </div>
-        <div className="row" style={{ flex: 'none', justifyContent: 'flex-end', gap: 4 }}>
+        <button className={menuGiornata ? 'strumento on' : 'strumento'} style={{ width: 40, height: 40, borderRadius: '50%' }}
+          onClick={() => setMenuGiornata((v) => !v)} aria-label="Altro" aria-expanded={menuGiornata}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+        </button>
+      </div>
+      {menuGiornata && (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="chip" onClick={() => { setMenuGiornata(false); setShowRecipes(true) }}>📖 Ricette</button>
+          <button className="chip" onClick={() => { setMenuGiornata(false); setShowDays(true) }}>🗓 Giornate tipo</button>
+          <button className="chip" onClick={() => { setMenuGiornata(false); setShowTargets(true) }}>⚙ Obiettivi</button>
           {/* Svuota la giornata. Chiede conferma e resta annullabile: cancellare
               venti righe per sbaglio e non poter tornare indietro sarebbe grave. */}
-          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Svuota giornata"
+          <button className="chip" style={{ color: '#e57373' }}
             disabled={righeDelGiorno.length === 0}
             onClick={async () => {
+              setMenuGiornata(false)
               const n = righeDelGiorno.length
               if (!confirm(`Svuotare la giornata? Vengono tolte tutte e ${n} le righe. I pasti restano.`)) return
               const ids = righeDelGiorno.map((r) => r.log.id)
               const tolte = await deleteFoodLogs(ids)
               pushUndo(`Giornata svuotata · ${n} righe`, () => restoreFoodLogs(tolte))
-            }}>🧹</button>
-          <button className="chip" style={{ padding: '6px 9px', fontSize: 16 }} aria-label="Obiettivi"
-            onClick={() => setShowTargets(true)}>⚙</button>
+            }}>🧹 Svuota giornata</button>
         </div>
-      </div>
+      )}
 
       {/* Tipo giornata: la tua, quella del coach, e quale tocca oggi. Tre
           riquadri bassi su una riga sola: l'etichetta sta dentro. */}
@@ -603,15 +612,26 @@ export function DietScreen() {
             boxShadow: cardLifted ? '0 10px 28px rgba(0,0,0,.6)' : undefined,
             position: 'relative', zIndex: cardLifted ? 6 : undefined,
           }}>
-          <div className="row spread" style={{ alignItems: 'center' }}>
-            <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
-              {m.entries.length > 0 && <MacroDonut m={m.totals} size={34} />}
-              <strong style={{ fontSize: 15 }}>{m.meal.name}</strong>
-            </span>
-            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-              <span className="muted small">{m.totals.kcal} kcal</span>
-              <button className="ghost small" style={{ padding: '4px 10px', flex: 'none' }} onClick={() => setMenuMeal(menuMeal === m.meal.id ? null : m.meal.id)}>⋮</button>
-            </div>
+          <div className="row spread" style={{ alignItems: 'center', gap: 6 }}>
+            {/* Tocca il nome per chiudere il pasto o riaprirlo: i totali restano
+                in vista accanto, cosi' anche chiuso si legge quanto vale. */}
+            <button onClick={() => { if (skipClick.current) { skipClick.current = false; return } apriChiudiPasto(m.meal.id) }}
+              aria-expanded={!pastiChiusi.has(m.meal.id)}
+              style={{ flex: 1, minWidth: 0, background: 'none', border: 0, padding: '2px 0', borderRadius: 0, textAlign: 'left' }}>
+              <span className="row" style={{ gap: 6, alignItems: 'baseline' }}>
+                <strong style={{ fontSize: 15, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.meal.name}</strong>
+                <span style={{ color: 'var(--faint)', fontSize: 12, flex: 'none' }}>{pastiChiusi.has(m.meal.id) ? '▾' : '▴'}</span>
+              </span>
+              {m.entries.length > 0 && (
+                <span style={{ display: 'block', fontSize: 11.5, marginTop: 1, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{m.totals.kcal} kcal</span>
+                  <span className="muted"> · </span><span style={{ color: 'var(--carb)' }}>C {Math.round(m.totals.carbs)}</span>
+                  <span className="muted"> · </span><span style={{ color: 'var(--prot)' }}>P {Math.round(m.totals.protein)}</span>
+                  <span className="muted"> · </span><span style={{ color: 'var(--fat)' }}>G {Math.round(m.totals.fat)}</span>
+                </span>
+              )}
+            </button>
+            <button className="ghost small" style={{ padding: '4px 10px', flex: 'none' }} onClick={() => setMenuMeal(menuMeal === m.meal.id ? null : m.meal.id)} aria-label="Menu del pasto">⋮</button>
           </div>
 
           {/* Menù del pasto */}
@@ -650,7 +670,7 @@ export function DietScreen() {
           )}
 
           {/* Righe — durante il trascinamento si disegnano nell'ordine di anteprima. */}
-          {inDragOrder(m.meal.id, m.entries, (e) => e.log.id).map((e) => {
+          {!pastiChiusi.has(m.meal.id) && inDragOrder(m.meal.id, m.entries, (e) => e.log.id).map((e) => {
             const lifted = drag?.group === m.meal.id && drag.activeId === e.log.id
             return (
               <EntryRow key={e.log.id} e={e}
@@ -671,16 +691,14 @@ export function DietScreen() {
             )
           })}
 
-          {m.entries.length > 0 && <MealRecap m={m} />}
-
-          <div className="row" style={{ gap: 0 }}>
+          {!pastiChiusi.has(m.meal.id) && <div className="row" style={{ gap: 0 }}>
             <button className="chip" style={{ marginTop: 8 }} onClick={() => setPicking({ id: m.meal.id, name: m.meal.name })}>
               ＋ Aggiungi cibo
             </button>
             <RipetiIeri mealId={m.meal.id} mealName={m.meal.name} date={date}
               onDone={(ids) => { if (ids.length) pushUndo(`${ids.length} righe da ieri`, async () => { await deleteFoodLogs(ids) }) }} />
             <Bicchiere date={date} acqua={nutri?.water ?? 0} />
-          </div>
+          </div>}
         </div>
         )
       })}
