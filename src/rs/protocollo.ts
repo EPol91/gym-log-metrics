@@ -242,10 +242,11 @@ export const SEDUTE_RS: SedutaRs[] = [
     nome: '🦠 D5 · ARMS + BACK C', codice: 'D5', tipo: 'upper', focus: 'Braccia prioritarie · trapezi · rear delts · paravertebrali',
     prehab: 'Estensione toracica su supporto — 1 serie da 5-6 respirazioni. Curl e pushdown feeder — 1 serie leggera, RIR 5. Non contano come volume.',
     esercizi: [
-      e('1A · Curl bilanciere EZ', 'bicipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · superset con 1B', 'D5-1'),
-      e('1B · French press EZ o manubri', 'tricipiti', '@A|B|C · 6-10 · carico fisso · RIR1-2 / RIR1-2 / RIR1 · rec 120-150″ dopo la coppia', 'D5-1'),
+      // Dal 26.10.2026 non piu' in superset: 150″ pieni, la French press dopo tutte le serie di curl.
+      e('1A · Curl bilanciere EZ', 'bicipiti', '@A|B|C · 6-10 · carico fisso 35 kg · RIR1-2 / RIR1-2 / RIR1 · rec 150″'),
+      e('1B · French press EZ o manubri', 'tricipiti', '@A|B|C · 6-10 · carico fisso 35 kg · RIR1-2 / RIR1-2 / RIR1 · rec 150″ · dopo le tre serie di curl'),
       e('2A · Curl al cavo braccio dietro il tronco', 'bicipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · superset con 2B', 'D5-2'),
-      e('2B · Overhead rope extension', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · rec 90″ dopo la coppia', 'D5-2'),
+      e('2B · Overhead rope extension', 'tricipiti', '@A|B · 10-15 per braccio · RIR1 / RIR0-1 nelle fasi autorizzate · rec 90″ dopo la coppia', 'D5-2'),
       e('High row tecnica per upper back', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 120″'),
       e('Rear delt row o rear delt machine', 'spalle', '@A|B · 12-20 · RIR1 · rec 75-90″'),
       e('Shrug al cavo o macchina', 'schiena', '@A|B · 10-15 · RIR1 · rec 90-120″'),

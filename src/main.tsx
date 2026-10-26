@@ -16,6 +16,7 @@ import App from './App.tsx'
 import { initPwaUpdate } from './util/pwaUpdate'
 import { initViewportVars } from './util/viewport'
 import { allineaCoppieRs } from './rs/coppie'
+import { portaModificheD5 } from './rs/modificheCoach'
 import { ascoltaIndietro } from './util/indietro'
 import { caricaSceltaSuoni } from './util/suoni'
 import { recuperaSerieInSospeso } from './db/serieInSospeso'
@@ -32,7 +33,12 @@ initViewportVars() // le modali stanno sopra la tastiera
 initPwaUpdate() // controlla e applica gli aggiornamenti da solo
 // Le schede 🦠 importate prima che la coppia fosse un dato: gliela stampiamo
 // noi, cosi' i superset del coach partono uniti senza reimportare niente.
+// Poi le modifiche del coach che hai detto di portare — dopo, non insieme:
+// scrivono la stessa scheda.
 void allineaCoppieRs()
+  .then(portaModificheD5)
+  .then((fatto) => { if (fatto) pushAvviso('✓ D5: curl EZ e French press non più in superset, come dice il coach') })
+  .catch(() => { /* il database parla alla prossima apertura */ })
 // Il tasto indietro del telefono chiude l'ultima finestra aperta, come in
 // qualsiasi altra app: prima non arrivava alla pagina e restavi col pollice
 // costretto alla ✕ in alto.
