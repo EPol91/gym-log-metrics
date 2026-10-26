@@ -363,6 +363,12 @@ export interface Food extends BaseRecord {
   favorite?: boolean
   /** Ultimo utilizzo: alimenta l'elenco "Recenti". */
   lastUsedAt?: ISODateTime
+  /**
+   * Tolto dalla libreria: non compare piu' in elenchi e ricerca, ma resta
+   * salvato. Il diario passato, le giornate tipo e le ricette che lo usano
+   * continuano a funzionare — e l'avvio non lo ricrea, perche' c'e'.
+   */
+  nascosto?: boolean
 }
 
 /**

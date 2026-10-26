@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { macrosFor, updateFood, deleteFood } from '../db/diet'
+import { macrosFor, updateFood, togliDallaLibreria } from '../db/diet'
 import { deleteWithUndo } from '../db/trash'
 import { parseNum } from '../util/validate'
 import { useScanner } from './useScanner'
@@ -195,7 +195,7 @@ export function FoodForm({ initial, title, onSave, onCancel, onDelete, onScan }:
       )}
 
       <div className="row" style={{ gap: 6, marginTop: 12 }}>
-        {onDelete && <button className="ghost" style={{ color: '#e57373' }} onClick={onDelete}>🗑</button>}
+        {onDelete && <button className="ghost" style={{ color: '#e57373' }} onClick={onDelete} aria-label="Togli dalla libreria">🗑</button>}
         <button className="ghost" style={{ flex: 1 }} onClick={onCancel}>Annulla</button>
         <button className="primary" style={{ flex: 2 }} disabled={!ok}
           onClick={() => ok && onSave({
@@ -250,7 +250,7 @@ export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm
       <FoodForm title={`Correggi "${food.name}"`} initial={food} onScan={lettore.scan}
         onCancel={() => setFixing(false)}
         onDelete={async () => {
-          if (confirm(`Eliminare ${food.name} dalla libreria?`)) { await deleteWithUndo(`"${food.name}" eliminato dalla libreria`, () => deleteFood(food.id)); setFixing(false); onBack() }
+          if (confirm(`Togliere ${food.name} dalla libreria? Il diario passato resta com'è.`)) { await deleteWithUndo(`"${food.name}" tolto dalla libreria`, () => togliDallaLibreria(food.id)); setFixing(false); onBack() }
         }}
         onSave={async (v) => { await updateFood(food.id, v); setFixing(false) }} />
     )

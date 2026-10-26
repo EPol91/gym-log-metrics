@@ -39,7 +39,8 @@ export function listFoods() {
  * veloce di qualsiasi lista di recenti.
  */
 export async function listFoodsRanked(): Promise<Food[]> {
-  const all = await listFoods()
+  // Quelli tolti dalla libreria non si sfogliano e non si cercano piu'.
+  const all = (await listFoods()).filter((f) => !f.nascosto)
   const perNome = (a: Food, b: Food) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
   return all.sort((a, b) => {
     if (!!b.favorite !== !!a.favorite) return b.favorite ? 1 : -1
@@ -47,8 +48,17 @@ export async function listFoodsRanked(): Promise<Food[]> {
   })
 }
 
+/**
+ * L'alimento di quel codice a barre. Se l'avevi tolto dalla libreria torna:
+ * scansionarlo e' chiederlo, e crearne un doppione sarebbe peggio.
+ */
 export async function findFoodByBarcode(barcode: string): Promise<Food | undefined> {
-  return db.foods.where('barcode').equals(barcode).filter((f) => f.userId === U).first()
+  const f = await db.foods.where('barcode').equals(barcode).filter((x) => x.userId === U).first()
+  if (f?.nascosto) {
+    await db.foods.update(f.id, { nascosto: false, updatedAt: nowISO() })
+    return { ...f, nascosto: false }
+  }
+  return f
 }
 
 export async function addFood(inp: {
@@ -74,12 +84,22 @@ export async function updateFood(id: string, patch: Partial<Pick<Food, 'name' | 
   await db.foods.update(id, { ...patch, edited: true, updatedAt: nowISO() })
 }
 
-export async function deleteFood(id: string): Promise<Trash> {
+/**
+ * Toglie un alimento dalla libreria.
+ *
+ * Prima lo cancellava davvero, e con lui ogni riga di diario che lo usava, in
+ * tutti i giorni passati: togliere le sardine dalla libreria riscriveva le
+ * calorie delle settimane in cui le avevi mangiate. E non bastava nemmeno: gli
+ * alimenti di partenza si ricreano a ogni avvio se mancano, quindi tornava.
+ * Adesso resta salvato e si nasconde: sparisce da elenchi e ricerca, la storia
+ * resta com'e', e all'avvio c'e' gia' — non lo ricrea nessuno.
+ * L'annulla rimette la riga com'era, cioe' visibile.
+ */
+export async function togliDallaLibreria(id: string): Promise<Trash> {
   const food = await db.foods.get(id)
-  const logs = await db.foodLogs.where('foodId').equals(id).toArray()
-  await db.foodLogs.where('foodId').equals(id).delete()
-  await db.foods.delete(id)
-  return [{ table: 'foods', rows: food ? [food] : [] }, { table: 'foodLogs', rows: logs }]
+  if (!food) return []
+  await db.foods.update(id, { nascosto: true, updatedAt: nowISO() })
+  return [{ table: 'foods', rows: [food] }]
 }
 
 // --- Pasti ------------------------------------------------------------------
