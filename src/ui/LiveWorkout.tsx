@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, moveInGroup, staccaDalGruppo, allExercises, groupEntries, ungroupEntries,
-  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, serieDellaScorsa, setExerciseSettings,
+  lastWorkingSet, getUser, getSession, getTemplate, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, serieDellaScorsa, setExerciseSettings,
   setExerciseInclinazione, setExerciseFoto,
 } from '../db/repo'
 import { e1rm, bestE1rm } from '../metrics/metrics'
@@ -478,6 +478,19 @@ function useStorico(exerciseId: string, sessionId: string) {
 }
 
 /**
+ * Una riga del coach divisa in pezzi: «🦠 D1 · @A|B|C · 12-20 · …» →
+ * D1 e i pezzi «@A|B|C ·», «12-20 ·»… Si va a capo solo fra un pezzo e
+ * l'altro, cosi' «rec 75-90″» non si spezza a meta'. Null se la riga non dice
+ * di che seduta e'.
+ */
+function rigaCoach(r: string): { codice: string; pezzi: string[]; lungo: number } | null {
+  const m = r.match(/^🦠\s*(D\d+)\s*·\s*(.+)$/)
+  if (!m) return null
+  const parti = m[2].replace(/\s*\/\s*/g, '/').split(' · ')
+  return { codice: m[1], pezzi: parti.map((p, i) => (i < parti.length - 1 ? `${p} ·` : p)), lungo: m[1].length + m[2].length }
+}
+
+/**
  * Gli strumenti di un esercizio: storico, regolazioni, scheda del coach,
  * inclinazione, dischi, spostamenti, elimina.
  *
@@ -512,6 +525,15 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
   const righe = (settings ?? '').split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean)
   const righeCoach = righe.filter((x) => x.startsWith('🦠'))
   const mieNote = righe.filter((x) => !x.startsWith('🦠')).join(String.fromCharCode(10))
+  // Lo stesso esercizio in due sedute del coach: una colonna per seduta, larga
+  // quanto il suo testo. Quella di oggi piena, l'altra attenuata.
+  const colonne = righeCoach.map(rigaCoach)
+  const affiancate = colonne.length > 1 && colonne.every(Boolean)
+  const oggi = useLiveQuery(async () => {
+    const s = await getSession(entry.sessionId)
+    const t = s?.srcTemplateId ? await getTemplate(s.srcTemplateId) : undefined
+    return t?.name.match(/\b(D\d+)\b/)?.[1] ?? ''
+  }, [entry.sessionId])
 
 
   return (
@@ -573,8 +595,21 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
           tasto 🦠 nella fila non serve piu'. */}
       {!showCoach && righeCoach.length > 0 && (
         <button onClick={() => { setShowCoach(true); setShowSettings(false) }}
-          style={{ background: 'none', border: 0, padding: 0, borderRadius: 0, fontSize: 12.5, color: '#e9776d', textAlign: 'center', lineHeight: 1.45 }}>
-          {righeCoach.join(' · ')}
+          style={{ background: 'none', border: 0, padding: 0, borderRadius: 0, fontSize: 12.5, color: '#e9776d', textAlign: 'center', lineHeight: 1.45, ...(affiancate ? { width: '100%' } : {}) }}>
+          {affiancate ? (
+            <span style={{ display: 'grid', gridTemplateColumns: colonne.map((c) => `${c!.lungo}fr`).join(' '), fontSize: 11.5, lineHeight: 1.4, textAlign: 'left' }}>
+              {colonne.map((c, i) => (
+                <span key={i} style={{
+                  padding: '0 8px', minWidth: 0, display: 'flex', flexWrap: 'wrap', columnGap: 4, alignContent: 'flex-start',
+                  ...(i ? { borderLeft: '1px solid #3a1d1a' } : {}),
+                  ...(oggi && c!.codice !== oggi ? { opacity: .5 } : {}),
+                }}>
+                  <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#ff8a7f' }}>🦠 {c!.codice}</span>
+                  {c!.pezzi.map((p, j) => <span key={j} style={p.length <= 24 ? { whiteSpace: 'nowrap' } : undefined}>{p}</span>)}
+                </span>
+              ))}
+            </span>
+          ) : righeCoach.join(' · ')}
         </button>
       )}
       {showSettings && (
