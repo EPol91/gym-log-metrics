@@ -3,12 +3,14 @@
 // Si costruisce da sola: sonno (WHOOP), lavoro (i tuoi orari), allenamento
 // (le sedute), pasti (l'ora segnata in Cibo). A destra gli intervalli che
 // contano per dormire bene: dalla fine dell'allenamento alla cena, dalla cena
-// al letto.
+// al letto. L'uscita dall'ufficio si corregge toccando il lavoro.
 
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { giornataTempo, durata, type Blocco } from '../tempo/giornata'
 import { todayLocal, shiftDate, etichettaGiorno } from '../util/date'
+import { segnaUscita, togliUscita } from '../tempo/orari'
+import { FoglioOrario } from './FoglioOra'
 
 /** Pixel per ora: 19 ore stanno in poco piu' di mezzo schermo. */
 const PX = 28
@@ -31,6 +33,7 @@ const hh = (m: number) => {
 export function TempoScreen() {
   const oggi = todayLocal()
   const [data, setData] = useState(oggi)
+  const [foglioUscita, setFoglioUscita] = useState(false)
   const g = useLiveQuery(() => giornataTempo(data), [data])
   const y = (m: number) => ((m - (g?.inizio ?? 360)) / 60) * PX
 
@@ -62,13 +65,16 @@ export function TempoScreen() {
             {/* i blocchi: sonno, lavoro, allenamento, tempo libero */}
             {g.blocchi.map((b, i) => {
               const alto = Math.max(16, y(b.alle) - y(b.dalle))
+              const matita = b.uscita && <span style={{ color: 'var(--gold)', marginLeft: 4 }}>✎</span>
               return (
-                <div key={i} style={{
-                  position: 'absolute', left: 0, right: LARGO_DESTRA, top: y(b.dalle), height: alto,
-                  borderRadius: 8, padding: '2px 8px', fontSize: 11.5, overflow: 'hidden', lineHeight: 1.3, ...STILE[b.tipo],
-                }}>
+                <div key={i} {...(b.uscita ? { role: 'button', onClick: () => setFoglioUscita(true), 'aria-label': `Correggi l'uscita dall'ufficio, ora ${g.uscita?.ora}` } : {})}
+                  style={{
+                    position: 'absolute', left: 0, right: LARGO_DESTRA, top: y(b.dalle), height: alto,
+                    borderRadius: 8, padding: '2px 8px', fontSize: 11.5, overflow: 'hidden', lineHeight: 1.3, ...STILE[b.tipo],
+                    ...(b.uscita ? { cursor: 'pointer' } : {}),
+                  }}>
                   <strong style={{ fontWeight: 600 }}>{b.testo}</strong>
-                  {b.sotto && alto >= 30 && <div style={{ opacity: .85 }}>{b.sotto}</div>}
+                  {b.sotto && alto >= 30 ? <div style={{ opacity: .85 }}>{b.sotto}{matita}</div> : matita}
                 </div>
               )
             })}
@@ -107,6 +113,13 @@ export function TempoScreen() {
       <p className="muted" style={{ fontSize: 11, margin: 0 }}>
         Sonno da WHOOP, allenamento dalle sedute, pasti dall'ora in Cibo, lavoro dai tuoi orari (Profilo).
       </p>
+
+      {foglioUscita && g?.uscita && (
+        <FoglioOrario titolo="Uscita dall'ufficio" proposta={g.uscita.ora} diSolito={g.uscita.solita}
+          onOra={(ora) => segnaUscita(data, ora)}
+          altre={g.uscita.segnata ? [{ testo: "Torna all'orario solito", tenue: true, fai: () => togliUscita(data) }] : []}
+          onClose={() => setFoglioUscita(false)} />
+      )}
     </div>
   )
 }

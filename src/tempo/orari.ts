@@ -120,12 +120,20 @@ export async function oreDiSolito(orari: OrariUtente, oggi = todayLocal()): Prom
 }
 
 /**
- * Uscito dall'ufficio piu' tardi del solito: l'ora di oggi. Le uscite si tengono
- * per quattro mesi — piu' indietro alla giornata non servono.
+ * L'ora in cui sei uscito dall'ufficio quel giorno — subito con «Esco ora», o
+ * corretta dopo dalla giornata in Salute → Tempo. Le uscite si tengono per
+ * quattro mesi: piu' indietro alla giornata non servono.
  */
 export async function segnaUscita(data: string, ora: string): Promise<void> {
   const u = await getUser()
-  const limite = shiftDate(data, -120)
+  const limite = shiftDate(todayLocal(), -120)
   const uscite = Object.fromEntries(Object.entries({ ...(u?.uscite ?? {}), [data]: ora }).filter(([d]) => d >= limite))
+  await updateUser({ uscite })
+}
+
+/** Torna all'orario solito: quel giorno l'uscita non e' piu' segnata. */
+export async function togliUscita(data: string): Promise<void> {
+  const u = await getUser()
+  const uscite = Object.fromEntries(Object.entries(u?.uscite ?? {}).filter(([d]) => d !== data))
   await updateUser({ uscite })
 }

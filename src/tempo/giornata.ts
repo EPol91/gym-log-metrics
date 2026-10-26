@@ -17,7 +17,11 @@ import { SEDUTE_RS } from '../rs/protocollo'
 const U = LOCAL_USER_ID
 
 export type TipoBlocco = 'sonno' | 'lavoro' | 'pausa' | 'uscita' | 'allena' | 'libero'
-export interface Blocco { tipo: TipoBlocco; dalle: number; alle: number; testo: string; sotto?: string }
+export interface Blocco {
+  tipo: TipoBlocco; dalle: number; alle: number; testo: string; sotto?: string
+  /** toccandolo si corregge l'ora dell'uscita dall'ufficio */
+  uscita?: true
+}
 export interface PuntoPasto { id: string; nome: string; ora?: number; saltato?: boolean; fascia?: string }
 export interface Intervallo { dalle: number; alle: number; etichetta: string }
 export interface GiornataTempo {
@@ -29,6 +33,8 @@ export interface GiornataTempo {
   intervalli: Intervallo[]
   /** pasti del giorno senza ora e non saltati, per dirlo sotto */
   senzaOra: string[]
+  /** nei giorni di lavoro: l'uscita che vale, quella solita, e se l'hai segnata tu */
+  uscita?: { ora: string; solita: string; segnata: boolean }
 }
 
 /** Un istante (ISO) in minuti dalla mezzanotte di `data`, nell'ora di qui. */
@@ -62,21 +68,24 @@ export async function giornataTempo(data: string): Promise<GiornataTempo> {
   const l = orari.lavoro
   const giornoSett = new Date(data + 'T12:00:00').getDay()
   let fineLavoro: number | null = null
+  let uscitaGiorno: GiornataTempo['uscita']
   if (l && l.giorni.includes(giornoSett)) {
     const entrata = minuti(l.entrata)
     const uscitaVera = user?.uscite?.[data]
-    const uscita = Math.max(minuti(l.uscita), uscitaVera ? minuti(uscitaVera) : 0)
+    // Quella segnata vale com'e', anche se prima del solito: l'hai corretta tu.
+    const uscita = uscitaVera ? Math.max(entrata, minuti(uscitaVera)) : minuti(l.uscita)
     fineLavoro = uscita
+    uscitaGiorno = { ora: orario(uscita), solita: l.uscita, segnata: !!uscitaVera }
     if (l.pausa && minuti(l.pausa.dalle) > entrata && minuti(l.pausa.alle) < uscita) {
       blocchi.push({ tipo: 'lavoro', dalle: entrata, alle: minuti(l.pausa.dalle), testo: 'lavoro', sotto: `${l.entrata} → ${l.pausa.dalle}` })
       blocchi.push({ tipo: 'pausa', dalle: minuti(l.pausa.dalle), alle: minuti(l.pausa.alle), testo: 'pausa pranzo' })
-      blocchi.push({ tipo: 'lavoro', dalle: minuti(l.pausa.alle), alle: uscita, testo: 'lavoro', sotto: `${l.pausa.alle} → ${orario(uscita)}` })
+      blocchi.push({ tipo: 'lavoro', dalle: minuti(l.pausa.alle), alle: uscita, testo: 'lavoro', sotto: `${l.pausa.alle} → ${orario(uscita)}`, uscita: true })
     } else {
-      blocchi.push({ tipo: 'lavoro', dalle: entrata, alle: uscita, testo: 'lavoro', sotto: `${l.entrata} → ${orario(uscita)}` })
+      blocchi.push({ tipo: 'lavoro', dalle: entrata, alle: uscita, testo: 'lavoro', sotto: `${l.entrata} → ${orario(uscita)}`, uscita: true })
     }
     // La finestra in cui a volte esci tardi: tratteggiata finche' non segni l'uscita.
     if (!uscitaVera && l.uscitaFinoA && minuti(l.uscitaFinoA) > uscita) {
-      blocchi.push({ tipo: 'uscita', dalle: uscita, alle: minuti(l.uscitaFinoA), testo: `a volte fino alle ${l.uscitaFinoA}` })
+      blocchi.push({ tipo: 'uscita', dalle: uscita, alle: minuti(l.uscitaFinoA), testo: `a volte fino alle ${l.uscitaFinoA}`, uscita: true })
     }
     // Uscita segnata: la dice gia' il blocco del lavoro («14:00 → 17:48»).
   }
@@ -149,5 +158,5 @@ export async function giornataTempo(data: string): Promise<GiornataTempo> {
     })
   }
 
-  return { data, inizio, fine, blocchi, pasti, intervalli, senzaOra }
+  return { data, inizio, fine, blocchi, pasti, intervalli, senzaOra, ...(uscitaGiorno ? { uscita: uscitaGiorno } : {}) }
 }
