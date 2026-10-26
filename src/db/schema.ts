@@ -427,7 +427,7 @@ export interface Meal extends BaseRecord {
   name: string
   order: number
   /**
-   * A che ora l'hai mangiato, «HH:MM». Serve all'analisi del tempo — fra cena
+   * A che ora hai FINITO di mangiarlo, «HH:MM». Serve all'analisi del tempo — fra cena
    * e letto, fra allenamento e cena — e non tocca né il diario né RS.
    */
   ora?: string

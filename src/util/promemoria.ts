@@ -179,9 +179,9 @@ async function tutti(): Promise<Avviso[]> {
     if (senza.length) {
       out.push({
         tipo: 'pasto',
-        titolo: senza.length === 1 ? `${senza[0].m.name}: a che ora?` : 'Pasti senza ora',
+        titolo: senza.length === 1 ? `${senza[0].m.name}: a che ora hai finito?` : 'Pasti senza ora',
         testo: senza.length === 1
-          ? `La fascia è finita alle ${senza[0].fascia.alle}. Segna l'ora, o che l'hai saltato.`
+          ? `La fascia è finita alle ${senza[0].fascia.alle}. Segna quando hai finito, o che l'hai saltato.`
           : `${senza.map((x) => x.m.name).join(', ')}: segna l'ora, o che li hai saltati.`,
         pasti: senza.map((x) => x.m.id),
       })
@@ -265,8 +265,8 @@ export async function programmaPromemoriaPasti(): Promise<void> {
       if (quando <= adesso) continue // gia' passata: c'e' l'avviso in Oggi
       da.push({
         id: ID_PASTO + indice,
-        title: `${m.name}: a che ora?`,
-        body: `Segna l'ora in Cibo, o che l'hai saltato.`,
+        title: `${m.name}: a che ora hai finito?`,
+        body: `Segna in Cibo quando hai finito, o che l'hai saltato.`,
         schedule: { at: new Date(quando), allowWhileIdle: true },
       })
     }

@@ -14,8 +14,9 @@ import { hhmm, minuti } from '../tempo/orari'
 export interface AltraScelta { testo: string; tenue?: boolean; fai: () => Promise<void> }
 
 /** Il foglio nudo: l'ora grande, gli spostamenti, «Va bene» e le scelte sotto. */
-export function FoglioOrario({ titolo, proposta, diSolito, onOra, altre = [], nota, onFatto, onClose }: {
+export function FoglioOrario({ titolo, domanda = 'a che ora?', proposta, diSolito, onOra, altre = [], nota, onFatto, onClose }: {
   titolo: string
+  domanda?: string
   /** l'ora da cui parte il foglio: «adesso», o quella gia' segnata */
   proposta: string
   /** l'ora solita, se si sa */
@@ -45,7 +46,7 @@ export function FoglioOrario({ titolo, proposta, diSolito, onOra, altre = [], no
         }}>
         <div style={{ width: 40, height: 4, borderRadius: 9, background: '#3a3730', margin: '0 auto 12px' }} />
         <div className="row spread" style={{ alignItems: 'baseline' }}>
-          <span className="eyebrow">{titolo} · a che ora?</span>
+          <span className="eyebrow">{titolo} · {domanda}</span>
           {diSolito && <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>di solito {diSolito}</span>}
         </div>
 
@@ -100,7 +101,9 @@ export function FoglioOra({ mealId, nome, proposta, diSolito, giaSegnato, onFatt
   onClose: () => void
 }) {
   return (
-    <FoglioOrario titolo={nome} proposta={proposta} diSolito={diSolito}
+    // L'ora che conta e' quella in cui hai finito: da li' si misura quanto
+    // manca al letto. Ed e' anche la piu' comoda: la segni appena finisci.
+    <FoglioOrario titolo={nome} domanda="a che ora hai finito?" proposta={proposta} diSolito={diSolito}
       onOra={(ora) => impostaOraPasto(mealId, ora)}
       altre={[
         { testo: 'Ho saltato il pasto', fai: () => segnaPastoSaltato(mealId) },
