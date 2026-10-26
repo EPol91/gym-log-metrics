@@ -724,6 +724,34 @@ export async function exerciseHistory(exerciseId: string, exceptSessionId: strin
   return rows.slice(0, limit).map(({ date, sets }) => ({ date, sets }))
 }
 
+/**
+ * Le serie della volta scorsa: la colonna «Prec.», il «scorsa» e la
+ * precompilazione.
+ *
+ * Della stessa scheda, se c'e'. Lo stesso esercizio puo' stare in due giornate
+ * con serie diverse — il rear delt: tre in D1, due in D5 — e il D1 di oggi va
+ * messo accanto al D1 scorso, non al D5 di sabato: prima la terza serie restava
+ * senza precedente, come se quella della volta prima non ci fosse. Se in questa
+ * scheda non l'hai mai fatto, vale l'ultima seduta qualsiasi.
+ */
+export async function serieDellaScorsa(exerciseId: string, sessionId: string): Promise<SetEntry[]> {
+  const scheda = (await db.sessions.get(sessionId))?.srcTemplateId
+  const entries = await db.exerciseEntries.where({ exerciseId }).toArray()
+  let stessa: { startedAt: string; sets: SetEntry[] } | null = null
+  let qualsiasi: { startedAt: string; sets: SetEntry[] } | null = null
+  for (const e of entries) {
+    if (e.sessionId === sessionId) continue
+    const session = await db.sessions.get(e.sessionId)
+    if (!session) continue
+    const sets = (await db.sets.where({ entryId: e.id }).sortBy('order')).filter((s) => !s.isWarmup)
+    if (!sets.length) continue
+    const riga = { startedAt: session.startedAt, sets }
+    if (!qualsiasi || riga.startedAt > qualsiasi.startedAt) qualsiasi = riga
+    if (scheda && session.srcTemplateId === scheda && (!stessa || riga.startedAt > stessa.startedAt)) stessa = riga
+  }
+  return (stessa ?? qualsiasi)?.sets ?? []
+}
+
 export async function updateSet(id: string, patch: Partial<SetInput>): Promise<void> {
   await db.sets.update(id, { ...patch, updatedAt: nowISO() })
 }

@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
   deleteExerciseEntry, moveExerciseEntry, moveInGroup, staccaDalGruppo, allExercises, groupEntries, ungroupEntries,
-  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, setExerciseSettings,
+  lastWorkingSet, getUser, getSession, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, serieDellaScorsa, setExerciseSettings,
   setExerciseInclinazione, setExerciseFoto,
 } from '../db/repo'
 import { e1rm, bestE1rm } from '../metrics/metrics'
@@ -654,7 +654,7 @@ function EntryCard({ entry, name, settings, inclinazione, foto, sessionId, restS
 
   useEffect(() => { lastWorkingSet(entry.exerciseId, sessionId).then(setHint) }, [entry.exerciseId, sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, sessionId).then(setHistBest) }, [entry.exerciseId, sessionId])
-  useEffect(() => { exerciseHistory(entry.exerciseId, sessionId, 1).then((h) => { setPrevSets(h[0]?.sets ?? []); setPrevPronti(true) }) }, [entry.exerciseId, sessionId])
+  useEffect(() => { serieDellaScorsa(entry.exerciseId, sessionId).then((s) => { setPrevSets(s); setPrevPronti(true) }) }, [entry.exerciseId, sessionId])
   /*
    * Il riferimento della serie che stai per fare e' la serie di PARI NUMERO
    * della volta scorsa: la prima con la prima, la seconda con la seconda.
@@ -869,7 +869,7 @@ function GroupExercise({ entry, name, settings, inclinazione, foto, values, onCh
   const [histBest, setHistBest] = useState(0)
   const storico = useStorico(entry.exerciseId, entry.sessionId)
 
-  useEffect(() => { exerciseHistory(entry.exerciseId, entry.sessionId, 1).then((h) => setPrevSets(h[0]?.sets ?? [])) }, [entry.exerciseId, entry.sessionId])
+  useEffect(() => { serieDellaScorsa(entry.exerciseId, entry.sessionId).then(setPrevSets) }, [entry.exerciseId, entry.sessionId])
   useEffect(() => { historicalBestE1rm(entry.exerciseId, entry.sessionId).then(setHistBest) }, [entry.exerciseId, entry.sessionId])
 
   // Il riferimento della serie che stai per fare: la serie di PARI NUMERO della
@@ -980,7 +980,7 @@ function GroupCard({ entries, nameOf, datiOf, restSec, pos, total, restNode, onL
   // perche' il riferimento e' la serie di pari numero, non l'ultima.
   useEffect(() => {
     let alive = true
-    Promise.all(sorted.map(async (e) => ({ id: e.id, sets: (await exerciseHistory(e.exerciseId, e.sessionId, 1))[0]?.sets ?? [] })))
+    Promise.all(sorted.map(async (e) => ({ id: e.id, sets: await serieDellaScorsa(e.exerciseId, e.sessionId) })))
       .then((rows) => {
         if (!alive) return
         const p: Record<string, SetEntry[]> = {}
