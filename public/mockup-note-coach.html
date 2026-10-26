@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note del coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --line: #2a2824; --line-soft: #201f1c;
+    --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951; --gold: #d4af37; --gold-bg: #231e0e;
+    --rs: #e9776d; --rs-forte: #ff8a7f;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-family: var(--f-tit); font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0 0 6px; max-width: 74ch; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .blocco .misura { font-size: 12.5px; color: var(--muted); margin: 10px 4px 0; }
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .schermo { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+
+  .eyebrow { font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: center; }
+  .titolo { display: flex; align-items: center; gap: 8px; }
+  .freccia { width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; color: var(--muted); flex: none; }
+  .titolo h2 { flex: 1; text-align: center; font-family: var(--f-tit); font-size: 25px; margin: 0; }
+  .chips { display: flex; justify-content: center; gap: 6px; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+  .chip.on { color: var(--gold); border-color: #5a4a18; background: var(--gold-bg); font-weight: 600; }
+  .strumenti { display: flex; justify-content: center; gap: 8px; }
+  .strumenti i { width: 44px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+
+  /* adesso: una riga sola, centrata, le due sedute di fila */
+  .coach-ora { font-size: 12.5px; color: var(--rs); text-align: center; line-height: 1.45; }
+
+  /* proposta: due colonne, alte quanto le due righe di adesso */
+  .coach2 { display: grid; gap: 0; font-size: 11.5px; line-height: 1.4; color: var(--rs); }
+  .coach2 .col { padding: 0 8px; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 4px; align-content: flex-start; }
+  .coach2 .col + .col { border-left: 1px solid #3a1d1a; }
+  .coach2 .pz { white-space: nowrap; }
+  .coach2 .cod { font-weight: 700; color: var(--rs-forte); }
+  .coach2 .col.altra { opacity: .5; }
+
+  .tabella { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 10px 14px; font-size: 12px; color: var(--muted); }
+  .tabella .r { display: grid; grid-template-columns: 30px 70px 1fr 1fr; padding: 6px 0; align-items: center; }
+  .tabella .r + .r { border-top: 1px solid var(--line-soft); }
+  .tabella .n { font-family: var(--f-num); font-weight: 600; font-size: 20px; color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div class="ey">ETP Health · mockup</div>
+    <h1>Note del coach in due colonne</h1>
+    <p>Quando lo stesso esercizio sta in due sedute, la nota 🦠 si divide: una colonna per seduta, il codice in testa, larga quanto serve al suo testo. La seduta che stai facendo è piena, l'altra attenuata.</p>
+    <p>Lo spazio in altezza resta quello delle due righe di adesso. Con una seduta sola non cambia niente.</p>
+  </div>
+
+  <div class="telefoni">
+    <div class="blocco">
+      <div class="nome">Adesso</div>
+      <div class="tel"><div class="schermo">
+        <div class="eyebrow">Esercizio 5 di 7</div>
+        <div class="titolo"><span class="freccia">‹</span><h2>Rear delt machine</h2><span class="freccia">›</span></div>
+        <div class="chips"><span class="chip">2ª · scorsa 50 × 15</span><span class="chip on">PR 78</span></div>
+        <div class="strumenti"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="coach-ora misurata">🦠 D1 · @A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 75-90″ · 🦠 D5 · @A|B · 12-20 · RIR1 · rec 75-90″</div>
+        <div class="tabella"><div class="r"><span>SET</span><span>PREC.</span><span>KG</span><span>REPS</span></div><div class="r"><span>1</span><span>50×17</span><span class="n">50</span><span class="n">18</span></div></div>
+      </div></div>
+      <div class="misura"></div>
+    </div>
+
+    <div class="blocco">
+      <div class="nome">Proposta · oggi D1</div>
+      <div class="tel"><div class="schermo">
+        <div class="eyebrow">Esercizio 5 di 7</div>
+        <div class="titolo"><span class="freccia">‹</span><h2>Rear delt machine</h2><span class="freccia">›</span></div>
+        <div class="chips"><span class="chip">2ª · scorsa 50 × 15</span><span class="chip on">PR 78</span></div>
+        <div class="strumenti"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="coach2 misurata" style="grid-template-columns: 50fr 34fr">
+          <div class="col"><span class="pz cod">🦠 D1</span><span class="pz">@A|B|C · 12-20 ·</span><span class="pz">RIR2/RIR1/RIR0-1 ·</span><span class="pz">rec 75-90″</span></div>
+          <div class="col altra"><span class="pz cod">🦠 D5</span><span class="pz">@A|B · 12-20 ·</span><span class="pz">RIR1 ·</span><span class="pz">rec 75-90″</span></div>
+        </div>
+        <div class="tabella"><div class="r"><span>SET</span><span>PREC.</span><span>KG</span><span>REPS</span></div><div class="r"><span>1</span><span>50×17</span><span class="n">50</span><span class="n">18</span></div></div>
+      </div></div>
+      <div class="misura"></div>
+    </div>
+
+    <div class="blocco">
+      <div class="nome">Proposta · oggi D5</div>
+      <div class="tel"><div class="schermo">
+        <div class="eyebrow">Esercizio 6 di 8</div>
+        <div class="titolo"><span class="freccia">‹</span><h2>Rear delt machine</h2><span class="freccia">›</span></div>
+        <div class="chips"><span class="chip">2ª · scorsa 50 × 15</span><span class="chip on">PR 78</span></div>
+        <div class="strumenti"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="coach2 misurata" style="grid-template-columns: 50fr 34fr">
+          <div class="col altra"><span class="pz cod">🦠 D1</span><span class="pz">@A|B|C · 12-20 ·</span><span class="pz">RIR2/RIR1/RIR0-1 ·</span><span class="pz">rec 75-90″</span></div>
+          <div class="col"><span class="pz cod">🦠 D5</span><span class="pz">@A|B · 12-20 ·</span><span class="pz">RIR1 ·</span><span class="pz">rec 75-90″</span></div>
+        </div>
+        <div class="tabella"><div class="r"><span>SET</span><span>PREC.</span><span>KG</span><span>REPS</span></div><div class="r"><span>1</span><span>50×17</span><span class="n">50</span><span class="n">18</span></div></div>
+      </div></div>
+      <div class="misura"></div>
+    </div>
+  </div>
+
+  <script>
+    // L'altezza della nota, misurata: deve restare quella di adesso.
+    document.fonts.ready.then(() => {
+      document.querySelectorAll('.blocco').forEach((b) => {
+        const n = b.querySelector('.misurata')
+        b.querySelector('.misura').textContent = `Nota del coach: ${Math.round(n.getBoundingClientRect().height)} px di altezza`
+      })
+    })
+  </script>
+</body>
+</html>
