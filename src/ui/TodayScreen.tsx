@@ -20,8 +20,9 @@ import { useEffect } from 'react'
 // L'anello del check: la data accanto si misura su questo.
 const ANELLO = 82
 
-const LBL: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
-const NUM: React.CSSProperties = { color: 'var(--gold)', fontSize: 19, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }
+const LBL: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }
+// Numeri da tabellone: stretti, si leggono da lontano e stanno nella mezza riga.
+const NUM: React.CSSProperties = { color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontSize: 22, fontWeight: 600, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }
 
 const cella = (v: string | number, l: string) => (
   <div key={l} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
@@ -100,7 +101,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         <div>
           <p className="muted small" style={{ marginBottom: 2, letterSpacing: '.06em' }}>ETP HEALTH</p>
           {/* Il corpo si stringe un po' sui telefoni stretti per restare in riga. */}
-          <h1 style={{ fontSize: 'clamp(20px, 6.4vw, 26px)' }}>Ciao{nome ? ` ${nome}` : ''}</h1>
+          <h1 style={{ fontSize: 'clamp(19px, 6.1vw, 26px)', fontWeight: 600 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
           <p className="muted small" style={{ marginTop: 2 }}>{dailyPhrase()}</p>
         </div>
         {/* La data al posto del saluto: un "👋" occupa spazio e non dice niente,

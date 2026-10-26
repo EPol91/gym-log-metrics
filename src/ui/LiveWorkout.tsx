@@ -162,7 +162,7 @@ function RestTimer({ defaultSec, presets, store, sessionId, onPick, onClose }: {
       <div className="row spread" style={{ alignItems: 'center' }}>
         <span className="muted small" style={{ letterSpacing: '.08em' }}>⏱ RECUPERO</span>
         <span className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
+          <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 24, lineHeight: 1, whiteSpace: 'nowrap', color: warn ? '#e5484d' : done ? 'var(--good)' : 'var(--gold)' }}>
             {done ? 'Vai! 💪' : `${mm}:${ss.toString().padStart(2, '0')}`}
           </span>
           <button className="ghost small" onClick={onClose}>✕</button>

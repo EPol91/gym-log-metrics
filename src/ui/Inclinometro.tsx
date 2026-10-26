@@ -93,7 +93,7 @@ export function Inclinometro({ valore, onSalva, onClose }: {
             {/* Il numero grande e una tacca che si inclina con lui: il numero
                 dice quanto, la tacca dice se sei dritto. */}
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 64, color: 'var(--gold)', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 64, color: 'var(--gold)', lineHeight: 1 }}>
                 {gradi == null ? '—' : `${mostrato}°`}
               </div>
               <svg viewBox="0 0 200 90" width="180" height="81" style={{ marginTop: 6 }}>

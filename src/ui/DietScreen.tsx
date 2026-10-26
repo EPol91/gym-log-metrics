@@ -898,7 +898,7 @@ function Bicchiere({ date, acqua, compatto }: { date: string; acqua: number; com
             </div>
 
             <div className="row spread" style={{ alignItems: 'center', marginTop: 8 }}>
-              <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 30, color: 'var(--gold)' }}>
+              <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 30, color: 'var(--gold)' }}>
                 {String(acqua).replace('.', ',')} L
               </span>
               <span className="row" style={{ gap: 6 }}>

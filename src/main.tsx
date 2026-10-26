@@ -1,5 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// I caratteri stanno dentro l'app: prima il foglio di stile chiedeva Inter e
+// Playfair senza caricarli, e il telefono ripiegava sui suoi. Solo i pesi che
+// servono, solo l'alfabeto latino (accenti compresi): pochi KB, anche offline.
+import '@fontsource/figtree/latin-400.css'
+import '@fontsource/figtree/latin-500.css'
+import '@fontsource/figtree/latin-600.css'
+import '@fontsource/figtree/latin-700.css'
+import '@fontsource/playfair-display/latin-600.css'
+import '@fontsource/playfair-display/latin-700.css'
+import '@fontsource/barlow-condensed/latin-500.css'
+import '@fontsource/barlow-condensed/latin-600.css'
 import './index.css'
 import App from './App.tsx'
 import { initPwaUpdate } from './util/pwaUpdate'

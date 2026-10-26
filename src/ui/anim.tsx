@@ -100,7 +100,7 @@ export function ScoreRing({ value, size = 66 }: { value: number | null; size?: n
           strokeDasharray={c} strokeDashoffset={off}
           style={{ transition: 'stroke-dashoffset 1s ease' }} />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: "'Playfair Display', serif", fontSize: Math.round(size * 0.42), color: col }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: Math.round(size * 0.42), color: col }}>
         <CountUp value={value} />
       </div>
     </div>

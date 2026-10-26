@@ -43,7 +43,7 @@ export function DataDiOggi({ onApri, altezza }: { onApri: () => void; altezza?: 
       <div className="muted" style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase' }}>
         {['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][oggi.getDay()]}
       </div>
-      <div style={{ fontSize: 22, color: 'var(--gold)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+      <div style={{ fontSize: 22, color: 'var(--gold)', fontFamily: 'var(--f-numeri)', fontWeight: 600 }}>
         {oggi.getDate()}
       </div>
       <div className="muted" style={{ fontSize: 9 }}>

@@ -173,7 +173,7 @@ export function CardioRunner({ mode, rounds = 8, workSec = 20, restSec = 10, tar
               style={{ transition: 'stroke-dashoffset .5s linear, stroke .3s' }} />
           </svg>
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(52px,15vw,76px)', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>{fmt(bigLeft)}</div>
+            <div style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 'clamp(52px,15vw,76px)', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>{fmt(bigLeft)}</div>
             {mode !== 'chrono' && <div className="muted small" style={{ marginTop: 6 }}>totale {fmt(elapsed)}</div>}
           </div>
         </div>

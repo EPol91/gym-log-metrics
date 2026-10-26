@@ -79,7 +79,7 @@ export function AiSettings() {
         <label className="fl">Consumo</label>
 
         <div className="row spread" style={{ alignItems: 'baseline' }}>
-          <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 32, color: 'var(--gold)' }}>
+          <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 32, color: 'var(--gold)' }}>
             {inDollari(costo(c))}
           </span>
           <span className="muted small">stima · {c.richieste} {c.richieste === 1 ? 'richiesta' : 'richieste'}</span>
