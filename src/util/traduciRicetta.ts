@@ -5,12 +5,11 @@
 // i passi — e per quello serve l'AI. La ricetta salvata non si tocca: la
 // traduzione vive il tempo di disegnare le immagini.
 
-import { getApiKey } from '../ai/aiEngine'
+import { getApiKey, MODEL, headers, testoDi } from '../ai/aiEngine'
 import { segnaConsumo } from '../ai/consumo'
 import type { Recipe } from '../db/schema'
 
 const API_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-opus-4-8'
 
 export type Lingua = 'it' | 'en'
 
@@ -54,15 +53,12 @@ export async function traduciRicetta(
   const lingua = verso === 'en' ? 'inglese' : 'italiano'
   const res = await fetch(API_URL, {
     method: 'POST',
-    headers: {
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: headers(key),
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 8000,
+      output_config: { effort: 'low' },
+      fallbacks: 'default',
       system: `Traduci in ${lingua} il testo di una ricetta. Mantieni ESATTAMENTE la stessa struttura JSON e lo stesso numero di elementi in ogni lista, nello stesso ordine. Traduci nomi di piatti e alimenti con il termine usato davvero in cucina in quella lingua. Non aggiungere, non togliere, non commentare. Rispondi SOLO con il JSON.`,
       messages: [{ role: 'user', content: JSON.stringify(testo) }],
     }),
@@ -71,7 +67,7 @@ export async function traduciRicetta(
 
   const data = await res.json()
   segnaConsumo('slide', data?.usage)
-  const grezzo: string = data?.content?.[0]?.text ?? ''
+  const grezzo = testoDi(data)
   // Se il modello incornicia il JSON, si prende quello che sta fra le graffe.
   const dentro = grezzo.slice(grezzo.indexOf('{'), grezzo.lastIndexOf('}') + 1)
   let t: Testo

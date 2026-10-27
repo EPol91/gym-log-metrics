@@ -15,7 +15,7 @@ export type Voce = 'coach' | 'slide' | 'didascalia'
  * apposta: se Anthropic li cambia, si correggono in un punto solo — e la cifra
  * mostrata resta una stima, non una fattura.
  */
-export const PREZZO = { ingresso: 15, uscita: 75 }
+export const PREZZO = { ingresso: 4, uscita: 20 }  // Opus 5.5
 
 export interface Consumo {
   richieste: number

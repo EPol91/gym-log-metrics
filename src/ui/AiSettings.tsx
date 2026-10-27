@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getApiKey, saveApiKey, clearApiKey, getAIProvider, isCoachAiOn, setCoachAi } from '../ai/aiEngine'
+import { getApiKey, saveApiKey, clearApiKey, getAIProvider, isCoachAiOn, setCoachAi, MODEL } from '../ai/aiEngine'
 import { leggiConsumo, azzeraConsumo, costo, inDollari, PREZZO, type Voce } from '../ai/consumo'
 import { fmtDataOra } from '../util/format'
 
@@ -35,7 +35,7 @@ export function AiSettings() {
 
   return (
     <div className="card">
-      <label className="fl">Chiave AI (Claude · claude-opus-4-8)</label>
+      <label className="fl">Chiave AI (Claude · {MODEL})</label>
       <input
         type="password"
         value={key}

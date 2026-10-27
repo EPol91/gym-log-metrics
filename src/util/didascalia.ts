@@ -5,14 +5,13 @@
 // vera — macro compresi — e torna un testo che parla di quella, non di una
 // ricetta generica.
 
-import { getApiKey } from '../ai/aiEngine'
+import { getApiKey, MODEL, headers, testoDi } from '../ai/aiEngine'
 import { segnaConsumo } from '../ai/consumo'
 import type { Recipe } from '../db/schema'
 import type { RecipeCalc } from '../db/recipes'
 import type { Lingua } from './slideRicetta'
 
 const API_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-opus-4-8'
 
 export interface Didascalia {
   /** il testo da incollare sotto il post */
@@ -42,15 +41,12 @@ export async function didascaliaPost(
   const lingua = l === 'en' ? 'inglese' : 'italiano'
   const res = await fetch(API_URL, {
     method: 'POST',
-    headers: {
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: headers(key),
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 900,
+      max_tokens: 4000,
+      output_config: { effort: 'low' },
+      fallbacks: 'default',
       system: `Scrivi la didascalia di un post Instagram per una ricetta fit, in ${lingua}, per un profilo di bodybuilding/palestra.
 
 Regole:
@@ -70,7 +66,7 @@ Rispondi SOLO con questo JSON: {"testo":"…","hashtag":["…"],"tag":["…"]}`,
 
   const data = await res.json()
   segnaConsumo('didascalia', data?.usage)
-  const grezzo: string = data?.content?.[0]?.text ?? ''
+  const grezzo = testoDi(data)
   const dentro = grezzo.slice(grezzo.indexOf('{'), grezzo.lastIndexOf('}') + 1)
   let d: Didascalia
   try { d = JSON.parse(dentro) } catch { throw new Error('Risposta AI illeggibile.') }
