@@ -213,7 +213,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
       <div className="row" style={{ gap: 5, alignItems: 'baseline', marginTop: 6 }}>
         <span style={GRANDE}>{peso ? virgola(peso.weight) : '—'}</span>
         <span className="muted" style={{ fontSize: 12 }}>kg</span>
-        {peso?.delta != null && (
+        {peso?.delta != null && peso.delta !== 0 && (
           <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }} title="rispetto alla pesata prima">
             {peso.delta > 0 ? '+' : peso.delta < 0 ? '−' : ''}{virgola(Math.abs(peso.delta))}
           </span>
@@ -222,7 +222,7 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
       {!apri ? (
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
         // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
-        <button className={'chip' + (pesoOggi == null && letto ? ' ring-invito' : '')}
+        <button className={'chip' + (pesoOggi == null && letto ? ' invito-bordo' : '')}
           style={{ marginTop: 7, padding: '3px 10px', fontSize: 11, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
           onClick={() => setApri(true)}>
           {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
