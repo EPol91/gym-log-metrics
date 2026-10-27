@@ -11,6 +11,7 @@ import { giornataTempo, durata, type Blocco, type PuntoPasto } from '../tempo/gi
 import { todayLocal, shiftDate, etichettaGiorno } from '../util/date'
 import { segnaUscita, togliUscita } from '../tempo/orari'
 import { FoglioOrario } from './FoglioOra'
+import { TempoImpara } from './TempoImpara'
 
 /** Pixel per ora: 19 ore stanno in poco piu' di mezzo schermo. */
 const PX = 28
@@ -63,6 +64,8 @@ export function TempoScreen() {
 
   return (
     <div className="col" style={{ gap: 10 }}>
+      <TempoImpara />
+
       <div className="row spread" style={{ alignItems: 'center' }}>
         <button className="ghost small" style={{ padding: '6px 12px' }} onClick={() => setData((d) => shiftDate(d, -1))} aria-label="Giorno prima">‹</button>
         <span className="eyebrow" style={{ fontSize: 11 }}>
