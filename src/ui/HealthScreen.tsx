@@ -6,6 +6,8 @@ import { usePersistedState } from '../util/persist'
 import { useEffect, useState } from 'react'
 import { whoopTrend } from '../db/whoop'
 import type { WhoopDay } from '../db/schema'
+import { todayLocal, shiftDate, lunediDi, etichettaSettimana } from '../util/date'
+import { fmtData } from '../util/format'
 
 type Sub = 'vitali' | 'body' | 'habits' | 'tempo'
 
@@ -49,27 +51,53 @@ export function HealthScreen({ vai, vaiNonce }: {
 }
 
 
+type Periodo = '7g' | 'sett' | 30 | 90 | 180
+const PERIODI: { v: Periodo; l: string }[] = [
+  { v: '7g', l: '7g' }, { v: 'sett', l: 'Sett' }, { v: 30, l: '30g' }, { v: 90, l: '90g' }, { v: 180, l: '6 mesi' },
+]
+
 /**
  * Vitali: come sono andati recupero, HRV, sonno e sforzo nel tempo — e quante
  * volte ti sei allenato da scarico, che è la domanda che nessuna delle due app
  * sa rispondere da sola.
  */
 function Vitali() {
-  const [giorni, setGiorni] = useState(90)
-  const d = useLiveQuery(() => whoopTrend(giorni), [giorni])
+  // «7g» sono gli ultimi sette giorni; «Sett» e' una settimana da lunedi' a
+  // domenica, e le frecce la spostano. Gli altri contano all'indietro da oggi.
+  const [periodo, setPeriodo] = useState<Periodo>(90)
+  const oggi = todayLocal()
+  const [lunedi, setLunedi] = useState(() => lunediDi(oggi))
+  const da = periodo === 'sett' ? lunedi : shiftDate(oggi, -((periodo === '7g' ? 7 : periodo) - 1))
+  const a = periodo === 'sett' ? shiftDate(lunedi, 6) : oggi
+  const d = useLiveQuery(() => whoopTrend(da, a), [da, a])
 
   if (!d) return <p className="muted">Carico…</p>
   const righe = d.righe
 
-  const periodi = [30, 90, 180]
+  const corrente = lunediDi(oggi)
   const selettore = (
-    <div className="row" style={{ gap: 6 }}>
-      {periodi.map((p) => (
-        <button key={p} className={giorni === p ? 'chip on' : 'chip'} onClick={() => setGiorni(p)}>
-          {p === 180 ? '6 mesi' : `${p} giorni`}
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="row" style={{ gap: 6 }}>
+        {PERIODI.map((p) => (
+          <button key={p.v} className={periodo === p.v ? 'chip on' : 'chip'}
+            onClick={() => { setPeriodo(p.v); if (p.v === 'sett') setLunedi(corrente) }}>
+            {p.l}
+          </button>
+        ))}
+      </div>
+      {periodo === 'sett' && (
+        <div className="row spread" style={{ alignItems: 'center' }}>
+          <button className="ghost small" style={{ padding: '6px 12px' }} aria-label="Settimana prima"
+            onClick={() => setLunedi((l) => shiftDate(l, -7))}>‹</button>
+          <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {lunedi === corrente ? <span style={{ color: 'var(--gold)' }}>Questa settimana · </span> : lunedi === shiftDate(corrente, -7) ? 'Settimana scorsa · ' : ''}
+            {etichettaSettimana(lunedi)}
+          </span>
+          <button className="ghost small" style={{ padding: '6px 12px' }} aria-label="Settimana dopo" disabled={lunedi >= corrente}
+            onClick={() => setLunedi((l) => shiftDate(l, 7))}>›</button>
+        </div>
+      )}
+    </>
   )
 
   if (!righe.length) {
@@ -217,7 +245,7 @@ function Grafico({ titolo, righe, sedute, prendi, colore, suffisso, zone, barre,
         <span className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase' }}>{titolo}</span>
         <span className="small" style={{ color: colore, fontVariantNumeric: 'tabular-nums' }}>
           {media && <span className="muted" style={{ marginRight: 8 }}>media {scrivi(mediaV)}</span>}
-          {scrivi(ultimo.v)} <span className="muted">oggi</span>
+          {scrivi(ultimo.v)} <span className="muted">{ultimo.date === todayLocal() ? 'oggi' : fmtData(ultimo.date).slice(0, 5)}</span>
         </span>
       </div>
 

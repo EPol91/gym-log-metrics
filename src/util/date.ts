@@ -47,3 +47,19 @@ export function etichettaGiorno(iso: string, oggi: string = todayLocal()): strin
   const gg = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][d.getDay()]
   return `${gg} ${d.getDate()}/${d.getMonth() + 1}`
 }
+
+/** Il lunedi' della settimana di `iso`. */
+export function lunediDi(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const g = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  return shiftDate(iso, -((g + 6) % 7))
+}
+
+/** Una settimana come si legge: «lun 26 → dom 1 nov», o «lun 19 → dom 25 ott». */
+export function etichettaSettimana(lunedi: string): string {
+  const mesi = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+  const dom = shiftDate(lunedi, 6)
+  const [, m1, d1] = lunedi.split('-').map(Number)
+  const [, m2, d2] = dom.split('-').map(Number)
+  return `lun ${d1}${m1 !== m2 ? ` ${mesi[m1 - 1]}` : ''} → dom ${d2} ${mesi[m2 - 1]}`
+}

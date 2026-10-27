@@ -9,18 +9,22 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { STEPS, getHabit } from '../db/habits'
-import { todayLocal, shiftDate } from '../util/date'
+import { todayLocal, shiftDate, lunediDi, etichettaSettimana } from '../util/date'
 import { fmtData } from '../util/format'
 import { sincronizzaPassi, nomeSorgente } from '../util/passi'
 
-type Periodo = 'S' | 'M' | '3M' | '6M' | 'YTD'
+// «7g» sono gli ultimi sette giorni; «Sett» la settimana in corso, da lunedi':
+// sette colonne fisse, con i giorni che devono ancora venire vuoti.
+type Periodo = '7g' | 'Sett' | 'M' | '3M' | '6M' | 'YTD'
 
-const GIORNI: Record<Exclude<Periodo, 'YTD'>, number> = { S: 7, M: 30, '3M': 90, '6M': 180 }
+const GIORNI: Record<'7g' | 'M' | '3M' | '6M', number> = { '7g': 7, M: 30, '3M': 90, '6M': 180 }
+const LETTERE = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 
 /** Il primo giorno del periodo scelto. */
 function inizioDi(p: Periodo): string {
   const oggi = todayLocal()
   if (p === 'YTD') return `${oggi.slice(0, 4)}-01-01`
+  if (p === 'Sett') return lunediDi(oggi)
   return shiftDate(oggi, -(GIORNI[p] - 1))
 }
 
@@ -57,7 +61,7 @@ export function GraficoPassi() {
   // i giorni recenti.
   useEffect(() => {
     if (!righe) return
-    const giorniChiesti = periodo === 'YTD'
+    const giorniChiesti = periodo === 'YTD' || periodo === 'Sett'
       ? Math.round((Date.parse(todayLocal()) - Date.parse(da)) / 86_400_000) + 1
       : GIORNI[periodo]
     const primo = righe[0]?.date
@@ -85,14 +89,22 @@ export function GraficoPassi() {
   // 3 px si vedrebbe una macchia. Sopra i 70 giorni le barre diventano una linea
   // sottile e si perde la spaziatura, che va bene per leggere l'andamento.
   const L = 320, H = 110
-  const larghezza = Math.max(1, L / Math.max(giorni.length, 1) - (giorni.length > 70 ? 0.3 : 1.4))
+  // La settimana ha sempre sette colonne, lunedi' → domenica; gli altri periodi
+  // una colonna per giorno con passi.
+  const oggi = todayLocal()
+  const settimana = periodo === 'Sett'
+  const colonne: { date: string; r?: (typeof giorni)[number] }[] = settimana
+    ? Array.from({ length: 7 }, (_, i) => { const date = shiftDate(da, i); return { date, r: giorni.find((x) => x.date === date) } })
+    : giorni.map((r) => ({ date: r.date, r }))
+  const larghezza = Math.max(1, L / Math.max(colonne.length, 1) - (colonne.length > 70 ? 0.3 : settimana ? 10 : 1.4))
 
   return (
     <div className="card">
-      <div className="row spread" style={{ alignItems: 'center' }}>
+      {/* Sei periodi accanto al titolo non stanno: titolo sopra, periodi sotto. */}
+      <div className="col" style={{ gap: 8 }}>
         <label className="fl" style={{ margin: 0 }}>Andamento · WHOOP</label>
         <div className="row" style={{ gap: 4 }}>
-          {(['S', 'M', '3M', '6M', 'YTD'] as Periodo[]).map((p) => (
+          {(['7g', 'Sett', 'M', '3M', '6M', 'YTD'] as Periodo[]).map((p) => (
             <button key={p} className={periodo === p ? 'chip on' : 'chip'}
               style={{ padding: '3px 8px', fontSize: 11 }}
               onClick={() => setPeriodo(p)}>{p}</button>
@@ -100,7 +112,7 @@ export function GraficoPassi() {
         </div>
       </div>
 
-      {giorni.length === 0 ? (
+      {giorni.length === 0 && !settimana ? (
         <p className="muted small" style={{ margin: '10px 0 0' }}>
           {scarico ? 'Scarico lo storico…' : 'Nessun giorno con passi in questo periodo.'}
         </p>
@@ -134,18 +146,26 @@ export function GraficoPassi() {
             {/* La linea dell'obiettivo: senza, le barre dicono solo "tanto o poco". */}
             <line x1="0" y1={H - (obiettivo / massimo) * H} x2={L} y2={H - (obiettivo / massimo) * H}
               stroke="var(--gold)" strokeWidth="1" strokeDasharray="3 3" opacity=".55" />
-            {giorni.map((r, i) => {
+            {colonne.map(({ date, r }, i) => {
+              const x = (i * L) / colonne.length + (settimana ? 5 : 0)
+              // Un giorno che deve ancora venire: lo spazio c'e', tratteggiato.
+              if (!r) {
+                return date > oggi
+                  ? <rect key={date} x={x} y={H - (obiettivo / massimo) * H} width={larghezza} height={(obiettivo / massimo) * H}
+                    rx="2" fill="none" stroke="#3a3730" strokeDasharray="3 3" />
+                  : null
+              }
               const h = Math.max(1, (r.value / massimo) * H)
               const suo = r.source === 'whoop'
               return (
                 <g key={r.id} onClick={() => setScelto((p) => (p === r.id ? null : r.id))} style={{ cursor: 'pointer' }}>
                   {/* Con sei mesi di barre il dito e' piu' largo della barra:
                       l'area sensibile e' tutta la colonna, invisibile. */}
-                  <rect x={(i * L) / giorni.length} y={0} width={L / giorni.length} height={H} fill="transparent" />
+                  <rect x={(i * L) / colonne.length} y={0} width={L / colonne.length} height={H} fill="transparent" />
                   {/* Contate da un altro: barra vuota col solo contorno. Si vede
                       che quel giorno hai camminato, e si vede che non e' lo
                       stesso strumento delle altre. */}
-                  <rect x={(i * L) / giorni.length} y={H - h} width={larghezza} height={h}
+                  <rect x={x} y={H - h} width={larghezza} height={h}
                     rx={larghezza > 4 ? 1.5 : 0}
                     fill={r.id === scelto ? 'var(--text)' : !suo ? 'var(--gold-dim)' : r.value >= obiettivo ? 'var(--good)' : 'var(--gold-dim)'}
                     opacity={suo || r.id === scelto ? 1 : 0.3} />
@@ -153,11 +173,21 @@ export function GraficoPassi() {
               )
             })}
           </svg>
+          {settimana && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginTop: 4, textAlign: 'center' }}>
+              {colonne.map(({ date }, i) => (
+                <span key={date} style={{ fontSize: 11, fontWeight: date === oggi ? 700 : 500, color: date === oggi ? 'var(--gold)' : 'var(--muted)' }}>{LETTERE[i]}</span>
+              ))}
+            </div>
+          )}
 
           <div className="row spread" style={{ marginTop: 8 }}>
-            <span className="muted small">{fmtData(giorni[0].date)} → {fmtData(giorni[giorni.length - 1].date)}</span>
             <span className="muted small">
-              {giorni.length} giorni
+              {settimana ? <><span style={{ color: 'var(--gold)' }}>Settimana in corso</span> · {etichettaSettimana(da)}</>
+                : <>{fmtData(giorni[0].date)} → {fmtData(giorni[giorni.length - 1].date)}</>}
+            </span>
+            <span className="muted small">
+              {settimana ? `${giorni.length} di 7` : `${giorni.length} giorni`}
               {giorni.length > righe.length && ` · ${giorni.length - righe.length} non dal WHOOP`}
             </span>
           </div>

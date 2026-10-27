@@ -256,13 +256,13 @@ export function whoopWorkoutsOf(date: string) {
  * Giornate WHOOP di un periodo, in ordine cronologico, con le date in cui ti sei
  * allenato. Serve a incrociare i due mondi: allenarsi da scarichi si vede solo qui.
  */
-export async function whoopTrend(giorni: number): Promise<{ righe: WhoopDay[]; sedute: Set<string> }> {
-  const da = new Date(Date.now() - giorni * 86400_000).toISOString().slice(0, 10)
+/** I giorni WHOOP dal `da` al `a` compresi (senza `a`: fino a oggi), e quelli con una seduta. */
+export async function whoopTrend(da: string, a = '9999-12-31'): Promise<{ righe: WhoopDay[]; sedute: Set<string> }> {
   const righe = (await db.whoopDays.where('userId').equals(U).toArray())
-    .filter((d) => d.date >= da)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((d) => d.date >= da && d.date <= a)
+    .sort((x, y) => x.date.localeCompare(y.date))
   const sessioni = await db.sessions.where('userId').equals(U).toArray()
-  const sedute = new Set(sessioni.filter((s) => s.date >= da && s.finishedAt).map((s) => s.date))
+  const sedute = new Set(sessioni.filter((s) => s.date >= da && s.date <= a && s.finishedAt).map((s) => s.date))
   return { righe, sedute }
 }
 
