@@ -29,7 +29,7 @@ function inizioDi(p: Periodo): string {
 }
 
 export function GraficoPassi() {
-  const [periodo, setPeriodo] = useState<Periodo>('M')
+  const [periodo, setPeriodo] = useState<Periodo>('Sett')
   const [scarico, setScarico] = useState(false)
   /** La barra che stai guardando: un grafico senza numeri e' un disegno. */
   const [scelto, setScelto] = useState<string | null>(null)
