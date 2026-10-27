@@ -125,9 +125,26 @@ function MetabolismCard() {
       </div>
       <p className="muted small" style={{ marginTop: 6 }}>
         {base
-          ? `Metabolismo basale su peso ${last!.weight} kg${last!.bodyFat != null ? ` e ${last!.bodyFat}% grasso` : ''}. Il fabbisogno giornaliero è questo valore × ${factor}.`
+          ? `Metabolismo basale su peso ${last!.weight} kg${last!.bodyFat != null ? ` e ${last!.bodyFat}% grasso` : ''}.`
           : 'Servono peso, altezza e anno di nascita per confrontare le formule.'}
       </p>
+
+      {/* Il fabbisogno: la formula scelta per il fattore scelto, ricalcolato a ogni tocco. */}
+      {(() => {
+        const basale = base ? bmr(base, formula) : null
+        if (basale == null) return null
+        return (
+          <div className="row spread" style={{ marginTop: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid #5a4a18', background: 'var(--gold-bg)', alignItems: 'baseline' }}>
+            <span>
+              Fabbisogno giornaliero
+              <span className="muted small" style={{ display: 'block' }}>{Math.round(basale)} × {factor}</span>
+            </span>
+            <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 24, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(basale * factor)} <span style={{ fontSize: 13, fontFamily: 'var(--f-testo)', fontWeight: 500 }}>kcal</span>
+            </span>
+          </div>
+        )
+      })()}
     </div>
   )
 }
