@@ -39,12 +39,12 @@ function Freschezza({ ms, n, caduta }: { ms: number | null; n: number; caduta: n
 }
 
 const TYPE_LABEL: Record<CardioType, string> = {
-  corsa: 'Corsa', camminata: 'Camminata', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',
+  corsa: 'Corsa', camminata: 'Camminata', tapis: 'Tapis roulant', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
 const TYPES = Object.keys(TYPE_LABEL) as CardioType[]
 const TYPE_ICON: Record<CardioType, string> = {
-  corsa: '🏃', camminata: '🚶', cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
+  corsa: '🏃', camminata: '🚶', tapis: '🎽', cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
   hiit: '🔥', tabata: '⚡', liss: '🌊', intervalli: '⏱', altro: '•',
 }
 const INTERVAL_TYPES: CardioType[] = ['hiit', 'tabata', 'intervalli']
