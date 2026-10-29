@@ -43,8 +43,29 @@ const TYPE_LABEL: Record<CardioType, string> = {
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
 const TYPES = Object.keys(TYPE_LABEL) as CardioType[]
-const TYPE_ICON: Record<CardioType, string> = {
-  corsa: '🏃', camminata: '🚶', tapis: '🎽', cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
+/** I sei che si usano davvero, a vista; gli altri dentro «⋯ Altro». */
+const A_VISTA: CardioType[] = ['camminata', 'corsa', 'tapis', 'cyclette', 'ellittica', 'assaultbike']
+const NASCOSTI = TYPES.filter((t) => !A_VISTA.includes(t))
+/**
+ * Il tapis roulant non ha un'emoji: lo si disegna di lato, come si riconosce —
+ * il pianale lungo e spesso, il montante davanti, la console e il corrimano.
+ * Del colore del testo, cosi' diventa oro quando e' scelto.
+ */
+function IconaTapis() {
+  return (
+    <svg viewBox="0 0 24 20" width="24" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      {/* il pianale col nastro */}
+      <rect x="2" y="14" width="18.5" height="3.6" rx="1.8" fill="currentColor" fillOpacity=".25" />
+      {/* il montante, la console in cima, il corrimano verso chi corre */}
+      <path d="M19 14 L17.2 4" />
+      <path d="M14.8 3.6 L21.4 2.4" />
+      <path d="M17.7 7 L11.5 7" />
+    </svg>
+  )
+}
+
+const TYPE_ICON: Record<CardioType, React.ReactNode> = {
+  corsa: '🏃', camminata: '🚶', tapis: <IconaTapis />, cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
   hiit: '🔥', tabata: '⚡', liss: '🌊', intervalli: '⏱', altro: '•',
 }
 const INTERVAL_TYPES: CardioType[] = ['hiit', 'tabata', 'intervalli']
@@ -129,6 +150,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
   const [bpm, setBpm] = useState('')
   const [method, setMethod] = useState<CardioMethod>('hrr') // HRR default (blueprint); fallback a Standard se manca FC riposo
   const [ctype, setCtype] = useState<CardioType>('corsa')
+  const [tuttiTipi, setTuttiTipi] = useState(false)
 
   const liveZone = hr.bpm && (age || user?.hrMaxMeasured)
     ? computeCardioZone({ avgBpm: hr.bpm, age, restingHr: fcRiposo, method, maxHr: user?.hrMaxMeasured })
@@ -308,11 +330,18 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
                 {/* Tipo — griglia di icone compatta */}
                 <label className="fl">Tipo</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                  {TYPES.map((t) => (
+                  {/* Se il tipo scelto e' fra i nascosti, la parte resta aperta: si vede cosa hai scelto. */}
+                  {[...A_VISTA, ...(tuttiTipi || NASCOSTI.includes(ctype) ? NASCOSTI : [])].map((t) => (
                     <button key={t} onClick={() => chooseType(t)} style={{ padding: '5px 2px', textAlign: 'center', fontSize: 11.5, lineHeight: 1.2, borderRadius: 10, border: `1px solid ${ctype === t ? 'var(--gold)' : 'var(--line)'}`, color: ctype === t ? 'var(--gold)' : 'var(--text)', background: ctype === t ? 'rgba(217,178,74,.08)' : 'var(--surface)' }}>
-                      <span style={{ fontSize: 17, display: 'block', marginBottom: 1 }}>{TYPE_ICON[t]}</span>{TYPE_LABEL[t]}
+                      <span style={{ fontSize: 17, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 1 }}>{TYPE_ICON[t]}</span>{TYPE_LABEL[t]}
                     </button>
                   ))}
+                  {!NASCOSTI.includes(ctype) && (
+                    <button onClick={() => setTuttiTipi((v) => !v)} aria-expanded={tuttiTipi}
+                      style={{ gridColumn: '1 / -1', padding: '6px 0', fontSize: 12, borderRadius: 10, border: '1px solid var(--line)', background: 'transparent', color: 'var(--muted)' }}>
+                      {tuttiTipi ? 'Meno ▴' : '⋯ Altro · vogatore, HIIT, tabata…'}
+                    </button>
+                  )}
                 </div>
 
                 {FormulaToggle}
