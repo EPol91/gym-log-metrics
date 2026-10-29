@@ -535,6 +535,25 @@ export async function addExerciseEntry(sessionId: string, exerciseId: string): P
 }
 
 /**
+ * Sostituisce l'esercizio di una voce, solo in questa seduta: le serie gia'
+ * segnate restano e passano col nuovo (le hai fatte li'). Si ricorda l'originale
+ * della scheda; tornando a lui, il ricordo sparisce.
+ */
+export async function sostituisciEsercizio(entryId: string, nuovoId: string): Promise<void> {
+  await db.transaction('rw', db.exerciseEntries, async () => {
+    const e = await db.exerciseEntries.get(entryId)
+    if (!e || e.exerciseId === nuovoId) return
+    const originale = e.alPostoDi ?? e.exerciseId
+    await db.exerciseEntries.update(entryId, {
+      exerciseId: nuovoId,
+      // undefined toglie il campo: tornato all'originale, non c'e' piu' niente da ricordare.
+      alPostoDi: nuovoId === originale ? undefined : originale,
+      updatedAt: nowISO(),
+    })
+  })
+}
+
+/**
  * La seduta come la vedi: blocchi in fila, un esercizio singolo o un superset
  * intero. Il superset sta dove compare il suo primo esercizio, coi suoi dentro
  * nell'ordine del giro (A, B, C) — come nella schermata dell'allenamento.
@@ -871,4 +890,9 @@ export async function setSessionTimes(sessionId: string, startedAt: string, fini
 /** Scrive le letture della fascia dentro la seduta. Chiamata dal registratore. */
 export async function salvaLettureCuore(sessionId: string, serie: { t0: string; step: number; bpm: number[] }): Promise<void> {
   await db.sessions.update(sessionId, { hr: serie, updatedAt: nowISO() })
+}
+
+/** Un esercizio del catalogo, per id. */
+export async function getExercise(id: string): Promise<Exercise | undefined> {
+  return db.exercises.get(id)
 }

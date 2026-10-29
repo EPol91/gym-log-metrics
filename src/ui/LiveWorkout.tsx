@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   entriesOf, setsOf, addSet, updateSet, deleteSet, addExerciseEntry,
-  deleteExerciseEntry, moveExerciseEntry, moveInGroup, staccaDalGruppo, allExercises, groupEntries, ungroupEntries,
+  deleteExerciseEntry, sostituisciEsercizio, getExercise, moveExerciseEntry, moveInGroup, staccaDalGruppo, allExercises, groupEntries, ungroupEntries,
   lastWorkingSet, getUser, getSession, getTemplate, updateSessionNotes, setExerciseRest, historicalBestE1rm, exerciseHistory, serieDellaScorsa, setExerciseSettings,
   setExerciseInclinazione, setExerciseFoto,
 } from '../db/repo'
@@ -519,15 +519,24 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
   const [dischi, setDischi] = useState(false)
   const [fotoGrande, setFotoGrande] = useState(false)
   const [altro, setAltro] = useState(false)
+  const [sostituisci, setSostituisci] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
+  // Sostituito in questa seduta: l'originale della scheda, per il nome e per la
+  // prescrizione del coach, che vale ancora. E il muscolo, per il filtro.
+  const originale = useLiveQuery(async () => (entry.alPostoDi ? (await getExercise(entry.alPostoDi)) ?? null : null), [entry.alPostoDi])
+  const attuale = useLiveQuery(() => getExercise(entry.exerciseId), [entry.exerciseId])
   // Le note stanno in un campo solo, ma sono di due mani diverse: quelle del
   // coach cominciano col 🦠 e le scrive l'import, le altre le scrivi tu.
   const righe = (settings ?? '').split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean)
   const righeCoach = righe.filter((x) => x.startsWith('🦠'))
   const mieNote = righe.filter((x) => !x.startsWith('🦠')).join(String.fromCharCode(10))
+  // Quelle da mostrare: dell'originale, se l'hai sostituito e lui le aveva.
+  // Si salvano invece sempre le sue, sull'esercizio che stai facendo.
+  const coachOriginale = (originale?.settings ?? '').split(String.fromCharCode(10)).map((x) => x.trim()).filter((x) => x.startsWith('🦠'))
+  const coachMostrate = coachOriginale.length ? coachOriginale : righeCoach
   // Lo stesso esercizio in due sedute del coach: una colonna per seduta, larga
   // quanto il suo testo. Quella di oggi piena, l'altra attenuata.
-  const colonne = righeCoach.map(rigaCoach)
+  const colonne = coachMostrate.map(rigaCoach)
   const affiancate = colonne.length > 1 && colonne.every(Boolean)
   const oggi = useLiveQuery(async () => {
     const s = await getSession(entry.sessionId)
@@ -538,6 +547,14 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
 
   return (
     <>
+      {/* Sostituito: si vede cosa c'era nella scheda, e si torna con un tocco. */}
+      {originale && (
+        <div className="row" style={{ gap: 8, justifyContent: 'center', alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <span className="muted small">⇄ al posto di <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{originale.name}</strong></span>
+          <button className="chip" style={{ padding: '2px 9px', fontSize: 11.5 }}
+            onClick={() => void sostituisciEsercizio(entry.id, originale.id)}>↺ torna</button>
+        </div>
+      )}
       {/* Sei tasti uguali, a icona: regolazioni, storico, superset, su, giu' e
           «⋯». Le cose che servono una volta ogni tanto — inclinazione, dischi,
           togliere l'esercizio — stanno dentro «⋯». Prima erano otto emoji in
@@ -574,11 +591,19 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
           {/* I dischi da caricare: 82,5 kg col bilanciere da 20 sono 31,25 per
               lato, e farlo a mente fra due serie e' come si sbaglia carico. */}
           <button className="chip" onClick={() => { setAltro(false); setDischi(true) }}>⚖ Dischi</button>
+          {/* Un'altra macchina per lo stesso lavoro, solo oggi: la scheda resta. */}
+          <button className="chip" onClick={() => { setAltro(false); setSostituisci(true) }}>⇄ Sostituisci</button>
           <button className="chip" style={{ color: '#e57373' }}
             onClick={() => { setAltro(false); if (confirm(`Rimuovere ${name}?`)) deleteWithUndo(`${name} rimosso dalla seduta`, () => deleteExerciseEntry(entry.id)) }}>
             🗑 Rimuovi esercizio
           </button>
         </div>
+      )}
+      {sostituisci && (
+        <ExercisePicker titolo={`Al posto di ${originale?.name ?? name}`}
+          muscolo={(originale ?? attuale)?.muscle ?? null}
+          onPick={async (id) => { await sostituisciEsercizio(entry.id, id); setSostituisci(false) }}
+          onClose={() => setSostituisci(false)} />
       )}
       {/* Chiuse, si vedono lo stesso: sono due righe, e servono mentre carichi. */}
       {!showSettings && (mieNote || foto || inclinazione != null) && (
@@ -593,7 +618,7 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
       )}
       {/* La prescrizione si tocca per aprire la scheda intera del coach: il
           tasto 🦠 nella fila non serve piu'. */}
-      {!showCoach && righeCoach.length > 0 && (
+      {!showCoach && coachMostrate.length > 0 && (
         <button onClick={() => { setShowCoach(true); setShowSettings(false) }}
           style={{ background: 'none', border: 0, padding: 0, borderRadius: 0, fontSize: 12.5, color: '#e9776d', textAlign: 'center', lineHeight: 1.45, ...(affiancate ? { width: '100%' } : {}) }}>
           {affiancate ? (
@@ -609,7 +634,7 @@ function StrumentiEsercizio({ entry, name, settings, inclinazione, foto, peso, i
                 </span>
               ))}
             </span>
-          ) : righeCoach.join(' · ')}
+          ) : coachMostrate.join(' · ')}
         </button>
       )}
       {showSettings && (
@@ -1184,6 +1209,8 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
 
   const restDefault = user?.restDefaultSec ?? 90
   const restOf = (id: string) => exercises.find((e) => e.id === id)?.restSec ?? restDefault
+  // Sostituito: il recupero resta quello prescritto per l'esercizio della scheda.
+  const restOfEntry = (e: ExerciseEntry) => (e.alPostoDi ? exercises.find((x) => x.id === e.alPostoDi)?.restSec : undefined) ?? restOf(e.exerciseId)
   // Store del timer: vive nel modulo, quindi regge sia il cambio esercizio sia
   // il giro al Riepilogo, che smonta tutta questa schermata.
   const restStore = storeRecupero(sessionId)
@@ -1234,7 +1261,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
             return { settings: x?.settings ?? '', inclinazione: x?.inclinazione, foto: x?.foto }
           }}
           onStacca={(entryId) => { void staccaDalGruppo(entryId) }}
-          restSec={restOf(block.entries[0].exerciseId)}
+          restSec={restOfEntry(block.entries[0])}
           pos={current + 1} total={blocks.length}
           restNode={restNode}
           onLogged={startRest}
@@ -1246,7 +1273,7 @@ export function LiveWorkout({ sessionId, onFinish, onHome, jumpTo }: {
           settings={exercises.find((x) => x.id === block.entry.exerciseId)?.settings ?? ''}
           inclinazione={exercises.find((x) => x.id === block.entry.exerciseId)?.inclinazione}
           foto={exercises.find((x) => x.id === block.entry.exerciseId)?.foto}
-          sessionId={sessionId} restSec={restOf(block.entry.exerciseId)}
+          sessionId={sessionId} restSec={restOfEntry(block.entry)}
           pos={current + 1} total={blocks.length}
           restNode={restNode}
           isFirst={current === 0} isLast={current === blocks.length - 1} onLogged={startRest}

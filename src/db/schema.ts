@@ -280,6 +280,12 @@ export interface ExerciseEntry extends BaseRecord {
   groupId?: ID
   /** Posizione dentro il gruppo: 0 = A, 1 = B, 2 = C. */
   groupOrder?: number
+  /**
+   * L'esercizio della scheda che questo ha sostituito, solo in questa seduta
+   * («Horizontal calf press al posto di Standing calf raises»). La scheda non
+   * cambia; la prescrizione del coach resta quella dell'originale.
+   */
+  alPostoDi?: ID
 }
 
 /** Una serie. RPE opzionale (fallback su e1RM). PR è derivato → NON salvato qui, calcolato. */

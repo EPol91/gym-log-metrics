@@ -6,12 +6,17 @@ import { allExercises, getOrCreateExercise } from '../db/repo'
 import { normalizeName } from '../db/catalog'
 import type { Exercise, MuscleGroup } from '../db/schema'
 
-export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
+export function ExercisePicker({ onPick, onClose, titolo = 'Aggiungi esercizio', muscolo = null }: {
+  onPick: (id: string) => void; onClose: () => void
+  titolo?: string
+  /** il filtro con cui si apre: per sostituire, il muscolo dell'esercizio di prima */
+  muscolo?: MuscleGroup | null
+}) {
   // La pagina sotto non scorre finché questa è aperta.
   useBloccoScroll()
   useIndietro(onClose)
   const [q, setQ] = useState('')
-  const [muscle, setMuscle] = useState<MuscleGroup | null>(null)
+  const [muscle, setMuscle] = useState<MuscleGroup | null>(muscolo)
   const list = useLiveQuery(allExercises, []) ?? []
   const nq = normalizeName(q)
   const muscles = [...new Set(list.map((e) => e.muscle))]
@@ -40,7 +45,7 @@ export function ExercisePicker({ onPick, onClose }: { onPick: (id: string) => vo
           padding: '14px 16px', margin: '0 8px',
         }}>
         <div className="row spread" style={{ alignItems: 'center' }}>
-          <strong>Aggiungi esercizio</strong>
+          <strong>{titolo}</strong>
           <button className="ghost" style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }} onClick={onClose}>✕</button>
         </div>
 
