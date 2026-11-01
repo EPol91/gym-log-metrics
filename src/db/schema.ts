@@ -646,6 +646,14 @@ export interface WhoopDay extends BaseRecord {
   sleepEnd?: ISODateTime
   sleepEfficiency?: number
   respiratoryRate?: number
+  /** Le fasi della notte, in minuti, come le conta WHOOP. Profondo = SWS. */
+  sleepLightMin?: number
+  sleepDeepMin?: number
+  sleepRemMin?: number
+  /** Sveglio mentre eri a letto. */
+  sleepAwakeMin?: number
+  /** Quanto sonno ti serviva quella notte: base + debito + sforzo recente − pisolini. */
+  sleepNeededMin?: number
   /** 0-21 */
   strain?: number
   kcal?: number

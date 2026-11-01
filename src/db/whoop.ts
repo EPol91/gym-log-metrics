@@ -106,7 +106,20 @@ const giorno = (iso: string): string => {
 
 interface CycleRec { id: number; start: string; end?: string; score_state?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number } }
 interface RecoveryRec { cycle_id: number; sleep_id?: string; score_state?: string; score?: { recovery_score?: number; resting_heart_rate?: number; hrv_rmssd_milli?: number; spo2_percentage?: number; skin_temp_celsius?: number } }
-interface SleepRec { id: string; start: string; end: string; nap?: boolean; score_state?: string; score?: { respiratory_rate?: number; sleep_performance_percentage?: number; sleep_efficiency_percentage?: number; stage_summary?: { total_in_bed_time_milli?: number; total_awake_time_milli?: number } } }
+interface SleepRec {
+  id: string; start: string; end: string; nap?: boolean; score_state?: string
+  score?: {
+    respiratory_rate?: number; sleep_performance_percentage?: number; sleep_efficiency_percentage?: number
+    stage_summary?: {
+      total_in_bed_time_milli?: number; total_awake_time_milli?: number
+      total_light_sleep_time_milli?: number; total_slow_wave_sleep_time_milli?: number; total_rem_sleep_time_milli?: number
+    }
+    sleep_needed?: {
+      baseline_milli?: number; need_from_sleep_debt_milli?: number
+      need_from_recent_strain_milli?: number; need_from_recent_nap_milli?: number
+    }
+  }
+}
 interface WorkoutRec { id: string; start: string; end: string; sport_name?: string; score?: { strain?: number; kilojoule?: number; average_heart_rate?: number; max_heart_rate?: number; distance_meter?: number } }
 
 /** Toglie i campi vuoti, così un dato che non c'è non cancella quello che c'era. */
@@ -133,6 +146,26 @@ function giornoDelCiclo(c: CycleRec, sonnoPerCiclo: Map<number, SleepRec>): stri
 }
 
 const kcalDa = (kj?: number) => (kj != null ? Math.round(kj / 4.184) : undefined)
+const minuti = (ms?: number) => (ms != null ? Math.round(ms / 60_000) : undefined)
+
+/**
+ * Le fasi di una notte in minuti, e il sonno che ti serviva. Il richiesto e' la
+ * somma delle sue voci (il pisolino conta in meno): senza la base non c'e'.
+ */
+export function fasiDelSonno(s: SleepRec): Pick<WhoopDay, 'sleepLightMin' | 'sleepDeepMin' | 'sleepRemMin' | 'sleepAwakeMin' | 'sleepNeededMin'> {
+  const f = s.score?.stage_summary
+  const n = s.score?.sleep_needed
+  const richiesto = n?.baseline_milli != null
+    ? n.baseline_milli + (n.need_from_sleep_debt_milli ?? 0) + (n.need_from_recent_strain_milli ?? 0) + (n.need_from_recent_nap_milli ?? 0)
+    : undefined
+  return {
+    sleepLightMin: minuti(f?.total_light_sleep_time_milli),
+    sleepDeepMin: minuti(f?.total_slow_wave_sleep_time_milli),
+    sleepRemMin: minuti(f?.total_rem_sleep_time_milli),
+    sleepAwakeMin: minuti(f?.total_awake_time_milli),
+    sleepNeededMin: minuti(richiesto),
+  }
+}
 const arrotonda = (v: number | undefined, d = 1) => (v != null ? Math.round(v * 10 ** d) / 10 ** d : undefined)
 
 /**
@@ -202,6 +235,7 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
     g.sleepPerf = arrotonda(s.score?.sleep_performance_percentage, 0)
     g.sleepEfficiency = arrotonda(s.score?.sleep_efficiency_percentage, 0)
     g.respiratoryRate = arrotonda(s.score?.respiratory_rate)
+    Object.assign(g, fasiDelSonno(s))
   }
 
   const ts = nowISO()
@@ -236,6 +270,36 @@ export async function syncWhoop(giorni = 30): Promise<{ giorni: number; allename
   if (righeW.length) await db.whoopWorkouts.bulkPut(righeW)
 
   return { giorni: righe.length, allenamenti: righeW.length, troncato }
+}
+
+/**
+ * Le fasi del sonno sullo storico: prima non si salvavano, e i giorni passati ne
+ * restavano senza. Rilegge solo i sonni dal 30.03.2026 e scrive solo le fasi:
+ * recupero, sforzo e il resto restano come sono.
+ */
+const FASI_DAL = '2026-03-30'
+const FASI_FATTE = 'whoop-fasi-sonno-v1'
+
+export async function ripopolaFasiSonno(): Promise<number> {
+  const { righe: sonni } = await tutte<SleepRec>('/v2/activity/sleep', new Date(`${FASI_DAL}T00:00:00`).toISOString())
+  const esistenti = await db.whoopDays.where('userId').equals(U).toArray()
+  const perData = new Map(esistenti.map((d) => [d.date, d]))
+  const ts = nowISO()
+  const righe = new Map<string, WhoopDay>()
+  for (const s of sonni) {
+    if (s.nap || !s.score) continue
+    const data = giorno(s.end)
+    if (data < FASI_DAL) continue
+    const fasi = senzaVuoti(fasiDelSonno(s))
+    if (!Object.keys(fasi).length) continue
+    const vecchia = perData.get(data)
+    righe.set(data, {
+      ...(vecchia ?? { id: newId(), userId: U, createdAt: ts, date: data, syncedAt: ts }),
+      ...fasi, updatedAt: ts,
+    } as WhoopDay)
+  }
+  if (righe.size) await db.whoopDays.bulkPut([...righe.values()])
+  return righe.size
 }
 
 // --- Letture ----------------------------------------------------------------
@@ -328,6 +392,13 @@ export async function autoSyncWhoop(): Promise<boolean> {
   try {
     await syncWhoop(14)
     localStorage.setItem(AUTO_AT, nowISO())
+    // Una volta sola: le fasi dei giorni passati. Se non riesce, si riprova la prossima.
+    if (!localStorage.getItem(FASI_FATTE)) {
+      try {
+        await ripopolaFasiSonno()
+        localStorage.setItem(FASI_FATTE, nowISO())
+      } catch { /* si riprova al prossimo giro */ }
+    }
     return true
   } catch {
     // Niente rumore: e' un aggiornamento di cortesia, non un'azione che hai chiesto.
