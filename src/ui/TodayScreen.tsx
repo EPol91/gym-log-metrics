@@ -11,6 +11,7 @@ import { SEDUTE_RS } from '../rs/protocollo'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre, fmtData } from '../util/format'
+import { BarraFasi, haFasi, fmtMin } from './FasiSonno'
 import { ScoreRing } from './anim'
 import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
@@ -182,7 +183,18 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
           {/* Tocca i numeri e vai all'andamento: il tasto «Andamento ›» rubava una riga. */}
           <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 6, cursor: 'pointer' }}>
             {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero', 'var(--gold)')}
-            {cella(fmtOre(d!.sleepHours), 'sonno')}
+            {/* Con le fasi: quanto hai dormito su quanto ti serviva, e la barra
+                delle fasi al posto della scritta. Una riga in piu' non ci sta:
+                Oggi deve restare in una schermata. Il dettaglio e' in Vitali. */}
+            {haFasi(d) ? (
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                <div style={{ ...NUM, fontSize: 23, lineHeight: 1, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                  {fmtMin(d!.sleepHours != null ? d!.sleepHours * 60 : undefined)}
+                  {d!.sleepNeededMin != null && <span style={{ fontSize: 12, color: 'var(--muted)' }}>/{fmtMin(d!.sleepNeededMin)}</span>}
+                </div>
+                <div style={{ margin: '5px 6px 0' }}><BarraFasi d={d!} alta={5} /></div>
+              </div>
+            ) : cella(fmtOre(d!.sleepHours), 'sonno')}
             {cella(d!.strain != null ? virgola(d!.strain) : '—', 'sforzo')}
             {cella(d!.hrv != null ? `${d!.hrv}` : '—', 'HRV')}
           </div>

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fasi del sonno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --amber: #e0a030;
+    --leggero: #8e9be0; --profondo: #3d4fb8; --rem: #b07be0; --sveglio: #4a4740;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 14px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .card.nuova { border-color: #4a3e18; box-shadow: inset 0 1px 0 #ffffff08, 0 0 0 1px #4a3e1866; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .seg { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; border-radius: 999px; color: var(--muted); }
+  .seg span.on { background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .nuovo { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px solid #4a3e18; background: var(--gold-bg); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 9px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+
+  /* barra delle fasi */
+  .fasi { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 1px; }
+  .fasi i { display: block; height: 100%; }
+  .L { background: var(--leggero); } .D { background: var(--profondo); } .R { background: var(--rem); } .S { background: var(--sveglio); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); }
+  .legenda b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  .legenda .num { color: var(--text); font-size: 14px; margin-left: 3px; }
+
+  /* Vitali: una notte per riga */
+  .notti { display: grid; gap: 7px; margin-top: 8px; }
+  .notte { display: grid; grid-template-columns: 16px 1fr 44px; gap: 8px; align-items: center; }
+  .notte .g { font-size: 11.5px; color: var(--muted); text-align: center; }
+  .notte .g.oggi { color: var(--gold); font-weight: 700; }
+  .notte .pista { position: relative; }
+  .notte .fasi { height: 14px; border-radius: 4px; }
+  .richiesto { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gold); border-radius: 1px; }
+  .notte .h { font-family: var(--f-num); font-weight: 600; font-size: 15px; text-align: right; }
+  .notte .h.corto { color: var(--amber); }
+  .medie { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line-soft); }
+  .medie div { text-align: center; }
+  .medie .num { font-size: 19px; display: block; line-height: 1.1; }
+  .medie small { font-size: 10.5px; color: var(--muted); }
+
+  /* Oggi */
+  .grande { font-family: var(--f-num); font-weight: 600; font-size: 34px; line-height: 1; }
+  .tre { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .tre .num { font-size: 22px; display: block; line-height: 1.1; }
+  .tre small { font-size: 10.5px; color: var(--muted); }
+
+  /* Tempo */
+  .fascia { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+  .fascia:first-of-type { border-top: 0; }
+  .fascia .t { font-size: 12.5px; font-weight: 600; }
+  .fascia .t small { display: block; font-weight: 400; color: var(--muted); font-size: 10.5px; }
+  .barra { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .barra i { display: block; height: 100%; background: var(--good); border-radius: 4px; }
+  .cifre { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .cifre .num { color: var(--text); font-size: 14px; }
+  .meglio { color: var(--good) !important; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="ey">Mockup · fasi del sonno WHOOP</div>
+  <h1>Dove si vedono leggero, profondo, REM e sonno richiesto</h1>
+  <p>Tre punti, nessun dato inventato: sono i campi che la sincronizzazione salva già (bc13fa4). Le parti nuove hanno il bordo oro e la scritta «nuovo». Numeri di esempio.</p>
+</div>
+
+<div class="telefoni">
+
+  <!-- 1. VITALI -->
+  <div class="blocco">
+    <div class="nome">1 · Salute → Vitali</div>
+    <div class="tel"><div class="stato"><span>8:12</span><span>●●● 82%</span></div>
+      <div class="utile"><div class="contenuto">
+        <h2 style="font-size:24px">Vitali</h2>
+        <div class="seg"><span>7g</span><span class="on">Sett</span><span>30g</span><span>90g</span><span>6 mesi</span></div>
+        <div class="riga spazia" style="font-size:12.5px; white-space:nowrap"><span class="muted">‹</span><span>Questa settimana · lun 26 ott → dom 1 nov</span><span class="muted">›</span></div>
+
+        <div class="card nuova">
+          <div class="riga spazia"><span class="eyebrow">Sonno · fasi per notte</span><span class="nuovo">nuovo</span></div>
+          <div class="notti">
+            <div class="notte"><span class="g">L</span><div class="pista"><div class="fasi"><i class="L" style="width:44%"></i><i class="D" style="width:20%"></i><i class="R" style="width:24%"></i><i class="S" style="width:6%"></i></div><span class="richiesto" style="left:97%"></span></div><span class="h">7h31</span></div>
+            <div class="notte"><span class="g">M</span><div class="pista"><div class="fasi"><i class="L" style="width:40%"></i><i class="D" style="width:17%"></i><i class="R" style="width:19%"></i><i class="S" style="width:7%"></i></div><span class="richiesto" style="left:95%"></span></div><span class="h corto">6h22</span></div>
+            <div class="notte"><span class="g">M</span><div class="pista"><div class="fasi"><i class="L" style="width:45%"></i><i class="D" style="width:21%"></i><i class="R" style="width:23%"></i><i class="S" style="width:5%"></i></div><span class="richiesto" style="left:96%"></span></div><span class="h">7h40</span></div>
+            <div class="notte"><span class="g">G</span><div class="pista"><div class="fasi"><i class="L" style="width:42%"></i><i class="D" style="width:22%"></i><i class="R" style="width:26%"></i><i class="S" style="width:6%"></i></div><span class="richiesto" style="left:94%"></span></div><span class="h">7h52</span></div>
+            <div class="notte"><span class="g">V</span><div class="pista"><div class="fasi"><i class="L" style="width:38%"></i><i class="D" style="width:16%"></i><i class="R" style="width:18%"></i><i class="S" style="width:9%"></i></div><span class="richiesto" style="left:98%"></span></div><span class="h corto">6h05</span></div>
+            <div class="notte"><span class="g">S</span><div class="pista"><div class="fasi"><i class="L" style="width:48%"></i><i class="D" style="width:23%"></i><i class="R" style="width:25%"></i><i class="S" style="width:4%"></i></div><span class="richiesto" style="left:93%"></span></div><span class="h">8h21</span></div>
+            <div class="notte"><span class="g oggi">D</span><div class="pista"><div class="fasi"><i class="L" style="width:43%"></i><i class="D" style="width:19%"></i><i class="R" style="width:24%"></i><i class="S" style="width:6%"></i></div><span class="richiesto" style="left:96%"></span></div><span class="h">7h12</span></div>
+          </div>
+          <div class="legenda" style="margin-top:10px">
+            <span><b class="L"></b>Leggero</span><span><b class="D"></b>Profondo</span><span><b class="R"></b>REM</span><span><b class="S"></b>Sveglio</span><span><b style="background:var(--gold);width:2px;height:10px;border-radius:1px"></b>Richiesto</span>
+          </div>
+          <div class="medie">
+            <div><span class="num" style="color:var(--leggero)">3h38</span><small>leggero</small></div>
+            <div><span class="num" style="color:#7d8ce6">1h36</span><small>profondo</small></div>
+            <div><span class="num" style="color:var(--rem)">1h49</span><small>REM</small></div>
+            <div><span class="num">8h05</span><small>richiesto</small></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="riga spazia"><span class="eyebrow">Recupero</span><span class="num" style="font-size:18px; color:var(--good)">66%</span></div>
+          <div class="muted" style="font-size:12px; margin-top:4px">HRV, battito a riposo… come oggi</div>
+        </div>
+      </div>
+      <div class="tab"><div>Oggi</div><div>Cibo</div><div>Allena</div><div class="on">Salute</div><div>RS</div><div>Profilo</div></div></div>
+    </div>
+    <ul class="note">
+      <li>Una barra per notte, lunga quanto il tempo a letto; il segno oro è il sonno richiesto.</li>
+      <li>Ore in ambra quando hai dormito meno di 7: le stesse soglie di adesso.</li>
+      <li>Con 30g / 90g / 6 mesi le righe diventano troppe: lì restano solo le medie in basso.</li>
+    </ul>
+  </div>
+
+  <!-- 2. OGGI -->
+  <div class="blocco">
+    <div class="nome">2 · Oggi → riquadro WHOOP</div>
+    <div class="tel"><div class="stato"><span>8:12</span><span>●●● 82%</span></div>
+      <div class="utile"><div class="contenuto">
+        <div class="riga spazia"><h2 style="font-size:24px">Ciao Emanuel</h2><span class="muted" style="font-size:12.5px">dom 1 nov</span></div>
+        <div class="card"><div class="eyebrow">Allenamento</div><div style="font-size:13.5px; margin-top:4px">D5 · obiettivo ciclo 3 / 5</div></div>
+
+        <div class="card nuova">
+          <div class="riga spazia"><span class="eyebrow">Vitali · WHOOP</span><span class="nuovo">nuovo</span></div>
+          <div class="tre" style="margin-top:8px">
+            <div><span class="num" style="color:var(--good)">66%</span><small>recupero</small></div>
+            <div><span class="num">58</span><small>HRV</small></div>
+            <div><span class="num">4,2</span><small>sforzo</small></div>
+          </div>
+          <div style="margin-top:10px; padding-top:9px; border-top:1px solid var(--line-soft)">
+            <div class="riga spazia" style="align-items:baseline">
+              <span style="font-size:13px">Sonno</span>
+              <span><span class="grande" style="font-size:24px">7h12</span> <span class="muted" style="font-size:12.5px">su 8h05 richieste</span></span>
+            </div>
+            <div class="fasi" style="margin-top:7px"><i class="L" style="width:46%"></i><i class="D" style="width:21%"></i><i class="R" style="width:26%"></i><i class="S" style="width:7%"></i></div>
+            <div class="legenda" style="margin-top:6px">
+              <span><b class="L"></b>Legg.<span class="num">3h21</span></span>
+              <span><b class="D"></b>Prof.<span class="num">1h31</span></span>
+              <span><b class="R"></b>REM<span class="num">1h52</span></span>
+              <span><b class="S"></b>Sv.<span class="num">28′</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card"><div class="eyebrow">Nutrizione</div><div class="riga spazia" style="margin-top:4px"><span class="num" style="font-size:20px">0 <small class="muted" style="font-size:12px">/ 2947 kcal</small></span><span class="muted" style="font-size:12px">LOW ON</span></div></div>
+        <div class="card"><div class="riga spazia"><span class="eyebrow">Corpo</span><span class="num" style="font-size:18px">91,4 kg</span></div></div>
+        <div class="card"><div class="riga spazia"><span class="eyebrow">Passi</span><span class="num" style="font-size:18px">1.240 <small class="muted" style="font-size:12px">di 10.000</small></span></div></div>
+      </div>
+      <div class="tab"><div class="on">Oggi</div><div>Cibo</div><div>Allena</div><div>Salute</div><div>RS</div><div>Profilo</div></div></div>
+    </div>
+    <ul class="note">
+      <li>Al posto delle sole ore: quanto hai dormito contro quanto ti serviva.</li>
+      <li>Una riga sola in più (barra + 4 cifre): Oggi resta in una schermata a 360×700.</li>
+      <li>Se WHOOP non ha il richiesto, resta «7h12» come adesso.</li>
+    </ul>
+  </div>
+
+  <!-- 3. TEMPO -->
+  <div class="blocco">
+    <div class="nome">3 · Salute → Tempo</div>
+    <div class="tel"><div class="stato"><span>8:12</span><span>●●● 82%</span></div>
+      <div class="utile"><div class="contenuto">
+        <h2 style="font-size:24px">Tempo</h2>
+        <div class="card"><div class="eyebrow">Stasera</div><div style="font-size:13.5px; margin-top:4px">Cena entro le 20:30 · a letto alle 23:00</div></div>
+
+        <div class="card nuova">
+          <div class="riga spazia"><span class="eyebrow">Cena → letto</span><span class="nuovo">fasi</span></div>
+          <div class="muted" style="font-size:12px; margin:4px 0 2px">Recupero del mattino dopo, e cosa cambia nel sonno.</div>
+
+          <div class="fascia"><div class="t">&lt; 1h30<small>9 sere</small></div>
+            <div><div class="riga spazia" style="font-size:12px"><span class="muted">recupero</span><span class="num" style="font-size:15px">54%</span></div><div class="barra"><i style="width:54%"></i></div>
+              <div class="cifre"><span>prof. <span class="num">1h18</span></span><span>REM <span class="num">1h34</span></span></div></div></div>
+
+          <div class="fascia"><div class="t">1h30–2h<small>12 sere</small></div>
+            <div><div class="riga spazia" style="font-size:12px"><span class="muted">recupero</span><span class="num" style="font-size:15px">61%</span></div><div class="barra"><i style="width:61%"></i></div>
+              <div class="cifre"><span>prof. <span class="num">1h29</span></span><span>REM <span class="num">1h45</span></span></div></div></div>
+
+          <div class="fascia"><div class="t">≥ 2h<small>7 sere</small></div>
+            <div><div class="riga spazia" style="font-size:12px"><span class="muted">recupero</span><span class="num meglio" style="font-size:15px">68%</span></div><div class="barra"><i style="width:68%"></i></div>
+              <div class="cifre"><span>prof. <span class="num meglio">1h41</span></span><span>REM <span class="num meglio">1h56</span></span></div></div></div>
+        </div>
+
+        <div class="card"><div class="eyebrow">Allenamento → cena</div><div class="muted" style="font-size:12px; margin-top:4px">uguale, con le stesse due cifre sotto</div></div>
+      </div>
+      <div class="tab"><div>Oggi</div><div>Cibo</div><div>Allena</div><div class="on">Salute</div><div>RS</div><div>Profilo</div></div></div>
+    </div>
+    <ul class="note">
+      <li>Sotto ogni fascia, profondo e REM medi della notte dopo.</li>
+      <li>In verde solo dove la differenza conta (stessa soglia di adesso).</li>
+      <li>Stesse regole: sotto le 5 sere per fascia resta l'avviso «pochi dati».</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

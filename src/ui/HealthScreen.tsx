@@ -8,6 +8,7 @@ import { whoopTrend } from '../db/whoop'
 import type { WhoopDay } from '../db/schema'
 import { todayLocal, shiftDate, lunediDi, etichettaSettimana } from '../util/date'
 import { fmtData } from '../util/format'
+import { BarraFasi, LegendaFasi, FASI, haFasi, fmtMin, aLetto } from './FasiSonno'
 
 type Sub = 'vitali' | 'body' | 'habits' | 'tempo'
 
@@ -152,6 +153,7 @@ function Vitali() {
         colore="var(--gold)" suffisso="%" zone />
       <Grafico titolo="HRV" righe={righe} sedute={d.sedute} prendi={(r) => r.hrv}
         colore="var(--prot)" suffisso=" ms" bande />
+      <CardFasi righe={righe} giorni={periodo === 'sett' || periodo === '7g' ? Array.from({ length: 7 }, (_, i) => shiftDate(da, i)) : null} oggi={oggi} />
       <Grafico titolo="Sonno" righe={righe} sedute={d.sedute} prendi={(r) => r.sleepHours}
         colore="var(--gold-dim)" suffisso="h" barre media formato={oreMinuti} />
       <Grafico titolo="Sforzo" righe={righe} sedute={d.sedute} prendi={(r) => r.strain}
@@ -176,6 +178,72 @@ function Vitali() {
         </p>
       </div>
     </>
+  )
+}
+
+const LETTERE = ['D', 'L', 'M', 'M', 'G', 'V', 'S']
+
+/**
+ * Le fasi del sonno. Con una settimana davanti, una barra per notte lunga quanto
+ * il tempo a letto, col segno oro del sonno richiesto; su periodi lunghi le righe
+ * sarebbero troppe e restano solo le medie.
+ */
+function CardFasi({ righe, giorni, oggi }: { righe: WhoopDay[]; giorni: string[] | null; oggi: string }) {
+  const con = righe.filter(haFasi)
+  if (!con.length) return null
+  const media = (f: (r: WhoopDay) => number | undefined) => {
+    const v = con.map(f).filter((x): x is number => x != null)
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined
+  }
+  const perData = new Map(righe.map((r) => [r.date, r]))
+  const scala = Math.max(...con.map((r) => Math.max(aLetto(r), r.sleepNeededMin ?? 0)))
+  const richiesto = media((r) => r.sleepNeededMin)
+  return (
+    <div className="card">
+      <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+        Sonno · fasi{giorni ? ' per notte' : ` · media di ${con.length} notti`}
+      </div>
+      {giorni && (
+        <div style={{ display: 'grid', gap: 7, marginBottom: 10 }}>
+          {giorni.map((g) => {
+            const r = perData.get(g)
+            const dormito = r && haFasi(r) ? r.sleepHours : undefined
+            const corto = dormito != null && r?.sleepNeededMin != null && dormito * 60 < r.sleepNeededMin
+            return (
+              <div key={g} style={{ display: 'grid', gridTemplateColumns: '16px 1fr 44px', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11.5, textAlign: 'center', color: g === oggi ? 'var(--gold)' : 'var(--muted)', fontWeight: g === oggi ? 700 : 400 }}>
+                  {LETTERE[new Date(g + 'T12:00:00').getDay()]}
+                </span>
+                <div style={{ position: 'relative' }}>
+                  {r && haFasi(r) ? <BarraFasi d={r} alta={14} scala={scala} /> : <div style={{ height: 14, borderRadius: 4, border: '1px dashed #3a3730' }} />}
+                  {r?.sleepNeededMin != null && haFasi(r) && (
+                    <span style={{ position: 'absolute', top: -3, bottom: -3, width: 2, borderRadius: 1, background: 'var(--gold)', left: `${Math.min(99, (r.sleepNeededMin / scala) * 100)}%` }} />
+                  )}
+                </div>
+                <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 15, textAlign: 'right', color: corto ? '#e0a030' : dormito != null ? 'var(--text)' : 'var(--faint)' }}>
+                  {dormito != null ? oreMinuti(dormito) : '—'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11.5, color: 'var(--muted)' }}>
+        {giorni ? <>
+          <LegendaFasi />
+          <span style={{ whiteSpace: 'nowrap' }}><b style={{ display: 'inline-block', width: 2, height: 10, background: 'var(--gold)', marginRight: 5, verticalAlign: -1 }} />Richiesto</span>
+        </> : <BarraFasi d={{ sleepLightMin: media((r) => r.sleepLightMin), sleepDeepMin: media((r) => r.sleepDeepMin), sleepRemMin: media((r) => r.sleepRemMin), sleepAwakeMin: media((r) => r.sleepAwakeMin) }} alta={12} />}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--line-soft)', textAlign: 'center' }}>
+        {[...FASI.slice(0, 3).map((f) => ({ v: media((r) => r[f.k]), l: f.nome.toLowerCase(), c: f.colore })), { v: richiesto, l: 'richiesto', c: 'var(--text)' }].map((x) => (
+          <div key={x.l}>
+            <div style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 19, lineHeight: 1.1, color: x.c === '#3d4fb8' ? '#7d8ce6' : x.c }}>{fmtMin(x.v)}</div>
+            <div className="muted" style={{ fontSize: 10.5 }}>{x.l === 'rem' ? 'REM' : x.l}</div>
+          </div>
+        ))}
+      </div>
+      {!giorni && <div style={{ marginTop: 8 }}><LegendaFasi corta /></div>}
+    </div>
   )
 }
 

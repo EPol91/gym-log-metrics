@@ -8,6 +8,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { imparato, MINIMO, type Fascia, type Scoperta } from '../tempo/impara'
 import { durata } from '../tempo/giornata'
 import { hhmm } from '../tempo/orari'
+import { fmtMin } from './FasiSonno'
 
 /** Come si dice ogni fascia dentro una frase. */
 const FRASE: Record<string, string> = {
@@ -46,6 +47,13 @@ function Barre({ s, una, tante }: { s: Scoperta; una: string; tante: string }) {
             </div>
             <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.3 }}>{f.etichetta}</div>
             <div style={{ fontSize: 10, color: 'var(--faint)' }}>{f.sere} {f.sere === 1 ? una : tante}</div>
+            {/* Cosa cambia nel sonno: profondo e REM medi della notte dopo. */}
+            {conta && (f.profondo != null || f.rem != null) && (
+              <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 3, lineHeight: 1.35 }}>
+                prof. <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 13, color: top ? 'var(--good)' : 'var(--text)' }}>{fmtMin(f.profondo)}</span><br />
+                REM <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 13, color: top ? 'var(--good)' : 'var(--text)' }}>{fmtMin(f.rem)}</span>
+              </div>
+            )}
           </div>
         )
       })}

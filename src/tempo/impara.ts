@@ -29,6 +29,9 @@ export interface Sera {
   letto?: number
   recupero?: number
   hrv?: number
+  /** minuti di sonno profondo e REM della notte dopo */
+  profondo?: number
+  rem?: number
 }
 
 export interface Fascia {
@@ -41,6 +44,9 @@ export interface Fascia {
   hrv?: number
   /** ora media del letto, in minuti dalla mezzanotte del giorno */
   letto?: number
+  /** minuti medi di profondo e REM nelle notti della fascia */
+  profondo?: number
+  rem?: number
 }
 
 export interface Scoperta {
@@ -109,6 +115,8 @@ export async function sere(oggi = todayLocal()): Promise<Sera[]> {
     if (n?.sleepStart) s.letto = minDa(d, n.sleepStart)
     if (n?.recovery != null) s.recupero = n.recovery
     if (n?.hrv != null) s.hrv = n.hrv
+    if (n?.sleepDeepMin != null) s.profondo = n.sleepDeepMin
+    if (n?.sleepRemMin != null) s.rem = n.sleepRemMin
     out.push(s)
   }
   return out
@@ -120,11 +128,15 @@ function confronta(righe: { valore: number; s: Sera }[], limiti: { etichetta: st
     const rec = media(dentro.map((s) => s.recupero!).filter((x) => x != null))
     const hrv = media(dentro.map((s) => s.hrv!).filter((x) => x != null))
     const letto = media(dentro.map((s) => s.letto!).filter((x) => x != null))
+    const profondo = media(dentro.map((s) => s.profondo!).filter((x) => x != null))
+    const rem = media(dentro.map((s) => s.rem!).filter((x) => x != null))
     return {
       ...l, sere: dentro.length,
       ...(rec != null ? { recupero: Math.round(rec) } : {}),
       ...(hrv != null ? { hrv: Math.round(hrv) } : {}),
       ...(letto != null ? { letto: Math.round(letto) } : {}),
+      ...(profondo != null ? { profondo: Math.round(profondo) } : {}),
+      ...(rem != null ? { rem: Math.round(rem) } : {}),
     }
   })
   const buone = fasce.filter((f) => f.sere >= MINIMO && f.recupero != null)
