@@ -11,6 +11,7 @@ import { db, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { computeDiary, macrosFor } from '../db/diet'
 import { getNutrition } from '../db/repo'
+import { targetsAl } from '../db/targetStorico'
 import { pianoRs, giornataDelPiano } from './piano'
 import type { FoodLog, Macros } from '../db/schema'
 
@@ -168,7 +169,7 @@ export async function statoDieta(date: string): Promise<StatoDieta> {
   return {
     righe,
     aderenza: delPiano.length ? Math.round((onorate.length / delPiano.length) * 100) : null,
-    precisione: tipo ? scarto(versoIlCoach, tipo.targets) : null,
+    precisione: tipo ? scarto(versoIlCoach, targetsAl(tipo, date)) : null,
     versoIlCoach, saleG, tuoi: diario.totals,
     pianoTotale: delPiano.length, pianoOnorato: onorate.length,
     pastiExtra, attiva,

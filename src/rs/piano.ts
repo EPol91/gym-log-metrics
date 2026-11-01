@@ -15,6 +15,7 @@ import { db, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
 import { GIORNATE_RS } from './protocollo'
+import { conVersione } from '../db/targetStorico'
 import type { GiornataPianoRs, PianoRsSalvato, User, Macros, DayTemplate, Food } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -195,7 +196,8 @@ export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string
     const tipi = await db.dayTypes.where('userId').equals(U).toArray()
     for (const g of nuovo) {
       const tipo = tipi.find((t) => t.key === g.key)
-      if (tipo) await db.dayTypes.update(tipo.id, { targets: g.targets, manual: true, updatedAt: ts })
+      // Valgono da oggi: i giorni gia' fatti restano confrontati col piano di allora.
+      if (tipo) await db.dayTypes.update(tipo.id, { ...conVersione(tipo, g.targets), manual: true, updatedAt: ts })
     }
   })
 }

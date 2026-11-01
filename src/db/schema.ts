@@ -555,6 +555,12 @@ export interface Recipe extends BaseRecord {
   lastUsedAt?: ISODateTime
 }
 
+export interface VersioneTarget {
+  /** Il primo giorno in cui valgono (gg locale, aaaa-mm-gg). */
+  dal: string
+  targets: { kcal: number; protein: number; carbs: number; fat: number }
+}
+
 /**
  * Tipo di giornata con i suoi obiettivi (ON / OFF / Reload di partenza, altri
  * aggiungibili). `builtin` marca i tre iniziali: si possono modificare ma non eliminare.
@@ -562,7 +568,14 @@ export interface Recipe extends BaseRecord {
 export interface DayType extends BaseRecord {
   key: string
   name: string
+  /** Gli obiettivi di adesso. Per un giorno passato valgono quelli di `storico`. */
   targets: { kcal: number; protein: number; carbs: number; fat: number }
+  /**
+   * Gli obiettivi nel tempo, dal piu' vecchio: ognuno vale dal suo giorno fino
+   * al successivo. Quando il coach cambia i macro si aggiunge una versione, e i
+   * giorni gia' passati restano confrontati con quelli che valevano allora.
+   */
+  storico?: VersioneTarget[]
   /** true se gli obiettivi sono stati scritti a mano: il ricalcolo automatico non li tocca. */
   manual?: boolean
   order: number

@@ -7,6 +7,7 @@ import { todayLocal } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
 import type { DayTemplateItem, DayTemplateMeal, DayType, Food, FoodLog, GiornataPianoRs, Macros, Meal } from './schema'
 import { pianoRs, giornataDelPiano, rigaDelCoach } from '../rs/piano'
+import { conVersione } from './targetStorico'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
@@ -499,7 +500,9 @@ export async function addDayType(name: string, targets: DayType['targets']): Pro
 }
 
 export async function updateDayType(id: string, patch: Partial<Pick<DayType, 'name' | 'targets' | 'manual'>>): Promise<void> {
-  await db.dayTypes.update(id, { ...patch, updatedAt: nowISO() })
+  // Obiettivi nuovi da oggi: i giorni passati restano coi loro.
+  const versione = patch.targets ? conVersione(await db.dayTypes.get(id), patch.targets) : {}
+  await db.dayTypes.update(id, { ...patch, ...versione, updatedAt: nowISO() })
 }
 
 export async function deleteDayType(id: string): Promise<Trash> {
@@ -638,10 +641,10 @@ export async function sincronizzaObiettivo(id: string): Promise<void> {
     }
   }
   await db.dayTypes.update(tipo.id, {
-    targets: {
+    ...conVersione(tipo, {
       kcal: Math.round(tot.kcal), carbs: Math.round(tot.carbs),
       protein: Math.round(tot.protein), fat: Math.round(tot.fat),
-    },
+    }),
     manual: true, updatedAt: ts,
   })
 }

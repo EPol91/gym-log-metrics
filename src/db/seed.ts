@@ -67,6 +67,8 @@ export async function ensureSeed(): Promise<User> {
 
   await dedupeSeeded()
   await ensureRecipeSeed()
+  // import dinamico: targetStorico importa seed, non il contrario all'avvio del modulo
+  await (await import('./targetStorico')).ensureStoricoRs()
 
   return user
 }

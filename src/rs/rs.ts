@@ -14,6 +14,7 @@ import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal } from '../util/date'
 import { computeDiary, saleDelDiario, saleDelPiano } from '../db/diet'
 import { getNutrition } from '../db/repo'
+import { targetsAl } from '../db/targetStorico'
 import { getHabitValue, STEPS } from '../db/habits'
 import { nomeSorgente } from '../util/passi'
 import { whoopDay } from '../db/whoop'
@@ -170,7 +171,7 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
   } else if (haCibo && nutri?.dayType) {
     // Giornata tua: la precisione si misura comunque contro i tuoi obiettivi.
     const tipo = (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
-    if (tipo) out.precisione = num(precisione(t, tipo.targets))
+    if (tipo) out.precisione = num(precisione(t, targetsAl(tipo, date)))
   }
 
   const passi = await getHabitValue(STEPS, date)
@@ -294,7 +295,7 @@ export async function notaAutomatica(date: string): Promise<string> {
     const tipo = nutri?.dayType
       ? (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
       : null
-    pezzi.push(tipo ? `${g.kcal.valore} kcal contro ${tipo.targets.kcal} previste` : `${g.kcal.valore} kcal`)
+    pezzi.push(tipo ? `${g.kcal.valore} kcal contro ${targetsAl(tipo, date).kcal} previste` : `${g.kcal.valore} kcal`)
   }
   if (g.durata_sonno.valore) {
     const ore = Number(g.durata_sonno.valore)

@@ -11,6 +11,7 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { addFood, macrosFor } from '../db/diet'
+import { conVersione } from '../db/targetStorico'
 import { getOrCreateExercise, findExercise } from '../db/repo'
 import { ALIMENTI_RS, GIORNATE_RS, SEDUTE_RS, RINOMINE } from './protocollo'
 import { pianoRs } from './piano'
@@ -103,7 +104,7 @@ async function giornate(mappa: Map<string, Food>): Promise<{ fatte: string[]; tu
     // giornata l'hai corretta tu: la tua versione si confronta con questo.
     if (tipo) {
       await db.dayTypes.update(tipo.id, {
-        name: g.nome, order: posto, updatedAt: ts, targets: g.targets, manual: true,
+        name: g.nome, order: posto, updatedAt: ts, ...conVersione(tipo, g.targets), manual: true,
       })
     } else {
       await db.dayTypes.add({

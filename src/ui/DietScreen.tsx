@@ -10,6 +10,7 @@ import {
 } from '../db/diet'
 import { getNutrition, upsertNutrition, getUser, listMeasurements, getCurrentPhase } from '../db/repo'
 import { computeTargets } from '../scores/nutritionTargets'
+import { targetsAl } from '../db/targetStorico'
 import { pushUndo } from '../util/undo'
 import { saveMealAsRecipe } from '../db/recipes'
 import { DietTargets } from './DietTargets'
@@ -250,7 +251,9 @@ export function DietScreen() {
       bodyFatPct: meas[meas.length - 1]?.bodyFat,
     })
     : null
-  const t = activeType && activeType.targets.kcal > 0 ? activeType.targets : suggested
+  // Gli obiettivi di quel giorno, non quelli di oggi: il coach li cambia.
+  const delGiorno = activeType ? targetsAl(activeType, date) : null
+  const t = delGiorno && delGiorno.kcal > 0 ? delGiorno : suggested
   const totals = diary?.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   const righeDelGiorno = (diary?.meals ?? []).flatMap((m) => m.entries)
   const statoRs = useLiveQuery(() => statoDieta(date), [date])
