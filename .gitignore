@@ -8,6 +8,8 @@ dist-ssr
 
 # Documenti/strategia: NON pubblicare nel repo
 docs/
+# Dati personali dell'autogestione: NON pubblicare nel repo
+Autogestione/
 
 # --- app Android ---
 # Il progetto si versiona, i prodotti della compilazione no.
