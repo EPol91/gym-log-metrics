@@ -241,7 +241,8 @@ export function FoodSheet({ food: foodProp, grams: initialGrams, mode, onConfirm
   const [g, setG] = useState(String(initialGrams ?? foodProp.servingG ?? 100))
   const [fixing, setFixing] = useState(false)
   const lettore = useScanner()
-  const grams = parseNum(g, { min: 1, max: 5000 }) ?? 0
+  // Decimi di grammo: il sale e gli integratori si pesano a 0,5 g.
+  const grams = parseNum(g, { min: 0.1, max: 5000 }) ?? 0
   const m = macrosFor(food.per100, grams)
 
   if (fixing) {

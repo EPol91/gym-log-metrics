@@ -105,8 +105,8 @@ function EntryRow({ e, selectMode, selected, onToggle, onOpen, onDelete, onPress
   const quantita = isRecipe
     ? e.log.portions != null
       ? `${String(e.log.portions).replace('.', ',')} ${e.log.portions === 1 ? 'porzione' : 'porzioni'}`
-      : `${e.log.grams} g`
-    : `${e.log.grams} g`
+      : `${String(e.log.grams).replace('.', ',')} g`
+    : `${String(e.log.grams).replace('.', ',')} g`
 
   return (
     <div data-drag-id={e.log.id}

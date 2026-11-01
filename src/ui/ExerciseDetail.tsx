@@ -3,7 +3,9 @@ import { useIndietro } from './useBloccoScroll'
 import { fmtData } from '../util/format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeExerciseDetail } from '../scores/exerciseStats'
-import { updateExercise } from '../db/repo'
+import { updateExercise, eliminaEsercizio } from '../db/repo'
+import { pushUndo } from '../util/undo'
+import { restoreTrash } from '../db/trash'
 import type { MuscleGroup } from '../db/schema'
 import { LineChart } from './LineChart'
 import { AiInsight } from './AiInsight'
@@ -35,6 +37,7 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
   const [editing, setEditing] = useState(startEditing)
   const [name, setName] = useState('')
   const [muscle, setMuscle] = useState<MuscleGroup>('altro')
+  const [noElimina, setNoElimina] = useState<string | null>(null)
 
   // Allinea i campi quando arrivano i dati (o quando cambi esercizio).
   useEffect(() => { if (d) { setName(d.name); setMuscle(d.muscle as MuscleGroup) } }, [d?.id, d?.name, d?.muscle]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -67,6 +70,19 @@ export function ExerciseDetail({ exerciseId, onBack, startEditing = false }: {
             <button className="primary" style={{ flex: 2 }} disabled={!name.trim()}
               onClick={async () => { await updateExercise(exerciseId, { name, muscle }); setEditing(false) }}>Salva</button>
           </div>
+          {/* Creato per sbaglio: si toglie. Se l'hai usato no, sparirebbe dallo storico. */}
+          <button className="ghost small" style={{ marginTop: 12, width: '100%', color: '#e57373' }}
+            onClick={async () => {
+              const r = await eliminaEsercizio(exerciseId)
+              if (!r.ok) {
+                const dove = [r.sedute ? `${r.sedute} ${r.sedute === 1 ? 'seduta' : 'sedute'}` : '', r.schede ? `${r.schede} ${r.schede === 1 ? 'scheda' : 'schede'}` : ''].filter(Boolean).join(' e ')
+                setNoElimina(`Non si può eliminare: è usato in ${dove}. Toglierlo cancellerebbe quello storico.`)
+                return
+              }
+              pushUndo(`«${d.name}» eliminato`, () => restoreTrash(r.trash))
+              onBack()
+            }}>🗑 Elimina esercizio</button>
+          {noElimina && <p className="small" style={{ margin: '8px 0 0', color: '#e57373' }}>{noElimina}</p>}
         </div>
       ) : (
         <>

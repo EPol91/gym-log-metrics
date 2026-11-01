@@ -860,6 +860,19 @@ export async function updateExercise(id: string, patch: { name?: string; muscle?
   await db.exercises.update(id, clean)
 }
 
+/**
+ * Toglie un esercizio dalla libreria, solo se non l'hai mai usato: uno che sta
+ * in una seduta o in una scheda sparirebbe dallo storico. In quel caso non tocca
+ * niente e dice dove sta.
+ */
+export async function eliminaEsercizio(id: string): Promise<{ ok: true; trash: Trash } | { ok: false; sedute: number; schede: number }> {
+  const voci = await db.exerciseEntries.where('exerciseId').equals(id).count()
+  const alPosto = await db.exerciseEntries.filter((e) => e.alPostoDi === id).count()
+  const schede = (await db.templates.toArray()).filter((t) => t.items.some((i) => i.exerciseId === id)).length
+  if (voci + alPosto + schede > 0) return { ok: false, sedute: voci + alPosto, schede }
+  return { ok: true, trash: await snapshotAndDelete('exercises', id) }
+}
+
 export async function getOrCreateExercise(name: string, muscle: MuscleGroup = 'altro'): Promise<Exercise> {
   const existing = await findExercise(name)
   if (existing) return existing
