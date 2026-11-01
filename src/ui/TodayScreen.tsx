@@ -11,7 +11,7 @@ import { SEDUTE_RS } from '../rs/protocollo'
 import { useHoldDrag } from './useHoldDrag'
 import { parseNum } from '../util/validate'
 import { fmtOre, fmtData } from '../util/format'
-import { BarraFasi, haFasi, fmtMin } from './FasiSonno'
+import { BarraFasi, LegendaFasi, haFasi, fmtMin } from './FasiSonno'
 import { ScoreRing } from './anim'
 import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
@@ -183,21 +183,26 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
           {/* Tocca i numeri e vai all'andamento: il tasto «Andamento ›» rubava una riga. */}
           <div className="row" role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 6, cursor: 'pointer' }}>
             {cella(d!.recovery != null ? `${d!.recovery}%` : '—', 'recupero', 'var(--gold)')}
-            {/* Con le fasi: quanto hai dormito su quanto ti serviva, e la barra
-                delle fasi al posto della scritta. Una riga in piu' non ci sta:
-                Oggi deve restare in una schermata. Il dettaglio e' in Vitali. */}
+            {/* Con le fasi: quanto hai dormito su quanto ti serviva. */}
             {haFasi(d) ? (
               <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
                 <div style={{ ...NUM, fontSize: 23, lineHeight: 1, color: 'var(--text)', whiteSpace: 'nowrap' }}>
                   {fmtMin(d!.sleepHours != null ? d!.sleepHours * 60 : undefined)}
                   {d!.sleepNeededMin != null && <span style={{ fontSize: 12, color: 'var(--muted)' }}>/{fmtMin(d!.sleepNeededMin)}</span>}
                 </div>
-                <div style={{ margin: '5px 6px 0' }}><BarraFasi d={d!} alta={5} /></div>
+                <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>sonno</div>
               </div>
             ) : cella(fmtOre(d!.sleepHours), 'sonno')}
             {cella(d!.strain != null ? virgola(d!.strain) : '—', 'sforzo')}
             {cella(d!.hrv != null ? `${d!.hrv}` : '—', 'HRV')}
           </div>
+          {/* Sotto le quattro cifre, a tutta larghezza: le fasi della notte. */}
+          {haFasi(d) && (
+            <div role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
+              <BarraFasi d={d!} alta={8} />
+              <div style={{ marginTop: 5 }}><LegendaFasi d={d!} corta /></div>
+            </div>
+          )}
           {w && w.length > 0 && (
             <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line-soft)', paddingTop: 6 }}>
               {w.map((x) => x.sport ?? 'Attività').join(' · ')} registrati dal WHOOP
