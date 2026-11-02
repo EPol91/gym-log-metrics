@@ -699,6 +699,8 @@ export interface WhoopWorkout extends BaseRecord {
 }
 
 export type CardioMethod = 'standard' | 'hrr'
+/** Le kcal del cardio: dai watt della macchina o dal battito (Keytel). */
+export type KcalMethod = 'watt' | 'keytel'
 export type CardioType =
   | 'corsa' | 'camminata' | 'tapis' | 'cyclette' | 'ellittica' | 'vogatore' | 'assaultbike'
   | 'hiit' | 'tabata' | 'liss' | 'intervalli' | 'altro'
@@ -713,9 +715,13 @@ export interface CardioSession extends BaseRecord {
   endedAt?: ISODateTime
   avgBpm?: number
   maxBpm?: number
-  calories?: number // stima teorica (Keytel)
+  calories?: number // dai watt se ci sono, se no dal battito (Keytel): vedi kcalMethod
   method?: CardioMethod
   cardioType?: CardioType
+  /** Watt medi letti sul display della macchina a fine seduta. Facoltativo. */
+  watt?: number
+  /** Da dove vengono le kcal. Assente nei record vecchi = Keytel. */
+  kcalMethod?: KcalMethod
 }
 
 /** Template cardio salvato: protocollo a intervalli o steady (countdown/cronometro), con tipo e formula zona.

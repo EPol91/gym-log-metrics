@@ -9,7 +9,7 @@ import { annota, conferma } from './serieInSospeso'
 import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
-  CardioSession, CardioMethod, CardioType, NutritionContext, NutritionDayType, NutritionStatus,
+  CardioSession, CardioMethod, CardioType, KcalMethod, NutritionContext, NutritionDayType, NutritionStatus,
   ActivityLevel, BmrFormula, CoachBlock, OrariUtente, TagNota } from './schema'
 
 const U = LOCAL_USER_ID
@@ -252,7 +252,7 @@ export async function deleteTemplate(id: string): Promise<Trash> {
 }
 
 // --- Cardio ---
-export interface CardioInput { durationMin: number; avgBpm?: number; maxBpm?: number; calories?: number; method?: CardioMethod; cardioType?: CardioType; startedAt?: string; endedAt?: string }
+export interface CardioInput { durationMin: number; avgBpm?: number; maxBpm?: number; calories?: number; method?: CardioMethod; cardioType?: CardioType; startedAt?: string; endedAt?: string; watt?: number; kcalMethod?: KcalMethod }
 
 export async function addCardio(sessionId: string | null, inp: CardioInput): Promise<void> {
   const ts = nowISO()
@@ -264,6 +264,8 @@ export async function addCardio(sessionId: string | null, inp: CardioInput): Pro
     ...(inp.calories != null ? { calories: inp.calories } : {}),
     ...(inp.method != null ? { method: inp.method } : {}),
     ...(inp.cardioType != null ? { cardioType: inp.cardioType } : {}),
+    ...(inp.watt != null ? { watt: inp.watt } : {}),
+    ...(inp.kcalMethod != null ? { kcalMethod: inp.kcalMethod } : {}),
     // Gli estremi del cardio: senza, il suo cuore non si puo' ritagliare da
     // quello della seduta intera.
     ...(inp.startedAt ? { startedAt: inp.startedAt } : {}),

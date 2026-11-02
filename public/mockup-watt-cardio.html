@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardio: watt medi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --cardio: #4fc3f7; --cardio-bg: #0d1f28;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 360px; --h: 700px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+  .misura { display: flex; gap: 6px; margin-top: 12px; }
+  .misura button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+  .misura button.on { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; }
+  .contenuto { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .nuovo { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px solid #4a3e18; background: var(--gold-bg); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
+  .fl { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .in { height: 38px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; display: flex; align-items: center; padding: 0 10px; font-size: 15px; }
+  .in.ph { color: var(--faint); font-size: 13px; }
+  .in.fuoco { border-color: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .in .u { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .cursore { display: inline-block; width: 1.5px; height: 18px; background: var(--gold); margin-left: 1px; animation: lamp 1s steps(1) infinite; }
+  @keyframes lamp { 50% { opacity: 0; } }
+  .btn { height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .btn.pri { background: var(--gold); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  .sel2 { display: flex; gap: 6px; }
+  .sel2 > div { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 6px 4px; text-align: center; font-size: 13px; line-height: 1.25; }
+  .sel2 > div span { display: block; font-size: 11px; opacity: .75; }
+  .sel2 > div.on { border-color: var(--gold); color: var(--gold); background: #d4af3712; }
+  .chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+  .chip.on { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+
+  /* promemoria watt */
+  .ricorda { border: 1px solid #4a3e18; background: linear-gradient(180deg, #2a2310, var(--gold-bg)); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ricorda .tit { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; line-height: 1.35; }
+  .ricorda .tit .ico { font-size: 20px; line-height: 1; }
+  .ricorda .tit b { color: var(--gold); }
+  .anteprima { font-size: 12px; color: #c9c4b9; line-height: 1.45; }
+  .anteprima b { color: var(--text); font-weight: 600; }
+  .anteprima s { color: var(--faint); }
+
+  /* righe cardio */
+  .setline { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; line-height: 1.4; }
+  .setline .t { flex: 1; }
+  .setline .x { color: var(--muted); font-size: 12px; }
+  .metodo { font-size: 10px; letter-spacing: .06em; padding: 1px 6px; border-radius: 999px; border: 1px solid #4a3e18; color: var(--gold); background: var(--gold-bg); font-weight: 700; vertical-align: 1px; }
+  .eff { font-size: 12px; color: var(--cardio); }
+  .zbar { display: flex; height: 6px; border-radius: 999px; overflow: hidden; margin: 2px 0 4px; }
+  .zbar i { flex: 1; }
+
+  /* Analytics */
+  .stat { display: flex; justify-content: space-between; font-size: 13.5px; padding: 3px 0; }
+  .stat .muted { font-size: 13px; }
+  .grande { font-family: var(--f-num); font-weight: 600; font-size: 34px; line-height: 1; color: var(--cardio); }
+  .su { color: var(--good); font-weight: 600; font-size: 12.5px; }
+  svg.graf { width: 100%; height: 118px; display: block; }
+  .ult { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ult .muted { font-size: 12px; }
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 60px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 9px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+</style></head><body>
+<div class="intro"><div class="ey">Mockup · Cardio · 03.11.2026</div><h1>Watt medi</h1>
+<p>Campo facoltativo per tutti i tipi di cardio. Vuoto: tutto come oggi (kcal dal battito, Keytel). Compilato: le kcal vengono dai watt (stabili, ±10%) e nasce l'efficienza in W per battito. Quando premi «Stop e salva» il campo watt è il primo, in evidenza, già col cursore: è il promemoria per guardare il display prima di scendere.</p>
+<div class="misura"><button class="on" data-w="360" data-h="700">360 × 700</button><button data-w="412" data-h="800">412 × 800</button></div></div>
+
+<div class="telefoni">
+
+<!-- 1 · Dopo Stop e salva -->
+<div class="blocco"><div class="nome">1 · Dopo «⏹ Stop e salva»</div><div class="tel"><div class="stato"><span>18:52</span><span>●●● 64%</span></div><div class="utile"><div class="contenuto">
+  <div class="riga spazia"><h2 style="font-size:21px">🏃 Cardio</h2><span class="muted">✕</span></div>
+  <div class="riga small"><span style="color:#e5484d">❤️</span><strong class="num" style="font-size:22px;color:var(--gold)">108</strong><span class="muted">bpm · media 112 · Polar H10</span></div>
+
+  <div class="ricorda">
+    <div class="tit"><span class="ico">📟</span><span>Prima di scendere: guarda il display della <b>cyclette</b> e segna i <b>watt medi</b>.</span></div>
+    <div class="in fuoco"><span class="num" style="font-size:19px">150</span><span class="cursore"></span><span class="u">W medi</span></div>
+    <div class="anteprima">≈ <b>269 kcal dai watt</b> · <b>1,34 W/bpm</b><br><span class="muted">dal battito sarebbero 291 · vuoto = si usa il battito</span></div>
+  </div>
+
+  <div><label class="fl">Tipo</label><div class="in">Cyclette<span class="u">▾</span></div></div>
+  <div class="riga" style="gap:8px">
+    <div style="flex:1;min-width:0"><label class="fl">Durata (min)</label><div class="in">30</div></div>
+    <div style="flex:1;min-width:0"><label class="fl">BPM medio (opz.)</label><div class="in">112</div></div>
+  </div>
+  <div><label class="fl">Formula zona</label><div class="sel2"><div>Standard<span>FCmax 185</span></div><div class="on">HRR (Karvonen)<span>FC riposo 52 · WHOOP</span></div></div></div>
+  <div class="zbar"><i style="background:#64748b55"></i><i style="background:#4fc3f7"></i><i style="background:#5bc27a55"></i><i style="background:#e0a03055"></i><i style="background:#ef444455"></i></div>
+  <div class="riga" style="gap:8px"><div class="btn gh" style="flex:1">Annulla</div><div class="btn pri" style="flex:2">✓ Salva cardio</div></div>
+</div></div></div>
+<ul class="note">
+  <li>Il riquadro oro compare solo dopo lo Stop (e in «＋ Manuale»): il campo watt è il primo e ha già il cursore.</li>
+  <li>Il nome della macchina cambia col tipo (cyclette, vogatore, ellittica…). Per corsa e camminata resta, facoltativo.</li>
+  <li>Sotto si vede subito quante kcal fanno i watt e quante il battito.</li>
+</ul></div>
+
+<!-- 2 · Riga del cardio e correzione -->
+<div class="blocco"><div class="nome">2 · Riga cardio e correzione</div><div class="tel"><div class="stato"><span>18:54</span><span>●●● 64%</span></div><div class="utile"><div class="contenuto">
+  <div class="riga spazia"><h2 style="font-size:21px">🏃 Cardio</h2><span class="muted">✕</span></div>
+  <label class="fl" style="margin-top:4px">In questa seduta</label>
+  <div class="setline"><span class="muted small">🏃</span><span class="t">Cyclette · 30 min · 112 bpm · max 131 · <b>150 W</b> · 269 kcal <span class="metodo">W</span> · Z2 <span class="muted small">✎</span><br><span class="eff">1,34 W/bpm</span></span><span class="x">✕</span></div>
+  <div class="setline"><span class="muted small">🏃</span><span class="t">Camminata · 20 min · 98 bpm · 141 kcal · Z1 <span class="muted small">✎</span></span><span class="x">✕</span></div>
+
+  <div class="card" style="background:var(--surface-2);margin-top:4px;display:flex;flex-direction:column;gap:8px">
+    <div class="small muted">Correggi · Cyclette</div>
+    <div class="riga" style="gap:7px">
+      <div style="flex:1;min-width:0"><label class="fl">Durata</label><div class="in">30</div></div>
+      <div style="flex:1;min-width:0"><label class="fl">BPM</label><div class="in">112</div></div>
+      <div style="flex:1;min-width:0"><label class="fl">Watt medi</label><div class="in fuoco"><span class="num" style="font-size:17px">165</span><span class="cursore"></span></div></div>
+    </div>
+    <div class="anteprima">≈ <b>296 kcal dai watt</b> · <b>1,47 W/bpm</b> <span class="muted">· prima 269</span></div>
+    <div class="riga" style="gap:8px"><div class="btn gh" style="flex:1">Annulla</div><div class="btn pri" style="flex:2">Salva</div></div>
+  </div>
+  <div class="muted small" style="line-height:1.45">Tolti i watt, le kcal tornano quelle del battito.</div>
+</div></div></div>
+<ul class="note">
+  <li>Con i watt: «150 W» nella riga, le kcal hanno il segno <span class="metodo">W</span> (vengono dai watt) e sotto l'efficienza.</li>
+  <li>Senza watt la riga è identica a oggi (la camminata).</li>
+  <li>Correzione: si aggiunge il terzo campo; le kcal si ricalcolano solo se cambi i watt.</li>
+</ul></div>
+
+<!-- 3 · Analytics → Cardio -->
+<div class="blocco"><div class="nome">3 · Workout → Analisi → Cardio</div><div class="tel"><div class="stato"><span>21:10</span><span>●●● 51%</span></div><div class="utile"><div class="contenuto">
+  <div class="card">
+    <div class="riga spazia"><span class="muted small">Cardio — media settimana</span><span class="riga" style="gap:4px"><span class="chip on">7g</span><span class="chip">30g</span></span></div>
+    <div class="stat"><span class="muted">Durata media</span><strong>27 min</strong></div>
+    <div class="stat"><span class="muted">BPM medio</span><strong>110</strong></div>
+    <div class="stat"><span class="muted">Sessioni</span><strong>4</strong></div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:8px">
+    <div class="riga spazia"><span style="font-weight:700;font-size:14px">Efficienza · W per battito</span><span class="nuovo">nuovo</span></div>
+    <div class="riga" style="gap:5px;flex-wrap:wrap"><span class="chip on">🚴 Cyclette</span><span class="chip">💨 Assault Bike</span></div>
+    <div class="riga" style="align-items:baseline;gap:8px"><span class="grande">1,34</span><span class="muted small">W/bpm · 02.11</span><span class="su" style="margin-left:auto">▲ +14% dal 05.10</span></div>
+    <svg class="graf" viewBox="0 0 320 118" preserveAspectRatio="none">
+      <line x1="0" y1="20" x2="320" y2="20" stroke="#201f1c"/><line x1="0" y1="55" x2="320" y2="55" stroke="#201f1c"/><line x1="0" y1="90" x2="320" y2="90" stroke="#201f1c"/>
+      <text x="2" y="17" fill="#5d5951" font-size="9">1,35</text><text x="2" y="52" fill="#5d5951" font-size="9">1,25</text><text x="2" y="87" fill="#5d5951" font-size="9">1,15</text>
+      <path d="M24 85 L64 78 L104 81 L144 66 L184 62 L224 50 L264 41 L304 21 L304 104 L24 104 Z" fill="#4fc3f7" fill-opacity=".10"/>
+      <path d="M24 85 L64 78 L104 81 L144 66 L184 62 L224 50 L264 41 L304 21" fill="none" stroke="#4fc3f7" stroke-width="2" stroke-linejoin="round"/>
+      <g fill="#4fc3f7"><circle cx="24" cy="85" r="2.6"/><circle cx="64" cy="78" r="2.6"/><circle cx="104" cy="81" r="2.6"/><circle cx="144" cy="66" r="2.6"/><circle cx="184" cy="62" r="2.6"/><circle cx="224" cy="50" r="2.6"/><circle cx="264" cy="41" r="2.6"/></g>
+      <circle cx="304" cy="21" r="4.5" fill="#4fc3f7" stroke="#0a0a09" stroke-width="2"/>
+      <text x="24" y="116" fill="#5d5951" font-size="9" text-anchor="middle">05.10</text><text x="184" y="116" fill="#5d5951" font-size="9" text-anchor="middle">19.10</text><text x="304" y="116" fill="#5d5951" font-size="9" text-anchor="end">02.11</text>
+    </svg>
+    <div class="muted small" style="line-height:1.45">Se sale, a parità di battito spingi di più: il cardio ti sta allenando.</div>
+    <div class="ult">
+      <span class="muted">02.11</span><span>150 W · 112 bpm</span><b>1,34</b>
+      <span class="muted">30.10</span><span>140 W · 109 bpm</span><b>1,28</b>
+      <span class="muted">27.10</span><span>138 W · 110 bpm</span><b>1,25</b>
+    </div>
+  </div>
+</div>
+<div class="tab"><div>Oggi</div><div class="on">Workout</div><div>Cibo</div><div>Salute</div><div>Profilo</div></div>
+</div></div>
+<ul class="note">
+  <li>Un tipo alla volta: compaiono solo i tipi con almeno una seduta coi watt.</li>
+  <li>Un punto per seduta (watt ÷ battito medio); servono watt e BPM entrambi.</li>
+  <li>Sotto, le ultime tre sedute per controllare i numeri.</li>
+</ul></div>
+
+</div>
+<script>
+  document.querySelectorAll('.misura button').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('.misura button').forEach((x) => x.classList.toggle('on', x === b))
+    document.documentElement.style.setProperty('--w', b.dataset.w + 'px')
+    document.documentElement.style.setProperty('--h', b.dataset.h + 'px')
+  })
+</script>
+</body></html>

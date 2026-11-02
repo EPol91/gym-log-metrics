@@ -5,9 +5,9 @@ import { deleteWithUndo } from '../db/trash'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { restingHrFromWhoop } from '../db/whoop'
-import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements } from '../db/repo'
+import { addCardio, cardioOf, deleteCardio, updateCardio, getUser, listCardioPresets, addCardioTemplate, deleteCardioPreset, listMeasurements, type CardioInput } from '../db/repo'
 import { computeCardioZone } from '../metrics/cardio'
-import { estimateCalories } from '../util/calories'
+import { estimateCalories, kcalCardio, kcalDaWatt, efficienza } from '../util/calories'
 import { computeCardioAverages } from '../scores/cardioStats'
 import { parseNum } from '../util/validate'
 import { useHeartRate } from './fascia'
@@ -38,7 +38,7 @@ function Freschezza({ ms, n, caduta }: { ms: number | null; n: number; caduta: n
   )
 }
 
-const TYPE_LABEL: Record<CardioType, string> = {
+export const TYPE_LABEL: Record<CardioType, string> = {
   corsa: 'Corsa', camminata: 'Camminata', tapis: 'Tapis roulant', cyclette: 'Cyclette', ellittica: 'Ellittica', vogatore: 'Vogatore', assaultbike: 'Assault Bike',
   hiit: 'HIIT', tabata: 'Tabata', liss: 'LISS', intervalli: 'Intervalli', altro: 'Altro',
 }
@@ -64,7 +64,7 @@ function IconaTapis() {
   )
 }
 
-const TYPE_ICON: Record<CardioType, React.ReactNode> = {
+export const TYPE_ICON: Record<CardioType, React.ReactNode> = {
   corsa: '🏃', camminata: '🚶', tapis: <IconaTapis />, cyclette: '🚴', ellittica: '🌀', vogatore: '🚣', assaultbike: '💨',
   hiit: '🔥', tabata: '⚡', liss: '🌊', intervalli: '⏱', altro: '•',
 }
@@ -76,6 +76,16 @@ const DEFAULTS: Record<string, { rounds: number; work: number; rest: number }> =
   intervalli: { rounds: 8, work: 30, rest: 30 },
 }
 const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+/** «1,34»: watt per battito con due decimali. */
+export const fmtEff = (x: number) => x.toFixed(2).replace('.', ',')
+/** Di chi è il display da guardare a fine seduta: [articolo, nome]. */
+const MACCHINA: Partial<Record<CardioType, [string, string]>> = {
+  tapis: ['del', 'tapis roulant'], cyclette: ['della', 'cyclette'], ellittica: ["dell'", 'ellittica'], vogatore: ['del', 'vogatore'], assaultbike: ["dell'", 'assault bike'],
+}
+/** Watt medi scritti a mano: vuoto = niente watt, null = numero sbagliato. */
+const leggiWatt = (s: string): number | undefined | null => s.trim() === '' ? undefined : parseNum(s, { min: 1, max: 2000, int: true })
+/** Il segno sulle kcal che vengono dai watt. */
+const SegnoW = () => <span style={{ fontSize: 10, letterSpacing: '.06em', padding: '0 6px', marginLeft: 4, borderRadius: 999, border: '1px solid #4a3e18', color: 'var(--gold)', background: 'var(--gold-bg)', fontWeight: 700 }}>W</span>
 
 function NumStep({ label, value, set, step, min }: { label: string; value: number; set: (v: number) => void; step: number; min: number }) {
   return (
@@ -90,21 +100,43 @@ function NumStep({ label, value, set, step, min }: { label: string; value: numbe
   )
 }
 
-function CardioRow({ c, age, restingHr, maxHr, hrSeduta }: { c: CardioSession; age: number; restingHr?: number; maxHr?: number; hrSeduta?: { t0: string; step: number; bpm: number[] } }) {
+function CardioRow({ c, age, restingHr, maxHr, hrSeduta, weightKg, sex }: { c: CardioSession; age: number; restingHr?: number; maxHr?: number; hrSeduta?: { t0: string; step: number; bpm: number[] }; weightKg: number | null; sex?: 'm' | 'f' }) {
   const [edit, setEdit] = useState(false)
   const [dur, setDur] = useState(String(c.durationMin))
   const [bpm, setBpm] = useState(c.avgBpm != null ? String(c.avgBpm) : '')
+  const [watt, setWatt] = useState(c.watt != null ? String(c.watt) : '')
+  const eff = efficienza(c.watt, c.avgBpm)
   const z = c.avgBpm && (age || maxHr) ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr, method: c.method ?? 'standard', maxHr }) : null
   if (edit) {
     return (
       <div className="card" style={{ background: 'var(--surface-2)', margin: '6px 0' }}>
-        <div className="row">
-          <div style={{ flex: 1 }}><label className="fl">Durata</label><input inputMode="decimal" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
-          <div style={{ flex: 1 }}><label className="fl">BPM</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
+        <div className="row" style={{ gap: 7 }}>
+          <div style={{ flex: 1, minWidth: 0 }}><label className="fl">Durata</label><input inputMode="decimal" value={dur} onChange={(e) => setDur(e.target.value)} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}><label className="fl">BPM</label><input inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}><label className="fl">Watt medi</label><input inputMode="numeric" value={watt} onChange={(e) => setWatt(e.target.value)} /></div>
         </div>
+        {(() => {
+          const dn = parseNum(dur, { min: 0.1, max: 600 }); const wn = leggiWatt(watt)
+          const bn = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
+          if (!wn || dn == null) return c.watt != null && watt.trim() === '' ? <p className="muted small" style={{ marginTop: 6 }}>Tolti i watt, le kcal tornano quelle del battito.</p> : null
+          const e = efficienza(wn, bn)
+          return <p className="small" style={{ marginTop: 6, color: '#c9c4b9' }}>≈ <strong>{kcalDaWatt(wn, dn, c.cardioType)} kcal dai watt</strong>{e != null ? <> · <strong>{fmtEff(e)} W/bpm</strong></> : ''}{c.calories ? <span className="muted"> · prima {c.calories}</span> : ''}</p>
+        })()}
         <div className="row" style={{ marginTop: 8 }}>
           <button className="ghost" style={{ flex: 1 }} onClick={() => setEdit(false)}>Annulla</button>
-          <button className="primary" style={{ flex: 2 }} onClick={async () => { const dn = parseNum(dur, { min: 0.1, max: 600 }); if (dn == null) return; await updateCardio(c.id, { durationMin: dn, avgBpm: bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined) }); setEdit(false) }}>Salva</button>
+          <button className="primary" style={{ flex: 2 }} onClick={async () => {
+            const dn = parseNum(dur, { min: 0.1, max: 600 }); if (dn == null) return
+            const wn = leggiWatt(watt); if (wn === null) return
+            const bn = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
+            const patch: Partial<CardioInput> = { durationMin: dn, avgBpm: bn, watt: wn }
+            // Senza watt prima e dopo le kcal restano come sono sempre state;
+            // con i watt (o appena tolti) si rifanno: dai watt, o dal battito.
+            if (wn != null || c.watt != null) {
+              const k = kcalCardio({ watt: wn, tipo: c.cardioType, avgHr: bn, weightKg, age, sex, durationMin: dn })
+              patch.calories = k.kcal; patch.kcalMethod = k.kcalMethod
+            }
+            await updateCardio(c.id, patch); setEdit(false)
+          }}>Salva</button>
         </div>
       </div>
     )
@@ -114,7 +146,9 @@ function CardioRow({ c, age, restingHr, maxHr, hrSeduta }: { c: CardioSession; a
       <div className="setline">
         <span className="muted small">🏃</span>
         <span onClick={() => setEdit(true)} style={{ cursor: 'pointer' }}>
-          {c.cardioType ? `${TYPE_LABEL[c.cardioType]} · ` : ''}{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.maxBpm ? ` · max ${c.maxBpm}` : ''}{c.calories ? ` · ${c.calories} kcal` : ''}{z ? ` · ${z.label}` : ''} <span className="muted small">✎</span>
+          {c.cardioType ? `${TYPE_LABEL[c.cardioType]} · ` : ''}{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.maxBpm ? ` · max ${c.maxBpm}` : ''}
+          {c.watt ? <> · <strong>{c.watt} W</strong></> : ''}{c.calories ? <> · {c.calories} kcal{c.kcalMethod === 'watt' && <SegnoW />}</> : ''}{z ? ` · ${z.label}` : ''} <span className="muted small">✎</span>
+          {eff != null && <span style={{ display: 'block', fontSize: 12, color: 'var(--cardio)' }}>{fmtEff(eff)} W/bpm</span>}
         </span>
         <button className="ghost small" onClick={() => { if (confirm('Eliminare il cardio?')) deleteWithUndo('Cardio eliminato', () => deleteCardio(c.id)) }}>✕</button>
       </div>
@@ -148,6 +182,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
   const [manual, setManual] = useState(false)
   const [dur, setDur] = useState('')
   const [bpm, setBpm] = useState('')
+  const [watt, setWatt] = useState('')
   const [method, setMethod] = useState<CardioMethod>('hrr') // HRR default (blueprint); fallback a Standard se manca FC riposo
   const [ctype, setCtype] = useState<CardioType>('corsa')
   const [tuttiTipi, setTuttiTipi] = useState(false)
@@ -233,17 +268,19 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
   async function add() {
     if (durN == null) return
     const avgN = bpm === '' ? undefined : (parseNum(bpm, { min: 30, max: 230, int: true }) ?? undefined)
-    const cal = estimateCalories({ avgHr: avgN, weightKg, age, sex: user?.sex, durationMin: durN }) ?? undefined
+    const wn = leggiWatt(watt)
+    if (wn === null) return
+    const k = kcalCardio({ watt: wn, tipo: ctype, avgHr: avgN, weightKg, age, sex: user?.sex, durationMin: durN })
     // Gli estremi del blocco: la fine e' adesso, l'inizio e' la fine meno la
     // durata. Servono a ritagliare il cuore del SOLO cardio dentro le letture
     // di tutta la seduta — senza, le due finestre coinciderebbero.
     const fineCardio = new Date()
     const inizioCardio = new Date(fineCardio.getTime() - durN * 60_000)
     await addCardio(sessionId, {
-      durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: cal, method, cardioType: ctype,
+      durationMin: durN, avgBpm: avgN, maxBpm: pendingMax ?? undefined, calories: k.kcal, kcalMethod: k.kcalMethod, watt: wn, method, cardioType: ctype,
       startedAt: inizioCardio.toISOString(), endedAt: fineCardio.toISOString(),
     })
-    setDur(''); setBpm(''); setManual(false); setPendingMax(null)
+    setDur(''); setBpm(''); setWatt(''); setManual(false); setPendingMax(null)
   }
 
   // Salvataggio automatico del cardio ancora nel form aperto quando si chiude l'allenamento (niente dati persi).
@@ -307,6 +344,33 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
 
             {manual ? (
               <>
+                {/* I watt prima di tutto: il display della macchina si azzera
+                    appena scendi, e senza questo riquadro te ne dimentichi. */}
+                {(() => {
+                  const wn = leggiWatt(watt); const bn = bpm === '' ? undefined : Number(bpm)
+                  const kw = wn && durN != null ? kcalDaWatt(wn, durN, ctype) : null
+                  const kb = durN != null ? estimateCalories({ avgHr: bn, weightKg, age, sex: user?.sex, durationMin: durN }) : null
+                  const e = efficienza(wn ?? undefined, bn)
+                  const mac = MACCHINA[ctype]
+                  return (
+                    <div style={{ border: '1px solid #4a3e18', background: 'linear-gradient(180deg, #2a2310, var(--gold-bg))', borderRadius: 14, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="row" style={{ gap: 9, alignItems: 'flex-start', fontSize: 13.5, lineHeight: 1.35 }}>
+                        <span style={{ fontSize: 20, lineHeight: 1 }}>📟</span>
+                        <span>Prima di scendere: guarda il display {mac ? <>{mac[0]}{mac[0].endsWith("'") ? '' : ' '}<b style={{ color: 'var(--gold)' }}>{mac[1]}</b></> : 'della macchina'} e segna i <b style={{ color: 'var(--gold)' }}>watt medi</b>.</span>
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <input autoFocus inputMode="numeric" aria-label="Watt medi" placeholder="facoltativo" value={watt} onChange={(e) => setWatt(e.target.value)}
+                          style={{ borderColor: 'var(--gold)', paddingRight: 64, fontFamily: 'var(--f-numeri)', fontSize: 19 }} />
+                        <span className="muted small" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>W medi</span>
+                      </div>
+                      <p className="small" style={{ margin: 0, color: '#c9c4b9', lineHeight: 1.45 }}>
+                        {kw != null
+                          ? <>≈ <strong>{kw} kcal dai watt</strong>{e != null ? <> · <strong>{fmtEff(e)} W/bpm</strong></> : ''}<br /><span className="muted">{kb != null ? `dal battito sarebbero ${kb} · ` : ''}vuoto = si usa il battito</span></>
+                          : <span className="muted">{wn === null ? 'Scrivi solo il numero dei watt.' : wn ? 'Con la durata vedi le kcal dai watt.' : 'Vuoto = kcal dal battito, come sempre.'}</span>}
+                      </p>
+                    </div>
+                  )
+                })()}
                 <div>
                   <label className="fl">Tipo</label>
                   <select value={ctype} onChange={(e) => setCtype(e.target.value as CardioType)}>{TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</select>
@@ -322,7 +386,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
                 })()}
                 <div className="row">
                   <button className="ghost" style={{ flex: 1 }} onClick={() => setManual(false)}>Annulla</button>
-                  <button className="primary" style={{ flex: 2 }} disabled={durN == null} onClick={add}>✓ Salva cardio</button>
+                  <button className="primary" style={{ flex: 2 }} disabled={durN == null || leggiWatt(watt) === null} onClick={add}>✓ Salva cardio</button>
                 </div>
               </>
             ) : (
@@ -397,7 +461,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
                 )}
 
                 {list.length > 0 && <label className="fl">In questa seduta</label>}
-                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} />)}
+                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} weightKg={weightKg} sex={user?.sex} />)}
 
                 {/* Finire da qui: prima toccava chiudere il cardio, tornare agli
                     esercizi e cercare il tasto in fondo. Il cardio in sospeso lo

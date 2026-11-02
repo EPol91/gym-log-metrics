@@ -4,12 +4,14 @@
  * `segnati`: punti in azzurro (in Corpo: i giorni con una nota). `onPunto`: il
  * punto si tocca, e chi chiama mostra cosa c'è dietro; `sel` è quello toccato.
  */
-export function LineChart({ points, segnati, onPunto, sel, vuoto }: {
+export function LineChart({ points, segnati, onPunto, sel, vuoto, colore = 'var(--gold)' }: {
   points: { label: string; value: number }[]
   segnati?: boolean[]
   onPunto?: (i: number) => void
   sel?: number | null
   vuoto?: string
+  /** Colore della linea (oro se non detto). */
+  colore?: string
 }) {
   if (points.length < 2) {
     return <p className="muted small">{vuoto ?? 'Servono almeno 2 sedute per il grafico.'}</p>
@@ -26,11 +28,11 @@ export function LineChart({ points, segnati, onPunto, sel, vuoto }: {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="120" preserveAspectRatio="none" role="img" aria-label="Andamento">
-      <path className="chart-area" d={area} fill="rgba(212,175,55,0.12)" />
-      <path className="chart-line" pathLength={1} d={line} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <path className="chart-area" d={area} fill={colore} fillOpacity={0.12} />
+      <path className="chart-line" pathLength={1} d={line} fill="none" stroke={colore} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {points.map((p, i) => (
         <circle className="chart-dot" style={{ animationDelay: `${0.6 + i * 0.06}s` }} key={i} cx={x(i)} cy={y(p.value)}
-          r={sel === i ? 4.5 : segnati?.[i] ? 3.5 : 2.5} fill={segnati?.[i] ? '#8e9be0' : 'var(--gold)'} />
+          r={sel === i ? 4.5 : segnati?.[i] ? 3.5 : 2.5} fill={segnati?.[i] ? '#8e9be0' : colore} />
       ))}
       {/* Il bersaglio del tocco è più grande del punto: col dito un cerchio da 2 px non si prende. */}
       {onPunto && points.map((_, i) => (

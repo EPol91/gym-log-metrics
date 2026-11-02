@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeAnalytics } from '../scores/analytics'
-import { computeCardioAverages, computeCardioWeekly } from '../scores/cardioStats'
+import { computeCardioAverages, computeCardioWeekly, computeEfficienza } from '../scores/cardioStats'
+import { TYPE_LABEL, TYPE_ICON, fmtEff } from './CardioBlock'
+import type { CardioType } from '../db/schema'
 import { canUse } from '../entitlements/entitlements'
 import { BarChart } from './BarChart'
 import { LineChart } from './LineChart'
@@ -12,6 +14,8 @@ export function AnalyticsScreen({ onBack }: { onBack?: () => void }) {
   const [cardioPeriod, setCardioPeriod] = useState(7)
   const cardioAvg = useLiveQuery(() => computeCardioAverages(cardioPeriod), [cardioPeriod])
   const cardioWeekly = useLiveQuery(() => computeCardioWeekly(8), [])
+  const eff = useLiveQuery(computeEfficienza, [])
+  const [tipoEff, setTipoEff] = useState<CardioType | null>(null)
 
   // Analisi avanzate = feature Premium.
   if (!canUse('advanced-charts')) {
@@ -97,6 +101,43 @@ export function AnalyticsScreen({ onBack }: { onBack?: () => void }) {
           )}
         </div>
       )}
+
+      {eff && Object.keys(eff).length > 0 && <CardEfficienza eff={eff} tipo={tipoEff} setTipo={setTipoEff} />}
+    </div>
+  )
+}
+
+const gm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
+
+/** Watt per battito nel tempo, un tipo di cardio alla volta. */
+function CardEfficienza({ eff, tipo, setTipo }: {
+  eff: Awaited<ReturnType<typeof computeEfficienza>>; tipo: CardioType | null; setTipo: (t: CardioType) => void
+}) {
+  const tipi = Object.keys(eff) as CardioType[]
+  const t = tipo && tipi.includes(tipo) ? tipo : tipi[0]
+  const punti = eff[t] ?? []
+  const ult = punti[punti.length - 1]
+  const primo = punti[0]
+  const delta = punti.length > 1 ? Math.round((ult.eff / primo.eff - 1) * 100) : null
+  return (
+    <div className="card col" style={{ gap: 8 }}>
+      <strong style={{ fontSize: 14 }}>Efficienza · W per battito</strong>
+      <div className="row wrap" style={{ gap: 5 }}>
+        {tipi.map((x) => <button key={x} className={x === t ? 'chip on' : 'chip'} onClick={() => setTipo(x)}>{TYPE_ICON[x]} {TYPE_LABEL[x]}</button>)}
+      </div>
+      <div className="row" style={{ alignItems: 'baseline', gap: 8 }}>
+        <span style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 34, lineHeight: 1, color: 'var(--cardio)' }}>{fmtEff(ult.eff)}</span>
+        <span className="muted small">W/bpm · {gm(ult.date)}</span>
+        {delta != null && <span className="small" style={{ marginLeft: 'auto', fontWeight: 600, color: delta >= 0 ? 'var(--good)' : 'var(--fat)' }}>{delta >= 0 ? '▲ +' : '▼ '}{delta}% dal {gm(primo.date)}</span>}
+      </div>
+      <LineChart points={punti.map((p) => ({ label: p.date, value: p.eff }))} colore="var(--cardio)" vuoto="Dalla seconda seduta coi watt nasce la linea." />
+      {punti.length > 1 && <div className="row spread muted" style={{ fontSize: 10.5, marginTop: -4 }}><span>{gm(primo.date)}</span><span>{gm(ult.date)}</span></div>}
+      <p className="muted small" style={{ margin: 0, lineHeight: 1.45 }}>Se sale, a parità di battito spingi di più: il cardio ti sta allenando.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '2px 10px', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+        {[...punti].reverse().slice(0, 3).map((p, i) => (
+          <Fragment key={i}><span className="muted">{gm(p.date)}</span><span>{p.watt} W · {p.bpm} bpm</span><strong>{fmtEff(p.eff)}</strong></Fragment>
+        ))}
+      </div>
     </div>
   )
 }
