@@ -10,8 +10,7 @@ import type {
   WorkoutSession, WorkoutType, ExerciseEntry, SetEntry, Exercise,
   ReadinessCheck, MuscleGroup, TrainingPhase, Phase, Unit, WorkoutTemplate,
   CardioSession, CardioMethod, CardioType, NutritionContext, NutritionDayType, NutritionStatus,
-  ActivityLevel, BmrFormula, CoachBlock, OrariUtente,
-} from './schema'
+  ActivityLevel, BmrFormula, CoachBlock, OrariUtente, TagNota } from './schema'
 
 const U = LOCAL_USER_ID
 const today = (): string => todayLocal()
@@ -309,7 +308,8 @@ export async function deleteCardioPreset(id: string): Promise<Trash> {
 
 // --- Body Metrics ---
 export interface MeasurementInput {
-  weight: number; bodyFat?: number; waist?: number; arm?: number; thigh?: number; chest?: number; note?: string
+  weight: number; bodyFat?: number; waist?: number; waistNarrow?: number; arm?: number; thigh?: number; chest?: number
+  note?: string; tags?: TagNota[]
 }
 
 /** Registra/aggiorna la misura per una data (una per data). */
@@ -426,6 +426,7 @@ export async function updateUser(
     schermoAcceso?: boolean
     orari?: OrariUtente
     uscite?: Record<string, string>
+    tagNote?: string[]
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corpo: note e circonferenze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --amber: #e0a030; --ieri: #8e9be0; --ieri-bg: #161a2e;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 10px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .card.nuova { border-color: #4a3e18; box-shadow: inset 0 1px 0 #ffffff08, 0 0 0 1px #4a3e1866; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .nuovo { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px solid #4a3e18; background: var(--gold-bg); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
+  .fl { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .in { height: 36px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; display: flex; align-items: center; padding: 0 10px; font-size: 14px; }
+  .in.ph { color: var(--faint); }
+  .in.testo { height: auto; min-height: 36px; padding: 8px 10px; font-size: 13px; line-height: 1.35; }
+  .btn { height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .btn.pri { background: var(--gold); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+
+  .chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+  .chip.on { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .chip.ieri { border-color: #2f3760; background: var(--ieri-bg); color: var(--ieri); font-weight: 600; }
+  .chip.mini { font-size: 10.5px; padding: 1px 7px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .seg { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; border-radius: 999px; color: var(--muted); }
+  .seg span.on { background: var(--ieri-bg); color: var(--ieri); font-weight: 600; }
+  .seg span.on.oggi { background: var(--gold-bg); color: var(--gold); }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 9px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .sotto { display: flex; gap: 6px; }
+  .sotto span { font-size: 12px; padding: 5px 10px; border-radius: 999px; color: var(--muted); }
+  .sotto span.on { color: var(--gold); background: var(--gold-bg); font-weight: 600; }
+
+  /* grafico */
+  svg.graf { width: 100%; height: 92px; display: block; }
+  .scorri { display: flex; gap: 4px; overflow: hidden; }
+
+  /* circonferenze */
+  .circ { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; }
+  .circ .cel .fl { display: flex; align-items: center; }
+  .circ .cel .fl b { font-weight: 500; color: var(--faint); }
+
+  /* storico */
+  .srow { padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+  .srow:last-child { border-bottom: none; }
+  .srow .top { display: flex; align-items: center; gap: 10px; }
+  .srow .d { flex: 0 0 74px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .srow .v { flex: 1; font-size: 14px; }
+  .srow .ed { color: var(--muted); font-size: 12px; }
+  .srow .det { margin: 4px 0 0 84px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .srow .testo { margin: 3px 0 0 84px; font-size: 12px; color: #b5afa3; font-style: italic; }
+  .srow .misure { margin: 3px 0 0 84px; font-size: 11.5px; color: var(--muted); }
+  .srow.aperta { background: var(--surface-2); margin: 0 -12px; padding: 9px 12px; border-radius: 12px; border-bottom: none; }
+
+  /* Oggi */
+  .grande { font-family: var(--f-num); font-weight: 600; font-size: 30px; line-height: 1; }
+  .lbl { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .velo { position: absolute; inset: 0; background: #000a; }
+  .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -20px 50px #000c; }
+  .maniglia { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 2px; }
+  .i { color: var(--faint); font-size: 11px; margin-left: 3px; }
+  .i.on { color: var(--gold); }
+  .circ .cel .fl b { margin-left: auto; }
+  .spiega { font-size: 11.5px; line-height: 1.4; color: #c9c4b9; background: var(--gold-bg); border: 1px solid #4a3e18; border-radius: 10px; padding: 7px 9px; }
+  .spiega b { color: var(--gold); }
+  .guida { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: start; }
+  .omino { width: 104px; height: auto; }
+  .voci { display: grid; gap: 7px; }
+  .voci div { font-size: 12px; line-height: 1.38; color: #c9c4b9; padding-left: 13px; position: relative; }
+  .voci i { position: absolute; left: 0; top: 5px; width: 8px; height: 8px; border-radius: 2px; }
+  .voci b { color: var(--text); display: block; font-size: 12.5px; }
+  .regole { font-size: 11.5px; line-height: 1.45; color: var(--muted); border-top: 1px solid var(--line-soft); padding-top: 8px; }
+  .regole b { color: var(--text); }
+  .filtri { display: flex; gap: 4px; flex-wrap: wrap; margin: 7px 0 4px; }
+  .mese { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; padding: 9px 0 7px; border-bottom: 1px solid var(--line-soft); }
+  .mese .muted { font-weight: 400; font-size: 11.5px; }
+  .mese.aperto { color: var(--gold); }
+  .srow.chiusa { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  .srow.chiusa .v { flex: 1; font-size: 14px; }
+  .srow.chiusa .d { flex: 0 0 56px; }
+  .segni { display: flex; gap: 6px; font-size: 11px; }
+  .segni .s { color: var(--muted); }
+  .segni .s.ieri { color: var(--ieri); }
+  .srow.aperta { margin: 2px -12px; }
+  .chip.agg { border-style: dashed; color: var(--gold); border-color: #4a3e18; }
+  .gtag { display: grid; gap: 0; border-top: 1px solid var(--line-soft); }
+  .gr { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .gr .presa { color: var(--faint); font-size: 11px; letter-spacing: -2px; }
+  .gr .n { flex: 1; }
+  .gr .u { font-size: 11px; color: var(--muted); }
+  .gr .a { width: 26px; text-align: center; color: var(--muted); font-size: 12px; }
+  .gr .a.ok { color: var(--good); font-weight: 700; }
+  .gr.ed { background: var(--surface-2); margin: 0 -8px; padding: 5px 8px; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="ey">Mockup · Salute → Corpo · 02.11.2026</div>
+  <h1>Nota del giorno e circonferenze</h1>
+  <p>Sei schermate a 360×700. I tag sono di partenza: li aggiungi, rinomini ed elimini tu (schermata 6). Il colore dice di quando parla il tag: <b style="color:var(--ieri)">azzurro = ieri sera</b>, <b style="color:var(--gold)">oro = oggi</b>.</p>
+</div>
+
+<div class="telefoni">
+
+<!-- 1. CORPO: registra con nota e tag -->
+<div class="blocco">
+  <div class="nome">1 · Corpo, in cima</div>
+  <div class="tel">
+    <div class="stato"><span>7:42</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="contenuto">
+        <div class="sotto"><span>Vitali</span><span class="on">Corpo</span><span>Abitudini</span><span>Tempo</span></div>
+        <h1 style="font-size:24px">Corpo</h1>
+
+        <div class="card">
+          <div class="riga spazia"><span class="muted small">Peso attuale</span><span class="small" style="color:var(--amber)">▲0,6 kg vs prec.</span></div>
+          <div class="riga" style="align-items:baseline;gap:6px;margin-top:2px">
+            <span class="num" style="font-size:34px">82,4</span><span class="muted small">kg</span><span class="muted small" style="margin-left:6px">· BF 12%</span>
+          </div>
+          <div class="riga spazia" style="margin:6px 0 5px">
+            <span class="muted small">Andamento</span>
+            <span class="riga" style="gap:4px"><span class="chip on">Peso</span><span class="chip">% grasso</span><span class="chip">Circonf.</span></span>
+          </div>
+          <svg class="graf" viewBox="0 0 320 92" preserveAspectRatio="none">
+            <line x1="0" y1="20" x2="320" y2="20" stroke="#201f1c"/><line x1="0" y1="50" x2="320" y2="50" stroke="#201f1c"/><line x1="0" y1="80" x2="320" y2="80" stroke="#201f1c"/>
+            <path d="M0 62 L23 58 L46 60 L69 55 L92 57 L115 50 L138 52 L161 47 L184 49 L207 44 L230 46 L253 40 L276 43 L299 38 L320 30" fill="none" stroke="#d4af37" stroke-width="2"/>
+            <circle cx="69" cy="55" r="3.5" fill="#8e9be0"/><circle cx="207" cy="44" r="3.5" fill="#8e9be0"/><circle cx="320" cy="30" r="3.5" fill="#8e9be0"/>
+          </svg>
+          <div class="muted" style="font-size:11px;margin-top:3px">● giorno con nota: tocca il punto per leggerla</div>
+        </div>
+
+        <div class="card nuova">
+          <div class="riga spazia"><label class="fl" style="margin:0">Registra misura</label><span class="nuovo">nuovo</span></div>
+          <div class="riga" style="gap:8px;margin-top:6px">
+            <div style="flex:1"><label class="fl">Data</label><div class="in">02.11.2026</div></div>
+            <div style="flex:1"><label class="fl">Peso (kg)</label><div class="in">82,4</div></div>
+            <span class="chip mini" style="align-self:flex-end;margin-bottom:9px">+ % grasso</span>
+          </div>
+          <div class="riga spazia" style="margin-top:9px">
+            <label class="fl" style="margin:0">Nota · riguarda</label>
+            <div class="seg" style="width:160px"><span class="on">↶ ieri sera</span><span>oggi</span></div>
+          </div>
+          <div class="tags" style="margin-top:7px">
+            <span class="chip ieri">↶ sushi/AYCE</span><span class="chip">ristorante</span><span class="chip">pasto libero</span><span class="chip ieri">↶ molto salato</span>
+            <span class="chip">piccante</span><span class="chip">alcol</span><span class="chip">serata</span><span class="chip on">poco sonno</span>
+            <span class="chip">intestino</span><span class="chip">malattia</span><span class="chip">viaggio</span><span class="chip">stress</span><span class="chip">seduta saltata</span><span class="chip agg">＋</span><span class="chip agg">✎ tag</span>
+          </div>
+          <div class="in testo" style="margin-top:7px">AYCE con Fra, tanta salsa di soia</div>
+          <div class="btn pri" style="margin-top:8px">Salva</div>
+        </div>
+      </div>
+      <div class="tab"><div>Oggi</div><div>Allena</div><div>Cibo</div><div class="on">Salute</div><div>Profilo</div></div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>% grasso diventa secondario: un tastino «+ % grasso» accanto al peso apre il campo solo se serve. Così tag e nota stanno nella schermata.</li>
+    <li>«Riguarda: ieri sera | oggi» decide come si segna il tag che tocchi dopo. Parte da <b>ieri sera</b>: ti pesi la mattina, di solito racconti la sera prima. Un secondo tocco sul tag lo toglie.</li>
+    <li>Nel backup: <code>note</code> (testo) e <code>tags</code> (<code>[{t:'sushi/AYCE', ieri:true}, …]</code>) sulla misura del giorno.</li>
+    <li>Nel grafico del peso i giorni con nota hanno il punto azzurro.</li>
+  </ul>
+</div>
+
+<!-- 2. CORPO: circonferenze + andamento -->
+<div class="blocco">
+  <div class="nome">2 · Corpo, circonferenze</div>
+  <div class="tel">
+    <div class="stato"><span>7:43</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="contenuto">
+        <div class="card nuova">
+          <div class="riga spazia">
+            <label class="fl" style="margin:0">Circonferenze (cm)</label>
+            <span class="small" style="color:var(--gold);font-weight:600">tocca oggi</span>
+          </div>
+          <div class="muted" style="font-size:11.5px;margin:2px 0 8px">Ogni 2 settimane, mattina a digiuno. Ultime il 19.10.2026.</div>
+          <div class="circ">
+            <div class="cel"><label class="fl">Vita ombelico <span class="i">ⓘ</span><b>84,5</b></label><div class="in">84</div></div>
+            <div class="cel"><label class="fl" style="color:var(--gold)">Vita stretta <span class="i on">ⓘ</span><b>78,0</b></label><div class="in ph" style="border-color:#4a3e18">78,0</div></div>
+            <div class="spiega" style="grid-column:1/-1">
+              <b>Vita stretta</b> · il punto più stretto del busto, tra l'ultima costola e l'ombelico (di solito 2-4 cm sopra). Più bassa e più larga c'è la vita all'ombelico, che si gonfia di più.
+            </div>
+            <div class="cel"><label class="fl">Petto <span class="i">ⓘ</span><b>108,0</b></label><div class="in ph">108,0</div></div>
+            <div class="cel"><label class="fl">Braccio dx contr. <span class="i">ⓘ</span><b>40,5</b></label><div class="in ph">40,5</div></div>
+            <div class="cel"><label class="fl">Coscia dx metà <span class="i">ⓘ</span><b>61,0</b></label><div class="in ph">61,0</div></div>
+            <div class="cel" style="display:flex;align-items:flex-end"><div class="btn pri" style="width:100%">Salva</div></div>
+          </div>
+          <div class="riga spazia" style="margin-top:8px">
+            <span class="muted" style="font-size:11px">Facoltative. In grigio l'ultima misura.</span>
+            <span class="small" style="color:var(--gold);font-weight:600">📏 Come misurare ›</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="riga spazia" style="margin-bottom:5px">
+            <span class="muted small">Andamento</span>
+            <span class="riga" style="gap:4px"><span class="chip">Peso</span><span class="chip">% grasso</span><span class="chip on">Circonf.</span></span>
+          </div>
+          <div class="scorri"><span class="chip mini on">Vita omb.</span><span class="chip mini">Vita str.</span><span class="chip mini">Petto</span><span class="chip mini">Braccio</span><span class="chip mini">Coscia</span></div>
+          <svg class="graf" viewBox="0 0 320 92" preserveAspectRatio="none" style="height:84px;margin-top:6px">
+            <line x1="0" y1="20" x2="320" y2="20" stroke="#201f1c"/><line x1="0" y1="50" x2="320" y2="50" stroke="#201f1c"/><line x1="0" y1="80" x2="320" y2="80" stroke="#201f1c"/>
+            <path d="M0 30 L64 36 L128 41 L192 47 L256 52 L320 58" fill="none" stroke="#d4af37" stroke-width="2"/>
+            <circle cx="0" cy="30" r="3" fill="#d4af37"/><circle cx="64" cy="36" r="3" fill="#d4af37"/><circle cx="128" cy="41" r="3" fill="#d4af37"/><circle cx="192" cy="47" r="3" fill="#d4af37"/><circle cx="256" cy="52" r="3" fill="#d4af37"/><circle cx="320" cy="58" r="3.5" fill="#d4af37"/>
+          </svg>
+          <div class="riga spazia muted" style="font-size:11px"><span>24.08 · 87,0</span><span>02.11 · 84,0 cm</span></div>
+        </div>
+      </div>
+      <div class="tab"><div>Oggi</div><div>Allena</div><div>Cibo</div><div class="on">Salute</div><div>Profilo</div></div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Ogni campo ha la sua ⓘ: un tocco apre sotto la spiegazione di dove si misura (qui la vita stretta). «Come misurare» apre la guida completa (schermata 3).</li>
+    <li>Il riquadro dice quando tocca: «tocca oggi» dopo 14 giorni dalle ultime, altrimenti «prossime dal 16.11». Nessun promemoria.</li>
+    <li>Nuovo campo <code>waistNarrow</code> per la vita stretta; gli altri esistono già (<code>waist</code> = ombelico, <code>chest</code>, <code>arm</code>, <code>thigh</code>). Nessuna migrazione.</li>
+    <li>«Circonf.» nel grafico: una linea alla volta, con primo e ultimo valore.</li>
+  </ul>
+</div>
+
+<!-- 3. COME MISURARE -->
+<div class="blocco">
+  <div class="nome">3 · Come misurare</div>
+  <div class="tel">
+    <div class="stato"><span>7:43</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="velo"></div>
+      <div class="foglio" style="top:26px;gap:8px">
+        <div class="maniglia"></div>
+        <div class="riga spazia"><span style="font-weight:700;font-size:15px">Come misurare</span><span class="muted small">✕</span></div>
+        <div class="guida">
+          <svg viewBox="0 0 120 250" class="omino" aria-hidden="true">
+            <g fill="#1c1b18" stroke="#5d5951" stroke-width="1.4" stroke-linejoin="round">
+              <circle cx="60" cy="20" r="13"/>
+              <path d="M52 32 L68 32 L70 40 L90 46 Q98 50 99 60 L104 104 Q105 110 100 111 L96 111 L90 66 L86 64 L84 98 Q82 106 84 114 L86 124 L80 126 Q72 129 60 129 Q48 129 40 126 L34 124 L36 114 Q38 106 36 98 L34 64 L30 66 L24 111 L20 111 Q15 110 16 104 L21 60 Q22 50 30 46 L50 40 Z"/>
+              <path d="M36 124 L84 124 L86 140 L80 236 L66 236 L62 150 L58 150 L54 236 L40 236 L34 140 Z"/>
+            </g>
+            <g stroke-width="2.2" stroke-linecap="round">
+              <line x1="31" y1="62" x2="89" y2="62" stroke="#d4af37"/>
+              <line x1="34" y1="94" x2="86" y2="94" stroke="#5bc27a"/>
+              <line x1="35" y1="108" x2="85" y2="108" stroke="#8e9be0"/>
+              <line x1="17" y1="76" x2="27" y2="78" stroke="#e0a030"/>
+              <line x1="38" y1="176" x2="57" y2="176" stroke="#e57373"/>
+            </g>
+            <circle cx="60" cy="108" r="1.6" fill="#8f8a80"/>
+          </svg>
+          <div class="voci">
+            <div><i style="background:#d4af37"></i><b>Petto</b> Sotto le ascelle, sul punto più largo dei pettorali. Braccia giù, a fine espirazione normale.</div>
+            <div><i style="background:#5bc27a"></i><b>Vita stretta</b> Il punto più stretto del busto, tra ultima costola e ombelico. Pancia rilassata, non tirarla in dentro.</div>
+            <div><i style="background:#8e9be0"></i><b>Vita ombelico</b> Esattamente sull'ombelico, metro orizzontale. A fine espirazione.</div>
+            <div><i style="background:#e0a030"></i><b>Braccio dx</b> Gomito a 90°, bicipite contratto, sul punto più grosso.</div>
+            <div><i style="background:#e57373"></i><b>Coscia dx</b> In piedi, peso su tutte e due le gambe, a metà tra piega dell'inguine e bordo alto della rotula.</div>
+          </div>
+        </div>
+        <div class="regole">
+          <b>Ogni volta uguale</b> · la mattina, dopo il bagno, a digiuno, prima di allenarti. Metro aderente ma senza stringere la pelle, parallelo al pavimento. Due misure: se differiscono più di 0,5 cm, una terza.
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Guida sempre a un tocco da «📏 Come misurare», nello stesso riquadro dove scrivi i numeri.</li>
+    <li>Ogni colore della figura corrisponde alla sua voce: vedi subito dove passa il metro e quanto la vita stretta sta sopra l'ombelico.</li>
+  </ul>
+</div>
+
+<!-- 4. STORICO -->
+<div class="blocco">
+  <div class="nome">4 · Storico</div>
+  <div class="tel">
+    <div class="stato"><span>7:44</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="contenuto">
+        <div class="card">
+          <div class="riga spazia"><span class="muted small">Storico</span><span class="muted" style="font-size:11px">96 pesate</span></div>
+          <div class="filtri">
+            <span class="chip mini on">Tutte</span><span class="chip mini">con nota</span><span class="chip mini">📏 circonf.</span><span class="chip mini">tag ▾</span>
+          </div>
+
+          <div class="mese aperto"><span>Novembre 2026</span><span class="muted">2 pesate · media 82,1 ▴</span></div>
+          <div class="srow chiusa"><span class="d">02.11</span><span class="v">82,4 kg</span><span class="segni"><span class="s ieri">🏷 2</span><span class="s">📏</span></span><span class="ed">›</span></div>
+          <div class="srow aperta">
+            <div class="riga spazia"><span class="small" style="font-weight:600">01.11.2026 · 81,8 kg</span><span class="muted small">✎ modifica</span></div>
+            <div class="det" style="margin:6px 0 0"><span class="chip mini ieri">↶ serata</span><span class="chip mini ieri">↶ alcol</span></div>
+            <div class="testo" style="margin:4px 0 0">compleanno Luca</div>
+          </div>
+
+          <div class="mese"><span>Ottobre 2026</span><span class="muted">24 pesate · media 81,9 ▾</span></div>
+          <div class="mese"><span>Settembre 2026</span><span class="muted">27 pesate · media 81,2 ▾</span></div>
+          <div class="mese"><span>Agosto 2026</span><span class="muted">25 pesate · media 80,6 ▾</span></div>
+          <div class="mese"><span>Luglio 2026</span><span class="muted">18 pesate · media 80,1 ▾</span></div>
+        </div>
+
+        <div class="card">
+          <div class="muted small" style="margin-bottom:6px">Con il filtro «tag ▾ → sushi/AYCE»</div>
+          <div class="filtri" style="margin-top:0"><span class="chip mini">Tutte</span><span class="chip mini">con nota</span><span class="chip mini">📏 circonf.</span><span class="chip mini on">sushi/AYCE ✕</span></div>
+          <div class="srow chiusa"><span class="d">02.11.26</span><span class="v">82,4 kg</span><span class="segni"><span class="s ieri">🏷 2</span><span class="s">📏</span></span><span class="ed">›</span></div>
+          <div class="srow chiusa"><span class="d">18.10.26</span><span class="v">82,0 kg</span><span class="segni"><span class="s ieri">🏷 1</span></span><span class="ed">›</span></div>
+          <div class="srow chiusa"><span class="d">27.09.26</span><span class="v">81,5 kg</span><span class="segni"><span class="s ieri">🏷 3</span></span><span class="ed">›</span></div>
+          <div class="muted" style="font-size:11px;margin-top:6px">3 giorni · nessun raggruppamento per mese quando filtri</div>
+        </div>
+      </div>
+      <div class="tab"><div>Oggi</div><div>Allena</div><div>Cibo</div><div class="on">Salute</div><div>Profilo</div></div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Una riga per pesata, chiusa: data, peso, <span style="color:var(--ieri)">🏷 2</span> se ha tag o nota, 📏 se ha le circonferenze. Un tocco la apre; «✎ modifica» corregge peso, % grasso, tag, nota e circonferenze.</li>
+    <li>Raggruppato per mese: aperto il mese in corso, gli altri chiusi con numero di pesate e media.</li>
+    <li>Filtri: «con nota», «📏 circonf.» o un tag preciso. Con un filtro sparisce il raggruppamento ed esce l'elenco secco dei giorni trovati.</li>
+  </ul>
+</div>
+
+<!-- 5. OGGI: nota dal riquadro Corpo -->
+<div class="blocco">
+  <div class="nome">5 · Oggi, dove ti pesi</div>
+  <div class="tel">
+    <div class="stato"><span>7:41</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="contenuto">
+        <div class="riga spazia"><div><div class="lbl">ETP Health</div><h1 style="font-size:24px;margin-top:3px">Ciao Emanuel</h1></div></div>
+        <div class="card" style="height:86px"><div class="lbl">Prossima seduta</div></div>
+        <div class="card" style="height:104px"><div class="lbl">Vitali</div></div>
+        <div class="card" style="height:96px"><div class="lbl">Nutrizione</div></div>
+        <div class="riga" style="gap:8px;align-items:stretch">
+          <div class="card" style="flex:1;padding:9px 12px">
+            <span class="lbl">Corpo</span>
+            <div class="riga" style="gap:5px;align-items:baseline;margin-top:6px"><span class="grande">82,4</span><span class="muted" style="font-size:12px">kg</span><span class="muted" style="font-size:11px;margin-left:auto">+0,6</span></div>
+            <span class="chip" style="margin-top:7px;font-size:11px;padding:3px 10px">✓ pesato · ＋ nota</span>
+          </div>
+          <div class="card" style="flex:1"><span class="lbl">Passi</span></div>
+        </div>
+      </div>
+      <div class="velo"></div>
+      <div class="foglio">
+        <div class="maniglia"></div>
+        <div class="riga spazia"><span style="font-weight:700;font-size:15px">Nota di oggi</span><span class="muted small">82,4 kg ✓</span></div>
+        <div class="seg"><span class="on">↶ ieri sera</span><span>oggi</span></div>
+        <div class="tags">
+          <span class="chip ieri">↶ sushi/AYCE</span><span class="chip">ristorante</span><span class="chip">pasto libero</span><span class="chip">molto salato</span>
+          <span class="chip">piccante</span><span class="chip">alcol</span><span class="chip">serata</span><span class="chip">poco sonno</span>
+          <span class="chip">intestino</span><span class="chip">malattia</span><span class="chip">viaggio</span><span class="chip">stress</span><span class="chip">seduta saltata</span><span class="chip agg">＋</span><span class="chip agg">✎ tag</span>
+        </div>
+        <div class="in testo ph">Scrivi una nota (facoltativa)</div>
+        <div class="riga" style="gap:6px"><div class="btn gh" style="flex:1">Chiudi</div><div class="btn pri" style="flex:2">Salva</div></div>
+      </div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Il riquadro Corpo di Oggi non cresce: il tasto sotto il peso diventa «✓ pesato · ＋ nota» e apre questo foglio dal basso.</li>
+    <li>Se non ti sei ancora pesato resta «＋ pesati oggi» come ora; dopo il peso il foglio si apre già sulla nota.</li>
+    <li>Con la nota salvata il tasto dice «✓ pesato · ✎ sushi +1». Si corregge dallo stesso foglio o da Corpo.</li>
+  </ul>
+</div>
+
+<!-- 6. GESTISCI TAG -->
+<div class="blocco">
+  <div class="nome">6 · I tuoi tag</div>
+  <div class="tel">
+    <div class="stato"><span>7:45</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="velo"></div>
+      <div class="foglio" style="top:26px;gap:8px">
+        <div class="maniglia"></div>
+        <div class="riga spazia"><span style="font-weight:700;font-size:15px">I tuoi tag</span><span class="small" style="color:var(--gold);font-weight:600">Fatto</span></div>
+        <div class="riga" style="gap:6px">
+          <div class="in testo" style="flex:1;border-color:#4a3e18">ciclo carb</div>
+          <div class="btn pri" style="padding:0 14px">＋ Aggiungi</div>
+        </div>
+        <div class="gtag">
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">sushi/AYCE</span><span class="u">7 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr ed"><span class="presa">⋮⋮</span><span class="in testo" style="flex:1;padding:4px 8px;min-height:0">ristorante / pizza</span><span class="a ok">✓</span><span class="a">✕</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">pasto libero</span><span class="u">4 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">molto salato</span><span class="u">9 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">piccante</span><span class="u">mai usato</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">alcol</span><span class="u">3 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">serata</span><span class="u">3 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">poco sonno</span><span class="u">5 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">intestino</span><span class="u">2 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">malattia</span><span class="u">mai usato</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">viaggio</span><span class="u">1 giorno</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">stress</span><span class="u">2 giorni</span><span class="a">✎</span><span class="a">🗑</span></div>
+          <div class="gr"><span class="presa">⋮⋮</span><span class="n">seduta saltata</span><span class="u">1 giorno</span><span class="a">✎</span><span class="a">🗑</span></div>
+        </div>
+        <div class="spiega" style="background:#1a1210;border-color:#4a2a22;color:#c9c4b9">
+          <b style="color:#e57373">Eliminare «molto salato»?</b> È usato in 9 giorni: lì resta scritto, sparisce solo dall'elenco da toccare. <span style="color:#e57373;font-weight:600">Elimina</span> · <span class="muted">Annulla</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Si apre dall'ultimo tasto «✎ tag» in fondo ai tag, sia in Corpo sia nel foglio di Oggi. Accanto c'è «＋» per aggiungerne uno al volo mentre scrivi la nota.</li>
+    <li><b>Aggiungi:</b> scrivi e ＋. <b>Modifica ✎:</b> il nome cambia anche in tutti i giorni dove l'avevi messo, così storico, filtri e backup restano coerenti. <b>Ordine ⋮⋮:</b> trascini, i più usati in alto.</li>
+    <li><b>Elimina 🗑:</b> se mai usato sparisce e basta; se usato chiede conferma e nei giorni passati resta (lo storico non si tocca), con l'annulla come sempre.</li>
+    <li>L'elenco sta nel profilo (nessuna tabella nuova) e finisce nel backup; ogni giorno salva il nome del tag, quindi l'autogestione lo legge senza decodificare niente.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

@@ -115,6 +115,12 @@ export interface User extends BaseRecord {
    * battiti — meta' seduta senza cuore registrato. Default acceso.
    */
   schermoAcceso?: boolean
+  /**
+   * I tag della nota del giorno (Corpo), nell'ordine in cui li vuoi vedere.
+   * Assente = quelli di partenza (vedi db/noteCorpo). Li aggiungi, rinomini ed
+   * elimini tu: eliminarne uno lo toglie da qui, non dai giorni dove l'hai messo.
+   */
+  tagNote?: string[]
 }
 
 /**
@@ -299,16 +305,26 @@ export interface SetEntry extends BaseRecord {
   isWarmup?: boolean
 }
 
+/**
+ * Un tag della nota del giorno. Si salva il nome, non un codice: chi legge il
+ * backup (l'autogestione) lo capisce senza dizionario. `ieri` = parla della
+ * sera prima («sushi ieri sera»), cosa normale per una pesata del mattino.
+ */
+export interface TagNota { t: string; ieri?: boolean }
+
 export interface BodyMeasurement extends BaseRecord {
   date: ISODate
   weight: number
   bodyFat?: number
-  /** circonferenze (cm), opzionali */
-  waist?: number
-  arm?: number
-  thigh?: number
+  /** circonferenze (cm), opzionali: ogni 2 settimane, mattina a digiuno */
+  waist?: number // vita all'ombelico
+  waistNarrow?: number // vita stretta: il punto più stretto del busto
+  arm?: number // braccio dx contratto
+  thigh?: number // coscia dx a metà
   chest?: number
+  /** nota del giorno: testo libero più tag */
   note?: string
+  tags?: TagNota[]
 }
 
 export type NutritionDayType = 'on' | 'off' | 'reload'

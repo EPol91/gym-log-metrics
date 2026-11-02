@@ -191,6 +191,9 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .chip.on { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); }
 .chip:disabled { opacity: .4; }
+/* Tag della nota del giorno: azzurro = parla di ieri sera; tratteggiati = aggiungi/gestisci. */
+.chip.ieri { background: #161a2e; border-color: #2f3760; color: #8e9be0; font-weight: 600; }
+.chip.agg { border-style: dashed; border-color: #4a3e18; color: var(--gold); }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .row { display: flex; gap: 8px; align-items: center; }

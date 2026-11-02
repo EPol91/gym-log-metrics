@@ -15,7 +15,8 @@ import { BarraFasi, LegendaFasi, haFasi, fmtMin } from './FasiSonno'
 import { ScoreRing } from './anim'
 import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
-import { usePesoOggi } from './PesoOggi'
+import { usePesoOggi, measurementOn } from './PesoOggi'
+import { FoglioNota } from './NotaCorpo'
 import { Calendario, DataDiOggi } from './CardCalendario'
 import { useEffect } from 'react'
 
@@ -222,6 +223,13 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
   const [apri, setApri] = useState(false)
   const n = parseNum(w, { min: 20, max: 400 })
   const { peso: pesoOggi, letto } = usePesoOggi()
+  // La nota del giorno sta sulla pesata: da qui si apre il foglio, il riquadro non cresce.
+  const [nota, setNota] = useState(false)
+  const oggiM = useLiveQuery(() => measurementOn(), [])
+  const tagOggi = oggiM?.tags ?? []
+  const etichettaNota = tagOggi.length
+    ? '✎ ' + tagOggi[0].t + (tagOggi.length > 1 ? ' +' + (tagOggi.length - 1) : '')
+    : oggiM?.note?.trim() ? '✎ nota' : '＋ nota'
 
   return (
     <>
@@ -240,21 +248,22 @@ function CardCorpo({ peso }: { peso: { weight: number; delta: number | null } | 
         // Il numero grande e' l'ultimo peso noto, che puo' essere di ieri: da solo
         // non dice se oggi l'hai fatto. Il tasto lo dice, e chiama quando manca.
         <button className={'chip' + (pesoOggi == null && letto ? ' invito-bordo' : '')}
-          style={{ marginTop: 7, padding: '3px 10px', fontSize: 11, ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
-          onClick={() => setApri(true)}>
-          {pesoOggi != null ? '✓ pesato oggi' : '＋ pesati oggi'}
+          style={{ marginTop: 7, padding: '3px 10px', fontSize: 11, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(pesoOggi == null && letto ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}) }}
+          onClick={() => (pesoOggi != null ? setNota(true) : setApri(true))}>
+          {pesoOggi != null ? '✓ pesato · ' + etichettaNota : '＋ pesati oggi'}
         </button>
       ) : (
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
           <input inputMode="decimal" value={w} placeholder={peso ? String(peso.weight) : 'kg'}
             onChange={(e) => { setW(e.target.value); setSalvato(false) }} style={{ flex: 1, minWidth: 0, textAlign: 'center' }} />
           <button className="primary" style={{ padding: '9px 12px' }} disabled={n == null}
-            onClick={async () => { if (n == null) return; await upsertMeasurement(todayISO(), { weight: n }); setSalvato(true); setW('') }}>
+            onClick={async () => { if (n == null) return; await upsertMeasurement(todayISO(), { weight: n }); setSalvato(true); setW(''); setApri(false); setNota(true) }}>
             Salva
           </button>
         </div>
       )}
-      {salvato && <p className="small" style={{ margin: '6px 0 0', color: 'var(--good)' }}>✓ salvato</p>}
+      {salvato && apri && <p className="small" style={{ margin: '6px 0 0', color: 'var(--good)' }}>✓ salvato</p>}
+      {nota && <FoglioNota date={todayISO()} onClose={() => setNota(false)} />}
     </>
   )
 }
