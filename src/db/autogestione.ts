@@ -11,6 +11,8 @@ import { db } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { targetsAl } from './targetStorico'
 import { tagAuto, autoAttivi } from './noteCorpo'
+import { PASSI_AL_MINUTO } from '../rs/passiEquivalenti'
+import type { CardioType } from './schema'
 import { todayLocal } from '../util/date'
 
 const INVII = 'autog-invii'
@@ -80,17 +82,21 @@ export interface GiornoRiepilogo {
   nota?: string
   circonferenze?: Record<string, number>
   altro?: Record<string, number>
+  /** il cardio del giorno per tipo, con i passi equivalenti per RS (stessa regola della scheda RS) */
+  cardio?: { tipo: string; minuti: number; passi: number }[]
+  passiEquivalenti?: number
 }
 
 export async function riepilogoGiorni(): Promise<GiornoRiepilogo[]> {
   const U = LOCAL_USER_ID
   const tieni = <T extends { userId: string; deleted?: boolean; date: string }>(r: T[]) => r.filter((x) => x.userId === U && !x.deleted && x.date >= DAL)
-  const [misure, nutri, tipi, abitudini, whoop] = await Promise.all([
+  const [misure, nutri, tipi, abitudini, whoop, cardio] = await Promise.all([
     db.bodyMeasurements.where('userId').equals(U).toArray(),
     db.nutrition.where('userId').equals(U).toArray(),
     db.dayTypes.where('userId').equals(U).toArray(),
     db.habitEntries.where('userId').equals(U).toArray(),
     db.whoopDays.where('userId').equals(U).toArray(),
+    db.cardio.where('userId').equals(U).toArray(),
   ])
   const giorni = new Map<string, GiornoRiepilogo>()
   const g = (data: string) => { let x = giorni.get(data); if (!x) { x = { data }; giorni.set(data, x) } return x }
@@ -122,6 +128,18 @@ export async function riepilogoGiorni(): Promise<GiornoRiepilogo[]> {
     if (h.value == null) continue
     const x = g(h.date)
     x.altro = { ...x.altro, [h.habitKey]: h.value }
+  }
+
+  // Cardio per tipo e passi equivalenti: il Cockpit ci fa i «passi per RS» (camminata + cardio).
+  const perGiorno = new Map<string, Map<string, number>>()
+  for (const c of tieni(cardio)) {
+    const t = c.cardioType ?? 'altro', m = perGiorno.get(c.date) ?? new Map<string, number>()
+    m.set(t, (m.get(t) ?? 0) + (c.durationMin || 0)); perGiorno.set(c.date, m)
+  }
+  for (const [data, m] of perGiorno) {
+    const x = g(data)
+    x.cardio = [...m].map(([tipo, minuti]) => ({ tipo, minuti: Math.round(minuti), passi: Math.round(minuti * (PASSI_AL_MINUTO[tipo as CardioType] ?? 0)) }))
+    x.passiEquivalenti = x.cardio.reduce((s, v) => s + v.passi, 0)
   }
 
   return [...giorni.values()].sort((a, b) => a.data.localeCompare(b.data))
