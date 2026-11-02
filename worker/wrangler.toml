@@ -7,6 +7,12 @@ compatibility_date = "2026-07-01"
 [vars]
 WHOOP_CLIENT_ID = "fb32c92f-3201-469e-bd5b-e88ec1e9726e"
 REDIRECT_URI = "https://etp-health-whoop.emanuel-pol91.workers.dev/callback"
+# Invio ad Autogestione (OneDrive). Client ID, Client Secret ed email del tuo
+# account Microsoft stanno nei secret del Worker (MS_CLIENT_ID, MS_CLIENT_SECRET,
+# MS_EMAIL), mai qui: il repo è pubblico.
+MS_REDIRECT_URI = "https://etp-health-whoop.emanuel-pol91.workers.dev/ms/callback"
+# L'unica origine da cui si accetta l'invio: il sito dell'app (anche dentro l'APK).
+APP_ORIGIN = "https://epol91.github.io"
 
 # Token di accesso e refresh, legati a un identificativo casuale generato dall'app.
 [[kv_namespaces]]

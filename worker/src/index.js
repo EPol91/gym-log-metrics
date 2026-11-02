@@ -6,6 +6,8 @@
 //
 // I dati sanitari NON vengono conservati qui: transitano e basta.
 
+import { onedrive } from './onedrive.js'
+
 const WHOOP_AUTH = 'https://api.prod.whoop.com/oauth/oauth2/auth'
 const WHOOP_TOKEN = 'https://api.prod.whoop.com/oauth/oauth2/token'
 const WHOOP_API = 'https://api.prod.whoop.com/developer'
@@ -75,6 +77,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     const p = url.pathname
+    // Invio ad Autogestione: OneDrive ha le sue regole (solo l'app, con la sua chiave).
+    const ms = await onedrive(request, env, url)
+    if (ms) return ms
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
 
     // --- Avvio del consenso -------------------------------------------------
@@ -166,6 +171,6 @@ export default {
       })
     }
 
-    return json({ servizio: 'etp-health-whoop', percorsi: ['/auth', '/callback', '/stato', '/scollega', '/api/…'] }, 404)
+    return json({ servizio: 'etp-health-whoop', percorsi: ['/auth', '/callback', '/stato', '/scollega', '/api/…', '/ms/…'] }, 404)
   },
 }

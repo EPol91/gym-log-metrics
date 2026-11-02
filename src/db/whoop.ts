@@ -13,7 +13,7 @@ import { todayLocal } from '../util/date'
 import type { WhoopDay, WhoopWorkout } from './schema'
 
 const U = LOCAL_USER_ID
-const WORKER = 'https://etp-health-whoop.emanuel-pol91.workers.dev'
+export const WORKER = 'https://etp-health-whoop.emanuel-pol91.workers.dev'
 const DEVICE_KEY = 'whoop-device'
 
 /** Chiave casuale del dispositivo: è ciò che lega questo telefono ai suoi token. */

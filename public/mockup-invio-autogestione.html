@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invio ad Autogestione</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --bad: #e57373; --amber: #e0a030;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 9px 12px; }
+  .lbl { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .muted { color: var(--muted); }
+  .num { font-family: var(--f-num); font-weight: 600; }
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 9px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .finto { color: var(--faint); font-size: 11px; }
+
+  /* il riquadro nuovo */
+  .invio { border-color: #4a3e18; box-shadow: inset 0 1px 0 #ffffff08, 0 0 0 1px #4a3e1866; padding: 9px 10px 9px 12px; display: flex; align-items: center; gap: 10px; }
+  .invio .bt { flex: none; background: var(--gold); color: #1a1405; font-weight: 700; font-size: 13.5px; border-radius: 11px; padding: 9px 12px; display: flex; align-items: center; gap: 6px; }
+  .invio .bt.gh { background: transparent; border: 1px solid #4a3e18; color: var(--gold); }
+  .invio .info { flex: 1; min-width: 0; font-size: 11.5px; line-height: 1.3; }
+  .invio .info b { font-weight: 600; }
+  .ok { color: var(--good); } .err { color: var(--bad); } .amb { color: var(--amber); }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #1a140566; border-top-color: #1a1405; border-radius: 50%; }
+
+  .stati { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+  .stati .tit { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 4px 0 -4px 2px; }
+
+  .velo { position: absolute; inset: 0; background: #000a; }
+  .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: #171613; border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -20px 50px #000c; }
+  .maniglia { width: 38px; height: 4px; border-radius: 2px; background: #3a3730; margin: 0 auto; }
+  .btn { height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .btn.pri { background: var(--gold); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  .btn.ross { border: 1px solid #4a2a22; color: var(--bad); }
+  .tabella { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .tabella td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+  .tabella td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
+  .interr { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .interr .t { flex: 1; }
+  .interr small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.35; }
+  .sw { width: 38px; height: 22px; border-radius: 11px; background: var(--line); position: relative; flex: none; }
+  .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); }
+  .sw.on { background: var(--gold-bg); border: 1px solid var(--gold); }
+  .sw.on::after { left: 18px; top: 2px; background: var(--gold); }
+  .proposta { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); border: 1px solid #4a3a18; border-radius: 999px; padding: 1px 6px; font-weight: 700; margin-left: 6px; }
+  .elenco { font-size: 12px; }
+  .elenco div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+  .flusso { max-width: 1240px; margin: 34px auto 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; justify-content: center; }
+  .flusso .pz { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; width: 230px; font-size: 12.5px; line-height: 1.45; color: #c9c4b9; }
+  .flusso .pz b { display: block; color: var(--gold); font-size: 13px; margin-bottom: 4px; }
+  .flusso .fr { align-self: center; color: var(--faint); font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="ey">Mockup · Oggi · 02.11.2026</div>
+  <h1>Invia dati ad Autogestione</h1>
+  <p>Un tocco in Oggi: il backup completo va dal telefono al Worker e dal Worker al tuo OneDrive, in <code>Autogestione/ETP/etp-health-aaaa-mm-gg.json</code>. Un file al giorno, l'ultimo invio del giorno sostituisce il precedente. Tre schermate a 360×700.</p>
+</div>
+
+<div class="telefoni">
+
+<!-- 1. OGGI -->
+<div class="blocco">
+  <div class="nome">1 · Oggi, in fondo</div>
+  <div class="tel">
+    <div class="stato"><span>7:46</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="contenuto">
+        <div class="riga spazia"><div><div class="lbl">ETP Health</div><h1 style="font-size:24px;margin-top:3px">Ciao Emanuel</h1></div></div>
+        <div class="card" style="height:108px"><div class="lbl">Allenamento</div><div class="finto">(come ora)</div></div>
+        <div class="card" style="height:150px"><div class="lbl">Vitali · WHOOP</div><div class="finto">(come ora)</div></div>
+        <div class="card" style="height:84px"><div class="lbl">Nutrizione</div><div class="finto">(come ora)</div></div>
+        <div class="riga" style="gap:8px;align-items:stretch">
+          <div class="card" style="flex:1;height:96px"><div class="lbl">Corpo</div></div>
+          <div class="card" style="flex:1;height:96px"><div class="lbl">Passi</div></div>
+        </div>
+        <div class="card invio">
+          <div class="bt">⇪ Invia ad Autogestione</div>
+          <div class="info"><span class="muted">ultimo invio</span><br><b class="num" style="font-size:14px">02.11 07:42</b> <span class="ok">· ok</span></div>
+        </div>
+      </div>
+      <div class="tab"><div class="on">Oggi</div><div>Cibo</div><div>Allena</div><div>Salute</div><div>RS</div><div>Profilo</div></div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Una riga sola, bordo oro: il pulsante a sinistra, l'ultimo invio e l'esito a destra. È uno dei riquadri di Oggi: sta sempre lì e, come gli altri, lo sposti tenendolo premuto.</li>
+    <li>Sta in fondo perché Oggi è già pieno: a 360×700 scende sotto la piega di circa una riga. Sul tuo telefono (412×800) ci sta: lo misuro mentre lo costruisco.</li>
+    <li>Toccando l'esito si apre il dettaglio (schermata 3).</li>
+  </ul>
+</div>
+
+<!-- 2. STATI -->
+<div class="blocco">
+  <div class="nome">2 · Gli stati del riquadro</div>
+  <div class="tel">
+    <div class="stato"><span>7:47</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="stati">
+        <div class="tit">Prima volta</div>
+        <div class="card invio">
+          <div class="bt gh">Collega OneDrive</div>
+          <div class="info muted">Una volta sola: entri con il tuo account Microsoft.</div>
+        </div>
+
+        <div class="tit">Invio in corso</div>
+        <div class="card invio">
+          <div class="bt" style="opacity:.75"><span class="spin"></span> Invio…</div>
+          <div class="info muted">3,8 MB · 21.430 righe</div>
+        </div>
+
+        <div class="tit">Riuscito</div>
+        <div class="card invio">
+          <div class="bt">⇪ Invia ad Autogestione</div>
+          <div class="info"><span class="muted">ultimo invio</span><br><b class="num" style="font-size:14px">02.11 07:48</b> <span class="ok">· ok</span></div>
+        </div>
+
+        <div class="tit">Errore</div>
+        <div class="card invio" style="border-color:#4a2a22">
+          <div class="bt">⇪ Riprova</div>
+          <div class="info"><span class="err">non salvato · OneDrive non risponde</span><br><span class="muted">resta il file del 01.11 21:10</span></div>
+        </div>
+
+        <div class="tit">Collegamento scaduto</div>
+        <div class="card invio" style="border-color:#4a2a22">
+          <div class="bt gh">Ricollega OneDrive</div>
+          <div class="info"><span class="err">Microsoft ha chiuso l'accesso</span><br><span class="muted">ultimo ok 25.10 08:02</span></div>
+        </div>
+
+        <div class="tit">Domenica, invio automatico <span class="proposta">proposta</span></div>
+        <div class="card invio">
+          <div class="bt">⇪ Invia ad Autogestione</div>
+          <div class="info"><span class="muted">inviato in automatico</span><br><b class="num" style="font-size:14px">01.11 07:31</b> <span class="ok">· ok</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>L'errore dice cosa è successo e che il file precedente è ancora lì: il Worker scrive prima un file temporaneo, lo rilegge e lo controlla, e solo allora lo rinomina in <code>etp-health-aaaa-mm-gg.json</code>.</li>
+    <li>Se il collegamento a Microsoft scade (password cambiata, accesso revocato), il pulsante diventa «Ricollega».</li>
+  </ul>
+</div>
+
+<!-- 3. DETTAGLIO + CONFERMA CALO -->
+<div class="blocco">
+  <div class="nome">3 · Backup sospetto: conferma</div>
+  <div class="tel">
+    <div class="stato"><span>7:49</span><span>●●● 82%</span></div>
+    <div class="utile">
+      <div class="velo"></div>
+      <div class="foglio">
+        <div class="maniglia"></div>
+        <div class="riga spazia"><span style="font-weight:700;font-size:15px">Questo backup ha molti meno dati</span></div>
+        <div style="font-size:12.5px;line-height:1.45;color:#c9c4b9">Il file di oggi <b>non è stato toccato</b>. Rispetto all'ultimo invio (01.11 21:10):</div>
+        <table class="tabella">
+          <tr><td class="muted">tabella</td><td class="muted">prima</td><td class="muted">ora</td></tr>
+          <tr><td>sedute</td><td>412</td><td class="err">3 · −99%</td></tr>
+          <tr><td>pesate</td><td>196</td><td class="err">1 · −99%</td></tr>
+          <tr><td>serie</td><td>9.874</td><td class="err">40 · −100%</td></tr>
+          <tr><td>diario alimentare</td><td>8.112</td><td>8.130</td></tr>
+        </table>
+        <div style="font-size:12px;line-height:1.45;color:var(--muted)">Può succedere dopo un cambio di telefono o un ripristino non riuscito. Se non sai perché, non salvare.</div>
+        <div class="riga" style="gap:6px"><div class="btn gh" style="flex:1">Non salvare</div><div class="btn ross" style="flex:1">Salva lo stesso</div></div>
+
+        <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px">
+          <div class="lbl" style="margin-bottom:2px">Dettaglio invii (tocco sull'esito)</div>
+          <div class="interr"><div class="t">Invio automatico la domenica <span class="proposta">proposta</span><small>Alla prima apertura dell'app di domenica, se quel giorno non è ancora partito.</small></div><div class="sw on"></div></div>
+          <div class="interr"><div class="t">Togli la chiave AI dal file <span class="proposta">proposta</span><small>Il backup contiene la tua chiave AI in chiaro: su OneDrive non serve.</small></div><div class="sw on"></div></div>
+          <div class="elenco">
+            <div><span>02.11 07:48</span><span class="ok">ok · 3,8 MB</span></div>
+            <div><span>01.11 21:10</span><span class="ok">ok · 3,8 MB</span></div>
+            <div><span>01.11 07:31</span><span class="err">errore · rete</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="note">
+    <li>Controllo del calo sul Worker: confronta le righe per tabella con l'ultimo file salvato (sedute, serie, pesate, diario alimentare, WHOOP). Se una scende di oltre il 20%, non scrive niente e l'app chiede.</li>
+    <li>«Salva lo stesso» lo scrive come file del giorno; «Non salvare» lascia tutto com'era.</li>
+    <li>Le due <span class="amb">proposte</span> le decidi tu.</li>
+  </ul>
+</div>
+
+</div>
+
+<div class="flusso">
+  <div class="pz"><b>1 · App</b>Prepara il backup (lo stesso del pulsante Backup) e lo manda con la chiave che il Worker le ha dato al collegamento.</div>
+  <div class="fr">→</div>
+  <div class="pz"><b>2 · Worker</b>Accetta solo quella chiave. Controlla che il JSON sia un backup valido e il calo di righe. Scrive <code>.tmp</code>, lo rilegge, lo rinomina.</div>
+  <div class="fr">→</div>
+  <div class="pz"><b>3 · OneDrive</b><code>Autogestione/ETP/</code>: un file al giorno. Tiene gli ultimi 30 giorni più tutte le domeniche; il resto va nel cestino di OneDrive.</div>
+</div>
+
+</body>
+</html>

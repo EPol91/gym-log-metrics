@@ -17,6 +17,7 @@ import { CoachCard } from './CoachCard'
 import { Avvisi } from './Avvisi'
 import { usePesoOggi, measurementOn } from './PesoOggi'
 import { FoglioNota } from './NotaCorpo'
+import { CardAutogestione } from './CardAutogestione'
 import { Calendario, DataDiOggi } from './CardCalendario'
 import { useEffect } from 'react'
 
@@ -38,7 +39,7 @@ const virgola = (n: number) => String(n).replace('.', ',')
 
 // L'allenamento non e' piu' fra i riquadri da riordinare: sta in cima, fisso.
 // Un ordine salvato che lo conteneva lo perde da solo (vedi `chiavi`).
-const ORDINE_DEFAULT = ['vitali', 'nutrizione', 'corpo', 'abitudini']
+const ORDINE_DEFAULT = ['vitali', 'nutrizione', 'corpo', 'abitudini', 'autogestione']
 
 /**
  * Oggi: com'è la tua giornata adesso. Qui non ci sono andamenti — quelli stanno
@@ -87,6 +88,8 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
         padding: '9px 12px', marginBottom: 0,
         flex: META.includes(key) ? '1 1 calc(50% - 4px)' : '1 1 100%',
         minWidth: 0,
+        // L'invio ad Autogestione si deve vedere: bordo oro.
+        ...(key === 'autogestione' ? { borderColor: '#4a3e18', padding: '9px 10px 9px 12px' } : {}),
         ...liftStyle('today', key),
       }}>
       {corpo}
@@ -98,6 +101,7 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
     corpo: <CardCorpo peso={home?.bodyWeight ?? null} />,
     nutrizione: <CardNutrizione onOpen={() => onGo('food')} />,
     abitudini: <CardPassi onOpen={() => onGo('health', 'habits')} />,
+    autogestione: <CardAutogestione />,
   }
 
   return (

@@ -22,6 +22,7 @@ import { caricaSceltaSuoni } from './util/suoni'
 import { recuperaSerieInSospeso } from './db/serieInSospeso'
 import { riparaOrdiniSerie, riparaOrdiniEsercizi } from './db/riparaSerie'
 import { pushAvviso } from './util/undo'
+import { prendiChiaveDalRitorno } from './db/autogestione'
 
 // Dentro il guscio nativo le barre di sistema le compensa gia' l'activity:
 // se le compensasse anche la pagina, il margine finirebbe contato due volte
@@ -30,6 +31,8 @@ if ((globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacit
   document.documentElement.dataset.nativo = '1'
 }
 initViewportVars() // le modali stanno sopra la tastiera
+// Ritorno dall'accesso Microsoft: la chiave per l'invio ad Autogestione sta nell'indirizzo.
+if (prendiChiaveDalRitorno()) pushAvviso('✓ OneDrive collegato: puoi inviare i dati ad Autogestione')
 initPwaUpdate() // controlla e applica gli aggiornamenti da solo
 // Le schede 🦠 importate prima che la coppia fosse un dato: gliela stampiamo
 // noi, cosi' i superset del coach partono uniti senza reimportare niente.

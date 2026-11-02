@@ -16,7 +16,7 @@ import type { TagNota } from '../db/schema'
 export const AZZURRO = '#8e9be0'
 
 /** Il foglio dal basso, in un portal: dentro .app un fixed non si ancora allo schermo. */
-function Foglio({ onClose, alto, children }: { onClose: () => void; alto?: boolean; children: React.ReactNode }) {
+export function Foglio({ onClose, alto, children }: { onClose: () => void; alto?: boolean; children: React.ReactNode }) {
   useBloccoScroll()
   useIndietro(onClose)
   return createPortal(
