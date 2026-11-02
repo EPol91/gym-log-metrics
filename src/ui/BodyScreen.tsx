@@ -8,8 +8,8 @@ import { computeFfmi } from '../metrics/body'
 import { parseNum } from '../util/validate'
 import { LineChart } from './LineChart'
 import { Info } from './anim'
-import { SceltaTag, ChipTags, GuidaMisure, AZZURRO } from './NotaCorpo'
-import { CIRC, haCirc, haNota, correggiMisura, salvaNota, listaTag, testoTag, type CircKey } from '../db/noteCorpo'
+import { SceltaTag, ChipTags, ChipAuto, RigaAuto, GuidaMisure, AZZURRO } from './NotaCorpo'
+import { CIRC, haCirc, haNota, correggiMisura, salvaNota, listaTag, testoTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
 import type { BodyMeasurement, TagNota } from '../db/schema'
 
 const virgola = (n: number) => String(n).replace('.', ',')
@@ -45,6 +45,7 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
   const [bf, setBf] = useState(m.bodyFat != null ? virgola(m.bodyFat) : '')
   const [conBf, setConBf] = useState(m.bodyFat != null)
   const [tags, setTags] = useState<TagNota[]>(m.tags ?? [])
+  const [tagNo, setTagNo] = useState<string[]>(m.tagNo ?? [])
   const [note, setNote] = useState(m.note ?? '')
   const [conCirc, setConCirc] = useState(false)
   const [circ, setCirc] = useState<Record<string, string>>(
@@ -60,7 +61,8 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
           ? <div style={{ flex: 1 }}><label className="fl">% grasso</label><input inputMode="decimal" value={bf} onChange={(e) => setBf(e.target.value)} /></div>
           : <button className="chip" style={{ marginBottom: 10, fontSize: 11, padding: '3px 9px' }} onClick={() => setConBf(true)}>+ % grasso</button>}
       </div>
-      <div style={{ marginTop: 9 }}><SceltaTag tags={tags} onChange={setTags} /></div>
+      <div style={{ marginTop: 9 }}><RigaAuto date={m.date} no={tagNo} onChange={setTagNo} /></div>
+      <div style={{ marginTop: 7 }}><SceltaTag tags={tags} onChange={setTags} /></div>
       <textarea rows={2} value={note} placeholder="Nota (facoltativa)" onChange={(e) => setNote(e.target.value)}
         style={{ marginTop: 7, fontSize: 14, padding: '9px 11px', resize: 'none' }} />
       <button className="ghost small" style={{ border: 'none', padding: '6px 0', color: 'var(--muted)' }} onClick={() => setConCirc(!conCirc)}>
@@ -82,7 +84,7 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
           await correggiMisura(m.id, {
             weight: wn,
             bodyFat: bf.trim() === '' ? undefined : (parseNum(bf, { min: 1, max: 70 }) ?? m.bodyFat),
-            note: note.trim(), tags,
+            note: note.trim(), tags, tagNo,
             ...Object.fromEntries(CIRC.map((c) => [c.k, circ[c.k].trim() === '' ? undefined : (cm(circ[c.k]) ?? m[c.k])])),
           })
           onFine()
@@ -93,12 +95,13 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
 }
 
 /** Riga dello storico: chiusa una linea; un tocco la apre, «modifica» corregge tutto. */
-function MeasureRow({ m, corta }: { m: BodyMeasurement; corta: boolean }) {
+function MeasureRow({ m, corta, auto }: { m: BodyMeasurement; corta: boolean; auto: TagAuto[] }) {
   const [stato, setStato] = useState<'chiusa' | 'aperta' | 'modifica'>('chiusa')
   if (stato === 'modifica') return <ModificaMisura m={m} onFine={() => setStato('aperta')} />
   const d = fmtData(m.date)
   const data = corta ? d.slice(0, 5) : d.slice(0, 6) + d.slice(8)
   const nTag = m.tags?.length ?? 0
+  const attivi = autoAttivi(auto, m)
 
   if (stato === 'aperta') {
     return (
@@ -108,10 +111,10 @@ function MeasureRow({ m, corta }: { m: BodyMeasurement; corta: boolean }) {
           <button className="ghost small" style={{ border: 'none', padding: '2px 0', color: 'var(--muted)' }}
             onClick={(e) => { e.stopPropagation(); setStato('modifica') }}>✎ modifica</button>
         </div>
-        {nTag > 0 && <div className="row wrap" style={{ gap: 4, marginTop: 6 }}><ChipTags tags={m.tags} /></div>}
+        {(nTag > 0 || auto.length > 0) && <div className="row wrap" style={{ gap: 4, marginTop: 6 }}><ChipAuto auto={auto} no={m.tagNo ?? []} mini /><ChipTags tags={m.tags} /></div>}
         {m.note?.trim() && <div style={{ marginTop: 4, fontSize: 12, color: '#b5afa3', fontStyle: 'italic' }}>{m.note}</div>}
         {haCirc(m) && <div className="muted" style={{ marginTop: 4, fontSize: 11.5 }}>📏 {rigaCirc(m)}</div>}
-        {!haNota(m) && !haCirc(m) && <div className="muted" style={{ marginTop: 4, fontSize: 11.5 }}>Nessuna nota. «✎ modifica» per aggiungerla.</div>}
+        {!haNota(m) && !haCirc(m) && !auto.length && <div className="muted" style={{ marginTop: 4, fontSize: 11.5 }}>Nessuna nota. «✎ modifica» per aggiungerla.</div>}
       </div>
     )
   }
@@ -119,6 +122,7 @@ function MeasureRow({ m, corta }: { m: BodyMeasurement; corta: boolean }) {
     <div onClick={() => setStato('aperta')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line-soft)', cursor: 'pointer' }}>
       <span className="muted small" style={{ flex: '0 0 58px', fontVariantNumeric: 'tabular-nums' }}>{data}</span>
       <span style={{ flex: 1 }}>{virgola(m.weight)} kg{m.bodyFat != null ? <span className="muted small"> · {virgola(m.bodyFat)}%</span> : null}</span>
+      {attivi.length > 0 && <span className="muted" style={{ fontSize: 11 }}>⚙</span>}
       {haNota(m) && <span style={{ fontSize: 11, color: AZZURRO }}>🏷{nTag ? ' ' + nTag : ''}</span>}
       {haCirc(m) && <span style={{ fontSize: 11 }}>📏</span>}
       <span className="muted small" style={{ flex: 'none' }}>›</span>
@@ -130,6 +134,8 @@ function MeasureRow({ m, corta }: { m: BodyMeasurement; corta: boolean }) {
 function Storico({ rows }: { rows: BodyMeasurement[] }) {
   const lista = useLiveQuery(listaTag, []) ?? []
   const [filtro, setFiltro] = usePersistedState<string>('body-filtro', 'tutte')
+  const whoop = useLiveQuery(whoopPerData, []) ?? new Map()
+  const autoDi = (m: BodyMeasurement) => tagAuto(whoop.get(m.date))
   const usati = [...new Set(rows.flatMap((m) => (m.tags ?? []).map((x) => x.t)))]
   const tagScelti = [...lista.filter((t) => usati.includes(t)), ...usati.filter((t) => !lista.includes(t))]
   const ultimoMese = rows.length ? rows[rows.length - 1].date.slice(0, 7) : ''
@@ -137,8 +143,11 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
   useEffect(() => { if (ultimoMese) setAperti((a) => (a.size ? a : new Set([ultimoMese]))) }, [ultimoMese])
 
   const tagFiltro = filtro.startsWith('tag:') ? filtro.slice(4) : null
+  const autoFiltro = filtro.startsWith('auto:') ? filtro.slice(5) : null
   const filtrate = [...rows].reverse().filter((m) =>
-    filtro === 'nota' ? haNota(m) : filtro === 'circ' ? haCirc(m) : tagFiltro ? !!m.tags?.some((x) => x.t === tagFiltro) : true)
+    filtro === 'nota' ? haNota(m) : filtro === 'circ' ? haCirc(m)
+      : tagFiltro ? !!m.tags?.some((x) => x.t === tagFiltro)
+        : autoFiltro ? autoAttivi(autoDi(m), m).some((a) => a.t === autoFiltro) : true)
 
   const mesi: { k: string; righe: BodyMeasurement[] }[] = []
   for (const m of filtrate) {
@@ -157,18 +166,19 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
         <>
           <div className="row wrap" style={{ gap: 4, margin: '7px 0 4px' }}>
             {chip('tutte', 'Tutte')}{chip('nota', 'con nota')}{chip('circ', '📏 circonf.')}
-            {tagScelti.length > 0 && (
-              <select value={tagFiltro ?? ''} onChange={(e) => setFiltro(e.target.value ? 'tag:' + e.target.value : 'tutte')}
-                className={tagFiltro ? 'chip on' : 'chip'}
+            {(tagScelti.length > 0 || whoop.size > 0) && (
+              <select value={tagFiltro ? 'tag:' + tagFiltro : autoFiltro ? 'auto:' + autoFiltro : ''} onChange={(e) => setFiltro(e.target.value || 'tutte')}
+                className={tagFiltro || autoFiltro ? 'chip on' : 'chip'}
                 style={{ fontSize: 11, padding: '3px 9px', width: 'auto', maxWidth: 140, appearance: 'none', WebkitAppearance: 'none', backgroundImage: 'none' }}>
                 <option value="">tag ▾</option>
-                {tagScelti.map((t) => <option key={t} value={t}>{t}</option>)}
+                {whoop.size > 0 && TAG_AUTO.map((t) => <option key={'a' + t} value={'auto:' + t}>⚙ {t}</option>)}
+                {tagScelti.map((t) => <option key={t} value={'tag:' + t}>{t}</option>)}
               </select>
             )}
           </div>
           {filtro !== 'tutte' ? (
             <>
-              {filtrate.map((m) => <MeasureRow key={m.id} m={m} corta={false} />)}
+              {filtrate.map((m) => <MeasureRow key={m.id} m={m} corta={false} auto={autoDi(m)} />)}
               <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
                 {filtrate.length === 0 ? 'Nessun giorno trovato.' : `${filtrate.length} ${filtrate.length === 1 ? 'giorno' : 'giorni'}`}
               </div>
@@ -185,7 +195,7 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
                     {righe.length} {righe.length === 1 ? 'pesata' : 'pesate'} · media {virgola(+media.toFixed(1))} {aperto ? '▴' : '▾'}
                   </span>
                 </div>
-                {aperto && righe.map((m) => <MeasureRow key={m.id} m={m} corta />)}
+                {aperto && righe.map((m) => <MeasureRow key={m.id} m={m} corta auto={autoDi(m)} />)}
               </div>
             )
           })}
@@ -277,6 +287,7 @@ export function BodyScreen() {
   const [conBf, setConBf] = useState(false)
   const [tags, setTags] = useState<TagNota[]>([])
   const [note, setNote] = useState('')
+  const [tagNo, setTagNo] = useState<string[]>([])
   const [chart, setChart] = usePersistedState<'weight' | 'bf' | 'circ'>('body-chart', 'weight')
   const [quale, setQuale] = usePersistedState<CircKey>('body-circ', 'waist')
   const [punto, setPunto] = useState<number | null>(null)
@@ -290,7 +301,7 @@ export function BodyScreen() {
 
   // Se quel giorno c'è già una nota (scritta da Oggi), si parte da quella: salvare non la cancella.
   const esistente = rows.find((m) => m.date === date)
-  useEffect(() => { setTags(esistente?.tags ?? []); setNote(esistente?.note ?? '') }, [date, esistente?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setTags(esistente?.tags ?? []); setNote(esistente?.note ?? ''); setTagNo(esistente?.tagNo ?? []) }, [date, esistente?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const wn = parseNum(w, { min: 20, max: 400 })
   const opt = (v: string, max: number) => (v === '' ? undefined : (parseNum(v, { min: 1, max }) ?? undefined))
@@ -299,7 +310,7 @@ export function BodyScreen() {
     // Peso vuoto su un giorno già pesato = tieni quello: si salva solo la nota.
     if (wn == null && !esistente) return
     if (wn != null) await upsertMeasurement(date, { weight: wn, bodyFat: opt(bf, 70) })
-    await salvaNota(date, note, tags)
+    await salvaNota(date, note, tags, tagNo)
     setW(''); setBf(''); setConBf(false)
   }
 
@@ -381,7 +392,8 @@ export function BodyScreen() {
           <div style={{ marginTop: 8 }}><label className="fl">% grasso (opz.)</label>
             <input inputMode="decimal" value={bf} onChange={(e) => setBf(e.target.value)} /></div>
         )}
-        <div style={{ marginTop: 10 }}><SceltaTag tags={tags} onChange={setTags} /></div>
+        <div style={{ marginTop: 10 }}><RigaAuto date={date} no={tagNo} onChange={setTagNo} /></div>
+        <div style={{ marginTop: 8 }}><SceltaTag tags={tags} onChange={setTags} /></div>
         <textarea rows={2} value={note} placeholder="Nota (facoltativa)" onChange={(e) => setNote(e.target.value)}
           style={{ marginTop: 7, fontSize: 14, padding: '9px 11px', resize: 'none' }} />
         <button className="primary" style={{ width: '100%', marginTop: 8 }} disabled={wn == null && !esistente} onClick={save}>Salva</button>

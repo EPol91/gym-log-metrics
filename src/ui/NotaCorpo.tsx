@@ -10,7 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { useHoldDrag } from './useHoldDrag'
 import { pushUndo } from '../util/undo'
-import { listaTag, salvaListaTag, aggiungiTag, rinominaTag, eliminaTag, usoTag, misuraDel, salvaNota, CIRC } from '../db/noteCorpo'
+import { listaTag, salvaListaTag, aggiungiTag, rinominaTag, eliminaTag, usoTag, misuraDel, salvaNota, CIRC, tagAuto, whoopDel, type TagAuto } from '../db/noteCorpo'
 import type { TagNota } from '../db/schema'
 
 export const AZZURRO = '#8e9be0'
@@ -34,6 +34,40 @@ export function Foglio({ onClose, alto, children }: { onClose: () => void; alto?
       </div>
     </div>,
     document.body,
+  )
+}
+
+/**
+ * I tag automatici di un giorno (⚙, tratteggiati). Un tocco lo toglie per quel
+ * giorno e resta barrato; un altro tocco lo rimette. Senza `onChange` solo da leggere.
+ */
+export function ChipAuto({ auto, no, onChange, mini }: { auto: TagAuto[]; no: string[]; onChange?: (no: string[]) => void; mini?: boolean }) {
+  if (!auto.length) return null
+  const stile: React.CSSProperties = mini ? { fontSize: 10.5, padding: '1px 7px' } : { padding: '4px 10px' }
+  return (
+    <>
+      {auto.map((a) => {
+        const tolto = no.includes(a.t)
+        const testo = <>⚙ <span style={tolto ? { textDecoration: 'line-through' } : undefined}>{a.t}</span> · <b style={{ fontWeight: 600, color: tolto ? undefined : '#c9c4b9' }}>{a.dato}</b>{tolto ? ' · tolto' : ''}</>
+        return onChange
+          ? <button key={a.t} className="chip auto" style={{ ...stile, opacity: tolto ? 0.6 : 1 }}
+              onClick={() => onChange(tolto ? no.filter((x) => x !== a.t) : [...no, a.t])}>{testo}</button>
+          : <span key={a.t} className="chip auto" style={{ ...stile, opacity: tolto ? 0.6 : 1 }}>{testo}</span>
+      })}
+    </>
+  )
+}
+
+/** Riga «dai dati» per un giorno: compare solo se un tag automatico scatta. */
+export function RigaAuto({ date, no, onChange }: { date: string; no: string[]; onChange: (no: string[]) => void }) {
+  const w = useLiveQuery(() => whoopDel(date).then((x) => x ?? null), [date])
+  const auto = tagAuto(w)
+  if (!auto.length) return null
+  return (
+    <div className="row wrap" style={{ gap: 5 }}>
+      <span className="muted" style={{ fontSize: 11 }}>dai dati:</span>
+      <ChipAuto auto={auto} no={no} onChange={onChange} />
+    </div>
   )
 }
 
@@ -196,11 +230,12 @@ export function FoglioNota({ date, onClose }: { date: string; onClose: () => voi
   const m = useLiveQuery(() => misuraDel(date).then((x) => x ?? null), [date])
   const [tags, setTags] = useState<TagNota[]>([])
   const [note, setNote] = useState('')
+  const [tagNo, setTagNo] = useState<string[]>([])
   const [pronto, setPronto] = useState(false)
   // Parte da quello che c'è già, una volta sola: dopo, comandi tu.
   useEffect(() => {
     if (m === undefined || pronto) return
-    setTags(m?.tags ?? []); setNote(m?.note ?? ''); setPronto(true)
+    setTags(m?.tags ?? []); setNote(m?.note ?? ''); setTagNo(m?.tagNo ?? []); setPronto(true)
   }, [m, pronto])
 
   return (
@@ -211,13 +246,14 @@ export function FoglioNota({ date, onClose }: { date: string; onClose: () => voi
       </div>
       {pronto && (
         <>
+          <RigaAuto date={date} no={tagNo} onChange={setTagNo} />
           <SceltaTag tags={tags} onChange={setTags} titolo="" />
           <textarea rows={2} value={note} placeholder="Scrivi una nota (facoltativa)" onChange={(e) => setNote(e.target.value)}
             style={{ fontSize: 14, padding: '9px 11px', resize: 'none' }} />
           <div className="row" style={{ gap: 6 }}>
             <button className="ghost" style={{ flex: 1 }} onClick={onClose}>Chiudi</button>
             <button className="primary" style={{ flex: 2 }} disabled={!m}
-              onClick={async () => { if (await salvaNota(date, note, tags)) onClose() }}>Salva</button>
+              onClick={async () => { if (await salvaNota(date, note, tags, tagNo)) onClose() }}>Salva</button>
           </div>
         </>
       )}

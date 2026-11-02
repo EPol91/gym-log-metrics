@@ -325,6 +325,12 @@ export interface BodyMeasurement extends BaseRecord {
   /** nota del giorno: testo libero più tag */
   note?: string
   tags?: TagNota[]
+  /**
+   * Tag automatici che quel giorno hai tolto (es. «poco sonno» quando WHOOP
+   * sbaglia la notte). L'automatico non si salva, si ricalcola: si salva solo
+   * l'eccezione.
+   */
+  tagNo?: string[]
 }
 
 export type NutritionDayType = 'on' | 'off' | 'reload'

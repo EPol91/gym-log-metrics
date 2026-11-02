@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corpo: note e circonferenze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --amber: #e0a030; --ieri: #8e9be0; --ieri-bg: #161a2e;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 380px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: 380px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 700px; position: relative; overflow: hidden; }
+  .contenuto { padding: 10px 16px 0; display: flex; flex-direction: column; gap: 9px; }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .card.nuova { border-color: #4a3e18; box-shadow: inset 0 1px 0 #ffffff08, 0 0 0 1px #4a3e1866; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .nuovo { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px solid #4a3e18; background: var(--gold-bg); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
+  .fl { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .in { height: 36px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; display: flex; align-items: center; padding: 0 10px; font-size: 14px; }
+  .in.ph { color: var(--faint); }
+  .in.testo { height: auto; min-height: 36px; padding: 8px 10px; font-size: 13px; line-height: 1.35; }
+  .btn { height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .btn.pri { background: var(--gold); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+
+  .chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+  .chip.on { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .chip.ieri { border-color: #2f3760; background: var(--ieri-bg); color: var(--ieri); font-weight: 600; }
+  .chip.mini { font-size: 10.5px; padding: 1px 7px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .seg { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; border-radius: 999px; color: var(--muted); }
+  .seg span.on { background: var(--ieri-bg); color: var(--ieri); font-weight: 600; }
+  .seg span.on.oggi { background: var(--gold-bg); color: var(--gold); }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 9px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .sotto { display: flex; gap: 6px; }
+  .sotto span { font-size: 12px; padding: 5px 10px; border-radius: 999px; color: var(--muted); }
+  .sotto span.on { color: var(--gold); background: var(--gold-bg); font-weight: 600; }
+
+  /* grafico */
+  svg.graf { width: 100%; height: 92px; display: block; }
+  .scorri { display: flex; gap: 4px; overflow: hidden; }
+
+  /* circonferenze */
+  .circ { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; }
+  .circ .cel .fl { display: flex; align-items: center; }
+  .circ .cel .fl b { font-weight: 500; color: var(--faint); }
+
+  /* storico */
+  .srow { padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+  .srow:last-child { border-bottom: none; }
+  .srow .top { display: flex; align-items: center; gap: 10px; }
+  .srow .d { flex: 0 0 74px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .srow .v { flex: 1; font-size: 14px; }
+  .srow .ed { color: var(--muted); font-size: 12px; }
+  .srow .det { margin: 4px 0 0 84px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .srow .testo { margin: 3px 0 0 84px; font-size: 12px; color: #b5afa3; font-style: italic; }
+  .srow .misure { margin: 3px 0 0 84px; font-size: 11.5px; color: var(--muted); }
+  .srow.aperta { background: var(--surface-2); margin: 0 -12px; padding: 9px 12px; border-radius: 12px; border-bottom: none; }
+
+  /* Oggi */
+  .grande { font-family: var(--f-num); font-weight: 600; font-size: 30px; line-height: 1; }
+  .lbl { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .velo { position: absolute; inset: 0; background: #000a; }
+  .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -20px 50px #000c; }
+  .maniglia { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 2px; }
+  .i { color: var(--faint); font-size: 11px; margin-left: 3px; }
+  .i.on { color: var(--gold); }
+  .circ .cel .fl b { margin-left: auto; }
+  .spiega { font-size: 11.5px; line-height: 1.4; color: #c9c4b9; background: var(--gold-bg); border: 1px solid #4a3e18; border-radius: 10px; padding: 7px 9px; }
+  .spiega b { color: var(--gold); }
+  .guida { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: start; }
+  .omino { width: 104px; height: auto; }
+  .voci { display: grid; gap: 7px; }
+  .voci div { font-size: 12px; line-height: 1.38; color: #c9c4b9; padding-left: 13px; position: relative; }
+  .voci i { position: absolute; left: 0; top: 5px; width: 8px; height: 8px; border-radius: 2px; }
+  .voci b { color: var(--text); display: block; font-size: 12.5px; }
+  .regole { font-size: 11.5px; line-height: 1.45; color: var(--muted); border-top: 1px solid var(--line-soft); padding-top: 8px; }
+  .regole b { color: var(--text); }
+  .filtri { display: flex; gap: 4px; flex-wrap: wrap; margin: 7px 0 4px; }
+  .mese { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; padding: 9px 0 7px; border-bottom: 1px solid var(--line-soft); }
+  .mese .muted { font-weight: 400; font-size: 11.5px; }
+  .mese.aperto { color: var(--gold); }
+  .srow.chiusa { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  .srow.chiusa .v { flex: 1; font-size: 14px; }
+  .srow.chiusa .d { flex: 0 0 56px; }
+  .segni { display: flex; gap: 6px; font-size: 11px; }
+  .segni .s { color: var(--muted); }
+  .segni .s.ieri { color: var(--ieri); }
+  .srow.aperta { margin: 2px -12px; }
+  .chip.agg { border-style: dashed; color: var(--gold); border-color: #4a3e18; }
+  .gtag { display: grid; gap: 0; border-top: 1px solid var(--line-soft); }
+  .gr { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .gr .presa { color: var(--faint); font-size: 11px; letter-spacing: -2px; }
+  .gr .n { flex: 1; }
+  .gr .u { font-size: 11px; color: var(--muted); }
+  .gr .a { width: 26px; text-align: center; color: var(--muted); font-size: 12px; }
+  .gr .a.ok { color: var(--good); font-weight: 700; }
+  .gr.ed { background: var(--surface-2); margin: 0 -8px; padding: 5px 8px; border-radius: 8px; }
+</style>
+<style>.chip.auto{border-style:dashed;border-color:#3a3730;color:#a39d91;background:transparent}.chip.auto b{font-weight:600;color:#c9c4b9}</style></head><body>
+<div class="intro"><div class="ey">Mockup · Corpo · 03.11.2026</div><h1>Tag automatici</h1>
+<p>«poco sonno» non lo tocchi più: lo mette l'app quando WHOOP dice sotto 6 h, o sotto il 75% del sonno richiesto. Non si salva nella nota: si ricalcola dai dati WHOOP, così non ci sono doppioni. Segno ⚙, bordo tratteggiato, non si tocca.</p></div>
+<div class="telefoni">
+<div class="blocco"><div class="nome">1 · Foglio nota (Oggi o Corpo)</div><div class="tel"><div class="stato"><span>7:41</span><span>●●● 82%</span></div><div class="utile">
+<div class="velo"></div><div class="foglio"><div class="maniglia"></div>
+<div class="riga spazia"><span style="font-weight:700;font-size:15px">Nota di oggi</span><span class="muted small">82,4 kg ✓</span></div>
+<div class="riga" style="gap:5px;flex-wrap:wrap"><span class="muted" style="font-size:11px">dai dati:</span><span class="chip auto">⚙ poco sonno · <b>4h53</b></span></div>
+<div class="seg"><span class="on">↶ ieri sera</span><span>oggi</span></div>
+<div class="tags"><span class="chip ieri">↶ sushi/AYCE</span><span class="chip">ristorante</span><span class="chip">pasto libero</span><span class="chip">molto salato</span><span class="chip">piccante</span><span class="chip">alcol</span><span class="chip">serata</span><span class="chip">intestino</span><span class="chip">malattia</span><span class="chip">viaggio</span><span class="chip">stress</span><span class="chip">seduta saltata</span><span class="chip agg">＋</span><span class="chip agg">✎ tag</span></div>
+<div class="in testo ph">Scrivi una nota (facoltativa)</div>
+<div class="riga" style="gap:6px"><div class="btn gh" style="flex:1">Chiudi</div><div class="btn pri" style="flex:2">Salva</div></div>
+</div></div></div>
+<ul class="note"><li>Riga «dai dati» sopra i tuoi tag: compare solo quando scatta. «poco sonno» sparisce dai tasti manuali.</li><li>Il sonno è quello della notte prima della pesata (WHOOP lo segna sul giorno del risveglio).</li></ul></div>
+<div class="blocco"><div class="nome">2 · Storico e grafico</div><div class="tel"><div class="stato"><span>7:44</span><span>●●● 82%</span></div><div class="utile"><div class="contenuto">
+<div class="card"><div class="muted small">Storico</div>
+<div class="filtri"><span class="chip mini on">Tutte</span><span class="chip mini">con nota</span><span class="chip mini">📏 circonf.</span><span class="chip mini">tag ▾</span></div>
+<div class="mese aperto"><span>Novembre 2026</span><span class="muted">3 pesate · media 82,2 ▴</span></div>
+<div class="srow aperta"><div class="riga spazia"><span class="small" style="font-weight:600">03.11.2026 · 82,4 kg</span><span class="muted small">✎ modifica</span></div>
+<div class="det" style="margin:6px 0 0"><span class="chip mini auto">⚙ poco sonno · 4h53</span><span class="chip mini ieri">↶ sushi/AYCE</span></div></div>
+<div class="srow chiusa"><span class="d">02.11</span><span class="v">82,5 kg</span><span class="segni"><span class="s ieri">🏷 3</span><span class="s">📏</span></span><span class="ed">›</span></div>
+<div class="srow chiusa"><span class="d">01.11</span><span class="v">81,8 kg</span><span class="segni"><span class="s">⚙</span><span class="s ieri">🏷 2</span></span><span class="ed">›</span></div>
+</div>
+<div class="card"><div class="muted small" style="margin-bottom:4px">Filtro tag ▾</div><div class="tags"><span class="chip mini">⚙ poco sonno</span><span class="chip mini">sushi/AYCE</span><span class="chip mini">serata</span><span class="chip mini">alcol</span></div></div>
+</div><div class="tab"><div>Oggi</div><div>Allena</div><div>Cibo</div><div class="on">Salute</div><div>Profilo</div></div></div></div>
+<ul class="note"><li>Riga chiusa: ⚙ se c'è un tag automatico, 🏷 conta solo i tuoi.</li><li>Il filtro «⚙ poco sonno» trova le pesate dopo le notti corte.</li><li>I «poco sonno» messi a mano finora restano dove sono.</li><li>Autogestione lo ricava da whoopDays nel backup: stessa soglia.</li></ul></div>
+</div></body></html>

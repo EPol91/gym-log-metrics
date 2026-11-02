@@ -8,14 +8,53 @@
 import { db, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
 import { updateUser } from './repo'
-import type { BodyMeasurement, TagNota } from './schema'
+import type { BodyMeasurement, TagNota, WhoopDay } from './schema'
 
 const U = LOCAL_USER_ID
 
 export const TAG_BASE = [
   'sushi/AYCE', 'ristorante', 'pasto libero', 'molto salato', 'piccante', 'alcol', 'serata',
-  'poco sonno', 'intestino', 'malattia', 'viaggio', 'stress', 'seduta saltata',
+  'intestino', 'malattia', 'viaggio', 'stress', 'seduta saltata',
 ]
+
+// --- Tag automatici: si deducono dai dati, non si salvano ---------------------
+
+/** Sotto le 6 ore (circa 4 cicli da 90') o sotto il 75% di quanto ti serviva. */
+export const POCO_SONNO = 'poco sonno'
+const ORE_MIN = 6
+const QUOTA_RICHIESTO = 0.75
+/** I nomi dei tag automatici: dai tasti manuali spariscono. */
+export const TAG_AUTO = [POCO_SONNO]
+
+export interface TagAuto { t: string; dato: string }
+
+const ore = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` }
+
+/**
+ * I tag automatici di un giorno. Il sonno WHOOP è segnato sul giorno del
+ * risveglio: quello della pesata del mattino è la notte appena passata.
+ */
+export function tagAuto(w?: WhoopDay | null): TagAuto[] {
+  const out: TagAuto[] = []
+  const h = w?.sleepHours
+  if (h != null && h > 0) {
+    const richiesto = w?.sleepNeededMin
+    if (h < ORE_MIN || (richiesto && h * 60 < richiesto * QUOTA_RICHIESTO)) out.push({ t: POCO_SONNO, dato: ore(h) })
+  }
+  return out
+}
+
+/** Quelli che valgono davvero quel giorno: gli automatici meno quelli che hai tolto. */
+export const autoAttivi = (auto: TagAuto[], m?: BodyMeasurement | null) => auto.filter((a) => !m?.tagNo?.includes(a.t))
+
+export function whoopDel(date: string) {
+  return db.whoopDays.where('date').equals(date).filter((d) => d.userId === U).first()
+}
+
+/** Tutte le giornate WHOOP per data: lo storico ne ha bisogno riga per riga. */
+export async function whoopPerData(): Promise<Map<string, WhoopDay>> {
+  return new Map((await db.whoopDays.where('userId').equals(U).toArray()).map((d) => [d.date, d]))
+}
 
 /** Le circonferenze, in ordine di schermata, con dove si misura. */
 export const CIRC = [
@@ -38,7 +77,7 @@ export const haNota = (m: BodyMeasurement) => !!m.note?.trim() || (m.tags?.lengt
 
 /** I tuoi tag, nell'ordine tuo. */
 export async function listaTag(): Promise<string[]> {
-  return (await db.users.get(U))?.tagNote ?? TAG_BASE
+  return ((await db.users.get(U))?.tagNote ?? TAG_BASE).filter((t) => !TAG_AUTO.includes(t))
 }
 
 export async function salvaListaTag(lista: string[]): Promise<void> {
@@ -95,7 +134,7 @@ export async function usoTag(): Promise<Record<string, number>> {
  * poter togliere una nota o una circonferenza sbagliata.
  */
 export async function correggiMisura(id: string, patch: Partial<Pick<BodyMeasurement,
-  'weight' | 'bodyFat' | 'note' | 'tags' | CircKey>>): Promise<void> {
+  'weight' | 'bodyFat' | 'note' | 'tags' | 'tagNo' | CircKey>>): Promise<void> {
   const pulito: Record<string, unknown> = { updatedAt: nowISO() }
   for (const [k, v] of Object.entries(patch)) {
     const vuoto = v == null || v === '' || (Array.isArray(v) && v.length === 0)
@@ -109,10 +148,10 @@ export function misuraDel(date: string) {
 }
 
 /** Nota e tag sulla misura del giorno, che deve esserci (la nota va col peso). */
-export async function salvaNota(date: string, note: string, tags: TagNota[]): Promise<boolean> {
+export async function salvaNota(date: string, note: string, tags: TagNota[], tagNo: string[] = []): Promise<boolean> {
   const m = await misuraDel(date)
   if (!m) return false
-  await correggiMisura(m.id, { note: note.trim(), tags })
+  await correggiMisura(m.id, { note: note.trim(), tags, tagNo })
   return true
 }
 
