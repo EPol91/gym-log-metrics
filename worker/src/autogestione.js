@@ -4,6 +4,10 @@
 // e lo mette in Autogestione/ETP/. Niente Microsoft: un account personale non
 // può registrare app senza Azure.
 //
+// Subito dopo l'app manda anche un riepilogo dei giorni per il Cockpit
+// (/autogestione/giorni): il Cockpit chiede /autogestione/stato per sapere se
+// c'è qualcosa di nuovo e /autogestione/giorni per riceverlo.
+//
 // Chi scrive: solo il telefono collegato a WHOOP (il suo codice dispositivo
 // ha i token nel KV) e solo dal sito dell'app. Chi legge: solo chi ha
 // AUTOGESTIONE_TOKEN, un wrangler secret di Emanuel, mai nel codice.
@@ -23,8 +27,20 @@ const cors = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 }
+// Il Cockpit è un file sul PC (origine `null`): per lui le risposte valgono da
+// qualsiasi origine, tanto senza AUTOGESTIONE_TOKEN non si legge niente.
+const corsLettura = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-device, x-sha1, x-conti',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+}
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors, ...extra } })
+const jsonLettura = (obj, status = 200) =>
+  new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...corsLettura } })
+/** Il riepilogo per il Cockpit sta in pochi kB: oltre i 2 MB è un errore. */
+const LIMITE_GIORNI = 2 * 1024 * 1024
 
 async function sha1(buf) {
   const h = await crypto.subtle.digest('SHA-1', buf)
@@ -65,12 +81,26 @@ async function pulisci(env, oggi) {
   return tolti
 }
 
-async function ricevi(request, env, url) {
+/** Scrive solo il telefono collegato a WHOOP, e solo dal sito dell'app. Null se va bene. */
+async function scrittore(request, env) {
   if (request.headers.get('origin') !== ORIGINE) return json({ errore: 'origine non ammessa' }, 403)
   const device = request.headers.get('x-device') || ''
   if (device.length < 16 || !(await env.WHOOP.get('tok:' + device))) {
     return json({ errore: 'telefono non collegato a WHOOP', collega: true }, 401)
   }
+  return null
+}
+
+/** Legge solo chi ha AUTOGESTIONE_TOKEN. */
+function lettore(request, env) {
+  const h = request.headers.get('authorization') || ''
+  const dato = h.startsWith('Bearer ') ? h.slice(7).trim() : ''
+  return !!env.AUTOGESTIONE_TOKEN && !!dato && uguali(dato, env.AUTOGESTIONE_TOKEN)
+}
+
+async function ricevi(request, env, url) {
+  const no = await scrittore(request, env)
+  if (no) return no
 
   const data = url.searchParams.get('data') || ''
   const forza = url.searchParams.get('forza') === '1'
@@ -112,10 +142,36 @@ async function ricevi(request, env, url) {
   return json({ ok: true, data, bytes: corpo.byteLength, at, tolti, avviso })
 }
 
+/**
+ * Il riepilogo dei giorni per il Cockpit, mandato dall'app subito dopo il
+ * backup. Ne resta uno solo, l'ultimo: tiene tutti i giorni dal 21.07.
+ */
+async function riceviGiorni(request, env) {
+  const no = await scrittore(request, env)
+  if (no) return no
+  const corpo = await request.text()
+  if (corpo.length > LIMITE_GIORNI) return json({ errore: 'riepilogo troppo grande' }, 413)
+  let giorni
+  try { giorni = JSON.parse(corpo).giorni } catch { giorni = null }
+  if (!Array.isArray(giorni) || giorni.some((g) => !g || !/^\d{4}-\d{2}-\d{2}$/.test(g.data))) {
+    return json({ errore: 'riepilogo non valido' }, 400)
+  }
+  const at = new Date().toISOString()
+  await env.WHOOP.put('ag:giorni', JSON.stringify({ at, giorni }))
+  await env.WHOOP.put('ag:stato', JSON.stringify({ at, giorni: giorni.length, ultimo: giorni[giorni.length - 1]?.data ?? null }))
+  return json({ ok: true, at, giorni: giorni.length })
+}
+
+/** Per il Cockpit: l'ora dell'ultimo invio (il pulsante arancione) o i giorni. */
+async function consegnaCockpit(request, env, chiave) {
+  if (!lettore(request, env)) return jsonLettura({ errore: 'codice non valido' }, 401)
+  const v = await env.WHOOP.get(chiave)
+  if (!v) return jsonLettura({ errore: 'nessun invio ancora' }, 404)
+  return new Response(v, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...corsLettura } })
+}
+
 async function consegna(request, env, giorno) {
-  const h = request.headers.get('authorization') || ''
-  const dato = h.startsWith('Bearer ') ? h.slice(7).trim() : ''
-  if (!env.AUTOGESTIONE_TOKEN || !dato || !uguali(dato, env.AUTOGESTIONE_TOKEN)) return json({ errore: 'codice non valido' }, 401)
+  if (!lettore(request, env)) return json({ errore: 'codice non valido' }, 401)
   let data = giorno
   if (giorno === 'ultimo') {
     const tutti = await giorni(env)
@@ -131,8 +187,11 @@ async function consegna(request, env, giorno) {
 export async function autogestione(request, env, url) {
   const p = url.pathname
   if (!p.startsWith('/autogestione/')) return null
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsLettura })
   if (p === '/autogestione/backup' && request.method === 'POST') return ricevi(request, env, url)
+  if (p === '/autogestione/giorni' && request.method === 'POST') return riceviGiorni(request, env)
+  if (p === '/autogestione/giorni' && request.method === 'GET') return consegnaCockpit(request, env, 'ag:giorni')
+  if (p === '/autogestione/stato' && request.method === 'GET') return consegnaCockpit(request, env, 'ag:stato')
   const m = /^\/autogestione\/backup\/([^/]+)$/.exec(p)
   if (m && request.method === 'GET') return consegna(request, env, m[1])
   return json({ errore: 'percorso sconosciuto' }, 404)

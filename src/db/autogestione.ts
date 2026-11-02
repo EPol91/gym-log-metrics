@@ -7,6 +7,10 @@
 
 import { exportAll, type BackupFile } from './backup'
 import { WORKER, deviceId } from './whoop'
+import { db } from './db'
+import { LOCAL_USER_ID } from './seed'
+import { targetsAl } from './targetStorico'
+import { tagAuto, autoAttivi } from './noteCorpo'
 import { todayLocal } from '../util/date'
 
 const INVII = 'autog-invii'
@@ -55,6 +59,86 @@ async function preparaBackup(): Promise<{ testo: string; conti: Record<string, n
 
 const kb = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace('.', ',')} MB` : `${Math.round(n / 1e3)} kB`)
 
+// --- Riepilogo dei giorni per il Cockpit ---------------------------------------
+//
+// Il Cockpit non legge il backup intero: riceve un giorno per riga con quello
+// che serve a Body Metrics (peso, tipo, target, nota). `altro` porta le
+// abitudini per chiave: un tracker nuovo ci arriva da solo, senza cambiare formato.
+
+/** Da qui parte ETP Health: prima il Cockpit ha già il suo storico e non si tocca. */
+const DAL = '2026-07-21'
+const CIRC_NOMI = { waist: 'vita_ombelico', waistNarrow: 'vita_stretta', chest: 'petto', arm: 'braccio', thigh: 'coscia' } as const
+
+export interface GiornoRiepilogo {
+  data: string
+  peso?: number
+  /** il nome della giornata tipo senza l'icona: «LOW ON» */
+  tipo?: string
+  /** gli obiettivi in vigore quel giorno per quel tipo */
+  target?: { kcal: number; C: number; P: number; G: number }
+  tag?: string[]
+  nota?: string
+  circonferenze?: Record<string, number>
+  altro?: Record<string, number>
+}
+
+export async function riepilogoGiorni(): Promise<GiornoRiepilogo[]> {
+  const U = LOCAL_USER_ID
+  const tieni = <T extends { userId: string; deleted?: boolean; date: string }>(r: T[]) => r.filter((x) => x.userId === U && !x.deleted && x.date >= DAL)
+  const [misure, nutri, tipi, abitudini, whoop] = await Promise.all([
+    db.bodyMeasurements.where('userId').equals(U).toArray(),
+    db.nutrition.where('userId').equals(U).toArray(),
+    db.dayTypes.where('userId').equals(U).toArray(),
+    db.habitEntries.where('userId').equals(U).toArray(),
+    db.whoopDays.where('userId').equals(U).toArray(),
+  ])
+  const giorni = new Map<string, GiornoRiepilogo>()
+  const g = (data: string) => { let x = giorni.get(data); if (!x) { x = { data }; giorni.set(data, x) } return x }
+  const whoopDi = new Map(whoop.filter((w) => !w.deleted).map((w) => [w.date, w]))
+
+  // Una misura al giorno; se ce ne fossero due, vale l'ultima scritta.
+  for (const m of tieni(misure).sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))) {
+    const x = g(m.date)
+    if (m.weight) x.peso = m.weight
+    const tag = (m.tags ?? []).filter((t) => t?.t).map((t) => t.t + (t.ieri ? ' (ieri)' : ''))
+    for (const a of autoAttivi(tagAuto(whoopDi.get(m.date)), m)) if (!tag.includes(a.t)) tag.push(a.t)
+    x.tag = tag.length ? tag : undefined
+    x.nota = m.note?.trim() || undefined
+    const circ = Object.fromEntries(Object.entries(CIRC_NOMI).filter(([k]) => m[k as keyof typeof CIRC_NOMI] != null).map(([k, nome]) => [nome, m[k as keyof typeof CIRC_NOMI] as number]))
+    x.circonferenze = Object.keys(circ).length ? circ : undefined
+  }
+
+  const perChiave = new Map(tipi.map((t) => [t.key, t]))
+  for (const n of tieni(nutri)) {
+    const t = n.dayType ? perChiave.get(n.dayType) : undefined
+    if (!t) continue
+    const x = g(n.date)
+    x.tipo = t.name.replace(/^[^\p{L}\p{N}]+/u, '').trim()
+    const v = targetsAl(t, n.date)
+    x.target = { kcal: v.kcal, C: v.carbs, P: v.protein, G: v.fat }
+  }
+
+  for (const h of tieni(abitudini)) {
+    if (h.value == null) continue
+    const x = g(h.date)
+    x.altro = { ...x.altro, [h.habitKey]: h.value }
+  }
+
+  return [...giorni.values()].sort((a, b) => a.data.localeCompare(b.data))
+}
+
+/** Manda il riepilogo dopo il backup. Se non passa, il backup resta buono lo stesso. */
+async function inviaRiepilogo(): Promise<boolean> {
+  try {
+    const r = await fetch(`${WORKER}/autogestione/giorni`, {
+      method: 'POST',
+      headers: { 'x-device': deviceId(), 'content-type': 'application/json' },
+      body: JSON.stringify({ giorni: await riepilogoGiorni() }),
+    })
+    return r.ok
+  } catch { return false }
+}
+
 /** Manda il backup. `forza` = salva anche se ha molte meno righe dell'ultimo. */
 export async function invia({ forza = false, auto = false } = {}): Promise<Esito> {
   if (!collegato()) return { tipo: 'collega' }
@@ -81,7 +165,8 @@ export async function invia({ forza = false, auto = false } = {}): Promise<Esito
       return { tipo: 'errore', testo }
     }
     // Oltre i 20 MB il Worker avvisa: il limite di un backup nel KV è 25.
-    const invio = { at, ok: true, testo: `ok · ${kb(j.bytes)}${j.avviso ? ' · vicino al limite' : ''}`, bytes: j.bytes, auto }
+    const cockpit = await inviaRiepilogo()
+    const invio = { at, ok: true, testo: `ok · ${kb(j.bytes)}${j.avviso ? ' · vicino al limite' : ''}${cockpit ? '' : ' · Cockpit non aggiornato'}`, bytes: j.bytes, auto }
     registra(invio)
     return { tipo: 'ok', invio }
   } catch (e) {
