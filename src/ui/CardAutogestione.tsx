@@ -1,13 +1,13 @@
 // Riquadro di Oggi: «Invia dati ad Autogestione».
 //
 // Una riga: il pulsante a sinistra, l'ultimo invio e l'esito a destra. Toccando
-// l'esito si apre il dettaglio (invii, domenica automatica, scollega). Se il
+// l'esito si apre il dettaglio (invii, domenica automatica). Se il
 // backup ha molte meno righe dell'ultimo, il Worker non salva e qui si chiede.
 
 import { useEffect, useState } from 'react'
 import { Foglio } from './NotaCorpo'
 import {
-  invia, invii, chiave, collegaUrl, scollega, domenicaAttiva, setDomenica, toccaAutomatico,
+  invia, invii, collegato, domenicaAttiva, setDomenica, toccaAutomatico,
   ORA_DOMENICA, NOMI_CALO, type Esito, type Calo,
 } from '../db/autogestione'
 
@@ -24,7 +24,7 @@ export function CardAutogestione() {
   const [busy, setBusy] = useState(false)
   const [calo, setCalo] = useState<{ calo: Calo[]; ultimo: { at: string } | null } | null>(null)
   const [dettaglio, setDettaglio] = useState(false)
-  const k = chiave()
+  const k = collegato()
   const lista = invii()
   const ultimo = lista[0]
   const ultimoOk = lista.find((i) => i.ok)
@@ -56,23 +56,16 @@ export function CardAutogestione() {
   }, [])
 
   const bottone: React.CSSProperties = { flex: 'none', padding: '9px 12px', fontSize: 13.5, fontWeight: 700, borderRadius: 11 }
-  const scaduto = !k || (ultimo && !ultimo.ok && ultimo.testo === 'collegamento scaduto')
 
   return (
     <>
       <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-        {scaduto ? (
-          <a href={collegaUrl()} style={{ textDecoration: 'none', flex: 'none' }}>
-            <button className="ghost" style={{ ...bottone, borderColor: '#4a3e18', color: 'var(--gold)' }}>{k ? 'Ricollega OneDrive' : 'Collega OneDrive'}</button>
-          </a>
-        ) : (
-          <button className="primary" style={{ ...bottone, opacity: busy ? 0.75 : 1 }} disabled={busy} onClick={() => vai()}>
-            {busy ? 'Invio…' : ultimo && !ultimo.ok ? '⇪ Riprova' : '⇪ Invia ad Autogestione'}
-          </button>
-        )}
+        <button className="primary" style={{ ...bottone, opacity: busy ? 0.75 : 1 }} disabled={busy || !k} onClick={() => vai()}>
+          {busy ? 'Invio…' : ultimo && !ultimo.ok ? '⇪ Riprova' : '⇪ Invia ad Autogestione'}
+        </button>
         <button onClick={() => setDettaglio(true)}
           style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 11.5, lineHeight: 1.3 }}>
-          {!k ? <span className="muted">Una volta sola: entri con il tuo account Microsoft.</span>
+          {!k ? <span className="muted">Prima collega WHOOP dal Profilo: l'invio usa lo stesso collegamento.</span>
             : !ultimo ? <span className="muted">Nessun invio ancora.</span>
               : ultimo.ok ? (
                 <><span className="muted">{ultimo.auto ? 'inviato in automatico' : 'ultimo invio'}</span><br />
@@ -120,7 +113,7 @@ export function CardAutogestione() {
             <button className="ghost small" style={{ border: 'none', padding: '4px 0', color: 'var(--gold)', fontWeight: 600 }} onClick={() => setDettaglio(false)}>Fatto</button>
           </div>
           <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--muted)' }}>
-            Il backup completo va in OneDrive › Autogestione › ETP, un file al giorno: un secondo invio nello stesso giorno sostituisce il primo.
+            Il backup completo resta nel Worker, uno al giorno: un secondo invio nello stesso giorno sostituisce il primo. Sul PC lo script dell'autogestione lo scarica in Autogestione › ETP.
             Si tengono gli ultimi 30 giorni più le domeniche. La chiave AI non viene inviata.
           </div>
           <label className="row" style={{ gap: 10, padding: '8px 0', borderTop: '1px solid var(--line-soft)', borderBottom: '1px solid var(--line-soft)', cursor: 'pointer' }}>
@@ -138,12 +131,6 @@ export function CardAutogestione() {
               </div>
             ))}
           </div>
-          {k && (
-            <button className="ghost" style={{ color: 'var(--muted)' }}
-              onClick={async () => { if (confirm('Scollegare OneDrive? Per inviare di nuovo dovrai rifare l\'accesso Microsoft.')) { await scollega(); setDettaglio(false) } }}>
-              Scollega OneDrive
-            </button>
-          )}
         </Foglio>
       )}
     </>

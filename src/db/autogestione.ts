@@ -1,15 +1,14 @@
-// Invio ad Autogestione: il backup completo va al Worker, che lo scrive nel tuo
-// OneDrive in Autogestione/ETP/etp-health-aaaa-mm-gg.json. Un file al giorno:
-// un secondo invio nello stesso giorno sostituisce il primo.
+// Invio ad Autogestione: il backup completo va al Worker, che lo tiene nel suo
+// KV (un backup al giorno: un secondo invio nello stesso giorno sostituisce il
+// primo). Sul PC lo script dell'autogestione lo scarica in Autogestione/ETP/.
 //
-// L'app ha solo una chiave, data dal Worker quando hai fatto l'accesso
-// Microsoft con il tuo account. Non entra nel backup: è una credenziale.
+// Il Worker accetta solo questo telefono: quello collegato a WHOOP, con il suo
+// codice dispositivo. Nessuna chiave nuova da tenere qui.
 
 import { exportAll, type BackupFile } from './backup'
-import { WORKER } from './whoop'
+import { WORKER, deviceId } from './whoop'
 import { todayLocal } from '../util/date'
 
-const CHIAVE = 'autog-chiave'
 const INVII = 'autog-invii'
 const DOMENICA = 'autog-domenica'
 /** Dall'ora in poi, la domenica, alla prima apertura parte da solo. */
@@ -20,13 +19,14 @@ export interface Calo { tabella: string; prima: number; ora: number }
 export type Esito =
   | { tipo: 'ok'; invio: Invio }
   | { tipo: 'calo'; calo: Calo[]; ultimo: { at: string; data: string } | null }
-  | { tipo: 'ricollega' }
+  | { tipo: 'collega' }
   | { tipo: 'errore'; testo: string }
 
 const leggi = <T>(k: string, def: T): T => { try { const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v) as T } catch { return def } }
 const scrivi = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* storage pieno o assente */ } }
 
-export const chiave = (): string | null => leggi<string | null>(CHIAVE, null)
+/** Collegato a WHOOP = il Worker conosce questo telefono. */
+export const collegato = (): boolean => { try { return !!localStorage.getItem('whoop-device') } catch { return false } }
 export const invii = (): Invio[] => leggi<Invio[]>(INVII, [])
 export const domenicaAttiva = (): boolean => leggi(DOMENICA, true)
 export const setDomenica = (on: boolean) => scrivi(DOMENICA, on)
@@ -36,33 +36,12 @@ function registra(i: Invio) {
   window.dispatchEvent(new Event('autog'))
 }
 
-/** Dove mandarti per l'accesso Microsoft; torni qui con la chiave nell'indirizzo. */
-export function collegaUrl(): string {
-  return `${WORKER}/ms/auth?r=${encodeURIComponent(location.origin + location.pathname)}`
-}
-
-/** Al ritorno dall'accesso: prende la chiave dall'indirizzo e la toglie subito. */
-export function prendiChiaveDalRitorno(): boolean {
-  const m = /^#ms=ok&k=([0-9a-f]{64})$/.exec(location.hash)
-  if (!m) return false
-  scrivi(CHIAVE, m[1])
-  history.replaceState(null, '', location.pathname)
-  return true
-}
-
-export async function scollega(): Promise<void> {
-  const k = chiave()
-  if (k) { try { await fetch(`${WORKER}/ms/scollega`, { method: 'POST', headers: { authorization: 'Bearer ' + k } }) } catch { /* la chiave locale va via comunque */ } }
-  try { localStorage.removeItem(CHIAVE) } catch { /* niente */ }
-  window.dispatchEvent(new Event('autog'))
-}
-
 async function sha1(testo: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(testo))
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-/** Il backup da inviare: quello di sempre, senza la chiave AI (su OneDrive non serve). */
+/** Il backup da inviare: quello di sempre, senza la chiave AI (all'autogestione non serve). */
 async function preparaBackup(): Promise<{ testo: string; conti: Record<string, number> }> {
   const b: BackupFile = await exportAll()
   if (b.preferenze) delete b.preferenze['gymlog.ai.apiKey']
@@ -78,14 +57,13 @@ const kb = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace('.', ',')}
 
 /** Manda il backup. `forza` = salva anche se ha molte meno righe dell'ultimo. */
 export async function invia({ forza = false, auto = false } = {}): Promise<Esito> {
-  const k = chiave()
-  if (!k) return { tipo: 'ricollega' }
+  if (!collegato()) return { tipo: 'collega' }
   const at = new Date().toISOString()
   try {
     const { testo, conti } = await preparaBackup()
-    const r = await fetch(`${WORKER}/ms/invia?data=${todayLocal()}${forza ? '&forza=1' : ''}`, {
+    const r = await fetch(`${WORKER}/autogestione/backup?data=${todayLocal()}${forza ? '&forza=1' : ''}`, {
       method: 'POST',
-      headers: { authorization: 'Bearer ' + k, 'content-type': 'application/json', 'x-sha1': await sha1(testo), 'x-conti': JSON.stringify(conti) },
+      headers: { 'x-device': deviceId(), 'content-type': 'application/json', 'x-sha1': await sha1(testo), 'x-conti': JSON.stringify(conti) },
       body: testo,
     })
     const j = await r.json().catch(() => ({}))
@@ -94,15 +72,16 @@ export async function invia({ forza = false, auto = false } = {}): Promise<Esito
       return { tipo: 'calo', calo: j.calo, ultimo: j.ultimo ?? null }
     }
     if (r.status === 401) {
-      registra({ at, ok: false, testo: 'collegamento scaduto', auto })
-      return { tipo: 'ricollega' }
+      registra({ at, ok: false, testo: 'WHOOP non collegato', auto })
+      return { tipo: 'collega' }
     }
     if (!r.ok || !j.ok) {
       const testo = j.errore ?? `errore ${r.status}`
       registra({ at, ok: false, testo, auto })
       return { tipo: 'errore', testo }
     }
-    const invio = { at, ok: true, testo: `ok · ${kb(j.bytes)}`, bytes: j.bytes, auto }
+    // Oltre i 20 MB il Worker avvisa: il limite di un backup nel KV è 25.
+    const invio = { at, ok: true, testo: `ok · ${kb(j.bytes)}${j.avviso ? ' · vicino al limite' : ''}`, bytes: j.bytes, auto }
     registra(invio)
     return { tipo: 'ok', invio }
   } catch (e) {
@@ -117,7 +96,7 @@ export async function invia({ forza = false, auto = false } = {}): Promise<Esito
  * niente, parte da solo. Il calo sospetto non si forza mai da solo.
  */
 export function toccaAutomatico(ora = new Date()): boolean {
-  if (!domenicaAttiva() || !chiave() || ora.getDay() !== 0) return false
+  if (!domenicaAttiva() || !collegato() || ora.getDay() !== 0) return false
   const hm = `${String(ora.getHours()).padStart(2, '0')}:${String(ora.getMinutes()).padStart(2, '0')}`
   if (hm < ORA_DOMENICA) return false
   const oggi = todayLocal()
