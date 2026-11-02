@@ -19,10 +19,9 @@ export const TAG_BASE = [
 
 // --- Tag automatici: si deducono dai dati, non si salvano ---------------------
 
-/** Sotto le 6 ore (circa 4 cicli da 90') o sotto il 75% di quanto ti serviva. */
+/** Sotto le 6 ore di sonno (circa 4 cicli da 90'). */
 export const POCO_SONNO = 'poco sonno'
 const ORE_MIN = 6
-const QUOTA_RICHIESTO = 0.75
 /** I nomi dei tag automatici: dai tasti manuali spariscono. */
 export const TAG_AUTO = [POCO_SONNO]
 
@@ -37,10 +36,7 @@ const ore = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(
 export function tagAuto(w?: WhoopDay | null): TagAuto[] {
   const out: TagAuto[] = []
   const h = w?.sleepHours
-  if (h != null && h > 0) {
-    const richiesto = w?.sleepNeededMin
-    if (h < ORE_MIN || (richiesto && h * 60 < richiesto * QUOTA_RICHIESTO)) out.push({ t: POCO_SONNO, dato: ore(h) })
-  }
+  if (h != null && h > 0 && h < ORE_MIN) out.push({ t: POCO_SONNO, dato: ore(h) })
   return out
 }
 
