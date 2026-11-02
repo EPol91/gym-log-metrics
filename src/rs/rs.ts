@@ -23,6 +23,7 @@ import { CAMPI, type RsCampo } from './campi'
 import { statoDieta, sostituzioni } from './dieta'
 import { pianoRs, giornataDelPiano } from './piano'
 import { sedutaRs, aderenzaDelCoach } from './allenamento'
+import { passiRs } from './passiEquivalenti'
 import type { RsDay } from '../db/schema'
 
 const U = LOCAL_USER_ID
@@ -174,8 +175,9 @@ async function calcolati(date: string): Promise<Partial<Record<RsCampo, string |
     if (tipo) out.precisione = num(precisione(t, targetsAl(tipo, date)))
   }
 
-  const passi = await getHabitValue(STEPS, date)
-  out.passi = num(passi?.value)
+  // A RS va la camminata piu' i passi equivalenti del cardio: il suo target li
+  // comprende. I passi veri restano come sono.
+  out.passi = num((await passiRs(date)).totale)
 
   const cardio = await db.cardio.where('date').equals(date).filter((c) => c.userId === U).toArray()
   if (cardio.length) {

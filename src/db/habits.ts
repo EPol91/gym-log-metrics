@@ -46,7 +46,7 @@ export async function setHabitTarget(key: string, target: number): Promise<void>
  * Sposta l'obiettivo di un passo leggendo il valore dal database, non da quello
  * disegnato: due tocchi rapidi contano due, non uno.
  */
-export async function adjustHabitTarget(key: string, delta: number, min = 1000, max = 50000): Promise<void> {
+export async function adjustHabitTarget(key: string, delta: number, min = 500, max = 50000): Promise<void> {
   // Transazione: leggere e scrivere devono essere un'operazione sola, altrimenti
   // tre tocchi rapidi leggono tutti lo stesso valore e ne contano uno.
   await db.transaction('rw', db.habits, async () => {

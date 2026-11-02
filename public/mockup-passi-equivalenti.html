@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RS: passi equivalenti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #191919; --surface-2: #1F1F1F; --line: #2A2A2A; --line-soft: #222;
+    --text: #F0F0F0; --muted: #6E6E6E; --faint: #4a4a4a; --rs: #E1251B; --rs-bg: #2a0e0c; --good: #4ADE80;
+    --gold: #d4af37; --gold-bg: #231e0e;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 360px; --h: 700px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1, h2 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1240px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--rs); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: #9a958c; font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+  .misura { display: flex; gap: 6px; margin-top: 12px; }
+  .misura button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: #9a958c; cursor: pointer; }
+  .misura button.on { border-color: #5a1b16; background: var(--rs-bg); color: var(--rs); font-weight: 600; }
+
+  .telefoni { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--rs); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--rs); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; }
+  .contenuto { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  .chip { display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: #9a958c; background: var(--surface); white-space: nowrap; }
+  .chip.on { border-color: #5a1b16; background: var(--rs-bg); color: var(--rs); font-weight: 600; }
+  .nuovo { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px solid #4a3e18; background: var(--gold-bg); border-radius: 999px; padding: 2px 7px; font-weight: 700; }
+
+  .gruppo { display: flex; gap: 6px; align-items: center; margin: 10px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .r { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .pall { width: 8px; height: 8px; border-radius: 50%; background: var(--rs); flex: none; margin-top: 6px; }
+  .r .et { flex: 1; min-width: 0; }
+  .r .lab { font-size: 13.5px; white-space: nowrap; }
+  .r .lab .muted { font-size: 11px; }
+  .r .val { font-size: 15px; color: var(--rs); font-variant-numeric: tabular-nums; text-align: right; min-width: 70px; }
+  /* la scomposizione: nuova, sotto l'etichetta */
+  .scomp { font-size: 11.5px; color: #a8a39a; line-height: 1.45; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .scomp b { color: var(--text); font-weight: 600; }
+  .scomp .eq { color: var(--rs); font-weight: 600; }
+  .scomp .no { color: var(--muted); }
+  .evid { outline: 1px dashed #d4af3788; outline-offset: 3px; border-radius: 6px; }
+
+  .kv { display: flex; justify-content: space-between; font-size: 13.5px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+  .kv .muted { font-size: 13px; }
+  .testo { font-size: 12.5px; line-height: 1.55; color: #d6d2ca; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div class="ey">🦠RS · mockup</div>
+    <h1>Passi equivalenti del cardio</h1>
+    <p>A RS va il totale: passi di WHOOP più minuti di cyclette, spin e assault bike × 100. I passi veri non si toccano. La riga sotto «Passi totali» dice da dove viene il numero. Il riquadro tratteggiato è la parte nuova.</p>
+    <div class="misura"><button class="on" data-w="360" data-h="700">360 × 700</button><button data-w="412" data-h="800">412 × 800</button></div>
+  </div>
+
+  <div class="telefoni">
+    <!-- 1 -->
+    <div class="blocco">
+      <div class="nome">1 · Giornata con cyclette</div>
+      <div class="tel"><div class="stato"><span>9:41</span><span>●●● 82%</span></div><div class="utile"><div class="contenuto">
+        <div class="riga spazia"><div><p class="muted small" style="margin:0 0 2px;letter-spacing:.06em">ETP HEALTH · COACH</p><h1 style="font-size:26px">🦠RS</h1></div></div>
+        <div class="riga" style="gap:6px"><span class="chip on" style="flex:1">Giornata</span><span class="chip" style="flex:1">Allenamento</span><span class="chip" style="flex:1">Settimana</span></div>
+        <div class="riga spazia"><span class="chip">‹ giorno prima</span><span class="chip">📅 Oggi</span><span class="chip" style="opacity:.4">giorno dopo ›</span></div>
+        <div class="gruppo">⚡ Attività</div>
+        <div class="r"><i class="pall"></i><div class="et">
+          <div class="lab">Passi totali <span class="muted">· da WHOOP</span></div>
+          <div class="scomp evid"><b>11.234</b> passi = 8.734 camminata + <span class="eq">2.500 da cyclette (25')</span></div>
+        </div><span class="val">11.234</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Cardio minuti</div></div><span class="val">25</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Cardio FC media</div></div><span class="val">112</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Sessione allenamento</div></div><span class="val">D2 Lower</span></div>
+        <div class="r"><i class="pall" style="background:var(--text)"></i><div class="et"><div class="lab">Aderenza logistica (%)</div></div><span class="val" style="color:var(--text)">100</span></div>
+        <div class="gruppo">〰 Biofeedback</div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Motivazione (1-5)</div></div><span class="val">4</span></div>
+      </div></div></div>
+      <ul class="note">
+        <li>Il valore a destra è quello che va a RS: 8.734 + 25 × 100.</li>
+        <li>Senza cardio che converte, la riga resta com'è oggi (solo «da WHOOP»).</li>
+        <li>Se correggi i passi a mano, vince il tuo numero come per ogni campo.</li>
+      </ul>
+    </div>
+
+    <!-- 2 -->
+    <div class="blocco">
+      <div class="nome">2 · Più sedute, tipi diversi</div>
+      <div class="tel"><div class="stato"><span>21:10</span><span>●●● 40%</span></div><div class="utile"><div class="contenuto">
+        <div class="riga spazia"><div><p class="muted small" style="margin:0 0 2px;letter-spacing:.06em">ETP HEALTH · COACH</p><h1 style="font-size:26px">🦠RS</h1></div></div>
+        <div class="riga" style="gap:6px"><span class="chip on" style="flex:1">Giornata</span><span class="chip" style="flex:1">Allenamento</span><span class="chip" style="flex:1">Settimana</span></div>
+        <div class="riga spazia"><span class="chip">‹ giorno prima</span><span class="chip">📅 Ieri</span><span class="chip">giorno dopo ›</span></div>
+        <div class="gruppo">⚡ Attività</div>
+        <div class="r"><i class="pall"></i><div class="et">
+          <div class="lab">Passi totali <span class="muted">· da WHOOP</span></div>
+          <div class="scomp evid"><b>12.934</b> passi = 7.934 camminata + <span class="eq">3.000 da cyclette (30')</span> + <span class="eq">2.000 da assault bike (20')</span><br>
+            <span class="no">ellittica 15': non convertita · corsa 20': già nei passi</span></div>
+        </div><span class="val">12.934</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Cardio minuti</div></div><span class="val">85</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Cardio FC media</div></div><span class="val">121</span></div>
+        <div class="r"><i class="pall"></i><div class="et"><div class="lab">Sessione allenamento</div></div><span class="val">—</span></div>
+      </div></div></div>
+      <ul class="note">
+        <li>Una voce per tipo: due sedute di cyclette si sommano (minuti e passi).</li>
+        <li>Ellittica e i tipi non ancora decisi: «non convertita», 0 passi.</li>
+        <li>Camminata, tapis e corsa: «già nei passi», perché li conta WHOOP.</li>
+      </ul>
+    </div>
+
+    <!-- 3 -->
+    <div class="blocco">
+      <div class="nome">3 · Check della settimana</div>
+      <div class="tel"><div class="stato"><span>20:05</span><span>●●● 66%</span></div><div class="utile"><div class="contenuto">
+        <div class="riga spazia"><div><p class="muted small" style="margin:0 0 2px;letter-spacing:.06em">ETP HEALTH · COACH</p><h1 style="font-size:26px">🦠RS</h1></div></div>
+        <div class="riga" style="gap:6px"><span class="chip" style="flex:1">Giornata</span><span class="chip" style="flex:1">Allenamento</span><span class="chip on" style="flex:1">Settimana</span></div>
+        <div class="card">
+          <div class="riga spazia" style="margin-bottom:4px"><strong style="font-size:14px">Settimana 13</strong><span class="muted small">27.10 – 02.11</span></div>
+          <div class="kv"><span class="muted">Peso medio</span><span>90,4 kg</span></div>
+          <div class="kv"><span class="muted">Sedute</span><span>5</span></div>
+          <div class="kv evid"><span class="muted">Passi al giorno</span><span>11.480</span></div>
+          <div class="kv"><span class="muted">Sonno medio</span><span>7h12</span></div>
+        </div>
+        <div class="card">
+          <p class="muted small" style="margin:0 0 6px">Testo per il coach</p>
+          <div class="testo">Settimana 13 chiusa. Peso 90,4 di media, −0,3 sulla scorsa. Aderenza 96%, precisione 94%. 5 sedute. <span style="outline:1px dashed #d4af3788;outline-offset:2px;border-radius:4px">11.480 passi al giorno.</span> Sonno 7h12 di media, recupero 61%.</div>
+        </div>
+      </div></div></div>
+      <ul class="note">
+        <li>La media della settimana usa il totale di ogni giorno, come la riga del giorno.</li>
+        <li>Nel testo per RS nessuna scomposizione: solo il numero, che è il suo.</li>
+        <li>Autogestione e Cockpit restano separati: passi veri e cardio a parte.</li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+  document.querySelectorAll('.misura button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.misura button').forEach((x) => x.classList.toggle('on', x === b))
+    document.documentElement.style.setProperty('--w', b.dataset.w + 'px')
+    document.documentElement.style.setProperty('--h', b.dataset.h + 'px')
+  }))
+</script>
+</body>
+</html>

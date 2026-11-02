@@ -34,11 +34,11 @@ export function HabitsScreen() {
       <div className="card" style={{ marginTop: 0 }}>
         <label className="fl">Obiettivo al giorno</label>
         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-          <button onClick={() => adjustHabitTarget(STEPS, -1000)}>−</button>
+          <button onClick={() => adjustHabitTarget(STEPS, -500)}>−</button>
           <strong style={{ flex: 1, textAlign: 'center', fontSize: 26, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
             {target.toLocaleString('it-IT')}
           </strong>
-          <button onClick={() => adjustHabitTarget(STEPS, +1000)}>＋</button>
+          <button onClick={() => adjustHabitTarget(STEPS, +500)}>＋</button>
         </div>
 
         {ultimo ? (

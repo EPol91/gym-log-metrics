@@ -10,7 +10,7 @@ import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { statoDieta } from './dieta'
 import { whoopDay } from '../db/whoop'
-import { getHabitValue, STEPS } from '../db/habits'
+import { passiRs } from './passiEquivalenti'
 import { fmtData } from '../util/format'
 import { settimanaGiorno } from './rs'
 import type { RsCheck } from '../db/schema'
@@ -73,8 +73,9 @@ export async function numeriSettimana(inizio: string, n: number): Promise<Numeri
 
   const passi: number[] = [], sonni: number[] = [], recuperi: number[] = []
   for (const g of giorni) {
-    const p = await getHabitValue(STEPS, g)
-    if (p?.value != null) passi.push(p.value)
+    // Il totale di RS, come nella riga del giorno: camminata + cardio convertito.
+    const p = (await passiRs(g)).totale
+    if (p != null) passi.push(p)
     const w = await whoopDay(g)
     if (w?.sleepHours != null) sonni.push(w.sleepHours)
     if (w?.recovery != null) recuperi.push(w.recovery)

@@ -14,6 +14,7 @@ import {
   computeRs, conteggio, settimanaGiorno, setRs, resetRs, rsDay, setNotaRs, dettagliRs,
   notaAutomatica, RS_START_DEFAULT, type RsValore,
 } from '../rs/rs'
+import { passiRs, testoEsclusi, voceConvertita, migliaia, type PassiRs } from '../rs/passiEquivalenti'
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
 import { sedutaRs } from '../rs/allenamento'
 import { cicloValido, indiceGiorno, GIORNI } from '../rs/ciclo'
@@ -50,6 +51,7 @@ export function RsScreen() {
   const riga = useLiveQuery(() => rsDay(date), [date])
   const nota = useLiveQuery(() => notaAutomatica(date), [date])
   const dettagli = useLiveQuery(() => dettagliRs(date), [date]) ?? {}
+  const passi = useLiveQuery(() => passiRs(date), [date])
 
   const sg = settimanaGiorno(date, inizio)
   const conta = giornata ? conteggio(giornata) : null
@@ -141,6 +143,7 @@ export function RsScreen() {
           </div>
           {CAMPI.filter((c) => c.gruppo === g.key).map((c) => (
             <Riga key={c.key} campo={c.key} v={giornata[c.key]} date={date} dettaglio={dettagli[c.key]}
+              sotto={c.key === 'passi' && passi?.voci.length ? <ScomposizionePassi p={passi} /> : undefined}
               aperto={inModifica === c.key} onApri={() => setInModifica(inModifica === c.key ? null : c.key)} />
           ))}
         </div>
@@ -165,6 +168,8 @@ export function RsScreen() {
  */
 function leggibile(campo: RsCampo, valore: string | null | undefined): string {
   if (!valore) return '—'
+  // Al coach va il numero; a te si mostra col punto, «11.234».
+  if (campo === 'passi' && /^\d+$/.test(valore)) return migliaia(Number(valore))
   if (campo !== 'durata_sonno') return valore
   const ore = Number(valore)
   if (!Number.isFinite(ore) || ore <= 0) return valore
@@ -174,10 +179,35 @@ function leggibile(campo: RsCampo, valore: string | null | undefined): string {
 }
 
 /** Una riga: etichetta, valore, e da dove arriva. Si tocca per correggerla. */
-function Riga({ campo, v, date, aperto, onApri, dettaglio }: {
+/**
+ * Da dove viene il numero dei passi: la camminata di WHOOP e i minuti di cardio
+ * convertiti, una voce per tipo. Quello che non converte lo dice.
+ */
+function ScomposizionePassi({ p }: { p: PassiRs }) {
+  const conv = p.voci.filter((v) => v.esito === 'convertita')
+  const esclusi = testoEsclusi(p)
+  return (
+    <div style={{ fontSize: 11.5, color: '#a8a39a', lineHeight: 1.45, marginTop: 3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'normal' }}>
+      {conv.length > 0 && p.totale != null && (
+        <div>
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{migliaia(p.totale)}</strong> passi
+          = {migliaia(p.reali ?? 0)} camminata
+          {conv.map((v) => (
+            <span key={v.tipo}> + <span style={{ color: 'var(--rs)', fontWeight: 600 }}>{voceConvertita(v)}</span></span>
+          ))}
+        </div>
+      )}
+      {esclusi && <div className="muted">{esclusi}</div>}
+    </div>
+  )
+}
+
+function Riga({ campo, v, date, aperto, onApri, dettaglio, sotto }: {
   campo: RsCampo; v: RsValore; date: string; aperto: boolean; onApri: () => void
   /** il contorno del numero: chi l'ha contato, o quanto ne prevedeva la giornata */
   dettaglio?: string
+  /** una seconda riga sotto l'etichetta, quando il contorno non sta in una */
+  sotto?: React.ReactNode
 }) {
   const def = DEF.get(campo)!
   const [testo, setTesto] = useState('')
@@ -187,18 +217,21 @@ function Riga({ campo, v, date, aperto, onApri, dettaglio }: {
   return (
     <>
       <div className="row" onClick={onApri}
-        style={{ gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
-        <span className={'pallino ' + v.fonte} />
+        style={{ gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer', ...(sotto ? { alignItems: 'flex-start' } : {}) }}>
+        <span className={'pallino ' + v.fonte} style={sotto ? { marginTop: 6 } : undefined} />
         {/* Etichetta e contorno sulla stessa riga, divisi dal punto medio: e' il
             segno con cui il coach separa le sue prescrizioni. Se lo spazio non
             basta e' il contorno ad accorciarsi — l'etichetta dice cos'e'. */}
-        <span className="row" style={{ flex: 1, minWidth: 0, gap: 5, alignItems: 'baseline' }}>
-          <span style={{ flex: 'none', fontSize: 13.5, whiteSpace: 'nowrap' }}>{def.label}</span>
-          {dettaglio && (
-            <span className="muted" style={{ fontSize: 11, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              · {dettaglio}
-            </span>
-          )}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span className="row" style={{ gap: 5, alignItems: 'baseline' }}>
+            <span style={{ flex: 'none', fontSize: 13.5, whiteSpace: 'nowrap' }}>{def.label}</span>
+            {dettaglio && (
+              <span className="muted" style={{ fontSize: 11, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                · {dettaglio}
+              </span>
+            )}
+          </span>
+          {sotto}
         </span>
         {v.fonte === 'mio' && <span className="muted" style={{ fontSize: 10 }}>corretto</span>}
         <span style={{ fontSize: 15, color: colore, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 70 }}>
