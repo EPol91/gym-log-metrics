@@ -38,7 +38,7 @@ export function DataDiOggi({ onApri, altezza }: { onApri: () => void; altezza?: 
       style={{
         background: 'linear-gradient(180deg, #181714, var(--surface) 60%)', border: '1px solid var(--line)', borderRadius: 12,
         boxShadow: 'inset 0 1px 0 #ffffff08',
-        padding: '4px 10px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.1, minWidth: 52,
+        padding: '4px 8px', textAlign: 'center', flex: '0 0 auto', lineHeight: 1.1, minWidth: 48,
         ...(altezza ? { height: altezza, display: 'grid', alignContent: 'center' } : {}),
       }}>
       <div className="muted" style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 600 }}>

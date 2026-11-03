@@ -11,6 +11,9 @@
 // Chi scrive: solo il telefono collegato a WHOOP (il suo codice dispositivo
 // ha i token nel KV) e solo dal sito dell'app. Chi legge: solo chi ha
 // AUTOGESTIONE_TOKEN, un wrangler secret di Emanuel, mai nel codice.
+//
+// Gli avvisi delle regole fanno il giro al contrario: li scrive il PC (check-in,
+// con AUTOGESTIONE_TOKEN) e li legge il telefono (lo scudo in Oggi).
 
 const ORIGINE = 'https://epol91.github.io'
 /** Le tabelle su cui si controlla il calo: oltre il 20% in meno il backup è sospetto. */
@@ -41,6 +44,8 @@ const jsonLettura = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...corsLettura } })
 /** Il riepilogo per il Cockpit sta in pochi kB: oltre i 2 MB è un errore. */
 const LIMITE_GIORNI = 2 * 1024 * 1024
+/** Gli avvisi della settimana sono pochi kB. */
+const LIMITE_AVVISI = 200 * 1024
 
 async function sha1(buf) {
   const h = await crypto.subtle.digest('SHA-1', buf)
@@ -162,6 +167,28 @@ async function riceviGiorni(request, env) {
   return json({ ok: true, at, giorni: giorni.length })
 }
 
+/** Dal PC: gli avvisi delle regole scritti dal check-in. */
+async function riceviAvvisi(request, env) {
+  if (!lettore(request, env)) return jsonLettura({ errore: 'codice non valido' }, 401)
+  const corpo = await request.text()
+  if (corpo.length > LIMITE_AVVISI) return jsonLettura({ errore: 'avvisi troppo grandi' }, 413)
+  let a
+  try { a = JSON.parse(corpo) } catch { a = null }
+  if (!a || !Array.isArray(a.avvisi) || !/^\d{4}-W\d{2}$/.test(a.settimana || '')) return jsonLettura({ errore: 'avvisi non validi' }, 400)
+  const at = new Date().toISOString()
+  await env.WHOOP.put('ag:avvisi', JSON.stringify({ ...a, at }))
+  return jsonLettura({ ok: true, at, avvisi: a.avvisi.length })
+}
+
+/** Al telefono: gli ultimi avvisi, per lo scudo di Oggi. */
+async function consegnaAvvisi(request, env) {
+  const no = await scrittore(request, env)
+  if (no) return no
+  const v = await env.WHOOP.get('ag:avvisi')
+  if (!v) return json({ errore: 'nessun avviso ancora' }, 404)
+  return new Response(v, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...cors } })
+}
+
 /** Per il Cockpit: l'ora dell'ultimo invio (il pulsante arancione) o i giorni. */
 async function consegnaCockpit(request, env, chiave) {
   if (!lettore(request, env)) return jsonLettura({ errore: 'codice non valido' }, 401)
@@ -191,6 +218,8 @@ export async function autogestione(request, env, url) {
   if (p === '/autogestione/backup' && request.method === 'POST') return ricevi(request, env, url)
   if (p === '/autogestione/giorni' && request.method === 'POST') return riceviGiorni(request, env)
   if (p === '/autogestione/giorni' && request.method === 'GET') return consegnaCockpit(request, env, 'ag:giorni')
+  if (p === '/autogestione/avvisi' && request.method === 'POST') return riceviAvvisi(request, env)
+  if (p === '/autogestione/avvisi' && request.method === 'GET') return consegnaAvvisi(request, env)
   if (p === '/autogestione/stato' && request.method === 'GET') return consegnaCockpit(request, env, 'ag:stato')
   const m = /^\/autogestione\/backup\/([^/]+)$/.exec(p)
   if (m && request.method === 'GET') return consegna(request, env, m[1])

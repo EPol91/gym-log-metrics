@@ -19,6 +19,7 @@ import { usePesoOggi, measurementOn } from './PesoOggi'
 import { FoglioNota } from './NotaCorpo'
 import { CardAutogestione } from './CardAutogestione'
 import { Calendario, DataDiOggi } from './CardCalendario'
+import { ScudoRegole } from './ScudoRegole'
 import { useEffect } from 'react'
 
 const LBL: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }
@@ -112,9 +113,11 @@ export function TodayScreen({ onStartWorkout, onResumeWorkout, onOpenCheck, onGo
           <div style={{ ...LBL, padding: '2px 0' }}>ETP Health</div>
           <h1 style={{ fontSize: 'clamp(22px, 7.2vw, 26px)', marginTop: 3 }}>Ciao{nome ? ` ${nome}` : ''}</h1>
         </div>
-        <div className="row" style={{ gap: 8, alignItems: 'flex-start', flex: 'none' }}>
+        <div className="row" style={{ gap: 6, alignItems: 'flex-start', flex: 'none' }}>
         {/* Il calendarietto: giorno, numero, mese. Col tocco apre il calendario.
             Alto quanto l'anello col suo nome sotto, cosi' i due combaciano. */}
+        {/* Le regole dell'autogestione: lo scudo, alto quanto il calendarietto. */}
+        <ScudoRegole />
         <DataDiOggi onApri={() => setCalendario(true)} altezza={64} />
         <button onClick={onOpenCheck} aria-label="Check del giorno"
           style={{ textAlign: 'center', flex: '0 0 auto', background: 'none', border: 'none', padding: 0 }}>
