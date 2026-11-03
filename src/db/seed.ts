@@ -8,7 +8,17 @@ import type { User, Gym, Exercise } from './schema'
 /** Utente unico locale (single-user ora; è comunque un userId, multi-tenant-ready). */
 export const LOCAL_USER_ID = 'local-user'
 
-export async function ensureSeed(): Promise<User> {
+/**
+ * Una sola inizializzazione alla volta: due chiamate ravvicinate (React in sviluppo
+ * lancia l'effetto due volte) aspettano la stessa, invece di creare due volte
+ * l'utente (ConstraintError al primo avvio) e doppioni di palestra ed esercizi.
+ */
+let inCorso: Promise<User> | null = null
+export function ensureSeed(): Promise<User> {
+  return (inCorso ??= semina().finally(() => { inCorso = null }))
+}
+
+async function semina(): Promise<User> {
   let user = await db.users.get(LOCAL_USER_ID)
   if (!user) {
     const ts = nowISO()

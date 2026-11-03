@@ -21,3 +21,6 @@ android/capacitor-cordova-android-plugins
 *.apk
 android-icon/anteprima-*.png
 android-icon/dentro-apk-*.png
+
+# Cache delle prove in locale del Worker (wrangler dev)
+.wrangler/
