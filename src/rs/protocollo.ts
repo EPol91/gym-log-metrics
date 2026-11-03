@@ -169,6 +169,27 @@ export const RINOMINE: Record<string, string | string[]> = {
   // Scritto "Real" nell'elenco: provo prima la grafia corretta, poi quella.
   'Rear delt row o rear delt machine': ['Rear Delt Machine', 'Real Delt Machine'],
   'Shrug al cavo o macchina': 'Cable Shrug',
+  // Il cambio di scheda del 03.11.2026: dove avevi gia' l'esercizio, vale il tuo.
+  'Bilateral cable high row, busto 45°': 'Bilateral Cable High Row 45°',
+  // Il refuso lo correggi tu: lo trova con tutte e due le grafie.
+  'Horizontal calf press': ['Horizontal Calf Press', 'Horizonal Calf Press'],
+  'Cable fly 45°': 'Cable Fly 45°',
+  'Seated row presa larga, upper back': 'Seated Row Upper Back',
+  'Rear delt fly manubri su panca inclinata': 'DB Rear Delts',
+}
+
+/**
+ * 03.11.2026: il coach cambia sei esercizi in D1, D3, D4 e D5. Le sedute di
+ * prima si leggono con la scheda di prima: nome nuovo del coach → nome vecchio.
+ */
+export const CAMBIO_SCHEDA = '2026-11-03'
+export const PRIMA_DEL_CAMBIO: Record<string, string> = {
+  'Bilateral cable high row, busto 45°': 'High row convergente chest-supported',
+  'Chest-supported DB row su panca inclinata 30-40°': 'T-bar row chest-supported',
+  'Horizontal calf press': 'Standing calf raise o calf press',
+  'Cable fly 45°': 'Cable fly',
+  'Seated row presa larga, upper back': 'High row tecnica per upper back',
+  'Rear delt fly manubri su panca inclinata': 'Rear delt row o rear delt machine',
 }
 
 export interface EsercizioRs {
@@ -190,9 +211,9 @@ export const SEDUTE_RS: SedutaRs[] = [
     nome: '🦠 D1 · PULL A', codice: 'D1', tipo: 'pull', focus: 'Upper back · rear delts · bicipiti',
     prehab: 'Scapular pulldown o depressione scapolare al cavo — 1 serie da 10-12, RIR 4-5, rec 45-60″. Non conta come volume.',
     esercizi: [
-      e('High row convergente chest-supported', 'schiena', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 150-180″'),
-      e('T-bar row chest-supported', 'schiena', '@A|B · 8-12 · RIR1-2 · rec 150″'),
-      e('Pulley unilaterale traiettoria alta', 'schiena', '@A|B · 10-15 per lato · RIR1-2 · rec 75-90″'),
+      e('Bilateral cable high row, busto 45°', 'schiena', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 150-180″'),
+      e('Chest-supported DB row su panca inclinata 30-40°', 'schiena', '@A|B · 8-12 · RIR1-2 · rec 150″'),
+      e('Pulley unilaterale traiettoria alta', 'schiena', '@A|B · 10-15 per lato · RIR1-2 · rec 75-90″ dopo entrambi i lati'),
       e('Kelso shrug su supporto', 'schiena', '@A|B · 10-15 · RIR1 · rec 90-120″'),
       e('Rear delt machine', 'spalle', '@A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 75-90″'),
       e('Bayesian curl', 'bicipiti', '@A|B|C · 8-12 · RIR1 · rec 90″'),
@@ -207,9 +228,9 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('Smith incline press 20-30°', 'petto', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 180″'),
       e('Chest press convergente', 'petto', '@A|B · 8-12 · RIR1-2 · rec 150″'),
       e('Shoulder press manubri panca 80°', 'spalle', '@A|B · 8-12 · RIR1-2 · rec 150″'),
-      e('Alzate laterali unilaterali al cavo', 'spalle', '@A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 60-75″'),
+      e('Alzate laterali unilaterali al cavo', 'spalle', '@A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 60-75″ dopo entrambi i lati'),
       e('Overhead cable extension', 'tricipiti', '@A|B · 8-12 · RIR1 · rec 90-120″'),
-      e('Pushdown stabile', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · rec 75-90″'),
+      e('Pushdown stabile', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 solo nelle fasi autorizzate · rec 75-90″'),
     ],
   },
   {
@@ -222,7 +243,7 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('Romanian deadlift', 'femorali', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR2 · rec 180-210″'),
       e('Hip thrust', 'glutei', '@A|B · 8-12 · RIR1-2 · rec 150″'),
       e('Adductor machine', 'glutei', '@A|B · 10-15 · RIR1 · rec 90″'),
-      e('Standing calf raise o calf press', 'polpacci', '@A|B|C · 8-15 · RIR1 · rec 90-120″'),
+      e('Horizontal calf press', 'polpacci', '@A|B|C · 8-15 · RIR1 · rec 90-120″'),
     ],
   },
   {
@@ -230,10 +251,10 @@ export const SEDUTE_RS: SedutaRs[] = [
     prehab: 'Scapular pulldown — 1 serie da 10-12, RIR 4-5. Non conta come volume.',
     esercizi: [
       e('Lat machine presa neutra o semi-supina', 'schiena', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 150-180″'),
-      e('Iliac pulldown unilaterale', 'schiena', '@A|B · 10-15 per lato · RIR1 · rec 75-90″'),
+      e('Iliac pulldown unilaterale', 'schiena', '@A|B · 10-15 per lato · RIR1 · rec 75-90″ dopo entrambi i lati'),
       e('Pulldown alla corda in massimo allungamento', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 90″'),
       e('Chest press inclinata convergente', 'petto', '@A|B · 8-12 · RIR1-2 · rec 150″'),
-      e('Cable fly', 'petto', '@A|B · 12-15 · RIR1 · rec 90″'),
+      e('Cable fly 45°', 'petto', '@A|B · 12-15 · RIR1 · rec 90″'),
       e('6A · Preacher curl unilaterale', 'bicipiti', '@A|B · 10-15 · RIR1 · superset con 6B', 'D4-6'),
       e('6B · Crucifix pushdown', 'tricipiti', '@A|B · 10-15 · RIR1 · rec 90″ dopo la coppia', 'D4-6'),
     ],
@@ -247,8 +268,8 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('1B · French press EZ o manubri', 'tricipiti', '@A|B|C · 6-10 · carico fisso 35 kg · RIR1-2 / RIR1-2 / RIR1 · rec 150″ · dopo le tre serie di curl'),
       e('2A · Curl al cavo braccio dietro il tronco', 'bicipiti', '@A|B · 10-15 · RIR1 / RIR0-1 nelle fasi autorizzate · superset con 2B', 'D5-2'),
       e('2B · Overhead rope extension', 'tricipiti', '@A|B · 10-15 per braccio · RIR1 / RIR0-1 nelle fasi autorizzate · rec 90″ dopo la coppia', 'D5-2'),
-      e('High row tecnica per upper back', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 120″'),
-      e('Rear delt row o rear delt machine', 'spalle', '@A|B · 12-20 · RIR1 · rec 75-90″'),
+      e('Seated row presa larga, upper back', 'schiena', '@A|B · 12-15 · RIR1-2 · rec 120″'),
+      e('Rear delt fly manubri su panca inclinata', 'spalle', '@A|B · 12-20 · RIR1 · rec 75-90″'),
       e('Shrug al cavo o macchina', 'schiena', '@A|B · 10-15 · RIR1 · rec 90-120″'),
       e('Back extension 45° intento paravertebrale', 'schiena', '@A|B · 10-15 · RIR2 · rec 90-120″'),
     ],

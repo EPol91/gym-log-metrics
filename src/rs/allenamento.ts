@@ -10,7 +10,7 @@
 
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
-import { SEDUTE_RS, RINOMINE } from './protocollo'
+import { SEDUTE_RS, RINOMINE, CAMBIO_SCHEDA, PRIMA_DEL_CAMBIO } from './protocollo'
 
 const U = LOCAL_USER_ID
 
@@ -37,19 +37,24 @@ interface Giornata { codice: string; nome: string; previsti: string[] }
 
 const norm = (s: string) => s.trim().toLowerCase()
 
-/** Gli esercizi di una sua giornata, con i nomi TUOI: l'import li ha rinominati. */
-function previstiDi(s: (typeof SEDUTE_RS)[number]): string[] {
+/**
+ * Gli esercizi di una sua giornata, con i nomi TUOI: l'import li ha rinominati.
+ * Una seduta di prima del cambio di scheda si legge con la scheda di allora.
+ */
+function previstiDi(s: (typeof SEDUTE_RS)[number], data: string): string[] {
+  const prima = data < CAMBIO_SCHEDA
   return s.esercizi.map((e) => {
-    const r = RINOMINE[e.nome]
-    return r == null ? e.nome : Array.isArray(r) ? r[0] : r
+    const nome = prima ? PRIMA_DEL_CAMBIO[e.nome] ?? e.nome : e.nome
+    const r = RINOMINE[nome]
+    return r == null ? nome : Array.isArray(r) ? r[0] : r
   })
 }
 
 /** La giornata scritta nel nome del template da cui e' partita la seduta. */
-function daTemplate(nomeTemplate: string): Giornata | null {
+function daTemplate(nomeTemplate: string, data: string): Giornata | null {
   const codice = nomeTemplate.match(/\bD[1-5]\b/)?.[0]
   const s = SEDUTE_RS.find((x) => x.codice === codice)
-  return s ? { codice: s.codice, nome: s.nome, previsti: previstiDi(s) } : null
+  return s ? { codice: s.codice, nome: s.nome, previsti: previstiDi(s, data) } : null
 }
 
 /**
@@ -61,11 +66,11 @@ function daTemplate(nomeTemplate: string): Giornata | null {
  * sbagliava: bastava un esercizio in comune, e leg extension e squat li fai
  * anche negli allenamenti tuoi. Se manca o avanza qualcosa, la seduta e' tua.
  */
-function impronta(nomiFatti: string[]): Giornata | null {
+function impronta(nomiFatti: string[], data: string): Giornata | null {
   const fatti = new Set(nomiFatti.filter(Boolean).map(norm))
   if (!fatti.size) return null
   for (const s of SEDUTE_RS) {
-    const previsti = previstiDi(s)
+    const previsti = previstiDi(s, data)
     const suoi = new Set(previsti.map(norm))
     if (suoi.size !== fatti.size) continue
     if ([...suoi].every((p) => fatti.has(p))) return { codice: s.codice, nome: s.nome, previsti }
@@ -82,9 +87,9 @@ function impronta(nomiFatti: string[]): Giornata | null {
  */
 function giornataDi(sess: { srcTemplateId?: string | null; date: string }, nomi: string[], nomiTemplate: Map<string, string>, inizioRs: string | null): Giornata | null {
   const tpl = sess.srcTemplateId ? nomiTemplate.get(sess.srcTemplateId) : undefined
-  if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl) : null
+  if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl, sess.date) : null
   if (!inizioRs || sess.date < inizioRs) return null
-  return impronta(nomi)
+  return impronta(nomi, sess.date)
 }
 
 /** Il nome del template da cui e' partita la seduta: e' come la chiami tu. */
