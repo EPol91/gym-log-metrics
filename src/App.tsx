@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { forseBackupAutomatico } from './db/backupAuto'
-import { controllaPromemoria, programmaPromemoriaPasti } from './util/promemoria'
+import { controllaPromemoria, programmaPromemoriaPasti, programmaPesataMattino } from './util/promemoria'
+import { db } from './db/db'
+import { todayLocal } from './util/date'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureSeed } from './db/seed'
 import { getUser } from './db/repo'
@@ -75,6 +77,10 @@ function AppScreens() {
   useEffect(() => { void forseBackupAutomatico() }, [])
   // I promemoria: solo quando c'e' davvero qualcosa da fare.
   useEffect(() => { void controllaPromemoria(); void programmaPromemoriaPasti() }, [])
+  // La pesata del mattino: riprogrammata all'avvio e appena segni il peso di
+  // oggi, cosi' quella di oggi non parte piu'.
+  const pesatoOggi = useLiveQuery(() => db.bodyMeasurements.where('date').equals(todayLocal()).count(), [])
+  useEffect(() => { if (pesatoOggi != null) void programmaPesataMattino() }, [pesatoOggi])
   // Chi salva le letture della fascia lo decide qui: il modulo bluetooth non
   // conosce il database, e cosi' resta buono anche fuori da questa app.
   useEffect(() => { hrOnSave((id, serie) => { void salvaLettureCuore(id, serie) }) }, [])

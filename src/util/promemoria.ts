@@ -21,9 +21,10 @@ const VISTE = 'gymlog.promemoria.viste'
 // una notifica letta nella tendina non deve far sparire la card, e viceversa.
 const VIA = 'gymlog.promemoria.via'
 
-export type Tipo = 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
+export type Tipo = 'mattino' | 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
 
 export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
+  { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è. Arriva anche ad app chiusa.' },
   { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Quando restano meno giorni delle sedute che ti mancano.' },
   { tipo: 'recupero', nome: 'Recupero alto', nota: 'Al mattino, se il WHOOP è sopra la tua media e non ti alleni da due giorni.' },
   { tipo: 'peso', nome: 'Pesata', nota: 'Se non ti pesi da quattro giorni.' },
@@ -32,6 +33,15 @@ export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
   { tipo: 'pasto', nome: 'Ora dei pasti', nota: 'Un quarto d’ora dopo la fine della fascia, se il pasto non ha l’ora. Arriva anche ad app chiusa.' },
   { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: «Esco ora» o «Uscito alle…» se esci più tardi.' },
 ]
+
+/** L'ora della pesata del mattino: la scegli tu in Promemoria. */
+const ORA_MATTINO = 'gymlog.promemoria.mattino.ora'
+export function oraPesata(): string {
+  try { return localStorage.getItem(ORA_MATTINO) || '07:30' } catch { return '07:30' }
+}
+export function impostaOraPesata(ora: string): void {
+  try { localStorage.setItem(ORA_MATTINO, ora) } catch { /* ignore */ }
+}
 
 function spente(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(SPENTE) ?? '[]') as string[]) } catch { return new Set() }
@@ -156,7 +166,12 @@ async function tutti(): Promise<Avviso[]> {
   // Pesata: il peso e' il dato che regge meta' degli Score, e si perde in fretta.
   const pesate = await db.bodyMeasurements.where('userId').equals(U).toArray()
   const ultimaPesata = pesate.map((m) => m.date).sort().pop()
-  if (!ultimaPesata || Date.parse(oggi) - Date.parse(ultimaPesata) >= 4 * 86_400_000) {
+  // Quella del mattino, passata l'ora: finche' il peso di oggi non c'e'. Se c'e'
+  // lei, quella dei quattro giorni direbbe la stessa cosa due volte.
+  const mattino = attivo('mattino') && ultimaPesata !== oggi && minuti(oraAdesso()) >= minuti(oraPesata())
+  if (mattino) {
+    out.push({ tipo: 'mattino', titolo: 'Registra il peso di oggi', testo: 'Appena sveglio, prima di bere e mangiare.' })
+  } else if (!ultimaPesata || Date.parse(oggi) - Date.parse(ultimaPesata) >= 4 * 86_400_000) {
     out.push({ tipo: 'peso', titolo: 'Pesata', testo: ultimaPesata ? `Ultima il ${ultimaPesata}.` : 'Non ti sei mai pesato.' })
   }
 
@@ -218,7 +233,7 @@ export async function controllaPromemoria(): Promise<void> {
   const p = plugin()
   if (!p) return
   const oggiD = todayLocal()
-  const avvisi = (await tutti()).filter((a) => a.tipo !== 'pasto' && a.tipo !== 'uscita' && attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
+  const avvisi = (await tutti()).filter((a) => a.tipo !== 'pasto' && a.tipo !== 'uscita' && a.tipo !== 'mattino' && attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
   if (!avvisi.length) return
 
   try {
@@ -275,4 +290,45 @@ export async function programmaPromemoriaPasti(): Promise<void> {
     if (perm?.display && perm.display !== 'granted') return
     await p.schedule({ notifications: da })
   } catch { /* niente permesso o niente plugin: restano gli avvisi in Oggi */ }
+}
+
+/** La pesata del mattino: un numero per giorno, sempre gli stessi, cosi' si sostituiscono. */
+const ID_MATTINO = 7100
+const GIORNI_MATTINO = 7
+
+/**
+ * Programma sul telefono la pesata del mattino per i prossimi sette giorni.
+ *
+ * Le consegna il telefono anche ad app chiusa: se non la apri per giorni,
+ * arrivano lo stesso. Quella di oggi non parte se il peso c'e' gia' o se l'ora
+ * e' passata. Si richiama all'avvio, a ogni pesata e a ogni cambio d'ora.
+ */
+export async function programmaPesataMattino(): Promise<void> {
+  const p = plugin()
+  if (!p) return
+  const oggi = todayLocal()
+  try {
+    await p.cancel({ notifications: Array.from({ length: GIORNI_MATTINO }, (_, k) => ({ id: ID_MATTINO + k })) })
+    if (!attivo('mattino')) return
+    const pesatoOggi = (await db.bodyMeasurements.where('date').equals(oggi).filter((m) => m.userId === U).count()) > 0
+    const ora = oraPesata()
+    const adesso = Date.now()
+    const da: { id: number; title: string; body: string; schedule: { at: Date; allowWhileIdle: boolean } }[] = []
+    for (let k = 0; k < GIORNI_MATTINO; k++) {
+      const giorno = shiftDate(oggi, k)
+      if (k === 0 && pesatoOggi) continue
+      const quando = new Date(`${giorno}T${ora}:00`)
+      if (quando.getTime() <= adesso) continue
+      da.push({
+        id: ID_MATTINO + k,
+        title: 'Registra il peso di oggi',
+        body: 'Appena sveglio, prima di bere e mangiare.',
+        schedule: { at: quando, allowWhileIdle: true },
+      })
+    }
+    if (!da.length) return
+    const perm = await p.requestPermissions()
+    if (perm?.display && perm.display !== 'granted') return
+    await p.schedule({ notifications: da })
+  } catch { /* niente permesso o niente plugin: resta l'avviso in Oggi */ }
 }
