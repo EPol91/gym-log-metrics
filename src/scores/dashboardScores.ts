@@ -1,5 +1,6 @@
 // Calcolo degli Score per la Home, a partire dai grezzi nel DB (derivati, non salvati).
 import { db } from '../db/db'
+import { sessionElapsedSec } from '../db/repo'
 import { restingHrFromWhoop } from '../db/whoop'
 import { LOCAL_USER_ID } from '../db/seed'
 import { todayLocal, shiftDate } from '../util/date'
@@ -43,6 +44,10 @@ export interface SessionSummary {
   score: number | null
   /** il nome della scheda da cui viene, se c'e': e' come la chiami tu */
   scheda?: string
+  /** la scheda da cui viene, per filtrare */
+  schedaId?: string
+  /** al netto delle riaperture; null se ancora aperta */
+  durataMin: number | null
 }
 
 /** Storico sedute, più recenti prima. */
@@ -74,6 +79,8 @@ export async function computeHistory(): Promise<SessionSummary[]> {
     const scheda = s.srcTemplateId ? (await db.templates.get(s.srcTemplateId))?.name : undefined
     out.push({
       ...(scheda ? { scheda } : {}),
+      ...(s.srcTemplateId ? { schedaId: s.srcTemplateId } : {}),
+      durataMin: s.finishedAt ? Math.round(sessionElapsedSec(s) / 60) : null,
       id: s.id, date: s.date, type: s.type, finished: !!s.finishedAt,
       tonnage: tonnage(sets), volume: volume(sets), exercises: entries, sets: sets.length, cardio, score,
     })

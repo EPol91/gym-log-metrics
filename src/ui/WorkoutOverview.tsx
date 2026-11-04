@@ -1,14 +1,21 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useIndietro } from './useBloccoScroll'
 import { Cuore } from './Cuore'
+import { PiedeFisso } from './PiedeFisso'
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { entriesOf, setsOf, allExercises, getSession, cardioOf, sessionElapsedSec } from '../db/repo'
-import { tonnage, volume, e1rm } from '../metrics/metrics'
-import { fmtRest } from '../util/format'
+import { isWorkingSet, tonnage } from '../metrics/metrics'
+import { serieAttese, serieDiPrima, serieInFila, codiceScheda, nomeScheda } from '../scores/confronto'
 import type { ExerciseEntry, SetEntry } from '../db/schema'
 
-interface Row { entry: ExerciseEntry; name: string; sets: SetEntry[] }
+const TYPE_LABEL: Record<string, string> = {
+  push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
+  lower: 'Lower', fullbody: 'Full body', brosplit: 'Bro split', custom: 'Libera',
+}
+const migliaia = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+
+interface Row { entry: ExerciseEntry; name: string; sets: SetEntry[]; attese: number | null; prima: SetEntry[] }
 interface OverviewBlock {
   kind: 'single' | 'group'
   rows: Row[]
@@ -19,10 +26,21 @@ async function computeOverview(sessionId: string) {
   const session = await getSession(sessionId)
   const entries = await entriesOf(sessionId)
   const exercises = await allExercises()
-  const nameOf = (id: string) => exercises.find((e) => e.id === id)?.name ?? '—'
+  const scheda = session?.srcTemplateId ? (await db.templates.get(session.srcTemplateId))?.name ?? null : null
+  const codice = codiceScheda(scheda)
 
   const rows: Row[] = []
-  for (const e of entries) rows.push({ entry: e, name: nameOf(e.exerciseId), sets: await setsOf(e.id) })
+  for (const e of entries) {
+    const ex = exercises.find((x) => x.id === e.exerciseId)
+    const prima = session ? (await serieDiPrima(e.exerciseId, session))?.sets ?? [] : []
+    rows.push({
+      entry: e, name: ex?.name ?? '—',
+      sets: (await setsOf(e.id)).filter(isWorkingSet),
+      // Quante ne prevede la riga del coach; se non c'e', quante ne hai fatte la volta scorsa.
+      attese: serieAttese(ex?.settings, codice) ?? (prima.length || null),
+      prima,
+    })
+  }
 
   // Stessi blocchi della vista live: singoli e superset/triset.
   const blocks: OverviewBlock[] = []
@@ -34,26 +52,22 @@ async function computeOverview(sessionId: string) {
     blocks.push({ kind: 'group', rows: rows.filter((x) => x.entry.groupId === r.entry.groupId), index: blocks.length })
   }
 
-  const allSets = rows.flatMap((r) => r.sets)
-  const cardio = await cardioOf(sessionId)
-  return {
-    session,
-    blocks,
-    totals: {
-      exercises: rows.length,
-      sets: allSets.filter((s) => !s.isWarmup).length,
-      reps: volume(allSets),
-      tonnage: tonnage(allSets),
-    },
-    cardio,
-  }
+  return { session, scheda, blocks, rows, cardio: await cardioOf(sessionId) }
 }
 
-/** Panoramica della seduta in corso: tutto quello che hai fatto finora, in un colpo d'occhio. */
-export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
+const fatte = (b: OverviewBlock) => b.rows.reduce((a, r) => a + r.sets.length, 0)
+const attese = (b: OverviewBlock) => (b.rows.every((r) => r.attese) ? b.rows.reduce((a, r) => a + (r.attese ?? 0), 0) : null)
+const finito = (b: OverviewBlock) => { const a = attese(b); return a ? fatte(b) >= a : false }
+
+/**
+ * Panoramica della seduta in corso: dove sei, cosa hai fatto, cosa manca.
+ * Fatto ✓, in corso in oro, da fare con il riferimento della volta scorsa.
+ */
+export function WorkoutOverview({ sessionId, onBack, onOpenBlock, onFinish }: {
   sessionId: string
   onBack: () => void
   onOpenBlock: (index: number) => void
+  onFinish?: () => void
 }) {
   useIndietro(onBack)
   const d = useLiveQuery(() => computeOverview(sessionId), [sessionId])
@@ -62,97 +76,68 @@ export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
 
   if (!d) return <div className="col"><p className="muted">Carico…</p></div>
 
-  const min = d.session ? Math.round(sessionElapsedSec(d.session) / 60) : 0
+  const sec = d.session ? sessionElapsedSec(d.session) : 0
+  const ore = `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`
+  const serieFatte = d.rows.reduce((a, r) => a + r.sets.length, 0)
+  const serieTotali = d.rows.every((r) => r.attese) ? d.rows.reduce((a, r) => a + (r.attese ?? 0), 0) : null
+  const eserciziFatti = d.blocks.filter(finito).length
+  // In corso: il primo blocco iniziato e non finito; altrimenti il primo da fare.
+  const corrente = d.blocks.find((b) => fatte(b) > 0 && !finito(b)) ?? d.blocks.find((b) => !finito(b)) ?? null
+  const titolo = d.scheda ? nomeScheda(d.scheda) : TYPE_LABEL[d.session?.type ?? ''] ?? 'Seduta'
 
   return (
-    <div className="col" style={{ gap: 12 }}>
-      <div className="row spread" style={{ alignItems: 'center' }}>
-        <button className="ghost small" onClick={onBack}>‹ Allenamento</button>
-        <span className="muted small">⏱ {min} min</span>
+    <div className="col" style={{ gap: 10 }}>
+      <div className="barra-s">
+        <button className="ind" onClick={onBack}>‹ Allenamento</button>
+        <span className="tit">{titolo}</span>
+        <span className="num" style={{ color: 'var(--gold)', fontSize: 17, flex: 'none' }}>{ore}</span>
       </div>
 
-      <h1 style={{ marginBottom: 0 }}>Panoramica</h1>
-
-      {/* Totali */}
-      <div className="card">
-        <div className="row" style={{ textAlign: 'center' }}>
-          {[
-            { v: d.totals.exercises, l: 'esercizi' },
-            { v: d.totals.sets, l: 'serie' },
-            { v: d.totals.reps, l: 'reps' },
-            { v: `${d.totals.tonnage}`, l: 'kg totali' },
-          ].map((x) => (
-            <div key={x.l} style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: 'var(--gold)', fontSize: 19, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{x.v}</div>
-              <div className="muted" style={{ fontSize: 10 }}>{x.l}</div>
-            </div>
-          ))}
+      <div className="card" style={{ margin: 0, padding: '12px 12px 13px' }}>
+        <div className="row spread" style={{ marginBottom: 8, alignItems: 'baseline' }}>
+          <span style={{ fontSize: 14 }}>
+            <b className="num" style={{ fontSize: 19 }}>{serieFatte}</b>
+            <span className="muted">{serieTotali ? ` di ${serieTotali} serie` : ' serie'}</span>
+          </span>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            {eserciziFatti} esercizi su {d.blocks.length} · {migliaia(tonnage(d.rows.flatMap((r) => r.sets)))} kg
+          </span>
         </div>
+        <div className="prog-s"><i style={{ width: `${serieTotali ? Math.min(100, (serieFatte / serieTotali) * 100) : (eserciziFatti / Math.max(1, d.blocks.length)) * 100}%` }} /></div>
       </div>
 
-      {d.blocks.length === 0 && <p className="muted small">Nessun esercizio registrato.</p>}
-
-      {/* Blocchi: tocca per tornare su quell'esercizio */}
-      {d.blocks.map((b) => {
-        const done = b.rows.reduce((a, r) => a + r.sets.filter((s) => !s.isWarmup).length, 0)
-        const kg = tonnage(b.rows.flatMap((r) => r.sets))
-        return (
-          <button key={b.rows[0].entry.id} className="card" style={{ width: '100%', textAlign: 'left' }}
-            onClick={() => onOpenBlock(b.index)}>
-            <div className="row spread" style={{ alignItems: 'baseline' }}>
-              <span style={{ minWidth: 0 }}>
-                {b.kind === 'group' && (
-                  <span className="chip on" style={{ padding: '2px 8px', fontSize: 10, marginRight: 6 }}>
-                    {b.rows.length === 3 ? 'TRISET' : 'SUPERSET'}
-                  </span>
-                )}
-                <strong>{b.rows.map((r) => r.name).join(' + ')}</strong>
-              </span>
-              <span className="muted small" style={{ flex: 'none', marginLeft: 8 }}>{done} serie · {kg} kg ›</span>
-            </div>
-
-            {b.rows.map((r) => {
-              const work = r.sets.filter((s) => !s.isWarmup)
-              const best = work.length ? Math.max(...work.map((s) => e1rm(s.weight, s.reps))) : 0
-              return (
-                <div key={r.entry.id} style={{ marginTop: 8 }}>
-                  {b.kind === 'group' && <div className="muted" style={{ fontSize: 11 }}>{r.name}</div>}
-                  {work.length === 0 ? (
-                    <div className="muted small">nessuna serie</div>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 3 }}>
-                        {work.map((s, i) => (
-                          <span key={s.id} style={{
-                            fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--surface-2)',
-                            fontVariantNumeric: 'tabular-nums',
-                          }}>
-                            <span className="muted">{i + 1}</span> {s.weight}×{s.reps}
-                            {s.rir != null && <span className="muted"> R{s.rir}</span>}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="muted" style={{ fontSize: 10, marginTop: 4 }}>
-                        e1RM migliore {Math.round(best)} kg
-                        {work[0]?.restSec ? ` · recupero ${fmtRest(work[0].restSec)}` : ''}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </button>
-        )
-      })}
+      {d.blocks.length === 0 ? <p className="muted small">Nessun esercizio registrato.</p> : (
+        <div className="lista-p">
+          {d.blocks.map((b, i) => {
+            const ok = finito(b), ora = b === corrente
+            const a = attese(b), f = fatte(b)
+            const nomi = b.rows.map((r) => r.name).join(' + ')
+            const sotto = f > 0
+              ? (ora ? `in corso · ${f} ${f === 1 ? 'serie fatta' : 'serie fatte'}` : b.rows.map((r) => serieInFila(r.sets)).filter(Boolean).join(' / '))
+              : b.rows[0].prima.length ? `ultima volta ${b.rows.map((r) => serieInFila(r.prima)).filter(Boolean).join(' / ')}` : 'da fare'
+            return (
+              <button key={b.rows[0].entry.id} className={ora ? 'riga-s attiva' : 'riga-s'} onClick={() => onOpenBlock(b.index)}>
+                <span className={ok ? 'stato-s fatto' : ora ? 'stato-s ora' : 'stato-s'}>{ok ? '✓' : i + 1}</span>
+                <span style={{ flex: 1, minWidth: 0, color: ora ? 'var(--gold)' : undefined }}>
+                  {b.kind === 'group' && <span className="pill-p oro" style={{ fontSize: 9.5, padding: '1px 6px', marginRight: 6 }}>{b.rows.length === 3 ? 'TRISET' : 'SUPERSET'}</span>}
+                  {nomi}
+                  <span className="sotto" style={{ color: ora ? '#b9a35a' : undefined }}>{sotto}</span>
+                </span>
+                <span className="num" style={{ fontSize: 16, color: ora ? 'var(--gold)' : 'var(--muted)', flex: 'none' }}>{a ? `${f}/${a}` : f}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Cardio della seduta */}
       {d.cardio.length > 0 && (
-        <div className="card">
-          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Cardio</div>
+        <div className="card" style={{ margin: 0 }}>
+          <div className="etichetta-p" style={{ marginBottom: 6 }}>Cardio</div>
           {d.cardio.map((c) => (
             <div key={c.id} className="row spread small" style={{ padding: '3px 0' }}>
-              <span>🏃 {c.cardioType ?? 'cardio'}</span>
-              <span className="muted">{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}</span>
+              <span>{c.cardioType ?? 'cardio'}</span>
+              <span className="muted">{c.durationMin}′{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}</span>
             </div>
           ))}
         </div>
@@ -162,11 +147,19 @@ export function WorkoutOverview({ sessionId, onBack, onOpenBlock }: {
       <Cuore hr={d.session?.hr} da={d.session?.startedAt} a={d.session?.finishedAt ?? null} titolo="Cuore della seduta" />
 
       {d.session?.notes && (
-        <div className="card">
-          <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>Note</div>
+        <div className="card" style={{ margin: 0 }}>
+          <div className="etichetta-p" style={{ marginBottom: 4 }}>Note</div>
           <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{d.session.notes}</p>
         </div>
       )}
+
+      <div className="spazio-piede" />
+      <PiedeFisso>
+        {onFinish && <button className="ghost" onClick={() => { if (confirm('Chiudere la seduta?')) onFinish() }}>Termina</button>}
+        <button className="primary" onClick={() => onOpenBlock(corrente?.index ?? 0)}>
+          {corrente ? `Riprendi · ${corrente.rows[0].name.split(' ').slice(0, 2).join(' ')}` : 'Torna alla seduta'}
+        </button>
+      </PiedeFisso>
     </div>
   )
 }

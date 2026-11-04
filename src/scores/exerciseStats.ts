@@ -14,6 +14,10 @@ export interface ExerciseListItem {
   sessions: number
   lastDate: string | null
   prE1rm: number
+  /** la serie piu' pesante dell'ultima volta */
+  ultima: { weight: number; reps: number } | null
+  /** il miglior e1RM di ogni seduta, dalla piu' vecchia: le ultime sei */
+  andamento: number[]
 }
 
 async function sessionMap(): Promise<Map<string, WorkoutSession>> {
@@ -34,11 +38,17 @@ export async function computeExerciseList(): Promise<ExerciseListItem[]> {
     let lastDate: string | null = null
     const sessionIds = new Set<string>()
     let hasSets = false
+    const perSeduta: { startedAt: string; best: number; top: SetEntry | null }[] = []
     for (const en of entries) {
       const sets = await db.sets.where({ entryId: en.id }).toArray()
       if (sets.some(isWorkingSet)) hasSets = true
       pr = Math.max(pr, bestE1rm(sets))
       const s = sessions.get(en.sessionId)
+      const lavoro = sets.filter(isWorkingSet)
+      if (s && lavoro.length) {
+        const top = lavoro.reduce((a, b) => (b.weight > a.weight || (b.weight === a.weight && b.reps > a.reps) ? b : a))
+        perSeduta.push({ startedAt: s.startedAt, best: bestE1rm(lavoro), top })
+      }
       if (s) {
         sessionIds.add(en.sessionId)
         if (!lastDate || s.date > lastDate) lastDate = s.date
@@ -48,6 +58,11 @@ export async function computeExerciseList(): Promise<ExerciseListItem[]> {
     out.push({
       id: ex.id, name: ex.name, muscle: ex.muscle, isCustom: ex.isCustom,
       sessions: sessionIds.size, lastDate, prE1rm: Math.round(pr),
+      ...(() => {
+        perSeduta.sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+        const u = perSeduta[perSeduta.length - 1]?.top
+        return { ultima: u ? { weight: u.weight, reps: u.reps } : null, andamento: perSeduta.slice(-6).map((x) => Math.round(x.best * 10) / 10) }
+      })(),
     })
   }
   out.sort((a, b) => (b.lastDate ?? '').localeCompare(a.lastDate ?? ''))

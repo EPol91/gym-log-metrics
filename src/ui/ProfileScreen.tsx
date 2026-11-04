@@ -422,7 +422,11 @@ function CuoreZone({ fcWhoop }: { fcWhoop: number | null }) {
         <div>
           <label className="fl">FC a riposo</label>
           <input inputMode="numeric" defaultValue={user.restingHr ?? ''}
-            onBlur={(e) => { const n = parseNum(e.target.value, { min: 30, max: 120, int: true }); if (n != null) updateUser({ restingHr: n }) }} />
+            onBlur={(e) => {
+              // Vuoto = toglilo: senza, il numero vecchio restava li' per sempre.
+              if (!e.target.value.trim()) { void updateUser({ restingHr: undefined }); return }
+              const n = parseNum(e.target.value, { min: 30, max: 120, int: true }); if (n != null) updateUser({ restingHr: n })
+            }} />
           {fcWhoop != null && (
             <p className="muted" style={{ fontSize: 11, marginTop: 3 }}>
               In uso: <strong style={{ color: 'var(--gold)' }}>{fcWhoop}</strong> dalla media WHOOP
@@ -432,7 +436,10 @@ function CuoreZone({ fcWhoop }: { fcWhoop: number | null }) {
         <div>
           <label className="fl">FC max misurata (opz.)</label>
           <input inputMode="numeric" defaultValue={user.hrMaxMeasured ?? ''}
-            onBlur={(e) => { const n = parseNum(e.target.value, { min: 120, max: 230, int: true }); if (n != null) updateUser({ hrMaxMeasured: n }) }} />
+            onBlur={(e) => {
+              if (!e.target.value.trim()) { void updateUser({ hrMaxMeasured: undefined }); return }
+              const n = parseNum(e.target.value, { min: 120, max: 230, int: true }); if (n != null) updateUser({ hrMaxMeasured: n })
+            }} />
         </div>
       </div>
       <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>Se conosci la FC max, le zone la usano al posto di 220 − età.</p>

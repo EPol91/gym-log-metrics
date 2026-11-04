@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useIndietro } from './useBloccoScroll'
-import { fmtData } from '../util/format'
 import { OrarioSeduta } from './OrarioSeduta'
 import { Cuore } from './Cuore'
 import { deleteWithUndo } from '../db/trash'
@@ -12,7 +11,8 @@ import { computeCardioZone } from '../metrics/cardio'
 import { LOCAL_USER_ID } from '../db/seed'
 import { volume, tonnage } from '../metrics/metrics'
 import { parseNum } from '../util/validate'
-import { CountUp } from './anim'
+import { confrontoSeduta, nomeScheda, codiceScheda } from '../scores/confronto'
+import { restingHrFromWhoop } from '../db/whoop'
 import { ExercisePicker } from './ExercisePicker'
 import type { SetEntry, WorkoutType } from '../db/schema'
 
@@ -67,7 +67,7 @@ function AddSetRow({ entryId }: { entryId: string }) {
 
 const TYPE_LABEL: Record<string, string> = {
   push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
-  lower: 'Lower', fullbody: 'Full Body', brosplit: 'Bro Split', custom: 'Custom',
+  lower: 'Lower', fullbody: 'Full body', brosplit: 'Bro split', custom: 'Libera',
 }
 const TYPES = Object.keys(TYPE_LABEL) as WorkoutType[]
 
@@ -90,9 +90,11 @@ async function load(sessionId: string) {
   const cardioRows = await cardioOf(sessionId)
   const user = await db.users.get(LOCAL_USER_ID)
   const age = user?.birthYear ? new Date().getFullYear() - user.birthYear : 0
+  // La stessa FC a riposo di tutto il resto: quella di WHOOP, se c'e'.
+  const fcRiposo = (await restingHrFromWhoop()) ?? user?.restingHr
   const cardio = cardioRows.map((c) => ({
     durationMin: c.durationMin, avgBpm: c.avgBpm,
-    zone: c.avgBpm && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr: user?.restingHr, method: c.method ?? 'standard', maxHr: user?.hrMaxMeasured }) : null,
+    zone: c.avgBpm && (age || user?.hrMaxMeasured) ? computeCardioZone({ avgBpm: c.avgBpm, age, restingHr: fcRiposo, method: c.method ?? 'standard', maxHr: user?.hrMaxMeasured }) : null,
   }))
   const score = await computeSessionWorkoutScore(sessionId)
   const durationMin = session.startedAt && session.finishedAt
@@ -101,119 +103,173 @@ async function load(sessionId: string) {
   return { session, items, cardio, score, vol: volume(allSets), ton: tonnage(allSets), durationMin, templates, sorgente }
 }
 
+const GIORNI_LUNGHI = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato']
+const MESI_LUNGHI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+const migliaia = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+const ora = (iso: string | null) => (iso ? new Date(iso).toTimeString().slice(0, 5) : '…')
+const kgv = (n: number) => String(n).replace('.', ',')
+
+type Pannello = null | 'orario' | 'scheda' | 'tipo'
+
+/**
+ * Il dettaglio di una seduta: i dati in etichette, le serie in fila e accanto a
+ * ogni esercizio se e' andato meglio o peggio della volta prima. Le azioni stanno
+ * nel «⋯» in alto.
+ */
 export function SessionDetail({ sessionId, onBack, onReopen }: {
   sessionId: string; onBack: () => void; onReopen?: (id: string) => void
 }) {
   useIndietro(onBack)
   const d = useLiveQuery(() => load(sessionId), [sessionId])
-  const [editType, setEditType] = useState(false)
+  const confronto = useLiveQuery(() => confrontoSeduta(sessionId), [sessionId])
+  const [menu, setMenu] = useState(false)
+  const [pannello, setPannello] = useState<Pannello>(null)
   const [edit, setEdit] = useState(false)
   const [picking, setPicking] = useState(false)
-  if (!d) return <div className="col"><button className="ghost small" onClick={onBack}>← Storico</button><p className="muted">Carico…</p></div>
+
+  const barra = (
+    <div className="barra-s">
+      <button className="ind" onClick={onBack}>‹ Storico</button>
+      <span className="tit" />
+      {d && <button className="menu" aria-label="Altre azioni" onClick={() => setMenu((m) => !m)}>⋯</button>}
+    </div>
+  )
+  if (!d) return <div className="col">{barra}<p className="muted">Carico…</p></div>
+
+  const titolo = d.sorgente ? nomeScheda(d.sorgente.name) : TYPE_LABEL[d.session.type] ?? d.session.type
+  const giorno = new Date(d.session.date + 'T12:00:00')
+  const voto = d.score.value
+  const deltaDi = new Map((confronto?.righe ?? []).map((r) => [r.entryId, r.delta]))
+  const serieDiLavoro = d.items.reduce((a, it) => a + it.sets.filter((s) => !s.isWarmup).length, 0)
+
+  const azione = (testo: string, fai: () => void, rosso = false) => (
+    <button className="riga-s" style={{ color: rosso ? '#e57373' : undefined }} onClick={() => { setMenu(false); fai() }}>{testo}</button>
+  )
 
   return (
-    <div className="col">
-      <button className="ghost small" onClick={onBack}>← Storico</button>
-      <div className="row spread">
-        {editType ? (
-          <select value={d.session.type} style={{ fontSize: 18 }}
-            onChange={(e) => { setSessionType(sessionId, e.target.value as WorkoutType); setEditType(false) }}>
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
-        ) : (
-          <h1 style={{ cursor: 'pointer', color: d.sorgente?.name.trimStart().startsWith('🦠') ? 'var(--rs)' : undefined }}
-            onClick={() => setEditType(true)}>
-            {d.sorgente?.name ?? TYPE_LABEL[d.session.type] ?? d.session.type} <span className="muted small">✎</span>
-          </h1>
-        )}
-        <span className="muted small">{fmtData(d.session.date)}{!d.session.finishedAt ? ' · in corso' : ''}</span>
+    <div className="col" style={{ gap: 10 }}>
+      {barra}
+
+      {menu && (
+        <div className="lista-p" style={{ marginTop: -6 }}>
+          {azione(edit ? '✓ Fine modifica' : '✎ Modifica serie ed esercizi', () => { setEdit((v) => !v); setPicking(false) })}
+          {azione('Cambia scheda', () => setPannello('scheda'))}
+          {azione('Cambia tipo', () => setPannello('tipo'))}
+          {azione('Correggi l’orario', () => setPannello('orario'))}
+          {d.session.finishedAt && onReopen && azione('▶ Riapri allenamento', async () => { await reopenSession(sessionId); onReopen(sessionId) })}
+          {!d.session.finishedAt && azione('Chiudi seduta', () => void finishSession(sessionId))}
+          {azione('Elimina seduta', () => { if (confirm('Eliminare definitivamente questa seduta?')) { deleteWithUndo('Seduta eliminata', () => deleteSession(sessionId)); onBack() } }, true)}
+        </div>
+      )}
+
+      <div className="row spread" style={{ alignItems: 'flex-end', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 24, margin: 0 }}>{titolo}</h1>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+            {GIORNI_LUNGHI[giorno.getDay()]} {giorno.getDate()} {MESI_LUNGHI[giorno.getMonth()]}{!d.session.finishedAt ? ' · in corso' : ''}
+          </div>
+        </div>
+        {voto != null && <span className={`voto-s ${voto >= 70 ? 'alto' : voto >= 40 ? 'medio' : 'basso'}`} style={{ minWidth: 52, height: 40, fontSize: 24 }}>{voto}</span>}
       </div>
 
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        <button className="pill-p" onClick={() => setPannello(pannello === 'orario' ? null : 'orario')}>
+          {ora(d.session.startedAt)} – {ora(d.session.finishedAt)}{d.durationMin != null ? ` · ${d.durationMin}′` : ''}
+        </button>
+        <span className="pill-p">{serieDiLavoro} serie</span>
+        <span className="pill-p">{migliaia(d.ton)} kg</span>
+        <button className={d.sorgente ? 'pill-p oro' : 'pill-p'} onClick={() => setPannello(pannello === 'scheda' ? null : 'scheda')}>
+          {d.sorgente ? `scheda ${codiceScheda(d.sorgente.name) ?? nomeScheda(d.sorgente.name)}` : 'nessuna scheda'}
+        </button>
+      </div>
+
+      {pannello === 'orario' && (
+        <div className="card" style={{ margin: 0 }}>
+          <OrarioSeduta sessionId={d.session.id} startedAt={d.session.startedAt} finishedAt={d.session.finishedAt} />
+        </div>
+      )}
       {/* Da quale scheda viene. Le sedute nuove se lo scrivono da sole, le
           vecchie no: qui lo correggi tu, e il calendario si adegua. */}
-      <div className="row spread" style={{ alignItems: 'center', gap: 8 }}>
-        <span className="muted small" style={{ flex: 'none' }}>Da quale scheda</span>
-        <select value={d.session.srcTemplateId ?? ''} style={{ flex: 1, minWidth: 0, fontSize: 13, padding: '7px 6px' }}
-          onChange={(e) => setSessionSource(sessionId, e.target.value || null)}>
-          <option value="">Mia — nessuna scheda</option>
-          {d.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-      </div>
-
-      <div className="card score">
-        <span className="muted small">Workout Score</span>
-        <span className="val"><CountUp value={d.score.value} /></span>
-        <span className="tag">{d.score.reliability}</span>
-      </div>
-
-      <div className="card">
-        <OrarioSeduta sessionId={d.session.id} startedAt={d.session.startedAt} finishedAt={d.session.finishedAt} />
-        <div className="row spread"><span className="muted">Volume</span><strong>{d.vol} reps</strong></div>
-        <div className="row spread"><span className="muted">Tonnellaggio</span><strong>{d.ton} kg</strong></div>
-      </div>
-
-      {/* Il cuore di TUTTA la seduta, cardio compreso. Quello del solo cardio
-          sta nel suo blocco: sono due domande diverse, e due riquadri. */}
-      <Cuore hr={d.session.hr} da={d.session.startedAt} a={d.session.finishedAt} titolo="Cuore della seduta" />
-
-      <div className="row" style={{ justifyContent: 'flex-end' }}>
-        <button className={edit ? 'sel small' : 'ghost small'} onClick={() => { setEdit((v) => !v); setPicking(false) }}>{edit ? '✓ Fine modifica' : '✎ Modifica'}</button>
-      </div>
-
-      {d.items.map((it) => (
-        <div className="card" key={it.entryId}>
-          <div className="row spread">
-            <strong>{it.name}</strong>
-            {edit && <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${it.name}?`)) deleteWithUndo(`${it.name} rimosso dalla seduta`, () => deleteExerciseEntry(it.entryId)) }}>🗑</button>}
-          </div>
-          {edit ? (
-            <>
-              {it.sets.map((s) => <SetEditRow key={s.id} s={s} />)}
-              <AddSetRow entryId={it.entryId} />
-            </>
-          ) : (
-            it.sets.length === 0 ? <p className="muted small">Nessun set.</p> : it.sets.map((s, j) => (
-              <div className="setline" key={s.id}>
-                <span className="muted">{s.isWarmup ? 'W' : j + 1}</span>
-                <span>{s.weight} kg × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ''}{s.restSec != null && !s.isWarmup ? ` · ⏱${s.restSec}s` : ''}</span><span />
-              </div>
-            ))
-          )}
+      {pannello === 'scheda' && (
+        <div className="card" style={{ margin: 0 }}>
+          <label className="fl">Da quale scheda</label>
+          <select value={d.session.srcTemplateId ?? ''} style={{ width: '100%' }}
+            onChange={(e) => { void setSessionSource(sessionId, e.target.value || null); setPannello(null) }}>
+            <option value="">Mia — nessuna scheda</option>
+            {d.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
         </div>
-      ))}
+      )}
+      {pannello === 'tipo' && (
+        <div className="card" style={{ margin: 0 }}>
+          <label className="fl">Tipo di seduta</label>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {TYPES.map((t) => (
+              <button key={t} className={d.session.type === t ? 'chip on' : 'chip'}
+                onClick={() => { void setSessionType(sessionId, t); setPannello(null) }}>{TYPE_LABEL[t]}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="lista-p">
+        {d.items.map((it) => {
+          const delta = deltaDi.get(it.entryId)
+          return (
+            <div key={it.entryId} style={{ padding: '10px 12px', borderTop: it === d.items[0] ? undefined : '1px solid var(--line-soft)' }}>
+              <div className="row spread">
+                <b style={{ fontSize: 14, fontWeight: 600, minWidth: 0 }}>{it.name}</b>
+                {edit
+                  ? <button className="ghost small" onClick={() => { if (confirm(`Rimuovere ${it.name}?`)) deleteWithUndo(`${it.name} rimosso dalla seduta`, () => deleteExerciseEntry(it.entryId)) }}>🗑</button>
+                  : delta && <span className={`verso-${delta.verso}`} style={{ fontSize: 11.5, fontWeight: 600, flex: 'none' }}>{delta.testo}</span>}
+              </div>
+              {edit ? (
+                <>
+                  {it.sets.map((s) => <SetEditRow key={s.id} s={s} />)}
+                  <AddSetRow entryId={it.entryId} />
+                </>
+              ) : it.sets.length === 0 ? <p className="muted small" style={{ margin: '4px 0 0' }}>Nessuna serie.</p> : (
+                <div className="serie-s">
+                  {it.sets.map((s) => (
+                    <span key={s.id} style={s.isWarmup ? { opacity: .55 } : undefined}>
+                      {s.isWarmup ? 'W ' : ''}{kgv(s.weight)}×{s.reps}{s.rir != null && <em>R{s.rir}</em>}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
       {edit && (picking
         ? <ExercisePicker onPick={async (id) => { await addExerciseEntry(sessionId, id); setPicking(false) }} onClose={() => setPicking(false)} />
         : <button className="ghost" onClick={() => setPicking(true)}>＋ Aggiungi esercizio</button>
       )}
 
+      {/* Il cuore di TUTTA la seduta, cardio compreso. Quello del solo cardio
+          sta nel suo blocco: sono due domande diverse, e due riquadri. */}
+      <Cuore hr={d.session.hr} da={d.session.startedAt} a={d.session.finishedAt} titolo="Cuore della seduta" />
+
       {d.cardio.length > 0 && (
-        <div className="card">
-          <div className="muted small" style={{ marginBottom: 6 }}>Cardio</div>
+        <div className="card" style={{ margin: 0 }}>
+          <div className="etichetta-p" style={{ marginBottom: 6 }}>Cardio</div>
           {d.cardio.map((c, i) => (
-            <div className="setline" key={i}><span className="muted small">🏃</span>
-              <span>{c.durationMin} min{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}{c.zone ? ` · ${c.zone.label} (${c.zone.pct}%)` : ''}</span><span /></div>
+            <div className="row spread small" key={i} style={{ padding: '3px 0' }}>
+              <span>{c.durationMin}′{c.avgBpm ? ` · ${c.avgBpm} bpm` : ''}</span>
+              <span className="muted">{c.zone ? `${c.zone.label} (${c.zone.pct}%)` : ''}</span>
+            </div>
           ))}
         </div>
       )}
 
-      {d.session.notes && <div className="card"><div className="muted small">Note</div><p className="small" style={{ whiteSpace: 'pre-wrap' }}>{d.session.notes}</p></div>}
-
-      {/* Chiusa per sbaglio? La riapri e il cronometro riprende da dov'era. */}
-      {d.session.finishedAt && onReopen && (
-        <button className="primary" style={{ width: '100%' }}
-          onClick={async () => { await reopenSession(sessionId); onReopen(sessionId) }}>
-          ▶ Riapri allenamento
-        </button>
+      {d.session.notes && (
+        <div className="card" style={{ margin: 0 }}>
+          <div className="etichetta-p" style={{ marginBottom: 4 }}>Note</div>
+          <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{d.session.notes}</p>
+        </div>
       )}
-
-      <div className="row">
-        {!d.session.finishedAt && <button className="ghost" style={{ flex: 1 }} onClick={() => finishSession(sessionId)}>Chiudi seduta</button>}
-        <button className="ghost" style={{ flex: 1, color: '#e57373' }}
-          onClick={() => { if (confirm('Eliminare definitivamente questa seduta?')) { deleteWithUndo('Seduta eliminata', () => deleteSession(sessionId)); onBack() } }}>
-          🗑 Elimina seduta
-        </button>
-      </div>
+      <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', margin: '2px 0 0' }}>Modifica, riapri o elimina dal «⋯» in alto.</p>
     </div>
   )
 }

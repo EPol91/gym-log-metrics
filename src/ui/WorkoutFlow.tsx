@@ -52,7 +52,7 @@ export function WorkoutFlow({ onExit, resumeSessionId, onSessionStarted }: {
         <LiveWorkout sessionId={sessionId} onFinish={finish} onHome={() => setStep('overview')} jumpTo={jumpTo} />
       )}
       {step === 'overview' && sessionId && (
-        <WorkoutOverview sessionId={sessionId} onBack={onExit}
+        <WorkoutOverview sessionId={sessionId} onBack={onExit} onFinish={finish}
           onOpenBlock={(i) => { setJumpTo({ index: i, nonce: Date.now() }); setStep('live') }} />
       )}
       {step === 'finish' && sessionId && <FinishScreen sessionId={sessionId} onHome={onExit} />}
