@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { PROMEMORIA, attivo, accendi, promemoriaDisponibili, oraPesata, impostaOraPesata, programmaPesataMattino, diagnosiNotifiche, notificaDiProva, type Tipo, type Diagnosi } from '../util/promemoria'
+import { PROMEMORIA, attivo, accendi, promemoriaDisponibili, oraPesata, impostaOraPesata, programmaTutto, AD_APP_CHIUSA, diagnosiNotifiche, notificaDiProva, type Tipo, type Diagnosi } from '../util/promemoria'
 
-/** Quelle che arrivano a un'ora precisa, anche ad app chiusa. Le altre solo se serve. */
-const A_ORARIO: Tipo[] = ['mattino', 'pasto', 'uscita']
 
 /** Quante sono accese, e a che ora la pesata: la riga del Profilo dice questo. */
 export function riassuntoNotifiche(): string {
@@ -21,7 +19,7 @@ export function NotificheSettings() {
   function cambia(t: Tipo) {
     accendi(t, !accese.has(t))
     setAccese(new Set(PROMEMORIA.filter((p) => attivo(p.tipo)).map((p) => p.tipo)))
-    if (t === 'mattino') void programmaPesataMattino()
+    void programmaTutto()
   }
 
   const riga = (r: (typeof PROMEMORIA)[number]) => {
@@ -39,7 +37,7 @@ export function NotificheSettings() {
                   if (!e.target.value) return
                   setOra(e.target.value)
                   impostaOraPesata(e.target.value)
-                  void programmaPesataMattino()
+                  void programmaTutto()
                 }} />
             </div>
           )}
@@ -53,11 +51,11 @@ export function NotificheSettings() {
   return (
     <div className="col" style={{ gap: 12 }}>
       <p className="muted small" style={{ margin: 0, lineHeight: 1.45 }}>
-        Arrivano solo quando c’è qualcosa da fare, e compaiono anche in Oggi finché non le metti via.
+        Arrivano solo quando c’è qualcosa da fare, e compaiono anche in Oggi finché non le metti via. Quelle qui sotto le consegna il telefono da solo, anche ad app chiusa.
       </p>
-      <div className="lista-p">{PROMEMORIA.filter((p) => A_ORARIO.includes(p.tipo)).map(riga)}</div>
-      <span className="etichetta-p">Solo se serve</span>
-      <div className="lista-p">{PROMEMORIA.filter((p) => !A_ORARIO.includes(p.tipo)).map(riga)}</div>
+      <div className="lista-p">{PROMEMORIA.filter((p) => AD_APP_CHIUSA.includes(p.tipo)).map(riga)}</div>
+      <span className="etichetta-p">Solo in Oggi</span>
+      <div className="lista-p">{PROMEMORIA.filter((p) => !AD_APP_CHIUSA.includes(p.tipo)).map(riga)}</div>
       {!promemoriaDisponibili() && (
         <p className="muted small" style={{ margin: 0 }}>
           Le notifiche arrivano solo nell’app installata: nel browser restano le righe in Oggi.

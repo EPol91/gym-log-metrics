@@ -24,15 +24,18 @@ const VIA = 'gymlog.promemoria.via'
 export type Tipo = 'mattino' | 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
 
 export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
-  { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è. Anche ad app chiusa.' },
-  { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Restano meno giorni delle sedute che mancano.' },
-  { tipo: 'recupero', nome: 'Recupero alto', nota: 'WHOOP sopra la media e due giorni senza allenarti.' },
-  { tipo: 'peso', nome: 'Pesata dimenticata', nota: 'Nessun peso da quattro giorni.' },
-  { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Non sincronizza da due giorni.' },
-  { tipo: 'backup', nome: 'Backup vecchio', nota: 'L’ultimo ha più di quattordici giorni.' },
-  { tipo: 'pasto', nome: 'Ora dei pasti', nota: '15′ dopo la fine della fascia, se il pasto non ha l’ora. Anche ad app chiusa.' },
-  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: «Esco ora» o «Uscito alle…».' },
+  { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è.' },
+  { tipo: 'pasto', nome: 'Ora dei pasti', nota: '15′ dopo la fine della fascia, se il pasto non ha l’ora. Solo nei giorni in cui hai segnato del cibo.' },
+  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, all’ora d’uscita dei tuoi orari, se non l’hai già segnata.' },
+  { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Alle 9:00 del giorno in cui i giorni che restano non bastano più per le sedute che mancano.' },
+  { tipo: 'peso', nome: 'Pesata dimenticata', nota: 'Alle 9:00, dopo quattro giorni senza peso. Solo con la pesata del mattino spenta.' },
+  { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Alle 9:00, dopo due giorni senza dati nuovi dal WHOOP.' },
+  { tipo: 'backup', nome: 'Backup vecchio', nota: 'Alle 9:00, quando l’ultimo backup ha più di quattordici giorni.' },
+  { tipo: 'recupero', nome: 'Recupero alto', nota: 'Solo in Oggi: il recupero di oggi c’è solo dopo che l’app ha sincronizzato il WHOOP, quindi ad app chiusa non si può sapere.' },
 ]
+
+/** Quelle che il telefono consegna da solo, anche ad app chiusa. */
+export const AD_APP_CHIUSA: Tipo[] = ['mattino', 'pasto', 'uscita', 'ciclo', 'peso', 'whoop', 'backup']
 
 /** L'ora della pesata del mattino: la scegli tu in Promemoria. */
 const ORA_MATTINO = 'gymlog.promemoria.mattino.ora'
@@ -278,29 +281,135 @@ async function tutti(): Promise<Avviso[]> {
   return out
 }
 
+type DaProgrammare = { id: number; title: string; body: string; schedule: { at: Date; allowWhileIdle: boolean } }
+
+/** Le 9:00 a partire da quel momento: oggi se non sono ancora passate, se no domani. */
+function alleNove(ms: number): number {
+  const d = new Date(ms)
+  d.setHours(9, 0, 0, 0)
+  if (d.getTime() < ms) d.setDate(d.getDate() + 1)
+  return d.getTime()
+}
+const inizioGiorno = (iso: string) => new Date(`${iso}T00:00:00`).getTime()
+
+/** Un numero fisso per avviso, cosi' riprogrammare sostituisce invece di accumulare. */
+const ID_AVVISO: Partial<Record<Tipo, number>> = { ciclo: 7301, peso: 7302, whoop: 7303, backup: 7304 }
+const ID_USCITA = 7200
+const GIORNI_USCITA = 7
+
 /**
- * Guarda se c'e' qualcosa da dire e lo consegna.
+ * Programma sul telefono gli avvisi «quando serve»: ciclo, pesata dimenticata,
+ * WHOOP fermo, backup vecchio.
  *
- * Si chiama all'avvio: senza un servizio in background non si puo' svegliare
- * il telefono da soli, ma aprire l'app e trovarsi l'avviso vale comunque —
- * e la notifica resta li' anche quando l'app la chiudi.
+ * Dai dati si sa in anticipo il giorno in cui scatterebbero se non fai niente:
+ * li si mette alle 9:00 di quel giorno, e il telefono li consegna anche ad app
+ * chiusa. Si ricalcolano a ogni seduta, pesata, sincronizzazione e rientro
+ * nell'app: se nel frattempo l'hai fatto, la notifica sparisce prima di partire.
+ * Se il giorno e' gia' passato arriva subito, una volta al giorno.
  */
-export async function controllaPromemoria(): Promise<void> {
+export async function programmaAvvisi(): Promise<void> {
   const p = plugin()
   if (!p) return
-  const oggiD = todayLocal()
-  const avvisi = (await tutti()).filter((a) => a.tipo !== 'pasto' && a.tipo !== 'uscita' && a.tipo !== 'mattino' && attivo(a.tipo) && !giaDetto(a.tipo, oggiD))
-  if (!avvisi.length) return
-
+  const oggi = todayLocal()
+  const adesso = Date.now()
   try {
+    await p.cancel({ notifications: Object.values(ID_AVVISO).map((id) => ({ id: id! })) })
+    const user = await getUser()
+    const scatti: { tipo: Tipo; da: number; titolo: string; testo: string }[] = []
+
+    // Ciclo: con le sedute fatte finora, il giorno in cui i giorni che restano
+    // diventano pochi quanto le sedute che mancano.
+    const sedute = (await db.sessions.where('userId').equals(U).toArray()).filter((s) => s.finishedAt)
+    const perCiclo = user?.cicloSedute ?? 5
+    const giorniCiclo = user?.cicloGiorni ?? 8
+    const c = cicloDi(oggi, { sedute: perCiclo, giorni: giorniCiclo, inizio: user?.cicloInizio ?? undefined })
+    const dal = shiftDate(oggi, -(c.giorno - 1))
+    const fatte = sedute.filter((s) => s.date >= dal && s.date <= oggi).length
+    const mancano = perCiclo - fatte
+    if (mancano > 0 && mancano <= giorniCiclo) {
+      // Quel giorno restano esattamente tanti giorni quante sedute.
+      const g = giorniCiclo - mancano + 1
+      scatti.push({ tipo: 'ciclo', da: inizioGiorno(shiftDate(dal, g - 1)), titolo: 'Ciclo a rischio', testo: `Ti mancano ${mancano} ${mancano === 1 ? 'seduta' : 'sedute'} in ${mancano} ${mancano === 1 ? 'giorno' : 'giorni'}.` })
+    }
+
+    // Pesata dimenticata: quattro giorni dopo l'ultima. Con quella del mattino
+    // accesa direbbe la stessa cosa due volte.
+    if (!attivo('mattino')) {
+      const ultima = (await db.bodyMeasurements.where('userId').equals(U).toArray()).map((m) => m.date).sort().pop()
+      scatti.push({ tipo: 'peso', da: ultima ? inizioGiorno(shiftDate(ultima, 4)) : adesso, titolo: 'Pesata', testo: ultima ? `Ultima il ${ultima}.` : 'Non ti sei mai pesato.' })
+    }
+
+    // WHOOP fermo: due giorni dopo gli ultimi dati.
+    const ultimoW = (await db.whoopDays.where('userId').equals(U).toArray()).map((g) => g.date).sort().pop()
+    if (ultimoW) scatti.push({ tipo: 'whoop', da: inizioGiorno(shiftDate(ultimoW, 2)), titolo: 'WHOOP fermo', testo: `Ultimi dati del ${ultimoW}. Apri l’app per sincronizzare.` })
+
+    // Backup: quattordici giorni dopo l'ultimo.
+    const b = ultimoBackup()
+    scatti.push({ tipo: 'backup', da: b ? Date.parse(b.quando) + 14 * 86_400_000 : adesso, titolo: 'Backup vecchio', testo: 'I tuoi dati stanno su un telefono solo.' })
+
+    const da: DaProgrammare[] = []
+    for (const s of scatti) {
+      if (!attivo(s.tipo)) continue
+      let quando = alleNove(s.da)
+      // Gia' vero adesso: aspetta le 9 solo se sono le 9 di oggi, se no subito.
+      const oggiAlleNove = quando > adesso && new Date(quando).toDateString() === new Date(adesso).toDateString()
+      if (s.da <= adesso && !oggiAlleNove) {
+        // Gia' scattato: subito, ma una volta al giorno. Detto oggi → domani alle 9.
+        quando = giaDetto(s.tipo, oggi) ? alleNove(inizioGiorno(shiftDate(oggi, 1))) : adesso + 3000
+      }
+      // Se parte oggi conta come detto: riaprendo l'app dopo, non si ripete.
+      if (new Date(quando).toDateString() === new Date(adesso).toDateString()) segna(s.tipo, oggi)
+      da.push({ id: ID_AVVISO[s.tipo]!, title: s.titolo, body: s.testo, schedule: { at: new Date(quando), allowWhileIdle: true } })
+    }
+    if (!da.length) return
     const perm = await p.requestPermissions()
-    if (perm?.display && perm.display !== 'granted') return
-    const oggi = todayLocal()
-    await p.schedule({
-      notifications: avvisi.map((a, i) => ({ id: Date.now() % 100000 + i, title: a.titolo, body: a.testo })),
-    })
-    avvisi.forEach((a) => segna(a.tipo, oggi))
-  } catch (e) { annotaErrore('avvio', e) }
+    if (perm?.display && perm.display !== 'granted') { annotaErrore('avvisi', `permesso ${perm.display}`); return }
+    await p.schedule({ notifications: da })
+  } catch (e) { annotaErrore('avvisi', e) }
+}
+
+/**
+ * L'uscita dall'ufficio: nei prossimi giorni di lavoro, all'ora d'uscita dei
+ * tuoi orari. Quella di oggi non parte se l'hai gia' segnata.
+ */
+export async function programmaUscita(): Promise<void> {
+  const p = plugin()
+  if (!p) return
+  const oggi = todayLocal()
+  try {
+    await p.cancel({ notifications: Array.from({ length: GIORNI_USCITA }, (_, k) => ({ id: ID_USCITA + k })) })
+    if (!attivo('uscita')) return
+    const user = await getUser()
+    const l = orariDi(user).lavoro
+    if (!l) return
+    const adesso = Date.now()
+    const da: DaProgrammare[] = []
+    for (let k = 0; k < GIORNI_USCITA; k++) {
+      const giorno = shiftDate(oggi, k)
+      if (!l.giorni.includes(new Date(giorno + 'T12:00:00').getDay())) continue
+      if (user?.uscite?.[giorno]) continue
+      const quando = new Date(`${giorno}T${l.uscita}:00`)
+      if (quando.getTime() <= adesso) continue
+      da.push({
+        id: ID_USCITA + k,
+        title: 'Uscito dall’ufficio?',
+        body: `Di solito alle ${l.uscita}: se esci più tardi, segnalo in Oggi.`,
+        schedule: { at: quando, allowWhileIdle: true },
+      })
+    }
+    if (!da.length) return
+    const perm = await p.requestPermissions()
+    if (perm?.display && perm.display !== 'granted') { annotaErrore('uscita', `permesso ${perm.display}`); return }
+    await p.schedule({ notifications: da })
+  } catch (e) { annotaErrore('uscita', e) }
+}
+
+/** Tutto quello che il telefono deve consegnare da solo, riprogrammato in un colpo. */
+export async function programmaTutto(): Promise<void> {
+  await programmaPesataMattino()
+  await programmaUscita()
+  await programmaAvvisi()
+  await programmaPromemoriaPasti()
 }
 
 /** Le notifiche dei pasti: un numero per fascia, sempre lo stesso, cosi' si sostituiscono. */
