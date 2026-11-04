@@ -65,6 +65,11 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Promemoria e fine recupero -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Promemoria all'ora giusta (pesata 07:30, uscita): senza allarmi esatti
+         Android li puo' ritardare quando il telefono e' fermo. USE_EXACT_ALARM
+         e' concesso da solo da Android 13; sotto serve SCHEDULE_EXACT_ALARM. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <!-- Vibrazione: ultimi secondi del recupero, riordino dei riquadri -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Schermo acceso durante l'allenamento: col telefono in standby il
