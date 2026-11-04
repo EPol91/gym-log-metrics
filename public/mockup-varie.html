@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prontezza e ricette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --good-bg: #0f2216; --warn: #e0a43a; --bad: #e0614f;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 384px; --h: 740px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 60px; }
+  .intro { max-width: 1300px; margin: 0 auto 26px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-family: var(--f-tit); font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 84ch; }
+  .sezione { max-width: 1300px; margin: 0 auto 46px; }
+  .sezione h2 { font-family: var(--f-tit); font-size: 22px; margin: 0 0 4px; }
+  .sezione .sotto { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; max-width: 90ch; line-height: 1.5; }
+  .coppia { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; }
+  .prima { width: 220px; flex: none; }
+  .prima .nome, .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 10px 4px; }
+  .prima .nome { color: var(--faint); }
+  .blocco .nome { color: var(--gold); }
+  .prima .img { height: 430px; overflow: hidden; border-radius: 22px; border: 6px solid #000; box-shadow: 0 0 0 1px #2e2c28; opacity: .75; }
+  .prima img { width: 100%; display: block; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; max-width: 360px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12.5px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .scorre { flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 60px); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; } .spazia { justify-content: space-between; }
+  .et { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pill { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #0f0e0c; color: #d9d4c9; white-space: nowrap; }
+  .pill.oro { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .pill.su { border-color: #1f4a2c; background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .barra { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+  .barra .ind { color: var(--gold); font-size: 15px; padding: 6px 4px; }
+  .barra .t { flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
+  .barra .menu { color: var(--muted); font-size: 20px; padding: 0 6px; letter-spacing: 1px; }
+  .btn { height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex: none; }
+  .btn.pri { background: linear-gradient(180deg, #ead27a, #d4af37 55%, #b8952f); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--text); font-weight: 600; }
+  .piede { padding: 10px 16px 14px; display: flex; gap: 8px; flex: none; border-top: 1px solid var(--line-soft); background: var(--bg); }
+  .piede .btn { flex: 1; }
+
+  /* fine seduta */
+  .eroe { text-align: center; padding: 6px 0 2px; }
+  .eroe .k { font-size: 12px; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .eroe h3 { font-family: var(--f-tit); font-size: 25px; margin: 4px 0 2px; }
+  .anello { width: 118px; height: 118px; margin: 10px auto 4px; position: relative; }
+  .anello svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .anello .v { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .anello .v b { font-family: var(--f-num); font-size: 44px; line-height: .9; color: var(--good); }
+  .anello .v span { display: block; font-size: 11px; color: var(--muted); }
+  .numeri { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+  .numeri > div + div { border-left: 1px solid var(--line-soft); }
+  .numeri b { font-family: var(--f-num); font-size: 24px; font-weight: 600; display: block; line-height: 1.1; }
+  .numeri span { font-size: 11px; color: var(--muted); }
+  .numeri i { font-style: normal; font-size: 11.5px; color: var(--good); font-weight: 600; }
+  .lista-r .r { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-size: 13.5px; }
+  .lista-r .r + .r { border-top: 1px solid var(--line-soft); }
+  .lista-r .r .n { flex: 1; min-width: 0; }
+  .lista-r .r .d { font-size: 12px; color: var(--muted); }
+  .pr { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #1a1405; background: var(--gold); border-radius: 5px; padding: 2px 5px; }
+
+  /* panoramica in corso */
+  .prog { height: 7px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 39%; background: linear-gradient(90deg, #b8952f, #ead27a); border-radius: 99px; }
+  .ex { display: flex; gap: 11px; align-items: center; padding: 10px 12px; }
+  .ex + .ex { border-top: 1px solid var(--line-soft); }
+  .stato-ex { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1.5px solid var(--line); color: var(--faint); }
+  .stato-ex.fatto { background: var(--good-bg); border-color: #1f4a2c; color: var(--good); }
+  .stato-ex.ora { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .ex .n { flex: 1; min-width: 0; font-size: 14px; }
+  .ex .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .ex .s { font-family: var(--f-num); font-size: 16px; color: var(--muted); }
+  .ex.attivo { background: #17150f; }
+  .lista { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+
+  /* storico */
+  .spark { height: 46px; }
+  .settimana { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 4px -4px; }
+  .sed { display: flex; gap: 11px; align-items: center; padding: 9px 12px; }
+  .sed + .sed { border-top: 1px solid var(--line-soft); }
+  .data { width: 38px; flex: none; text-align: center; line-height: 1.05; }
+  .data b { font-family: var(--f-num); font-size: 21px; display: block; }
+  .data span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .sed .n { flex: 1; min-width: 0; }
+  .sed .n b { font-size: 14px; font-weight: 600; }
+  .sed .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .voto { font-family: var(--f-num); font-size: 17px; font-weight: 600; width: 40px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .voto.alto { color: var(--good); background: var(--good-bg); }
+  .voto.medio { color: var(--warn); background: #2a1f0c; }
+  .incorso { border-color: #4a3e18; background: linear-gradient(180deg, #221c0c, #15120a); }
+
+  /* dettaglio */
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .blocco-ex { padding: 10px 12px; }
+  .blocco-ex + .blocco-ex { border-top: 1px solid var(--line-soft); }
+  .serie { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .serie span { font-family: var(--f-num); font-size: 15px; padding: 3px 8px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+  .serie span em { font-style: normal; color: var(--faint); font-size: 12px; margin-left: 3px; font-family: var(--f-testo); }
+  .delta { font-size: 11.5px; font-weight: 600; }
+  .delta.su { color: var(--good); } .delta.pari { color: var(--muted); } .delta.giu { color: var(--bad); }
+
+  /* esercizi */
+  .cerca { height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--faint); font-size: 14px; }
+  .chips { display: flex; gap: 6px; overflow: hidden; }
+  .chips span { font-size: 12.5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .chips span.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .es { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+  .es + .es { border-top: 1px solid var(--line-soft); }
+  .es .n { flex: 1; min-width: 0; }
+  .es .n b { font-size: 14px; font-weight: 600; display: block; }
+  .es .n small { font-size: 11.8px; color: var(--muted); }
+  .es .mini { width: 54px; height: 22px; flex: none; }
+  .es .kg { text-align: right; flex: none; width: 54px; }
+  .es .kg b { font-family: var(--f-num); font-size: 17px; display: block; line-height: 1; }
+  .es .kg span { font-size: 10.5px; color: var(--muted); }
+  /* varie */
+  .dom { padding: 10px 12px; }
+  .dom + .dom { border-top: 1px solid var(--line-soft); }
+  .dom .q { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+  .dom .q span { font-size: 12px; color: var(--gold); font-weight: 600; }
+  .dom .q small { font-size: 11px; color: var(--faint); margin-left: 6px; }
+  .scala { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 7px; }
+  .scala i { height: 30px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); font-style: normal; display: grid; place-items: center; font-size: 11px; color: var(--muted); }
+  .scala i.on { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); font-weight: 700; }
+  .scala i.auto { background: #0d1f28; border-color: #2b5d74; color: #4fc3f7; font-weight: 700; }
+  .ric { display: flex; gap: 11px; align-items: center; padding: 10px 12px; }
+  .ric + .ric { border-top: 1px solid var(--line-soft); }
+  .torta { width: 38px; height: 38px; flex: none; }
+  .ric .n { flex: 1; min-width: 0; }
+  .ric .n b { font-size: 14.5px; font-weight: 600; display: block; }
+  .ric .n small { font-size: 12px; color: var(--muted); }
+  .ric .n small .c { color: #FFC63D; } .ric .n small .p { color: #2ecc71; } .ric .n small .g { color: #e74c3c; }
+  .piu { width: 34px; height: 34px; border-radius: 10px; border: 1px solid #4a3e18; background: var(--gold-bg); color: var(--gold); display: grid; place-items: center; font-size: 18px; flex: none; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <div class="ey">ETP Health · mockup · gruppo «Varie» · 384 × 740</div>
+  <h1>Check di prontezza e ricette</h1>
+  <p>A sinistra com'è oggi (dati finti), a destra la proposta.</p>
+</div>
+
+<!-- 1. PRONTEZZA -->
+<div class="sezione">
+  <h2>1 · Check di prontezza (prima della seduta)</h2>
+  <p class="sotto">Oggi: sei card alte con spiegazione lunga e cinque bottoni ciascuna, quasi due schermate prima di poter partire. Proposta: tutto in una schermata, una riga per domanda, il voto che si aggiorna in cima; il sonno lo propone il WHOOP (azzurro) e lo cambi solo se non torna.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/prontezza.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>17:54</span><span>●●● 77%</span></div><div class="utile">
+        <div class="barra"><span class="ind">‹ Indietro</span><span class="t">Come stai oggi?</span><span style="width:60px"></span></div>
+        <div class="scorre" style="padding-top:0">
+          <div class="card riga" style="gap:12px;padding:10px 12px">
+            <div class="anello" style="width:58px;height:58px;margin:0">
+              <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" stroke="#24221e" stroke-width="12" fill="none"/><circle cx="60" cy="60" r="50" stroke="#d4af37" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="214 314"/></svg>
+              <div class="v"><b style="font-size:24px;color:var(--gold)">68</b></div>
+            </div>
+            <div style="flex:1"><div style="font-weight:600;font-size:14.5px">Prontezza 68 · media</div><div class="muted" style="font-size:12px;margin-top:2px">WHOOP recupero 64% · peso ✓ 90,5 kg</div></div>
+          </div>
+          <div class="lista">
+            <div class="dom"><div class="q">Sonno <span style="color:#4fc3f7">Buono · da WHOOP 7h20</span></div><div class="scala"><i>1</i><i>2</i><i>3</i><i class="auto">4</i><i>5</i></div></div>
+            <div class="dom"><div class="q">Stanchezza generale <span>Poca</span></div><div class="scala"><i>no</i><i class="on">poca</i><i>media</i><i>molta</i><i>max</i></div></div>
+            <div class="dom"><div class="q">Muscoli indolenziti <span>Poco</span></div><div class="scala"><i>no</i><i class="on">poco</i><i>medio</i><i>molto</i><i>max</i></div></div>
+            <div class="dom"><div class="q">Energia <span>Buona</span></div><div class="scala"><i>1</i><i>2</i><i>3</i><i class="on">4</i><i>5</i></div></div>
+            <div class="dom"><div class="q">Stress <span>Medio</span></div><div class="scala"><i>no</i><i>poco</i><i class="on">medio</i><i>molto</i><i>max</i></div></div>
+            <div class="dom"><div class="q">Voglia di allenarti <small>non conta nel voto</small> <span>Buona</span></div><div class="scala"><i>1</i><i>2</i><i>3</i><i class="on">4</i><i>5</i></div></div>
+          </div>
+          <div class="muted" style="font-size:11.5px;text-align:center">Tieni premuta una domanda per la spiegazione</div>
+        </div>
+        <div class="piede"><div class="btn gh" style="flex:0 0 110px">Salta</div><div class="btn pri">▶ Inizia D5</div></div>
+      </div></div>
+      <ul class="note">
+        <li>Tutto in una schermata: si risponde in 10 secondi senza scorrere.</li>
+        <li>Le spiegazioni lunghe non spariscono: si aprono tenendo premuta la domanda.</li>
+        <li>Se hai già risposto oggi, le risposte sono già segnate e basta «Inizia».</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 2. RICETTE -->
+<div class="sezione">
+  <h2>2 · Ricette</h2>
+  <p class="sotto">Oggi: funziona, ma ha «← Dieta» a bottone, card alte con i decimali (29,9 · 4,4) e «1 porzione» ripetuto. Proposta: barra come le altre pagine, righe compatte con C · P · G interi, tempo e un «＋» per mettere la ricetta nel diario senza aprirla.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/ricette.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>12:31</span><span>●●● 70%</span></div><div class="utile">
+        <div class="barra"><span class="ind">‹ Cibo</span><span class="t">Ricette</span><span class="ind" style="font-size:22px;padding:0 6px">＋</span></div>
+        <div class="scorre" style="padding-top:0">
+          <div class="cerca">⌕ <span>Cerca ricetta…</span></div>
+          <div class="chips"><span class="on">Tutte 4</span><span>★ Preferite</span><span>Colazione</span><span>Pranzo</span><span>Spuntino</span></div>
+          <div class="et" style="margin:4px 0 -4px 4px">Ricette</div>
+          <div class="lista">
+            <div class="ric"><svg class="torta" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#FFC63D" stroke-width="6" stroke-dasharray="52 88"/><circle cx="18" cy="18" r="14" fill="none" stroke="#2ecc71" stroke-width="6" stroke-dasharray="30 88" stroke-dashoffset="-52"/><circle cx="18" cy="18" r="14" fill="none" stroke="#e74c3c" stroke-width="6" stroke-dasharray="6 88" stroke-dashoffset="-82"/></svg><div class="n"><b>★ Bowl yogurt e banana</b><small>343 kcal · <span class="c">C 51</span> · <span class="p">P 30</span> · <span class="g">G 2</span> · 5′</small></div><span class="piu">＋</span></div>
+            <div class="ric"><svg class="torta" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#FFC63D" stroke-width="6" stroke-dasharray="50 88"/><circle cx="18" cy="18" r="14" fill="none" stroke="#2ecc71" stroke-width="6" stroke-dasharray="28 88" stroke-dashoffset="-50"/><circle cx="18" cy="18" r="14" fill="none" stroke="#e74c3c" stroke-width="6" stroke-dasharray="10 88" stroke-dashoffset="-78"/></svg><div class="n"><b>★ Pancake avena e albume</b><small>388 kcal · <span class="c">C 56</span> · <span class="p">P 31</span> · <span class="g">G 4</span> · 15′</small></div><span class="piu">＋</span></div>
+            <div class="ric"><svg class="torta" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#FFC63D" stroke-width="6" stroke-dasharray="41 88"/><circle cx="18" cy="18" r="14" fill="none" stroke="#2ecc71" stroke-width="6" stroke-dasharray="28 88" stroke-dashoffset="-41"/><circle cx="18" cy="18" r="14" fill="none" stroke="#e74c3c" stroke-width="6" stroke-dasharray="19 88" stroke-dashoffset="-69"/></svg><div class="n"><b>Riso e pollo al limone</b><small>603 kcal · <span class="c">C 70</span> · <span class="p">P 49</span> · <span class="g">G 14</span> · 25′</small></div><span class="piu">＋</span></div>
+          </div>
+          <div class="et" style="margin:4px 0 -4px 4px">Pasti salvati</div>
+          <div class="lista">
+            <div class="ric"><svg class="torta" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#FFC63D" stroke-width="6" stroke-dasharray="52 88"/><circle cx="18" cy="18" r="14" fill="none" stroke="#2ecc71" stroke-width="6" stroke-dasharray="31 88" stroke-dashoffset="-52"/><circle cx="18" cy="18" r="14" fill="none" stroke="#e74c3c" stroke-width="6" stroke-dasharray="5 88" stroke-dashoffset="-83"/></svg><div class="n"><b>Pasto 4 · pre workout</b><small>377 kcal · <span class="c">C 55</span> · <span class="p">P 33</span> · <span class="g">G 3</span></small></div><span class="piu">＋</span></div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Le ricette con procedimento e i pasti salvati in due gruppi, invece della nota in fondo.</li>
+        <li>Il «＋» apre la scelta del pasto e della quantità, come oggi dal diario.</li>
+        <li>Le porzioni si vedono dentro la ricetta, non su ogni riga.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

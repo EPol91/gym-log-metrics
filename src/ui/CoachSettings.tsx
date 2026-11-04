@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser, updateUser } from '../db/repo'
 import { COACH_BLOCKS_DEFAULT } from '../scores/coach'
-import { PROMEMORIA, attivo, accendi, promemoriaDisponibili, oraPesata, impostaOraPesata, programmaPesataMattino } from '../util/promemoria'
 import type { CoachBlock } from '../db/schema'
 
 const BLOCCHI: { key: CoachBlock; nome: string; cosa: string }[] = [
@@ -20,8 +18,6 @@ const BLOCCHI: { key: CoachBlock; nome: string; cosa: string }[] = [
 export function CoachSettings() {
   const user = useLiveQuery(getUser, [])
   const attivi = new Set<CoachBlock>(user?.coachBlocks ?? COACH_BLOCKS_DEFAULT)
-  const [acceso, setAcceso] = useState(() => new Set(PROMEMORIA.filter((x) => attivo(x.tipo)).map((x) => x.tipo)))
-  const [oraMattino, setOraMattino] = useState(oraPesata)
 
   function cambia(k: CoachBlock) {
     const next = new Set(attivi)
@@ -58,61 +54,6 @@ export function CoachSettings() {
         </p>
       )}
 
-      {/* I promemoria: arrivano solo quando c'e' qualcosa da fare. Uno che
-          parte tutti i giorni comunque diventa rumore, e il rumore si silenzia
-          — perdendo anche gli avvisi che servivano. */}
-      <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
-        <label className="fl">Promemoria</label>
-        <p className="muted small" style={{ margin: '0 0 8px' }}>
-          Compaiono anche in Oggi, una riga ciascuno: con la ✕ li metti via, e tornano domani se la cosa è ancora da fare.
-        </p>
-        <div className="col" style={{ gap: 5 }}>
-          {PROMEMORIA.map((r) => {
-            const on = acceso.has(r.tipo)
-            const conOra = r.tipo === 'mattino' && on
-            const voce = (
-              <button key={r.tipo} className={on ? 'sel' : ''}
-                style={{ textAlign: 'left', padding: '9px 12px', ...(conOra ? { border: 'none', background: 'transparent', paddingBottom: 4 } : {}) }}
-                onClick={() => {
-                  accendi(r.tipo, !on)
-                  setAcceso(new Set(PROMEMORIA.filter((x) => attivo(x.tipo)).map((x) => x.tipo)))
-                  if (r.tipo === 'mattino') void programmaPesataMattino()
-                }}>
-                <span className="row spread">
-                  <span>{r.nome}</span>
-                  <span className="small" style={{ flex: 'none', color: on ? 'var(--gold)' : 'var(--muted)' }}>
-                    {on ? 'acceso' : 'spento'}
-                  </span>
-                </span>
-                <span className="muted small">{r.nota}</span>
-              </button>
-            )
-            if (!conOra) return voce
-            // L'ora sta dentro la sua voce: un campo dentro un bottone non si
-            // puo', quindi il bordo lo fa il contenitore.
-            return (
-              <div key={r.tipo} style={{ border: '1px solid var(--gold)', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--gold)' }}>
-                {voce}
-                <div className="row" style={{ gap: 8, padding: '0 12px 10px', fontSize: 13 }}>
-                  <span className="muted">Alle</span>
-                  <input type="time" value={oraMattino} style={{ width: 110, padding: '6px 10px' }}
-                    onChange={(e) => {
-                      if (!e.target.value) return
-                      setOraMattino(e.target.value)
-                      impostaOraPesata(e.target.value)
-                      void programmaPesataMattino()
-                    }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        {!promemoriaDisponibili() && (
-          <p className="muted small" style={{ marginBottom: 0 }}>
-            Le notifiche arrivano solo nell’app installata: nel browser questi avvisi non partono.
-          </p>
-        )}
-      </div>
     </div>
   )
 }

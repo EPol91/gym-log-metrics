@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seduta rifatta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --good-bg: #0f2216; --warn: #e0a43a; --bad: #e0614f;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 384px; --h: 740px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 60px; }
+  .intro { max-width: 1300px; margin: 0 auto 26px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-family: var(--f-tit); font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 84ch; }
+  .sezione { max-width: 1300px; margin: 0 auto 46px; }
+  .sezione h2 { font-family: var(--f-tit); font-size: 22px; margin: 0 0 4px; }
+  .sezione .sotto { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; max-width: 90ch; line-height: 1.5; }
+  .coppia { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; }
+  .prima { width: 220px; flex: none; }
+  .prima .nome, .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 10px 4px; }
+  .prima .nome { color: var(--faint); }
+  .blocco .nome { color: var(--gold); }
+  .prima .img { height: 430px; overflow: hidden; border-radius: 22px; border: 6px solid #000; box-shadow: 0 0 0 1px #2e2c28; opacity: .75; }
+  .prima img { width: 100%; display: block; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; max-width: 360px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12.5px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .scorre { flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 60px); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; } .spazia { justify-content: space-between; }
+  .et { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pill { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #0f0e0c; color: #d9d4c9; white-space: nowrap; }
+  .pill.oro { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .pill.su { border-color: #1f4a2c; background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .barra { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+  .barra .ind { color: var(--gold); font-size: 15px; padding: 6px 4px; }
+  .barra .t { flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
+  .barra .menu { color: var(--muted); font-size: 20px; padding: 0 6px; letter-spacing: 1px; }
+  .btn { height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex: none; }
+  .btn.pri { background: linear-gradient(180deg, #ead27a, #d4af37 55%, #b8952f); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--text); font-weight: 600; }
+  .piede { padding: 10px 16px 14px; display: flex; gap: 8px; flex: none; border-top: 1px solid var(--line-soft); background: var(--bg); }
+  .piede .btn { flex: 1; }
+
+  /* fine seduta */
+  .eroe { text-align: center; padding: 6px 0 2px; }
+  .eroe .k { font-size: 12px; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .eroe h3 { font-family: var(--f-tit); font-size: 25px; margin: 4px 0 2px; }
+  .anello { width: 118px; height: 118px; margin: 10px auto 4px; position: relative; }
+  .anello svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .anello .v { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .anello .v b { font-family: var(--f-num); font-size: 44px; line-height: .9; color: var(--good); }
+  .anello .v span { display: block; font-size: 11px; color: var(--muted); }
+  .numeri { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+  .numeri > div + div { border-left: 1px solid var(--line-soft); }
+  .numeri b { font-family: var(--f-num); font-size: 24px; font-weight: 600; display: block; line-height: 1.1; }
+  .numeri span { font-size: 11px; color: var(--muted); }
+  .numeri i { font-style: normal; font-size: 11.5px; color: var(--good); font-weight: 600; }
+  .lista-r .r { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-size: 13.5px; }
+  .lista-r .r + .r { border-top: 1px solid var(--line-soft); }
+  .lista-r .r .n { flex: 1; min-width: 0; }
+  .lista-r .r .d { font-size: 12px; color: var(--muted); }
+  .pr { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #1a1405; background: var(--gold); border-radius: 5px; padding: 2px 5px; }
+
+  /* panoramica in corso */
+  .prog { height: 7px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 39%; background: linear-gradient(90deg, #b8952f, #ead27a); border-radius: 99px; }
+  .ex { display: flex; gap: 11px; align-items: center; padding: 10px 12px; }
+  .ex + .ex { border-top: 1px solid var(--line-soft); }
+  .stato-ex { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1.5px solid var(--line); color: var(--faint); }
+  .stato-ex.fatto { background: var(--good-bg); border-color: #1f4a2c; color: var(--good); }
+  .stato-ex.ora { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .ex .n { flex: 1; min-width: 0; font-size: 14px; }
+  .ex .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .ex .s { font-family: var(--f-num); font-size: 16px; color: var(--muted); }
+  .ex.attivo { background: #17150f; }
+  .lista { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+
+  /* storico */
+  .spark { height: 46px; }
+  .settimana { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 4px -4px; }
+  .sed { display: flex; gap: 11px; align-items: center; padding: 9px 12px; }
+  .sed + .sed { border-top: 1px solid var(--line-soft); }
+  .data { width: 38px; flex: none; text-align: center; line-height: 1.05; }
+  .data b { font-family: var(--f-num); font-size: 21px; display: block; }
+  .data span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .sed .n { flex: 1; min-width: 0; }
+  .sed .n b { font-size: 14px; font-weight: 600; }
+  .sed .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .voto { font-family: var(--f-num); font-size: 17px; font-weight: 600; width: 40px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .voto.alto { color: var(--good); background: var(--good-bg); }
+  .voto.medio { color: var(--warn); background: #2a1f0c; }
+  .incorso { border-color: #4a3e18; background: linear-gradient(180deg, #221c0c, #15120a); }
+
+  /* dettaglio */
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .blocco-ex { padding: 10px 12px; }
+  .blocco-ex + .blocco-ex { border-top: 1px solid var(--line-soft); }
+  .serie { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .serie span { font-family: var(--f-num); font-size: 15px; padding: 3px 8px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+  .serie span em { font-style: normal; color: var(--faint); font-size: 12px; margin-left: 3px; font-family: var(--f-testo); }
+  .delta { font-size: 11.5px; font-weight: 600; }
+  .delta.su { color: var(--good); } .delta.pari { color: var(--muted); } .delta.giu { color: var(--bad); }
+
+  /* esercizi */
+  .cerca { height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--faint); font-size: 14px; }
+  .chips { display: flex; gap: 6px; overflow: hidden; }
+  .chips span { font-size: 12.5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .chips span.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .es { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+  .es + .es { border-top: 1px solid var(--line-soft); }
+  .es .n { flex: 1; min-width: 0; }
+  .es .n b { font-size: 14px; font-weight: 600; display: block; }
+  .es .n small { font-size: 11.8px; color: var(--muted); }
+  .es .mini { width: 54px; height: 22px; flex: none; }
+  .es .kg { text-align: right; flex: none; width: 54px; }
+  .es .kg b { font-family: var(--f-num); font-size: 17px; display: block; line-height: 1; }
+  .es .kg span { font-size: 10.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="intro">
+  <div class="ey">ETP Health · mockup · gruppo «Seduta» · 384 × 740</div>
+  <h1>Seduta: fine, panoramica, storico, dettaglio, esercizi</h1>
+  <p>A sinistra com'è oggi (dati finti), a destra la proposta. Filo comune: ogni schermata risponde subito alla domanda «sono andato meglio dell'ultima volta?», con il confronto con la stessa scheda, e le azioni stanno in basso dove arriva il pollice. Le funzioni di oggi restano tutte.</p>
+</div>
+
+<!-- 1. FINE SEDUTA -->
+<div class="sezione">
+  <h2>1 · Fine seduta</h2>
+  <p class="sotto">Oggi: due emoji, una tabella di numeri senza confronto, un riquadro AI vuoto e un campo vuoto sopra il bottone. Proposta: il voto in un anello, tre numeri contro l'ultima volta della stessa scheda, i record e cosa è salito.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/fine.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>20:12</span><span>●●● 64%</span></div><div class="utile">
+        <div class="scorre">
+          <div class="eroe">
+            <div class="k">D1 · Pull · finita</div>
+            <h3>Seduta chiusa</h3>
+            <div class="anello">
+              <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" stroke="#24221e" stroke-width="9" fill="none"/><circle cx="60" cy="60" r="52" stroke="#5bc27a" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="258 327"/></svg>
+              <div class="v"><div><b>79</b><span>Workout Score</span></div></div>
+            </div>
+            <div class="muted" style="font-size:12.5px">sopra la tua media della D1 (71)</div>
+          </div>
+          <div class="card numeri">
+            <div><b>67′</b><span>durata</span><br><i>−4′</i></div>
+            <div><b>18</b><span>serie</span><br><i class="faint" style="color:var(--muted)">=</i></div>
+            <div><b>8.802</b><span>kg totali</span><br><i>+3,1%</i></div>
+          </div>
+          <div class="card lista-r" style="padding:4px 12px">
+            <div class="et" style="padding:8px 0 2px">Contro l'ultima D1 · 26.10</div>
+            <div class="r"><span class="pr">PR</span><span class="n">Lat machine<br><span class="d">80 × 10 · e1RM 107 kg</span></span><span class="pill su">+2,5 kg</span></div>
+            <div class="r"><span class="pr">PR</span><span class="n">Rear delt machine<br><span class="d">57 × 15</span></span><span class="pill su">+2 rip</span></div>
+            <div class="r"><span class="n">Bayesian curl<br><span class="d">13,6 × 11 · 10 · 9</span></span><span class="pill">uguale</span></div>
+            <div class="r"><span class="n">Hammer curl al cavo<br><span class="d">22,7 × 12 · 10</span></span><span class="pill" style="color:var(--bad);border-color:#4a2420">−1 rip</span></div>
+          </div>
+        </div>
+        <div class="piede"><div class="btn gh" style="flex:0 0 120px">Note</div><div class="btn pri">Fatto</div></div>
+      </div></div>
+      <ul class="note">
+        <li>Il confronto è sempre con l'ultima seduta della <b>stessa scheda</b>, non con una qualsiasi.</li>
+        <li>Il riquadro AI compare solo se la chiave c'è: niente scatole vuote.</li>
+        <li>Prima i record, poi chi è salito, poi chi è sceso.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 2. PANORAMICA -->
+<div class="sezione">
+  <h2>2 · Panoramica della seduta in corso</h2>
+  <p class="sotto">Oggi: card alte uguali per tutti, «0 serie · 0 kg» ripetuto, nessuna idea di dove sei. Proposta: barra di avanzamento, un elenco compatto con lo stato di ogni esercizio, e «Termina» sempre in basso.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/panoramica.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>18:41</span><span>●●● 71%</span></div><div class="utile">
+        <div class="barra"><span class="ind">‹ Allenamento</span><span class="t">D1 · Pull</span><span class="num" style="color:var(--gold);font-size:17px">0:36</span></div>
+        <div class="scorre">
+          <div class="card" style="padding:12px 12px 13px">
+            <div class="riga spazia" style="margin-bottom:8px"><span style="font-size:14px"><b class="num" style="font-size:19px">7</b> <span class="muted">di 18 serie</span></span><span class="muted" style="font-size:12.5px">2 esercizi su 7 · 2.484 kg</span></div>
+            <div class="prog"><i></i></div>
+          </div>
+          <div class="lista">
+            <div class="ex"><span class="stato-ex fatto">✓</span><span class="n">Bilateral Cable High Row 45°<small>81,5 × 9 · 66 × 11</small></span><span class="s">2/2</span></div>
+            <div class="ex"><span class="stato-ex fatto">✓</span><span class="n">Chest-supported DB row<small>32 × 12 · 11 · 10</small></span><span class="s">3/3</span></div>
+            <div class="ex attivo"><span class="stato-ex ora">3</span><span class="n" style="color:var(--gold)">High Cable Unilateral Pulley<small style="color:#b9a35a">in corso · 1 serie fatta</small></span><span class="s" style="color:var(--gold)">1/2</span></div>
+            <div class="ex"><span class="stato-ex">4</span><span class="n">Kelso Shrug<small>ultima volta 57 × 13 · 12</small></span><span class="s">0/2</span></div>
+            <div class="ex"><span class="stato-ex">5</span><span class="n">Rear delt machine<small>ultima volta 55 × 15 · 14 · 12</small></span><span class="s">0/3</span></div>
+            <div class="ex"><span class="stato-ex">6</span><span class="n">Bayesian curl<small>ultima volta 13,6 × 11 · 10 · 9</small></span><span class="s">0/3</span></div>
+            <div class="ex"><span class="stato-ex">7</span><span class="n">Hammer curl al cavo<small>ultima volta 22,7 × 13 · 10</small></span><span class="s">0/2</span></div>
+          </div>
+          <div class="muted" style="font-size:12px;text-align:center">＋ Aggiungi esercizio</div>
+        </div>
+        <div class="piede"><div class="btn gh">Termina</div><div class="btn pri">Riprendi · Pulley</div></div>
+      </div></div>
+      <ul class="note">
+        <li>Fatto ✓, in corso (oro), da fare: si vede in un colpo d'occhio dove sei.</li>
+        <li>Per quelli da fare c'è già il riferimento dell'ultima volta.</li>
+        <li>«Riprendi» porta dritto all'esercizio in corso.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 3. STORICO -->
+<div class="sezione">
+  <h2>3 · Storico</h2>
+  <p class="sotto">Oggi: una card alta per seduta, tutte uguali («6 eserc · 18 set · 162 reps»), 13 sedute = 4 schermate. Proposta: righe compatte divise per settimana, filtro per scheda, e in cima l'andamento del voto.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/storico.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+        <div class="scorre">
+          <div class="chips"><span class="on">Tutte</span><span>D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span><span>Mie</span></div>
+          <div class="card" style="padding:10px 12px 6px">
+            <div class="riga spazia"><span class="et">Workout Score · 8 settimane</span><span class="pill su">media 74 · +9</span></div>
+            <svg class="spark" viewBox="0 0 330 46" preserveAspectRatio="none" style="width:100%">
+              <path d="M0 34 L28 30 L56 36 L84 28 L112 31 L140 24 L168 26 L196 20 L224 22 L252 15 L280 17 L308 10 L330 12 L330 46 L0 46Z" fill="#5bc27a18"/>
+              <path d="M0 34 L28 30 L56 36 L84 28 L112 31 L140 24 L168 26 L196 20 L224 22 L252 15 L280 17 L308 10 L330 12" fill="none" stroke="#5bc27a" stroke-width="2"/>
+              <circle cx="330" cy="12" r="3.5" fill="#5bc27a"/>
+            </svg>
+          </div>
+          <div class="lista incorso"><div class="sed"><div class="data"><b>04</b><span>nov</span></div><div class="n"><b>D4 · Upper</b><small>in corso · 7 di 18 serie</small></div><span class="pill oro">Riprendi</span></div></div>
+          <div class="settimana"><span class="et">Questa settimana</span><span class="muted" style="font-size:12px">4 sedute · ciclo ok</span></div>
+          <div class="lista">
+            <div class="sed"><div class="data"><b>02</b><span>dom</span></div><div class="n"><b>D5 · Arms + Back</b><small>67′ · 18 serie · 8.802 kg</small></div><span class="voto alto">79</span></div>
+            <div class="sed"><div class="data"><b>01</b><span>sab</span></div><div class="n"><b>D3 · Lower</b><small>72′ · 17 serie · 16.605 kg</small></div><span class="voto alto">75</span></div>
+            <div class="sed"><div class="data"><b>30</b><span>gio</span></div><div class="n"><b>D2 · Push</b><small>64′ · 14 serie · 11.583 kg</small></div><span class="voto alto">77</span></div>
+          </div>
+          <div class="settimana"><span class="et">27 ott – 2 nov</span><span class="muted" style="font-size:12px">4 sedute</span></div>
+          <div class="lista">
+            <div class="sed"><div class="data"><b>29</b><span>mer</span></div><div class="n"><b>D1 · Pull</b><small>61′ · 16 serie · 6.561 kg</small></div><span class="voto alto">82</span></div>
+            <div class="sed"><div class="data"><b>27</b><span>lun</span></div><div class="n"><b>D4 · Upper</b><small>58′ · 14 serie · 8.154 kg</small></div><span class="voto medio">54</span></div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Una riga per seduta: in una schermata ne stanno 6-7 invece di 3.</li>
+        <li>Il nome è quello della scheda (D1…D5 o la tua), non «Upper» generico.</li>
+        <li>Il filtro per scheda sostituisce Upper / Legs / Push / Pull.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 4. DETTAGLIO -->
+<div class="sezione">
+  <h2>4 · Dettaglio di una seduta</h2>
+  <p class="sotto">Oggi: «← Storico» largo come un bottone, un menu a tendina in testa, numeri in tabella, «Modifica / Riapri / Elimina» sparsi. Proposta: barra con ‹ e ⋯, i dati in etichette, le serie in fila con il confronto per esercizio.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/seduta.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+        <div class="barra"><span class="ind">‹ Storico</span><span class="t"></span><span class="menu">⋯</span></div>
+        <div class="scorre" style="padding-top:0">
+          <div class="riga spazia" style="align-items:flex-end">
+            <div><div style="font-family:var(--f-tit);font-size:24px;font-weight:700">D5 · Arms + Back</div><div class="muted" style="font-size:12.5px;margin-top:2px">domenica 2 novembre</div></div>
+            <span class="voto alto" style="width:52px;height:40px;font-size:24px">79</span>
+          </div>
+          <div class="meta"><span class="pill">19:05 – 20:12 · 67′</span><span class="pill">18 serie</span><span class="pill">8.802 kg</span><span class="pill oro">scheda D5</span></div>
+          <div class="lista">
+            <div class="blocco-ex"><div class="riga spazia"><b style="font-size:14px">Curl bilanciere EZ</b><span class="delta su">+1 rip</span></div><div class="serie"><span>35×10<em>R2</em></span><span>35×9<em>R1</em></span><span>35×8<em>R0</em></span></div></div>
+            <div class="blocco-ex"><div class="riga spazia"><b style="font-size:14px">French press EZ</b><span class="delta pari">uguale</span></div><div class="serie"><span>35×11<em>R2</em></span><span>35×10<em>R1</em></span><span>35×8<em>R0</em></span></div></div>
+            <div class="blocco-ex"><div class="riga spazia"><b style="font-size:14px">Cable curl dietro il tronco</b><span class="delta su">+1,1 kg</span></div><div class="serie"><span>12,4×12<em>R1</em></span><span>12,4×10<em>R1</em></span></div></div>
+            <div class="blocco-ex"><div class="riga spazia"><b style="font-size:14px">Vulken Overhead Extensions</b><span class="delta giu">−2 rip</span></div><div class="serie"><span>13,8×10<em>R1</em></span><span>13,8×8<em>R0</em></span></div></div>
+            <div class="blocco-ex"><div class="riga spazia"><b style="font-size:14px">Seated Row Upper Back</b><span class="delta pari">prima volta</span></div><div class="serie"><span>36×14<em>R2</em></span><span>36×12<em>R1</em></span></div></div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>«⋯» in alto: Modifica, Cambia scheda, Riapri, Elimina — non più sparsi nella pagina.</li>
+        <li>Accanto a ogni esercizio: meglio, uguale o peggio dell'ultima volta.</li>
+        <li>Le serie si leggono in fila (35×10 R2) invece che in tabella alta.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 5. ESERCIZI -->
+<div class="sezione">
+  <h2>5 · Esercizi</h2>
+  <p class="sotto">Oggi: elenco alfabetico con «· custom» ripetuto su ogni riga e solo il PR. Proposta: per ognuno l'ultimo carico, quando l'hai fatto e la tendenza; in cima quelli delle tue schede.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/esercizi.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+        <div class="scorre">
+          <div class="riga" style="gap:8px"><div class="cerca" style="flex:1">⌕ <span>Cerca o crea un esercizio…</span></div><div class="btn pri" style="width:44px;height:42px;border-radius:12px;font-size:20px">＋</div></div>
+          <div class="chips"><span class="on">Nelle schede</span><span>Tutti</span><span>Schiena</span><span>Petto</span><span>Spalle</span><span>Braccia</span></div>
+          <div class="settimana" style="margin-top:2px"><span class="et">D1 · Pull</span><span class="muted" style="font-size:12px">ultimo carico · tendenza</span></div>
+          <div class="lista">
+            <div class="es"><div class="n"><b>Bilateral Cable High Row 45°</b><small>schiena · 2 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 16 L11 15 L22 12 L33 12 L44 8 L54 6" fill="none" stroke="#5bc27a" stroke-width="2"/></svg><div class="kg"><b>81,5</b><span>× 9</span></div></div>
+            <div class="es"><div class="n"><b>Chest-supported DB row</b><small>schiena · nuovo · taratura</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 11 L54 11" fill="none" stroke="#5d5951" stroke-width="2" stroke-dasharray="3 3"/></svg><div class="kg"><b>32</b><span>× 12</span></div></div>
+            <div class="es"><div class="n"><b>Kelso Shrug</b><small>schiena · 9 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 18 L11 16 L22 16 L33 11 L44 10 L54 7" fill="none" stroke="#5bc27a" stroke-width="2"/></svg><div class="kg"><b>57</b><span>× 13</span></div></div>
+            <div class="es"><div class="n"><b>Rear delt machine</b><small>spalle · 9 gg fa · anche in D5</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 9 L11 10 L22 9 L33 11 L44 10 L54 10" fill="none" stroke="#8f8a80" stroke-width="2"/></svg><div class="kg"><b>55</b><span>× 15</span></div></div>
+            <div class="es"><div class="n"><b>Hammer curl al cavo</b><small>bicipiti · 9 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 8 L11 9 L22 10 L33 12 L44 13 L54 15" fill="none" stroke="#e0614f" stroke-width="2"/></svg><div class="kg"><b>22,7</b><span>× 12</span></div></div>
+          </div>
+          <div class="settimana"><span class="et">D2 · Push</span><span></span></div>
+          <div class="lista">
+            <div class="es"><div class="n"><b>Pectoral machine</b><small>petto · 5 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 17 L11 15 L22 13 L33 12 L44 9 L54 7" fill="none" stroke="#5bc27a" stroke-width="2"/></svg><div class="kg"><b>61,5</b><span>× 15</span></div></div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>«Nelle schede»: gli esercizi divisi per scheda, nell'ordine in cui li fai. «Tutti» resta l'elenco alfabetico.</li>
+        <li>Verde sale, grigio fermo, rosso scende (sul migliore delle ultime sedute).</li>
+        <li>Via «custom» da ogni riga: è rumore.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

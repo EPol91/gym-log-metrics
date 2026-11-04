@@ -24,14 +24,14 @@ const VIA = 'gymlog.promemoria.via'
 export type Tipo = 'mattino' | 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
 
 export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
-  { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è. Arriva anche ad app chiusa.' },
-  { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Quando restano meno giorni delle sedute che ti mancano.' },
-  { tipo: 'recupero', nome: 'Recupero alto', nota: 'Al mattino, se il WHOOP è sopra la tua media e non ti alleni da due giorni.' },
-  { tipo: 'peso', nome: 'Pesata', nota: 'Se non ti pesi da quattro giorni.' },
-  { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Se non sincronizza da due giorni.' },
-  { tipo: 'backup', nome: 'Backup vecchio', nota: 'Se l’ultimo ha più di quattordici giorni.' },
-  { tipo: 'pasto', nome: 'Ora dei pasti', nota: 'Un quarto d’ora dopo la fine della fascia, se il pasto non ha l’ora. Arriva anche ad app chiusa.' },
-  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: «Esco ora» o «Uscito alle…» se esci più tardi.' },
+  { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è. Anche ad app chiusa.' },
+  { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Restano meno giorni delle sedute che mancano.' },
+  { tipo: 'recupero', nome: 'Recupero alto', nota: 'WHOOP sopra la media e due giorni senza allenarti.' },
+  { tipo: 'peso', nome: 'Pesata dimenticata', nota: 'Nessun peso da quattro giorni.' },
+  { tipo: 'whoop', nome: 'WHOOP fermo', nota: 'Non sincronizza da due giorni.' },
+  { tipo: 'backup', nome: 'Backup vecchio', nota: 'L’ultimo ha più di quattordici giorni.' },
+  { tipo: 'pasto', nome: 'Ora dei pasti', nota: '15′ dopo la fine della fascia, se il pasto non ha l’ora. Anche ad app chiusa.' },
+  { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, dopo l’orario d’uscita: «Esco ora» o «Uscito alle…».' },
 ]
 
 /** L'ora della pesata del mattino: la scegli tu in Promemoria. */

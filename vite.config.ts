@@ -1,11 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+// La versione che si legge in fondo al Profilo: il commit da cui e' costruita.
+function versione(): string {
+  try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' }
+}
 
 // https://vite.dev/config/
 // base '/gym-log-metrics/' in produzione (GitHub Pages project site), '/' in dev.
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/gym-log-metrics/' : '/',
+  define: { __VERSIONE__: JSON.stringify(versione()) },
   plugins: [
     react(),
     VitePWA({

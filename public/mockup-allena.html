@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Allena rifatta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a; --good-bg: #0f2216; --warn: #e0a43a; --bad: #e0614f;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 384px; --h: 740px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 60px; }
+  .intro { max-width: 1300px; margin: 0 auto 26px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-family: var(--f-tit); font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 84ch; }
+  .sezione { max-width: 1300px; margin: 0 auto 46px; }
+  .sezione h2 { font-family: var(--f-tit); font-size: 22px; margin: 0 0 4px; }
+  .sezione .sotto { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; max-width: 90ch; line-height: 1.5; }
+  .coppia { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; }
+  .prima { width: 220px; flex: none; }
+  .prima .nome, .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 10px 4px; }
+  .prima .nome { color: var(--faint); }
+  .blocco .nome { color: var(--gold); }
+  .prima .img { height: 430px; overflow: hidden; border-radius: 22px; border: 6px solid #000; box-shadow: 0 0 0 1px #2e2c28; opacity: .75; }
+  .prima img { width: 100%; display: block; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; max-width: 360px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12.5px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .scorre { flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 60px); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; } .spazia { justify-content: space-between; }
+  .et { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pill { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #0f0e0c; color: #d9d4c9; white-space: nowrap; }
+  .pill.oro { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .pill.su { border-color: #1f4a2c; background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .barra { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+  .barra .ind { color: var(--gold); font-size: 15px; padding: 6px 4px; }
+  .barra .t { flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
+  .barra .menu { color: var(--muted); font-size: 20px; padding: 0 6px; letter-spacing: 1px; }
+  .btn { height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex: none; }
+  .btn.pri { background: linear-gradient(180deg, #ead27a, #d4af37 55%, #b8952f); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--text); font-weight: 600; }
+  .piede { padding: 10px 16px 14px; display: flex; gap: 8px; flex: none; border-top: 1px solid var(--line-soft); background: var(--bg); }
+  .piede .btn { flex: 1; }
+
+  /* fine seduta */
+  .eroe { text-align: center; padding: 6px 0 2px; }
+  .eroe .k { font-size: 12px; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .eroe h3 { font-family: var(--f-tit); font-size: 25px; margin: 4px 0 2px; }
+  .anello { width: 118px; height: 118px; margin: 10px auto 4px; position: relative; }
+  .anello svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .anello .v { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .anello .v b { font-family: var(--f-num); font-size: 44px; line-height: .9; color: var(--good); }
+  .anello .v span { display: block; font-size: 11px; color: var(--muted); }
+  .numeri { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+  .numeri > div + div { border-left: 1px solid var(--line-soft); }
+  .numeri b { font-family: var(--f-num); font-size: 24px; font-weight: 600; display: block; line-height: 1.1; }
+  .numeri span { font-size: 11px; color: var(--muted); }
+  .numeri i { font-style: normal; font-size: 11.5px; color: var(--good); font-weight: 600; }
+  .lista-r .r { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-size: 13.5px; }
+  .lista-r .r + .r { border-top: 1px solid var(--line-soft); }
+  .lista-r .r .n { flex: 1; min-width: 0; }
+  .lista-r .r .d { font-size: 12px; color: var(--muted); }
+  .pr { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #1a1405; background: var(--gold); border-radius: 5px; padding: 2px 5px; }
+
+  /* panoramica in corso */
+  .prog { height: 7px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 39%; background: linear-gradient(90deg, #b8952f, #ead27a); border-radius: 99px; }
+  .ex { display: flex; gap: 11px; align-items: center; padding: 10px 12px; }
+  .ex + .ex { border-top: 1px solid var(--line-soft); }
+  .stato-ex { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1.5px solid var(--line); color: var(--faint); }
+  .stato-ex.fatto { background: var(--good-bg); border-color: #1f4a2c; color: var(--good); }
+  .stato-ex.ora { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px #d4af3722; }
+  .ex .n { flex: 1; min-width: 0; font-size: 14px; }
+  .ex .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .ex .s { font-family: var(--f-num); font-size: 16px; color: var(--muted); }
+  .ex.attivo { background: #17150f; }
+  .lista { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+
+  /* storico */
+  .spark { height: 46px; }
+  .settimana { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 4px -4px; }
+  .sed { display: flex; gap: 11px; align-items: center; padding: 9px 12px; }
+  .sed + .sed { border-top: 1px solid var(--line-soft); }
+  .data { width: 38px; flex: none; text-align: center; line-height: 1.05; }
+  .data b { font-family: var(--f-num); font-size: 21px; display: block; }
+  .data span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .sed .n { flex: 1; min-width: 0; }
+  .sed .n b { font-size: 14px; font-weight: 600; }
+  .sed .n small { display: block; font-size: 11.8px; color: var(--muted); margin-top: 1px; }
+  .voto { font-family: var(--f-num); font-size: 17px; font-weight: 600; width: 40px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .voto.alto { color: var(--good); background: var(--good-bg); }
+  .voto.medio { color: var(--warn); background: #2a1f0c; }
+  .incorso { border-color: #4a3e18; background: linear-gradient(180deg, #221c0c, #15120a); }
+
+  /* dettaglio */
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .blocco-ex { padding: 10px 12px; }
+  .blocco-ex + .blocco-ex { border-top: 1px solid var(--line-soft); }
+  .serie { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .serie span { font-family: var(--f-num); font-size: 15px; padding: 3px 8px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+  .serie span em { font-style: normal; color: var(--faint); font-size: 12px; margin-left: 3px; font-family: var(--f-testo); }
+  .delta { font-size: 11.5px; font-weight: 600; }
+  .delta.su { color: var(--good); } .delta.pari { color: var(--muted); } .delta.giu { color: var(--bad); }
+
+  /* esercizi */
+  .cerca { height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--faint); font-size: 14px; }
+  .chips { display: flex; gap: 6px; overflow: hidden; }
+  .chips span { font-size: 12.5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .chips span.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .es { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+  .es + .es { border-top: 1px solid var(--line-soft); }
+  .es .n { flex: 1; min-width: 0; }
+  .es .n b { font-size: 14px; font-weight: 600; display: block; }
+  .es .n small { font-size: 11.8px; color: var(--muted); }
+  .es .mini { width: 54px; height: 22px; flex: none; }
+  .es .kg { text-align: right; flex: none; width: 54px; }
+  .es .kg b { font-family: var(--f-num); font-size: 17px; display: block; line-height: 1; }
+  .es .kg span { font-size: 10.5px; color: var(--muted); }
+  /* allena */
+  .striscia { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 10px 0 12px; }
+  .striscia div { text-align: center; padding: 6px 0 5px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); font-family: var(--f-num); font-size: 15px; color: var(--muted); }
+  .striscia div small { display: block; font-family: var(--f-testo); font-size: 9.5px; letter-spacing: .04em; margin-top: 1px; }
+  .striscia .fatta { color: var(--good); border-color: #1f4a2c; background: var(--good-bg); }
+  .striscia .ora { color: #1a1405; border-color: var(--gold); background: var(--gold); font-weight: 700; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 3px; }
+  .seg span { text-align: center; padding: 7px 0; font-size: 13px; color: var(--muted); border-radius: 8px; }
+  .seg span.on { background: var(--surface-3); color: var(--text); font-weight: 600; box-shadow: 0 1px 0 #ffffff0a inset; }
+  .sch { display: flex; align-items: center; gap: 11px; padding: 11px 12px; }
+  .sch + .sch { border-top: 1px solid var(--line-soft); }
+  .play { width: 34px; height: 34px; border-radius: 10px; flex: none; display: grid; place-items: center; background: var(--surface-3); color: var(--gold); font-size: 13px; }
+  .play.oro { background: var(--gold); color: #1a1405; }
+  .sch .n { flex: 1; min-width: 0; }
+  .sch .n b { font-size: 14.5px; font-weight: 600; display: block; }
+  .sch .n small { font-size: 11.8px; color: var(--muted); }
+  .occhio { width: 34px; height: 34px; border-radius: 10px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); font-size: 14px; filter: grayscale(1) brightness(1.4); }
+  .tre { color: var(--muted); font-size: 18px; letter-spacing: 1px; padding: 0 4px; }
+  .tipo { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tipo span { font-size: 12.5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: #d9d4c9; }
+  .tipo span.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+  .campo { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 9px 12px; }
+  .campo label { font-size: 11px; color: var(--muted); display: block; }
+  .campo div { font-size: 17px; font-weight: 600; margin-top: 1px; }
+  .trasc { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .trasc + .trasc { border-top: 1px solid var(--line-soft); }
+  .maniglia { color: var(--faint); font-size: 16px; letter-spacing: -2px; flex: none; width: 14px; }
+  .trasc .n { flex: 1; min-width: 0; font-size: 14px; }
+  .trasc .n small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .coppia-seg { width: 3px; align-self: stretch; border-radius: 3px; background: var(--gold); margin: -10px 0; flex: none; }
+  .grafico { height: 92px; display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; }
+  .grafico div { flex: 1; border-radius: 5px 5px 2px 2px; background: #3a3220; position: relative; }
+  .grafico div.ult { background: linear-gradient(180deg, #ead27a, #b8952f); }
+  .assi { display: flex; gap: 6px; margin-top: 4px; }
+  .assi span { flex: 1; text-align: center; font-size: 9.5px; color: var(--faint); }
+  .gr { display: grid; grid-template-columns: 74px 1fr 30px; gap: 8px; align-items: center; font-size: 12.5px; padding: 3px 0; }
+  .gr .b { height: 8px; border-radius: 99px; background: var(--surface-3); position: relative; overflow: hidden; }
+  .gr .b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--gold); }
+  .gr .v { text-align: right; font-family: var(--f-num); font-size: 15px; }
+  .punteggi { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
+  .punteggi b { font-family: var(--f-num); font-size: 25px; display: block; line-height: 1; }
+  .punteggi span { font-size: 10.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="intro">
+  <div class="ey">ETP Health · mockup · gruppo «Allena» · 384 × 740</div>
+  <h1>Allena: pagina, nuova seduta, scheda, analisi</h1>
+  <p>A sinistra com'è oggi (dati finti), a destra la proposta. Filo comune: l'app sa già quale seduta tocca (il ciclo D1…D5), quindi la mette davanti; le azioni rare (anteprima, modifica, elimina) vanno nel «⋯» invece di quattro bottoni per riga.</p>
+</div>
+
+<!-- 1. ALLENA -->
+<div class="sezione">
+  <h2>1 · Pagina Allena</h2>
+  <p class="sotto">Oggi: due bottoni grandi uguali per tutti i giorni, poi tre chip e l'elenco esercizi. Proposta: in cima la seduta che tocca, con la striscia del ciclo come in Oggi; sotto Esercizi · Storico · Analisi come interruttore a tre.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/allena.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>17:52</span><span>●●● 77%</span></div><div class="utile">
+        <div class="scorre">
+          <h2 style="font-family:var(--f-tit);font-size:26px;margin:4px 0 0">Allena</h2>
+          <div class="card" style="background:radial-gradient(120% 140% at 0% 0%, #2a2311 0%, #161410 45%, var(--surface) 100%);padding:13px">
+            <div class="riga spazia"><span class="et" style="color:var(--gold)">Tocca a te</span><span class="muted" style="font-size:12px">ciclo · giorno 6 di 8</span></div>
+            <div style="font-family:var(--f-tit);font-size:23px;font-weight:700;margin-top:4px">D5 · Arms + Back</div>
+            <div class="muted" style="font-size:12.5px;margin-top:2px">8 esercizi · ultima 24.10 · 79</div>
+            <div class="striscia"><div class="fatta">D1<small>✓ 29.10</small></div><div class="fatta">D2<small>✓ 30.10</small></div><div class="fatta">D3<small>✓ 01.11</small></div><div class="fatta">D4<small>✓ 02.11</small></div><div class="ora">D5<small>oggi</small></div></div>
+            <div class="riga" style="gap:8px"><div class="btn pri" style="flex:1">▶ Inizia D5</div><div class="btn gh" style="flex:0 0 108px;font-size:13.5px">Altra seduta</div></div>
+          </div>
+          <div class="seg"><span class="on">Esercizi</span><span>Storico</span><span>Analisi</span></div>
+          <div class="chips"><span class="on">Nelle schede</span><span>Tutti</span><span>Schiena</span><span>Petto</span><span>Spalle</span></div>
+          <div class="lista">
+            <div class="es"><div class="n"><b>Curl Bilanciere EZ</b><small>bicipiti · D5 · 10 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 9 L11 10 L22 9 L33 11 L44 10 L54 10" fill="none" stroke="#8f8a80" stroke-width="2"/></svg><div class="kg"><b>35</b><span>× 10</span></div></div>
+            <div class="es"><div class="n"><b>French Press EZ</b><small>tricipiti · D5 · 10 gg fa</small></div><svg class="mini" viewBox="0 0 54 22"><path d="M0 16 L11 15 L22 12 L33 12 L44 9 L54 8" fill="none" stroke="#5bc27a" stroke-width="2"/></svg><div class="kg"><b>35</b><span>× 11</span></div></div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Con una seduta in corso, la card diventa «In corso · D4 · 7 di 18 serie» con «Riprendi».</li>
+        <li>«Altra seduta» apre la scelta (sotto): un'altra scheda o una seduta libera.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 2. NUOVA SEDUTA -->
+<div class="sezione">
+  <h2>2 · Nuova seduta</h2>
+  <p class="sotto">Oggi: quattro bottoni per ogni scheda (👁 ♥ ✏ ✕), otto riquadri «Push / Pull / Legs…» e un «Continua» in fondo. Proposta: tocchi la scheda e parti; l’anteprima 👁 resta sulla riga, il resto nel «⋯». La seduta libera è una riga di chip.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/avvio.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>17:53</span><span>●●● 77%</span></div><div class="utile">
+        <div class="barra"><span class="ind">✕</span><span class="t">Nuova seduta</span><span style="width:26px"></span></div>
+        <div class="scorre" style="padding-top:0">
+          <div class="meta"><span class="pill su">✓ peso 90,5 kg</span><span class="pill">NonStop Gym Lugano ▾</span></div>
+          <div class="et" style="margin:4px 0 -4px 4px">Le tue schede</div>
+          <div class="lista">
+            <div class="sch" style="background:#17150f"><span class="play oro">▶</span><div class="n"><b style="color:var(--gold)">D5 · Arms + Back</b><small>tocca a te · 8 esercizi · ultima 24.10</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+            <div class="sch"><span class="play">▶</span><div class="n"><b>D1 · Pull</b><small>7 esercizi · ultima 29.10</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+            <div class="sch"><span class="play">▶</span><div class="n"><b>D2 · Push</b><small>7 esercizi · ultima 30.10</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+            <div class="sch"><span class="play">▶</span><div class="n"><b>D3 · Lower</b><small>7 esercizi · ultima 01.11</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+            <div class="sch"><span class="play">▶</span><div class="n"><b>D4 · Upper</b><small>7 esercizi · ultima 02.11</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+            <div class="sch"><span class="play">▶</span><div class="n"><b>Arms</b><small>tua · 5 esercizi · ultima 12.09</small></div><span class="occhio">👁</span><span class="tre">⋯</span></div>
+          </div>
+          <div class="muted" style="font-size:12.5px;text-align:center">＋ Nuova scheda</div>
+          <div class="et" style="margin:2px 0 -2px 4px">Seduta libera</div>
+          <div class="tipo"><span>Push</span><span>Pull</span><span>Legs</span><span>Upper</span><span>Lower</span><span>Full body</span><span>Libera</span></div>
+          <div class="card" style="padding:9px 12px;margin-top:2px"><div class="riga spazia"><span style="font-size:13px">⋯ su una scheda</span><span class="muted" style="font-size:12px">Preferita · Modifica · Elimina</span></div></div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Un tocco sulla scheda = parte (poi il check di prontezza, come oggi). Niente «Continua».</li>
+        <li>In cima quella che tocca; la palestra si cambia dal chip.</li>
+        <li>Il riquadro in fondo è solo per spiegare cosa c'è nel «⋯».</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 3. SCHEDA -->
+<div class="sezione">
+  <h2>3 · Modifica scheda</h2>
+  <p class="sotto">Oggi: «← Indietro» largo, il tipo in un menu a tendina, tre bottoni ↑ ↓ ✕ per riga, il bottone «Salva» che copre l'ultimo campo. Proposta: barra «Annulla / Salva», tipo a chip, esercizi da trascinare, superset visibili.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/scheda.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+        <div class="barra"><span class="ind" style="color:var(--muted)">Annulla</span><span class="t">Scheda</span><span class="ind" style="font-weight:700">Salva</span></div>
+        <div class="scorre" style="padding-top:0">
+          <div class="campo"><label>Nome</label><div>D4 · Upper B</div></div>
+          <div class="tipo"><span>Push</span><span>Pull</span><span>Legs</span><span class="on">Upper</span><span>Lower</span><span>Full body</span><span>Libera</span></div>
+          <div class="riga spazia" style="padding:2px 4px"><span style="font-size:13.5px">Solo cardio <span class="muted" style="font-size:12px">· elenco a parte</span></span><span class="sw" style="width:38px;height:22px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line);display:inline-block"></span></div>
+          <div class="riga spazia" style="margin:2px 4px -4px"><span class="et">7 esercizi</span><span class="muted" style="font-size:11.5px">tieni premuto ≡ per spostare</span></div>
+          <div class="lista">
+            <div class="trasc"><span class="maniglia">≡</span><span class="n">Lat machine<small>@A|B · 6-9 top / 9-12 back-off</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="maniglia">≡</span><span class="n">Iliac pulldown unilaterale<small>@A|B · 10-15 per lato</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="maniglia">≡</span><span class="n">Cable Pulldown<small>@A|B · 12-15</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="maniglia">≡</span><span class="n">Incline DB Press<small>@A|B · 8-12</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="maniglia">≡</span><span class="n">Cable Fly 45°<small>@A|B · 12-15</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="coppia-seg"></span><span class="maniglia">≡</span><span class="n">Unilateral Preacher Curl<small><span style="color:var(--gold)">superset A</span> · 10-15</small></span><span class="tre">⋯</span></div>
+            <div class="trasc"><span class="coppia-seg"></span><span class="maniglia">≡</span><span class="n">Crucifix Pushdown<small><span style="color:var(--gold)">superset A</span> · rec 90″ dopo la coppia</small></span><span class="tre">⋯</span></div>
+          </div>
+          <div class="btn gh" style="height:42px;font-size:14px">＋ Aggiungi esercizio</div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Sotto ogni esercizio la riga del coach 🦠 (schema e recupero), così vedi la scheda vera.</li>
+        <li>«⋯» per riga: Sostituisci, Unisci in superset / Separa, Togli.</li>
+        <li>Si salva dalla barra in alto: niente bottone che copre la lista.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 4. ANALISI -->
+<div class="sezione">
+  <h2>4 · Analisi</h2>
+  <p class="sotto">Oggi: titolo in inglese («Analytics»), grafici con settimane vuote, numeri crudi (46035) senza confronto. Proposta: periodo a scelta, per ogni grafico il numero dell'ultima settimana e la variazione, serie per muscolo con la settimana precedente come riferimento.</p>
+  <div class="coppia">
+    <div class="prima"><div class="nome">Oggi</div><div class="img"><img src="mockup-prima/analisi.jpg" alt=""></div></div>
+    <div class="blocco">
+      <div class="nome">Proposta</div>
+      <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+        <div class="scorre">
+          <div class="seg"><span>Esercizi</span><span>Storico</span><span class="on">Analisi</span></div>
+          <div class="card punteggi" style="padding:10px 4px">
+            <div><b style="color:var(--warn)">64</b><span>Prontezza</span></div><div><b style="color:var(--good)">79</b><span>Seduta</span></div><div><b style="color:var(--good)">80</b><span>Performance</span></div><div><b style="color:var(--good)">76</b><span>Costanza</span></div>
+          </div>
+          <div class="chips"><span>4 sett</span><span class="on">8 sett</span><span>12 sett</span><span>Da inizio fase</span></div>
+          <div class="card">
+            <div class="riga spazia"><span class="et">Tonnellaggio a settimana</span><span class="pill su">+12%</span></div>
+            <div style="margin-top:4px"><b class="num" style="font-size:28px">46.035</b> <span class="muted" style="font-size:12.5px">kg · settimana del 29.10</span></div>
+            <div class="grafico"><div style="height:52%"></div><div style="height:58%"></div><div style="height:49%"></div><div style="height:63%"></div><div style="height:70%"></div><div style="height:74%"></div><div style="height:82%"></div><div class="ult" style="height:92%"></div></div>
+            <div class="assi"><span>10.09</span><span></span><span>24.09</span><span></span><span>08.10</span><span></span><span>22.10</span><span style="color:var(--gold)">29.10</span></div>
+          </div>
+          <div class="card">
+            <div class="riga spazia"><span class="et">Serie per muscolo · 7 giorni</span><span class="muted" style="font-size:12px">78 · prima 74</span></div>
+            <div style="margin-top:8px">
+              <div class="gr"><span>Schiena</span><span class="b"><i style="width:100%"></i></span><span class="v">18</span></div>
+              <div class="gr"><span>Petto</span><span class="b"><i style="width:83%"></i></span><span class="v">15</span></div>
+              <div class="gr"><span>Spalle</span><span class="b"><i style="width:67%"></i></span><span class="v">12</span></div>
+              <div class="gr"><span>Bicipiti</span><span class="b"><i style="width:50%"></i></span><span class="v">9</span></div>
+              <div class="gr"><span class="muted">+ 5 muscoli</span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="note">
+        <li>Sedute per settimana e Workout Score restano, sotto (scorrendo), con lo stesso schema: numero, variazione, grafico.</li>
+        <li>Nomi in italiano: Prontezza, Seduta, Performance, Costanza.</li>
+        <li>Le settimane senza dati non si disegnano come buchi: il grafico parte dalla prima seduta.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

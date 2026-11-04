@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profilo nuovo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-bg: #231e0e; --good: #5bc27a;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+    --w: 384px; --h: 740px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  .intro { max-width: 1300px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-family: var(--f-tit); font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 80ch; }
+  .telefoni { max-width: 1300px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+  .blocco { width: calc(var(--w) + 20px); max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .tel { width: calc(var(--w) + 20px); max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12.5px; font-weight: 600; }
+  .utile { height: var(--h); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .scorre { flex: 1; overflow: hidden; padding: 6px 16px 0; }
+  .muted { color: var(--muted); }
+
+  /* pagina */
+  h2.tit { font-family: var(--f-tit); font-size: 26px; margin: 4px 0 12px; }
+  .testa { display: flex; gap: 13px; align-items: center; padding: 14px; border-radius: 18px; border: 1px solid var(--line);
+    background: radial-gradient(120% 140% at 0% 0%, #2a2311 0%, #161410 45%, var(--surface) 100%); }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; flex: none; display: grid; place-items: center; font-family: var(--f-tit); font-size: 23px; color: #1a1405;
+    background: linear-gradient(160deg, #ead27a, #b8952f); box-shadow: 0 0 0 3px #0a0a09, 0 0 0 4px #4a3e18; }
+  .testa .chi { flex: 1; min-width: 0; }
+  .testa .n { font-weight: 700; font-size: 17px; }
+  .testa .d { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .testa .chips { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+  .chip { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #0f0e0c; color: #d9d4c9; }
+  .chip.oro { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .chip .num { font-family: var(--f-num); font-size: 13px; font-weight: 600; }
+  .testa .vai { color: var(--faint); font-size: 18px; }
+
+  .gruppo { margin-top: 16px; }
+  .gruppo .et { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px 4px; }
+  .lista { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #181714, var(--surface) 60px); overflow: hidden; }
+  .voce { display: flex; align-items: center; gap: 11px; padding: 10px 12px; min-height: 48px; }
+  .voce + .voce { border-top: 1px solid var(--line-soft); }
+  .ic { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; background: var(--surface-3); color: var(--gold); }
+  .ic svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .voce .tx { flex: 1; min-width: 0; font-size: 14.5px; }
+  .voce .val { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52%; text-align: right; }
+  .voce .val.oro { color: var(--gold); }
+  .voce .fr { color: var(--faint); font-size: 17px; margin-left: 2px; }
+  .pallino { width: 7px; height: 7px; border-radius: 50%; background: #e0a43a; display: inline-block; margin-right: 5px; vertical-align: 1px; }
+
+  .nav { height: 62px; flex: none; border-top: 1px solid var(--line); background: #0d0c0b; display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .nav .on { color: var(--gold); }
+  .nav i { display: block; font-style: normal; font-size: 16px; margin-bottom: 2px; }
+
+  /* foglio */
+  .foglio { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .barra { height: 50px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-bottom: 1px solid var(--line); }
+  .barra .indietro { color: var(--gold); font-size: 15px; display: flex; align-items: center; gap: 2px; padding: 6px; }
+  .barra .t { font-family: var(--f-tit); font-size: 19px; font-weight: 700; flex: 1; text-align: center; margin-right: 66px; }
+  .corpo { padding: 12px 16px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .spiega { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; }
+  .riga-n { display: flex; gap: 11px; align-items: flex-start; padding: 10px 12px; }
+  .riga-n + .riga-n { border-top: 1px solid var(--line-soft); }
+  .riga-n .tx { flex: 1; min-width: 0; }
+  .riga-n .t1 { font-size: 14px; }
+  .riga-n .t2 { font-size: 11.8px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+  .sw { width: 38px; height: 22px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--line); position: relative; flex: none; margin-top: 2px; }
+  .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--faint); }
+  .sw.on { background: var(--gold-bg); border-color: #6b5718; }
+  .sw.on::after { left: 18px; background: var(--gold); }
+  .ora { display: inline-flex; align-items: center; gap: 7px; margin-top: 7px; font-size: 12.5px; color: var(--muted); }
+  .ora b { font-family: var(--f-num); font-size: 18px; color: var(--text); font-weight: 600; padding: 3px 12px; border-radius: 8px; border: 1px solid #4a3e18; background: #15120a; }
+  .avviso { font-size: 12px; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; padding: 9px 11px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <div class="ey">ETP Health · mockup · 384 × 740</div>
+  <h1>Profilo, rifatto</h1>
+  <p>Una testata con chi sei e dove sei, poi cinque gruppi per scopo — Tu, Allenamento, Giornata, Coach e collegamenti, Dati. Ogni riga dice già il valore di adesso; il tocco apre un foglio a tutto schermo con «‹ Profilo» (anche il tasto indietro del telefono). Le funzioni dentro restano quelle di oggi: cambia dove stanno.</p>
+</div>
+
+<div class="telefoni">
+
+  <!-- 1. Pagina, in alto -->
+  <div class="blocco">
+    <div class="nome">1 · Profilo, all'apertura</div>
+    <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+      <div class="scorre">
+        <h2 class="tit">Profilo</h2>
+        <div class="testa">
+          <div class="avatar">E</div>
+          <div class="chi">
+            <div class="n">Emanuel</div>
+            <div class="d">35 anni · 177 cm · uomo</div>
+            <div class="chips">
+              <span class="chip oro">Recomp · dal 13.10</span>
+              <span class="chip"><span class="num">90,5</span> kg · 02.11</span>
+            </div>
+          </div>
+          <span class="vai">›</span>
+        </div>
+
+        <div class="gruppo">
+          <div class="et">Tu</div>
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 18 9 12l4 3 7-8"/><path d="M15 7h5v5"/></svg></span><span class="tx">Fase</span><span class="val oro">Recomp · dal 13.10</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c3 4 6 6.5 6 10a6 6 0 0 1-12 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3 1-6 2-8.5Z"/></svg></span><span class="tx">Metabolismo</span><span class="val">moderato · 2.760 kcal</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></svg></span><span class="tx">Acqua e sale</span><span class="val">5,5 L · 7 g</span><span class="fr">›</span></div>
+          </div>
+        </div>
+
+        <div class="gruppo">
+          <div class="et">Allenamento</div>
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg></span><span class="tx">Obiettivo</span><span class="val">5 sedute ogni 8 giorni</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 13V9.5M10 3h4"/></svg></span><span class="tx">Recupero predefinito</span><span class="val">2:30</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></span><span class="tx">Schede</span><span class="val">7 · 5 del coach</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10h3v4H3zM18 10h3v4h-3zM6 8h2v8H6zM16 8h2v8h-2zM8 12h8"/></svg></span><span class="tx">Palestre</span><span class="val">NonStop Gym Lugano</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 3 10 2-5h7"/></svg></span><span class="tx">Cuore e zone</span><span class="val">riposo 62 · max 183</span><span class="fr">›</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav"><span><i>⌂</i>Oggi</span><span><i>⑂</i>Cibo</span><span><i>⊢</i>Allena</span><span><i>∿</i>Salute</span><span><i>✲</i>RS</span><span class="on"><i>◉</i>Profilo</span></div>
+    </div></div>
+    <ul class="note">
+      <li>Testata: un tocco apre <b>Dati personali</b> (nome, anno, sesso, altezza). Peso e fase si leggono senza aprire niente.</li>
+      <li>«Recupero predefinito» e «Suoni dei timer» li tengo vicini all'allenamento; FC riposo e FC max escono dai «dati cardio e corpo» e vanno in «Cuore e zone».</li>
+    </ul>
+  </div>
+
+  <!-- 2. Pagina, scorsa -->
+  <div class="blocco">
+    <div class="nome">2 · Profilo, scorrendo</div>
+    <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+      <div class="scorre">
+        <div class="gruppo" style="margin-top:4px">
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 9a4 4 0 0 1 4-4h0M5 15a4 4 0 0 0 4 4M19 9a4 4 0 0 0-4-4M19 15a4 4 0 0 1-4 4"/><path d="M9 12h6"/></svg></span><span class="tx">Suoni dei timer</span><span class="val">cuffia 70%</span><span class="fr">›</span></div>
+          </div>
+        </div>
+
+        <div class="gruppo">
+          <div class="et">Giornata</div>
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></svg></span><span class="tx">I tuoi orari</span><span class="val">lavoro 09:00–17:30 · 5 pasti</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><span class="tx">Notifiche</span><span class="val oro">pesata 07:30 · 7 accese</span><span class="fr">›</span></div>
+          </div>
+        </div>
+
+        <div class="gruppo">
+          <div class="et">Coach e collegamenti</div>
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"/><path d="M9.5 20.5h5"/></svg></span><span class="tx">Righe del Coach</span><span class="val">5 blocchi accesi</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/><circle cx="12" cy="12" r="3"/></svg></span><span class="tx">AI</span><span class="val">Claude · collegata</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="4"/><path d="M10 9h4M10 13h4"/></svg></span><span class="tx">WHOOP</span><span class="val">sincronizzato oggi 07:12</span><span class="fr">›</span></div>
+          </div>
+        </div>
+
+        <div class="gruppo">
+          <div class="et">Dati</div>
+          <div class="lista">
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="tx">Backup e invio</span><span class="val">ultimo 02.11</span><span class="fr">›</span></div>
+            <div class="voce"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v5h14v-5"/></svg></span><span class="tx">Importa da Strong / Hevy</span><span class="val">CSV</span><span class="fr">›</span></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:11px;text-align:center;margin:14px 0 0">ETP Health · versione 2e4128c</p>
+      </div>
+      <div class="nav"><span><i>⌂</i>Oggi</span><span><i>⑂</i>Cibo</span><span><i>⊢</i>Allena</span><span><i>∿</i>Salute</span><span><i>✲</i>RS</span><span class="on"><i>◉</i>Profilo</span></div>
+    </div></div>
+    <ul class="note">
+      <li>«Notifiche» ha una pagina sua e dice subito l'ora della pesata.</li>
+      <li>«Coach» diventa «Righe del Coach»: è quello che fa (cosa compare in Oggi).</li>
+      <li>In fondo la versione dell'app, utile quando qualcosa non torna.</li>
+    </ul>
+  </div>
+
+  <!-- 3. Foglio Notifiche -->
+  <div class="blocco">
+    <div class="nome">3 · Tocco su «Notifiche»</div>
+    <div class="tel"><div class="stato"><span>09:41</span><span>●●● 82%</span></div><div class="utile">
+      <div class="foglio">
+        <div class="barra"><span class="indietro">‹ Profilo</span><span class="t">Notifiche</span></div>
+        <div class="corpo">
+          <p class="spiega">Arrivano solo quando c'è qualcosa da fare, e compaiono anche in Oggi finché non le metti via.</p>
+          <div class="lista">
+            <div class="riga-n"><div class="tx"><div class="t1">Pesata del mattino</div><div class="t2">Ogni mattina, se il peso di oggi non c'è. Anche ad app chiusa.</div><div class="ora">alle <b>07:30</b></div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">Ora dei pasti</div><div class="t2">15' dopo la fine della fascia, se il pasto non ha l'ora.</div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">Uscita dall'ufficio</div><div class="t2">Nei giorni di lavoro, dopo l'orario d'uscita.</div></div><span class="sw on"></span></div>
+          </div>
+          <div class="et" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:4px 0 -4px 4px">Solo se serve</div>
+          <div class="lista">
+            <div class="riga-n"><div class="tx"><div class="t1">Ciclo a rischio</div><div class="t2">Restano meno giorni delle sedute che mancano.</div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">Recupero alto</div><div class="t2">WHOOP sopra la media e due giorni senza allenarti.</div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">Pesata dimenticata</div><div class="t2">Nessun peso da quattro giorni.</div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">WHOOP fermo</div><div class="t2">Non sincronizza da due giorni.</div></div><span class="sw on"></span></div>
+            <div class="riga-n"><div class="tx"><div class="t1">Backup vecchio</div><div class="t2">L'ultimo ha più di quattordici giorni.</div></div><span class="sw"></span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <ul class="note">
+      <li>Interruttori al posto delle scritte «acceso / spento»: si legge lo stato in un colpo d'occhio.</li>
+      <li>Divise in due: quelle <b>a orario</b> (arrivano anche ad app chiusa) e quelle <b>solo se serve</b>.</li>
+      <li>Ogni altra voce apre lo stesso tipo di foglio, con dentro le impostazioni di oggi.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
