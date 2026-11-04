@@ -3,7 +3,7 @@
 // dell'utente (`edited`) non viene mai sovrascritta da una fonte esterna.
 import { db, newId, nowISO } from './db'
 import { LOCAL_USER_ID } from './seed'
-import { todayLocal } from '../util/date'
+import { todayLocal, shiftDate } from '../util/date'
 import { snapshotAndDelete, type Trash } from './trash'
 import type { DayTemplateItem, DayTemplateMeal, DayType, Food, FoodLog, GiornataPianoRs, Macros, Meal } from './schema'
 import { pianoRs, giornataDelPiano, rigaDelCoach } from '../rs/piano'
@@ -544,6 +544,37 @@ export async function mealCountOn(mealName: string, date: string): Promise<numbe
   const m = (await mealsOfDate(date)).find((x) => x.name === mealName)
   if (!m) return 0
   return db.foodLogs.where('mealId').equals(m.id).count()
+}
+
+/** Un alimento che metti spesso in un pasto: quante volte, l'ultima, e quanti grammi l'ultima volta. */
+export interface Solito { food: Food; volte: number; ultima: string; grammi: number }
+
+/**
+ * Gli alimenti che metti di solito in quel pasto (per nome: «Pranzo» e' lo
+ * stesso pasto tutti i giorni), negli ultimi 60 giorni. Prima i piu' frequenti,
+ * a parita' il piu' recente. Solo alimenti: le ricette no.
+ */
+export async function solitiDelPasto(mealName: string, date: string, quanti = 8): Promise<Solito[]> {
+  const dal = shiftDate(date, -60)
+  const pasti = (await db.meals.where('date').between(dal, date, true, true).toArray())
+    .filter((m) => m.userId === U && m.name === mealName)
+  const conti = new Map<string, { giorni: Set<string>; ultima: string; ordine: number; grammi: number }>()
+  for (const m of pasti) {
+    for (const l of await db.foodLogs.where('mealId').equals(m.id).toArray()) {
+      if (l.recipeId || !l.foodId || !(l.grams > 0)) continue
+      const c = conti.get(l.foodId) ?? { giorni: new Set<string>(), ultima: '', ordine: -1, grammi: l.grams }
+      c.giorni.add(l.date)
+      // I grammi sono quelli dell'ultima volta: l'ultima data, e in quella l'ultima riga.
+      if (l.date > c.ultima || (l.date === c.ultima && l.order > c.ordine)) { c.ultima = l.date; c.ordine = l.order; c.grammi = l.grams }
+      conti.set(l.foodId, c)
+    }
+  }
+  const cibi = new Map((await listFoods()).filter((f) => !f.nascosto).map((f) => [f.id, f]))
+  return [...conti]
+    .filter(([id]) => cibi.has(id))
+    .map(([id, c]) => ({ food: cibi.get(id)!, volte: c.giorni.size, ultima: c.ultima, grammi: c.grammi }))
+    .sort((a, b) => b.volte - a.volte || b.ultima.localeCompare(a.ultima))
+    .slice(0, quanti)
 }
 
 // --- Giornate tipo -----------------------------------------------------------

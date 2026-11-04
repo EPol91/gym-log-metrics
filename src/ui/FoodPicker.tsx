@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods } from '../db/diet'
+import { listFoodsRanked, addFood, addFoodLog, findFoodByBarcode, listFoods, solitiDelPasto } from '../db/diet'
 import { listRecipesRanked, computeRecipe } from '../db/recipes'
 import { sostituisci } from '../rs/dieta'
 import { searchOFF, fetchByBarcode, type OffFood } from '../util/openFoodFacts'
@@ -11,6 +11,13 @@ import { useScanner } from './useScanner'
 import { FoodSheet, FoodForm, MacroDonut } from './FoodSheet'
 import { AddRecipeSheet } from './AddRecipeSheet'
 import type { Food, Recipe } from '../db/schema'
+
+const virgola = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',')
+/** «oggi», «ieri», «5 gg fa», rispetto al giorno del diario. */
+function quando(iso: string, rispetto: string): string {
+  const g = Math.round((Date.parse(rispetto) - Date.parse(iso)) / 86_400_000)
+  return g <= 0 ? 'oggi' : g === 1 ? 'ieri' : `${g} gg fa`
+}
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
@@ -25,6 +32,9 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'mine' | 'online' | 'recipes'>('mine')
   const [chosen, setChosen] = useState<Food | null>(null)
+  // I grammi con cui aprire l'alimento: quelli dell'ultima volta, se arriva dai soliti.
+  const [grammiScelti, setGrammiScelti] = useState<number | undefined>(undefined)
+  const [aggiunti, setAggiunti] = useState<Set<string>>(new Set())
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [creating, setCreating] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -38,6 +48,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
   const foods = useLiveQuery(listFoodsRanked, []) ?? []
   const recipes = useLiveQuery(listRecipesRanked, []) ?? []
   const allFoods = useLiveQuery(listFoods, []) ?? []
+  const soliti = useLiveQuery(() => solitiDelPasto(mealName, date), [mealName, date]) ?? []
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -125,7 +136,7 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
         }} />
     )
   } else if (chosen) {
-    body = <FoodSheet food={chosen} mode="add" onConfirm={add} onBack={() => setChosen(null)} />
+    body = <FoodSheet food={chosen} grams={grammiScelti} mode="add" onConfirm={add} onBack={() => { setChosen(null); setGrammiScelti(undefined) }} />
   } else {
     body = (
       <>
@@ -158,9 +169,45 @@ export function FoodPicker({ date, mealId, mealName, onClose, sostituisciLog }: 
         )}
 
         <div className="col" style={{ gap: 0, marginTop: 6, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {/* I soliti di questo pasto: in cima all'elenco, e scorrono via con lui
+              (non restano fissi a rubare schermo). Solo senza ricerca. */}
+          {tab === 'mine' && !nq && !inSelezione && soliti.length > 0 && (
+            <>
+              <div className="row spread" style={{ margin: '4px 2px 6px', alignItems: 'baseline' }}>
+                <span className="etichetta-p" style={{ color: 'var(--gold)' }}>Di solito a {mealName}</span>
+                <span className="muted" style={{ fontSize: 11 }}>ultima volta · quante volte</span>
+              </div>
+              <div className="lista-p" style={{ borderColor: '#4a3e18', background: 'linear-gradient(180deg, #1c180c, var(--surface) 70px)', marginBottom: 8 }}>
+                {soliti.map((x) => {
+                  const fatto = aggiunti.has(x.food.id)
+                  return (
+                    <div key={x.food.id} className="riga-s" style={{ cursor: 'pointer', padding: '9px 10px' }}
+                      onClick={() => { setGrammiScelti(x.grammi); setChosen(x.food) }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontWeight: 600, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.food.name}</b>
+                        <span className="sotto">{quando(x.ultima, date)} · {x.volte} {x.volte === 1 ? 'volta' : 'volte'}</span>
+                      </span>
+                      <span className="num" style={{ fontSize: 17, flex: 'none' }}>{virgola(x.grammi)} g</span>
+                      {/* In sostituzione si sceglie un alimento solo: niente aggiunta al volo. */}
+                      {!sostituisciLog && (
+                        <button className="piu-r" disabled={fatto} aria-label={`Aggiungi ${x.food.name}, ${virgola(x.grammi)} g`}
+                          style={fatto ? { borderColor: '#1f4a2c', background: '#0f2216', color: 'var(--good)' } : undefined}
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            await addFoodLog(date, mealId, x.food.id, x.grammi)
+                            setAggiunti((p) => new Set(p).add(x.food.id))
+                          }}>{fatto ? '✓' : '＋'}</button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <span className="etichetta-p" style={{ margin: '2px 2px 4px' }}>Tutti</span>
+            </>
+          )}
           {tab === 'mine' && filtered.map((f) => (
             <div key={f.id} className="row spread" style={{ alignItems: 'center', padding: '10px 2px', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => (inSelezione ? spunta(f.id) : setChosen(f))}>
+              onClick={() => (inSelezione ? spunta(f.id) : (setGrammiScelti(undefined), setChosen(f)))}>
               <button aria-label={selezione.has(f.id) ? 'Togli dalla selezione' : 'Aggiungi alla selezione'}
                 onClick={(e) => { e.stopPropagation(); spunta(f.id) }}
                 style={{
