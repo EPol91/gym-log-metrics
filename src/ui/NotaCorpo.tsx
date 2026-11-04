@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import { useHoldDrag } from './useHoldDrag'
+import { useTrascinaGiu } from './useTrascinaGiu'
 import { pushUndo } from '../util/undo'
 import { listaTag, salvaListaTag, aggiungiTag, rinominaTag, eliminaTag, usoTag, misuraDel, salvaNota, CIRC, tagAuto, whoopDel, type TagAuto } from '../db/noteCorpo'
 import type { TagNota } from '../db/schema'
@@ -19,10 +20,12 @@ export const AZZURRO = '#8e9be0'
 export function Foglio({ onClose, alto, children }: { onClose: () => void; alto?: boolean; children: React.ReactNode }) {
   useBloccoScroll()
   useIndietro(onClose)
+  // La lineetta in alto promette che si chiude trascinandolo giu': lo fa.
+  const foglio = useTrascinaGiu(onClose)
   return createPortal(
     <div onClick={onClose}
       style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()}
+      <div ref={foglio} onClick={(e) => e.stopPropagation()}
         style={{
           width: 'min(520px, 100%)', maxHeight: alto ? '94vh' : '88vh', overflowY: 'auto', background: '#171613',
           borderTop: '1px solid var(--line)', borderRadius: '22px 22px 0 0',

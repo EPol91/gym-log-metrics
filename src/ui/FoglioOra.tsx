@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
+import { useTrascinaGiu } from './useTrascinaGiu'
 import { impostaOraPasto, segnaPastoSaltato } from '../db/diet'
 import { hhmm, minuti } from '../tempo/orari'
 
@@ -31,6 +32,7 @@ export function FoglioOrario({ titolo, domanda = 'a che ora?', proposta, diSolit
 }) {
   useBloccoScroll()
   useIndietro(onClose)
+  const foglio = useTrascinaGiu(onClose)
   const [ora, setOra] = useState(proposta)
   const sposta = (d: number) => setOra((o) => hhmm(minuti(o) + d))
   const fatto = async (azione: () => Promise<void>) => { await azione(); onFatto?.(); onClose() }
@@ -38,7 +40,7 @@ export function FoglioOrario({ titolo, domanda = 'a che ora?', proposta, diSolit
   return createPortal(
     <div onClick={onClose}
       style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()}
+      <div ref={foglio} onClick={(e) => e.stopPropagation()}
         style={{
           width: 'min(520px, 100%)', background: '#171613', borderTop: '1px solid var(--line)',
           borderRadius: '22px 22px 0 0', padding: '12px 18px calc(18px + var(--sicuro-basso))',
