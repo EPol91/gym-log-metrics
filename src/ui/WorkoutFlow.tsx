@@ -13,11 +13,13 @@ type Source = { kind: 'type'; type: WorkoutType } | { kind: 'template'; template
 
 /** Flusso completo di un allenamento, dall'inizio al riepilogo. onExit torna alla Home.
  *  resumeSessionId: se presente, riprende una seduta già aperta (salta a 'live'). */
-export function WorkoutFlow({ onExit, resumeSessionId, onSessionStarted }: {
+export function WorkoutFlow({ onExit, resumeSessionId, onSessionStarted, schedaIniziale }: {
   onExit: () => void; resumeSessionId?: string | null; onSessionStarted?: (id: string) => void
+  /** «Inizia D5» da Allena: la scheda e' gia' scelta, si parte dal check. */
+  schedaIniziale?: string | null
 }) {
-  const [step, setStep] = useState<Step>(resumeSessionId ? 'live' : 'start')
-  const [source, setSource] = useState<Source>({ kind: 'type', type: 'push' })
+  const [step, setStep] = useState<Step>(resumeSessionId ? 'live' : schedaIniziale ? 'readiness' : 'start')
+  const [source, setSource] = useState<Source>(schedaIniziale ? { kind: 'template', templateId: schedaIniziale } : { kind: 'type', type: 'push' })
   const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null)
   // Quale blocco aprire tornando dalla panoramica (il nonce forza il salto anche sullo stesso indice).
   const [jumpTo, setJumpTo] = useState<{ index: number; nonce: number } | null>(null)

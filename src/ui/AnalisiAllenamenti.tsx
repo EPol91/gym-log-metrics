@@ -8,14 +8,13 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { computeHome } from '../scores/dashboardScores'
 import { AnalyticsScreen } from './AnalyticsScreen'
-import { ScoreRing } from './anim'
 import { ScoreDetail } from './ScoreDetail'
 
 const SCORES = [
-  { key: 'readiness', label: 'Readiness', tip: 'Readiness' },
-  { key: 'workout', label: 'Workout', tip: 'Workout' },
-  { key: 'performance', label: 'Perf.', tip: 'Performance' },
-  { key: 'consistency', label: 'Constan.', tip: 'Consistency' },
+  { key: 'readiness', label: 'Prontezza', tip: 'Readiness' },
+  { key: 'workout', label: 'Seduta', tip: 'Workout' },
+  { key: 'performance', label: 'Performance', tip: 'Performance' },
+  { key: 'consistency', label: 'Costanza', tip: 'Consistency' },
 ] as const
 
 const SCORE_TIPS: Record<string, string> = {
@@ -41,15 +40,18 @@ export function AnalisiAllenamenti() {
   return (
     <>
       {home && (
-        <div className="card">
-          <div className="row" style={{ gap: 4 }}>
-            {SCORES.map((s) => (
-              <button key={s.key} onClick={() => setDetail(s.key)} aria-label={`Dettaglio ${s.tip}`}
-                style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0 }}>
-                <ScoreRing value={home[s.key].value} size={58} />
-                <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{s.label} ›</div>
-              </button>
-            ))}
+        <div className="card" style={{ margin: '0 0 10px', padding: '10px 4px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', textAlign: 'center' }}>
+            {SCORES.map((s) => {
+              const v = home[s.key].value
+              return (
+                <button key={s.key} onClick={() => setDetail(s.key)} aria-label={`Dettaglio ${s.tip}`}
+                  style={{ minWidth: 0, background: 'none', border: 'none', padding: 0, borderRadius: 0 }}>
+                  <b className="num" style={{ fontSize: 25, display: 'block', lineHeight: 1, color: v == null ? 'var(--muted)' : v >= 70 ? 'var(--good)' : v >= 40 ? '#e0a43a' : '#e0614f' }}>{v ?? '—'}</b>
+                  <span className="muted" style={{ fontSize: 10.5 }}>{s.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

@@ -2,22 +2,39 @@ import { useState } from 'react'
 import { deleteWithUndo } from '../db/trash'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { listTemplates, deleteTemplate, listGyms, setDefaultGym, addGym, updateTemplate } from '../db/repo'
+import { db } from '../db/db'
+import { LOCAL_USER_ID } from '../db/seed'
+import { cicloRs } from '../rs/cicloSedute'
+import { SEDUTE_RS } from '../rs/protocollo'
+import { nomeScheda } from '../scores/confronto'
+import { fmtData } from '../util/format'
 import { TemplateEditor } from './TemplateEditor'
 import { SchedaVista } from './SchedaVista'
 import { getPosition, distanceMeters, fmtDistance, isGeoSupported } from '../util/geo'
 import { PesoOggi } from './PesoOggi'
-import type { WorkoutType } from '../db/schema'
+import type { WorkoutTemplate, WorkoutType } from '../db/schema'
 
-const TYPES: { key: WorkoutType; label: string; hint: string }[] = [
-  { key: 'push', label: 'Push', hint: 'spinta' }, { key: 'pull', label: 'Pull', hint: 'tirata' },
-  { key: 'legs', label: 'Legs', hint: 'gambe' }, { key: 'upper', label: 'Upper', hint: 'alta' },
-  { key: 'lower', label: 'Lower', hint: 'bassa' }, { key: 'fullbody', label: 'Full Body', hint: 'completo' },
-  { key: 'brosplit', label: 'Bro Split', hint: 'monogruppo' }, { key: 'custom', label: 'Custom', hint: 'libero' },
+const TYPES: { key: WorkoutType; label: string }[] = [
+  { key: 'push', label: 'Push' }, { key: 'pull', label: 'Pull' }, { key: 'legs', label: 'Legs' },
+  { key: 'upper', label: 'Upper' }, { key: 'lower', label: 'Lower' }, { key: 'fullbody', label: 'Full body' },
+  { key: 'brosplit', label: 'Bro split' }, { key: 'custom', label: 'Libera' },
 ]
+const ggmm = (iso: string) => fmtData(iso).slice(0, 5)
 
-// Etichetta sezione: maiuscoletto tenue.
-const SECTION: React.CSSProperties = { fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }
+/** Quando hai fatto l'ultima volta ogni scheda. */
+async function ultimeVolte(): Promise<Map<string, string>> {
+  const m = new Map<string, string>()
+  for (const s of await db.sessions.where('userId').equals(LOCAL_USER_ID).toArray()) {
+    if (!s.finishedAt || !s.srcTemplateId) continue
+    if (!m.has(s.srcTemplateId) || m.get(s.srcTemplateId)! < s.date) m.set(s.srcTemplateId, s.date)
+  }
+  return m
+}
 
+/**
+ * Nuova seduta: tocchi la scheda e parti (poi il check di prontezza). In cima
+ * quella che tocca nel ciclo; l'anteprima 👁 sta sulla riga, il resto nel «⋯».
+ */
 export function StartScreen({
   onNext, onTemplate, onCancel,
 }: {
@@ -25,204 +42,119 @@ export function StartScreen({
   onTemplate: (templateId: string) => void
   onCancel?: () => void
 }) {
-  const [type, setType] = useState<WorkoutType | null>(null)
   const [editId, setEditId] = useState<string | 'new' | null>(null)
   // La scheda aperta in sola lettura: guardarla non fa partire niente.
   const [vedi, setVedi] = useState<string | null>(null)
+  const [menu, setMenu] = useState<string | null>(null)
   const [locating, setLocating] = useState(false)
   const [geoMsg, setGeoMsg] = useState<string | null>(null)
   const tutti = useLiveQuery(listTemplates, []) ?? []
-  // Il 🦠 nel nome dice da dove viene: i suoi da una parte, i tuoi dall'altra.
-  // D1…D5: l'ordine e' quello della scheda, non quello in cui sono stati creati.
-  const rsTemplates = tutti.filter((t) => t.name.startsWith('🦠')).sort((a, b) => a.name.localeCompare(b.name, 'it'))
-  const miei = tutti.filter((t) => !t.name.startsWith('🦠'))
-  const templates = miei.filter((t) => !t.cardio)
-  const cardioTpl = miei.filter((t) => t.cardio)
-  const [apriRs, setApriRs] = useState(true)
+  const ultime = useLiveQuery(ultimeVolte, []) ?? new Map<string, string>()
+  const ciclo = useLiveQuery(() => cicloRs(), [])
   const gyms = useLiveQuery(listGyms, []) ?? []
   const defaultGym = gyms.find((g) => g.isDefault) ?? gyms[0]
 
   if (editId) return <TemplateEditor templateId={editId === 'new' ? null : editId} onBack={() => setEditId(null)} />
 
-  const selLabel = TYPES.find((t) => t.key === type)?.label
+  // I suoi D1…D5 nell'ordine della scheda, poi le tue; il cardio a parte.
+  const tocca = SEDUTE_RS.find((s) => s.codice === ciclo?.prossima)?.nome
+  const delCoach = tutti.filter((t) => t.name.startsWith('🦠')).sort((a, b) => a.name.localeCompare(b.name, 'it'))
+  const mie = tutti.filter((t) => !t.name.startsWith('🦠') && !t.cardio)
+  const cardio = tutti.filter((t) => !t.name.startsWith('🦠') && t.cardio)
+  const schede = [...delCoach, ...mie].sort((a, b) => Number(b.name === tocca) - Number(a.name === tocca))
+
+  const elimina = (t: WorkoutTemplate) => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }
+
+  const riga = (t: WorkoutTemplate, tipo: 'scheda' | 'cardio') => {
+    const ora = t.name === tocca
+    const sotto = [ora && 'tocca a te', !t.name.startsWith('🦠') && tipo === 'scheda' && 'tua', tipo === 'cardio' ? 'solo cardio' : `${t.items.length} esercizi`, ultime.get(t.id) && `ultima ${ggmm(ultime.get(t.id)!)}`].filter(Boolean).join(' · ')
+    return (
+      <div key={t.id}>
+        <div className="riga-s" style={ora ? { background: '#17150f' } : undefined}>
+          <button className="play-a" style={{ ...(ora ? { background: 'var(--gold)', color: '#1a1405' } : {}), ...(tipo === 'cardio' ? { color: 'var(--cardio)', background: 'var(--cardio-bg)' } : {}) }}
+            aria-label={`Inizia ${t.name}`} onClick={() => onTemplate(t.id)}>{tipo === 'cardio' ? '♥' : '▶'}</button>
+          <button className="nome-a" onClick={() => onTemplate(t.id)}>
+            <b style={{ color: ora ? 'var(--gold)' : undefined }}>{nomeScheda(t.name)}</b>
+            <span className="sotto">{sotto}</span>
+          </button>
+          {tipo === 'scheda' && <button className="icona-a" aria-label={`Vedi ${t.name}`} onClick={() => setVedi(t.id)}>👁</button>}
+          <button className="icona-a senza" aria-label={`Altro su ${t.name}`} onClick={() => setMenu(menu === t.id ? null : t.id)}>⋯</button>
+        </div>
+        {menu === t.id && (
+          <div className="row" style={{ gap: 6, padding: '0 12px 10px', flexWrap: 'wrap', background: ora ? '#17150f' : undefined }}>
+            <button className="chip" onClick={() => { setMenu(null); setEditId(t.id) }}>✎ Modifica</button>
+            {/* Lo spostamento nel cardio si fa da qui, dove il problema si vede. */}
+            {!t.name.startsWith('🦠') && (tipo === 'scheda'
+              ? <button className="chip" onClick={() => { setMenu(null); void updateTemplate(t.id, { cardio: true }) }}>♥ Sposta in solo cardio</button>
+              : <button className="chip" onClick={() => { setMenu(null); void updateTemplate(t.id, { cardio: false }) }}>⤴ Riporta fra le schede</button>)}
+            {!t.name.startsWith('🦠') && <button className="chip" style={{ color: '#e57373' }} onClick={() => { setMenu(null); elimina(t) }}>✕ Elimina</button>}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div className="col" style={{ paddingBottom: 84 }}>
-      <div className="row spread" style={{ alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ marginBottom: 2 }}>Nuovo allenamento</h1>
-          <p className="muted small" style={{ margin: 0 }}>Da un template o scegli il tipo</p>
-        </div>
-        {onCancel && (
-          <button className="ghost" onClick={onCancel}
-            style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}>✕</button>
-        )}
+    <div className="col" style={{ gap: 10 }}>
+      <div className="barra-s">
+        {onCancel ? <button className="ind" aria-label="Chiudi" style={{ width: 40 }} onClick={onCancel}>✕</button> : <span style={{ width: 40 }} />}
+        <span className="tit">Nuova seduta</span>
+        <span style={{ width: 40 }} />
       </div>
 
       {/* Il peso si chiede qui, prima di cominciare: a seduta finita te ne sei
           dimenticato, e quel giorno resta senza il dato che regge i confronti. */}
       <PesoOggi dentro="seduta" />
 
-      {/* Sempre visibile: anche con una sola palestra devi poterla vedere, rilevarla o aggiungerne altre. */}
+      {/* La palestra in una riga: si cambia, si rileva, se ne aggiunge una. */}
       {gyms.length > 0 && (
-        <div className="card">
-          <div className="row spread">
-            <label className="fl">Palestra</label>
-            {gyms.some((g) => g.lat != null) && isGeoSupported() && (
-              <button className="chip" disabled={locating} onClick={async () => {
-                setLocating(true); setGeoMsg(null)
-                try {
-                  const me = await getPosition()
-                  const withPos = gyms.filter((g) => g.lat != null && g.lng != null)
-                  const nearest = withPos
-                    .map((g) => ({ g, d: distanceMeters(me, { lat: g.lat!, lng: g.lng! }) }))
-                    .sort((a, b) => a.d - b.d)[0]
-                  if (nearest) { await setDefaultGym(nearest.g.id); setGeoMsg(`${nearest.g.name} · ${fmtDistance(nearest.d)}`) }
-                } catch (e) { setGeoMsg((e as Error).message) } finally { setLocating(false) }
-              }}>{locating ? 'Rilevo…' : '📍 Rileva'}</button>
-            )}
-          </div>
-          {gyms.length > 1 ? (
-            <select value={defaultGym?.id ?? ''} onChange={(e) => setDefaultGym(e.target.value)}>
-              {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          ) : (
-            <div className="row spread" style={{ alignItems: 'center' }}>
-              <span>{defaultGym?.name}{defaultGym?.lat != null && <span className="muted small"> · 📍</span>}</span>
-              <button className="chip" onClick={async () => {
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          <select className="pill-select" value={defaultGym?.id ?? ''} aria-label="Palestra"
+            onChange={async (e) => {
+              if (e.target.value === '__nuova') {
                 const n = prompt('Nome della nuova palestra')?.trim()
                 if (n) await addGym(n)
-              }}>＋ Altra palestra</button>
-            </div>
+                return
+              }
+              await setDefaultGym(e.target.value)
+            }}>
+            {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            <option value="__nuova">＋ Altra palestra…</option>
+          </select>
+          {gyms.some((g) => g.lat != null) && isGeoSupported() && (
+            <button className="chip" disabled={locating} onClick={async () => {
+              setLocating(true); setGeoMsg(null)
+              try {
+                const me = await getPosition()
+                const nearest = gyms.filter((g) => g.lat != null && g.lng != null)
+                  .map((g) => ({ g, d: distanceMeters(me, { lat: g.lat!, lng: g.lng! }) }))
+                  .sort((a, b) => a.d - b.d)[0]
+                if (nearest) { await setDefaultGym(nearest.g.id); setGeoMsg(`${nearest.g.name} · ${fmtDistance(nearest.d)}`) }
+              } catch (e) { setGeoMsg((e as Error).message) } finally { setLocating(false) }
+            }}>{locating ? 'Rilevo…' : '📍 Rileva'}</button>
           )}
-          {geoMsg && <p className="muted small" style={{ marginTop: 6 }}>{geoMsg}</p>}
-          {gyms.length === 1 && defaultGym?.lat == null && isGeoSupported() && (
-            <p className="muted small" style={{ marginTop: 6 }}>
-              Per il rilevamento automatico salva la posizione in Profilo → 🏋️ Palestra.
-            </p>
-          )}
+          {geoMsg && <span className="muted small">{geoMsg}</span>}
         </div>
       )}
 
-      {/* Due elenchi separati, non una fila sola: i tuoi template e quelli del
-          coach non si mescolano, cosi' sai sempre da dove stai partendo. */}
-      {rsTemplates.length > 0 && (
+      <span className="etichetta-p" style={{ margin: '4px 0 -4px 4px' }}>Le tue schede</span>
+      {schede.length === 0
+        ? <p className="muted small">Nessuna scheda. Creane una o salvane una a fine allenamento.</p>
+        : <div className="lista-p">{schede.map((t) => riga(t, 'scheda'))}</div>}
+      <button className="ghost small" style={{ alignSelf: 'center', color: 'var(--gold)' }} onClick={() => setEditId('new')}>＋ Nuova scheda</button>
+
+      {/* Il cardio sta per conto suo: una corsa non e' un allenamento coi pesi. */}
+      {cardio.length > 0 && (
         <>
-          <button className="row spread" onClick={() => setApriRs((v) => !v)}
-            style={{ marginTop: 8, width: '100%', background: 'none', border: 'none', padding: 0 }}>
-            <span style={{ ...SECTION, color: 'var(--rs)' }}>🦠 RS · dal coach</span>
-            <span className="muted small">{apriRs ? '▾' : `${rsTemplates.length} ›`}</span>
-          </button>
-          {apriRs && (
-            <div className="col" style={{ gap: 8 }}>
-              {rsTemplates.map((t) => (
-                <div key={t.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--rs)', borderRadius: 12, padding: '10px 12px' }}>
-                  <button className="ghost" onClick={() => onTemplate(t.id)}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 8, background: '#2a0e0c', color: 'var(--rs)', display: 'grid', placeItems: 'center', flex: 'none' }}>▶</span>
-                    <span>
-                      <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
-                      <span className="muted small">{t.items.length} esercizi · protocollo</span>
-                    </span>
-                  </button>
-                  {/* Guardare prima di partire: apre la scheda in sola lettura. */}
-                  <button className="ghost small" aria-label={`Vedi ${t.name}`} onClick={() => setVedi(t.id)}>👁</button>
-                </div>
-              ))}
-            </div>
-          )}
+          <span className="etichetta-p" style={{ margin: '2px 0 -4px 4px', color: 'var(--cardio)' }}>Solo cardio</span>
+          <div className="lista-p">{cardio.map((t) => riga(t, 'cardio'))}</div>
         </>
       )}
 
-      <div className="row spread" style={{ marginTop: 8 }}>
-        <span style={SECTION}>I tuoi template</span>
-        <button className="ghost small" style={{ color: 'var(--gold)' }} onClick={() => setEditId('new')}>＋ Nuovo</button>
+      <span className="etichetta-p" style={{ margin: '2px 0 -4px 4px' }}>Seduta libera</span>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {TYPES.map((t) => <button key={t.key} className="chip" onClick={() => onNext(t.key)}>{t.label}</button>)}
       </div>
-      {templates.length === 0 ? (
-        <p className="muted small" style={{ marginTop: 4 }}>Nessun template. Creane uno o salvane uno a fine allenamento.</p>
-      ) : (
-        <div className="col" style={{ gap: 8 }}>
-          {templates.map((t) => (
-            // Bordo oro come i suoi sono rossi: si distinguono a colpo d'occhio
-            // e si assomigliano nella forma, perche' fanno la stessa cosa.
-            <div key={t.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--gold)', borderRadius: 12, padding: '10px 12px' }}>
-              <button className="ghost" onClick={() => onTemplate(t.id)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
-                <span style={{ width: 30, height: 30, borderRadius: 8, background: '#20200f', color: 'var(--gold)', display: 'grid', placeItems: 'center', flex: 'none' }}>▶</span>
-                <span>
-                  <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
-                  <span className="muted small">{t.items.length} esercizi</span>
-                </span>
-              </button>
-              {/* Lo spostamento nel cardio si fa da qui, dove il problema si
-                  vede: l'interruttore stava dentro l'editor della scheda, e una
-                  scheda di corsa restava in mezzo agli allenamenti finche' non
-                  andavi a cercarlo. */}
-              <button className="ghost small" aria-label={`Vedi ${t.name}`} onClick={() => setVedi(t.id)}>👁</button>
-              <button className="ghost small" aria-label={`Sposta ${t.name} in Solo cardio`}
-                onClick={() => updateTemplate(t.id, { cardio: true })}>♥</button>
-              <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
-              <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Il cardio sta per conto suo: una corsa non e' un allenamento coi pesi,
-          e vederla in mezzo alle schede fa solo confusione quando scegli. */}
-      {cardioTpl.length > 0 && (
-        <>
-          {/* Azzurro: oro sono i tuoi allenamenti, rosso quelli del coach. Una
-              corsa non e' ne' l'uno ne' l'altro, e si vede al primo sguardo. */}
-          <span style={{ ...SECTION, marginTop: 12, color: 'var(--cardio)' }}>Solo cardio</span>
-          <div className="col" style={{ gap: 8 }}>
-            {cardioTpl.map((t) => (
-              <div key={t.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--cardio)', borderRadius: 12, padding: '10px 12px' }}>
-                <button className="ghost" onClick={() => onTemplate(t.id)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', padding: 0, background: 'none' }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--cardio-bg)', color: 'var(--cardio)', display: 'grid', placeItems: 'center', flex: 'none' }}>♥</span>
-                  <span>
-                    <span style={{ display: 'block', fontSize: 14 }}>{t.name}</span>
-                    <span className="muted small">solo cardio</span>
-                  </span>
-                </button>
-                <button className="ghost small" aria-label={`Riporta ${t.name} fra gli allenamenti`}
-                  onClick={() => updateTemplate(t.id, { cardio: false })}>⤴</button>
-                <button className="ghost small" onClick={() => setEditId(t.id)}>✎</button>
-                <button className="ghost small" onClick={() => { if (confirm(`Eliminare ${t.name}?`)) deleteWithUndo(`Scheda "${t.name}" eliminata`, () => deleteTemplate(t.id)) }}>✕</button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <span style={{ ...SECTION, marginTop: 12 }}>Nuova seduta vuota</span>
-      <div className="grid2" style={{ gap: 8 }}>
-        {TYPES.map((t) => {
-          const on = type === t.key
-          return (
-            <button key={t.key} onClick={() => setType(t.key)}
-              style={{
-                textAlign: 'left', borderRadius: 12, padding: '12px 12px',
-                background: on ? '#20200f' : 'var(--surface)',
-                border: `1.5px solid ${on ? 'var(--gold)' : 'var(--line)'}`,
-              }}>
-              <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: on ? 'var(--gold)' : 'var(--text)' }}>{t.label}</span>
-                {on && <span style={{ color: 'var(--gold)', fontSize: 13 }}>↗</span>}
-              </span>
-              <span style={{ display: 'block', fontSize: 10, marginTop: 3, color: on ? 'var(--gold-dim)' : 'var(--muted)' }}>{t.hint}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      <button className="fab primary" disabled={!type} onClick={() => type && onNext(type)}>
-        Continua{selLabel ? ` · ${selLabel}` : ''}
-      </button>
 
       {/* La scheda guardata e basta. Se poi decidi di farla, «Inizia» e' li'. */}
       {vedi && (

@@ -27,7 +27,7 @@ import { watchAutoSync } from './db/whoop'
 import { UndoToast } from './ui/UndoToast'
 
 // Stato di navigazione: unico oggetto → persiste su refresh (sessionStorage) e guida il tasto Back (history API).
-type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean; seduta: string | null; salute: string | null; salutePasso: number }
+type Nav = { tab: Tab; workingOut: boolean; resumeId: string | null; schedaId?: string | null; analytics: boolean; editTemplate: string | 'new' | null; exercise: string | null; exerciseNew: boolean; check: boolean; seduta: string | null; salute: string | null; salutePasso: number }
 const DEFAULT_NAV: Nav = { tab: 'today', workingOut: false, resumeId: null, analytics: false, editTemplate: null, exercise: null, exerciseNew: false, check: false, seduta: null, salute: null, salutePasso: 0 }
 
 // Avviso mostrato solo se l'aggiornamento arriva mentre ti stai allenando:
@@ -130,6 +130,7 @@ function AppScreens() {
         {updateReady && <UpdateBanner />}
         <WorkoutFlow
           resumeSessionId={nav.resumeId}
+          schedaIniziale={nav.schedaId ?? null}
           onSessionStarted={(id) => replace({ resumeId: id })}
           onExit={back}
         />
@@ -166,7 +167,8 @@ function AppScreens() {
         {nav.tab === 'train' && (nav.exercise
           ? <ExerciseDetail exerciseId={nav.exercise} onBack={back} startEditing={nav.exerciseNew} />
           : <TrainScreen
-            onStartWorkout={() => push({ workingOut: true, resumeId: null })}
+            onStartWorkout={() => push({ workingOut: true, resumeId: null, schedaId: null })}
+            onStartScheda={(id) => push({ workingOut: true, resumeId: null, schedaId: id })}
             onResumeWorkout={(id) => push({ workingOut: true, resumeId: id })}
             onOpen={(id, isNew) => push({ exercise: id, exerciseNew: !!isNew })}
             apriSeduta={nav.seduta} />)}

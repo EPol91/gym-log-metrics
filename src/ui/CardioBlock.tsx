@@ -461,7 +461,7 @@ export function CardioBlock({ sessionId, flushRef, open, onOpenChange, onFine }:
                 )}
 
                 {list.length > 0 && <label className="fl">In questa seduta</label>}
-                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={user?.restingHr} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} weightKg={weightKg} sex={user?.sex} />)}
+                {list.map((c) => <CardioRow key={c.id} c={c} age={age} restingHr={fcRiposo} maxHr={user?.hrMaxMeasured} hrSeduta={seduta?.hr} weightKg={weightKg} sex={user?.sex} />)}
 
                 {/* Finire da qui: prima toccava chiudere il cardio, tornare agli
                     esercizi e cercare il tasto in fondo. Il cardio in sospeso lo

@@ -24,6 +24,8 @@ export interface AnalyticsData {
   totalSessions: number
   /** serie allenanti per gruppo muscolare negli ultimi 7 giorni */
   seriePerGruppo: Point[]
+  /** le serie allenanti dei 7 giorni prima, per il confronto */
+  seriePrima: number
 }
 
 function ms(dateISO: string): number { return new Date(dateISO + 'T00:00:00').getTime() }
@@ -57,7 +59,7 @@ export async function computeAnalytics(weeks = 8): Promise<AnalyticsData> {
 
   // Workout Score nel tempo (sedute concluse).
   const workoutScores: Point[] = []
-  const finished = sessions.filter((s: WorkoutSession) => s.finishedAt)
+  const finished = sessions.filter((s: WorkoutSession) => s.finishedAt && ms(s.date) > nowMs - weeks * 7 * DAY)
   for (const s of finished) {
     const r = await computeSessionWorkoutScore(s.id)
     if (r.value != null) workoutScores.push({ label: mmdd(ms(s.date)), value: r.value })
@@ -70,6 +72,8 @@ export async function computeAnalytics(weeks = 8): Promise<AnalyticsData> {
   // allenanti — il riscaldamento non allena nessuno — e il gruppo e' quello
   // dell'esercizio in libreria.
   const daSette = nowMs - 7 * DAY
+  const daQuattordici = nowMs - 14 * DAY
+  let seriePrima = 0
   const recenti = sessions.filter((s) => ms(s.date) > daSette)
   const conteggio = new Map<string, number>()
   const esercizi = new Map((await db.exercises.toArray()).map((e) => [e.id, e]))
@@ -80,9 +84,14 @@ export async function computeAnalytics(weeks = 8): Promise<AnalyticsData> {
       if (serie) conteggio.set(gruppo, (conteggio.get(gruppo) ?? 0) + serie)
     }
   }
+  for (const s of sessions.filter((x) => ms(x.date) > daQuattordici && ms(x.date) <= daSette)) {
+    for (const e of await db.exerciseEntries.where({ sessionId: s.id }).toArray()) {
+      seriePrima += (await db.sets.where({ entryId: e.id }).toArray()).filter((x) => !x.isWarmup).length
+    }
+  }
   const seriePerGruppo = [...conteggio.entries()]
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value)
 
-  return { weeklyTonnage, weeklySessions, workoutScores, totalSessions: sessions.length, seriePerGruppo }
+  return { weeklyTonnage, weeklySessions, workoutScores, totalSessions: sessions.length, seriePerGruppo, seriePrima }
 }
