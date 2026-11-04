@@ -69,8 +69,64 @@ function segna(t: Tipo, oggi: string): void {
 
 interface Plugin {
   requestPermissions(): Promise<{ display?: string }>
+  checkPermissions?(): Promise<{ display?: string }>
+  checkExactNotificationSetting?(): Promise<{ exact_alarm?: string }>
+  getPending?(): Promise<{ notifications: { id: number; title?: string; schedule?: { at?: string } }[] }>
   schedule(o: { notifications: { id: number; title: string; body: string; schedule?: { at: Date; allowWhileIdle?: boolean } }[] }): Promise<unknown>
   cancel(o: { notifications: { id: number }[] }): Promise<unknown>
+}
+
+/** L'ultimo guasto, per il controllo in Notifiche: prima si buttava via e basta. */
+const ERRORE = 'gymlog.promemoria.errore'
+function annotaErrore(dove: string, e: unknown): void {
+  const testo = e instanceof Error ? e.message : String(e)
+  try { localStorage.setItem(ERRORE, JSON.stringify({ dove, testo, quando: new Date().toISOString() })) } catch { /* ignore */ }
+}
+
+export interface Diagnosi {
+  plugin: boolean
+  permesso: string
+  esatti: string
+  inCoda: { id: number; titolo: string; quando: string | null }[]
+  errore: { dove: string; testo: string; quando: string } | null
+}
+
+/** Come stanno le notifiche sul telefono, per capire perche' non arrivano. */
+export async function diagnosiNotifiche(): Promise<Diagnosi> {
+  let errore: Diagnosi['errore'] = null
+  try { errore = JSON.parse(localStorage.getItem(ERRORE) ?? 'null') } catch { /* ignore */ }
+  const p = plugin()
+  if (!p) return { plugin: false, permesso: '—', esatti: '—', inCoda: [], errore }
+  const prova = async <T,>(f: () => Promise<T> | undefined, ko: T): Promise<T> => {
+    try { return (await f()) ?? ko } catch { return ko }
+  }
+  const perm = await prova(() => p.checkPermissions?.(), { display: 'sconosciuto' })
+  const es = await prova(() => p.checkExactNotificationSetting?.(), { exact_alarm: 'sconosciuto' })
+  const coda = await prova(() => p.getPending?.(), { notifications: [] })
+  return {
+    plugin: true,
+    permesso: perm.display ?? 'sconosciuto',
+    esatti: es.exact_alarm ?? 'sconosciuto',
+    inCoda: coda.notifications.map((n) => ({ id: n.id, titolo: n.title ?? '', quando: n.schedule?.at ?? null })),
+    errore,
+  }
+}
+
+/** Una notifica di prova fra un minuto, con l'app aperta o chiusa. */
+export async function notificaDiProva(): Promise<string> {
+  const p = plugin()
+  if (!p) return 'Qui non c’è il plugin delle notifiche (sei nel browser?).'
+  try {
+    const perm = await p.requestPermissions()
+    if (perm?.display && perm.display !== 'granted') return `Permesso notifiche: ${perm.display}.`
+    await p.schedule({
+      notifications: [{ id: 7999, title: 'Prova ETP HEALTH', body: 'Se la leggi, le notifiche funzionano.', schedule: { at: new Date(Date.now() + 60_000), allowWhileIdle: true } }],
+    })
+    return 'Programmata fra un minuto: puoi anche chiudere l’app.'
+  } catch (e) {
+    annotaErrore('prova', e)
+    return `Errore: ${e instanceof Error ? e.message : String(e)}`
+  }
 }
 
 function plugin(): Plugin | null {
@@ -244,7 +300,7 @@ export async function controllaPromemoria(): Promise<void> {
       notifications: avvisi.map((a, i) => ({ id: Date.now() % 100000 + i, title: a.titolo, body: a.testo })),
     })
     avvisi.forEach((a) => segna(a.tipo, oggi))
-  } catch { /* niente permesso o niente plugin: pazienza, non e' un guasto */ }
+  } catch (e) { annotaErrore('avvio', e) }
 }
 
 /** Le notifiche dei pasti: un numero per fascia, sempre lo stesso, cosi' si sostituiscono. */
@@ -289,7 +345,7 @@ export async function programmaPromemoriaPasti(): Promise<void> {
     const perm = await p.requestPermissions()
     if (perm?.display && perm.display !== 'granted') return
     await p.schedule({ notifications: da })
-  } catch { /* niente permesso o niente plugin: restano gli avvisi in Oggi */ }
+  } catch (e) { annotaErrore('pasti', e) }
 }
 
 /** La pesata del mattino: un numero per giorno, sempre gli stessi, cosi' si sostituiscono. */
@@ -328,7 +384,7 @@ export async function programmaPesataMattino(): Promise<void> {
     }
     if (!da.length) return
     const perm = await p.requestPermissions()
-    if (perm?.display && perm.display !== 'granted') return
+    if (perm?.display && perm.display !== 'granted') { annotaErrore('pesata', `permesso ${perm.display}`); return }
     await p.schedule({ notifications: da })
-  } catch { /* niente permesso o niente plugin: resta l'avviso in Oggi */ }
+  } catch (e) { annotaErrore('pesata', e) }
 }

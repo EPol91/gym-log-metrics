@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { PROMEMORIA, attivo, accendi, promemoriaDisponibili, oraPesata, impostaOraPesata, programmaPesataMattino, type Tipo } from '../util/promemoria'
+import { useEffect, useState } from 'react'
+import { PROMEMORIA, attivo, accendi, promemoriaDisponibili, oraPesata, impostaOraPesata, programmaPesataMattino, diagnosiNotifiche, notificaDiProva, type Tipo, type Diagnosi } from '../util/promemoria'
 
 /** Quelle che arrivano a un'ora precisa, anche ad app chiusa. Le altre solo se serve. */
 const A_ORARIO: Tipo[] = ['mattino', 'pasto', 'uscita']
@@ -63,6 +63,60 @@ export function NotificheSettings() {
           Le notifiche arrivano solo nell’app installata: nel browser restano le righe in Oggi.
         </p>
       )}
+      <Controllo />
     </div>
+  )
+}
+
+const fmtQuando = (iso: string | null) => {
+  if (!iso) return 'subito'
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? iso : d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+/** Lo stato vero sul telefono: permessi, cosa c'e' in coda, l'ultimo errore. */
+function Controllo() {
+  const [d, setD] = useState<Diagnosi | null>(null)
+  const [esito, setEsito] = useState<string | null>(null)
+  const aggiorna = () => { void diagnosiNotifiche().then(setD) }
+  useEffect(aggiorna, [])
+
+  const voce = (nome: string, valore: string, ok: boolean) => (
+    <div className="row spread" style={{ padding: '8px 12px', fontSize: 13 }}>
+      <span className="muted">{nome}</span>
+      <b style={{ fontWeight: 600, color: ok ? 'var(--good)' : '#e0614f' }}>{valore}</b>
+    </div>
+  )
+
+  return (
+    <>
+      <span className="etichetta-p">Controllo</span>
+      <div className="lista-p">
+        {d && (
+          <>
+            {voce('Plugin notifiche', d.plugin ? 'presente' : 'assente', d.plugin)}
+            {voce('Permesso notifiche', d.permesso, d.permesso === 'granted')}
+            {voce('Allarmi esatti', d.esatti, d.esatti === 'granted')}
+            <div style={{ padding: '8px 12px', fontSize: 13, borderTop: '1px solid var(--line-soft)' }}>
+              <span className="muted">In coda: {d.inCoda.length}</span>
+              {d.inCoda.map((n) => (
+                <div key={n.id} style={{ fontSize: 12, marginTop: 3 }}>#{n.id} · {fmtQuando(n.quando)} · {n.titolo}</div>
+              ))}
+            </div>
+            {d.errore && (
+              <div style={{ padding: '8px 12px', fontSize: 12, borderTop: '1px solid var(--line-soft)', color: '#e0614f' }}>
+                Ultimo errore ({d.errore.dove}, {fmtQuando(d.errore.quando)}): {d.errore.testo}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="row" style={{ gap: 8 }}>
+        <button className="primary" style={{ flex: 1 }}
+          onClick={() => { setEsito('…'); void notificaDiProva().then((m) => { setEsito(m); aggiorna() }) }}>Prova fra 1 minuto</button>
+        <button className="ghost" style={{ flex: '0 0 96px' }} onClick={aggiorna}>Aggiorna</button>
+      </div>
+      {esito && <p className="muted small" style={{ margin: 0 }}>{esito}</p>}
+    </>
   )
 }
