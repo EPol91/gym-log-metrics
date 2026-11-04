@@ -4,7 +4,7 @@ import { computeHome } from '../scores/dashboardScores'
 import { getUser, getOngoingSession, upsertMeasurement, todayISO, updateUser, getNutrition } from '../db/repo'
 import { computeDiary, todayDiet, listDayTypes } from '../db/diet'
 import { db } from '../db/db'
-import { whoopDay, whoopWorkoutsOf, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
+import { whoopDay, whoopStatus, whoopDaysRecent, syncWhoop, lastAutoSync } from '../db/whoop'
 import { STEPS, getHabit, getHabitValue, ensureHabits } from '../db/habits'
 import { cicloRs, chiudiCicloAMano, annullaChiusuraAMano, GIORNI_CICLO } from '../rs/cicloSedute'
 import { SEDUTE_RS } from '../rs/protocollo'
@@ -163,7 +163,6 @@ function quandoSync(iso: string | null): string | null {
 
 function CardVitali({ onOpen }: { onOpen: () => void }) {
   const d = useLiveQuery(() => whoopDay(), [])
-  const w = useLiveQuery(() => whoopWorkoutsOf(todayISO()), [])
   const ha = d && (d.recovery != null || d.sleepHours != null || d.strain != null)
   const [sync, setSync] = useState(false)
   const [quando, setQuando] = useState<string | null>(lastAutoSync())
@@ -209,11 +208,6 @@ function CardVitali({ onOpen }: { onOpen: () => void }) {
             <div role="button" tabIndex={0} onClick={onOpen} style={{ marginTop: 9, cursor: 'pointer' }}>
               <BarraFasi d={d!} alta={8} />
               <div style={{ marginTop: 5 }}><LegendaFasi d={d!} corta /></div>
-            </div>
-          )}
-          {w && w.length > 0 && (
-            <div className="muted small" style={{ marginTop: 8, borderTop: '1px solid var(--line-soft)', paddingTop: 6 }}>
-              {w.map((x) => x.sport ?? 'Attività').join(' · ')} registrati dal WHOOP
             </div>
           )}
         </>
