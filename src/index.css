@@ -355,3 +355,14 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 .campo-a input { border: 0; background: transparent; padding: 2px 0; font-size: 17px; font-weight: 600; width: 100%; }
 .trasc + .trasc { border-top: 1px solid var(--line-soft); }
 .maniglia-a { color: var(--faint); font-size: 18px; width: 22px; text-align: center; flex: none; touch-action: none; cursor: grab; user-select: none; padding: 6px 0; }
+
+/* Check di prontezza: una riga per domanda, scala da cinque. */
+.dom-r { padding: 10px 12px; }
+.dom-r + .dom-r { border-top: 1px solid var(--line-soft); }
+.q-r { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border: 0; background: transparent; padding: 0; font-size: 14px; text-align: left; }
+.q-r:active { transform: none; }
+.scala-r { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 7px; }
+.scala-r button { height: 32px; padding: 0; border-radius: 8px; font-size: 11.5px; color: var(--muted); }
+.scala-r button.on { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); font-weight: 700; }
+.scala-r button.auto { background: var(--cardio-bg); border-color: #2b5d74; color: var(--cardio); font-weight: 700; }
+.piu-r { width: 34px; height: 34px; padding: 0; border-radius: 10px; flex: none; display: grid; place-items: center; border: 1px solid #4a3e18; background: var(--gold-bg); color: var(--gold); font-size: 18px; }

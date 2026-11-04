@@ -12,11 +12,14 @@ export interface OptScale {
    */
   aiuto: string
   options: { text: string; value: number }[]
+  /** La domanda in breve e le cinque risposte in una parola: il check sta in una schermata. */
+  breve: string
+  brevi: [string, string, string, string, string]
 }
 
 export const READINESS_QUESTIONS: OptScale[] = [
   {
-    key: 'sleep', label: '😴 Come hai dormito?',
+    key: 'sleep', breve: 'Sonno', brevi: ['pessimo', 'scarso', 'ok', 'buono', 'ottimo'], label: '😴 Come hai dormito?',
     aiuto: 'La notte appena passata: quanto e come, non come ti senti adesso.',
     options: [
       { text: 'Pessimo', value: 0 }, { text: 'Scarso', value: 25 },
@@ -24,7 +27,7 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'fatigue', label: '🥵 Quanto sei stanco? (fatica generale)',
+    key: 'fatigue', breve: 'Stanchezza generale', brevi: ['no', 'poca', 'media', 'molta', 'max'], label: '🥵 Quanto sei stanco? (fatica generale)',
     aiuto: 'Quanto sei consumato. Guarda indietro: notti corte, giornata pesante, allenamenti accumulati.',
     options: [
       { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
@@ -32,7 +35,7 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'soreness', label: '💪 Quanto sei indolenzito? (DOMS muscolari)',
+    key: 'soreness', breve: 'Muscoli indolenziti', brevi: ['no', 'poco', 'medio', 'molto', 'max'], label: '💪 Quanto sei indolenzito? (DOMS muscolari)',
     aiuto: 'I muscoli che tirano dalle sedute dei giorni scorsi. Solo il corpo, non la testa.',
     options: [
       { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
@@ -40,7 +43,7 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'energy', label: '⚡ Quanta energia hai?',
+    key: 'energy', breve: 'Energia', brevi: ['scarica', 'poca', 'media', 'buona', 'max'], label: '⚡ Quanta energia hai?',
     aiuto: 'La spinta che hai adesso. Guarda avanti: puoi essere distrutto e carico, o riposato e spento.',
     options: [
       { text: 'Scarica', value: 0 }, { text: 'Poca', value: 25 },
@@ -48,7 +51,7 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'stress', label: '🧠 Quanto sei sotto stress?',
+    key: 'stress', breve: 'Stress', brevi: ['no', 'poco', 'medio', 'molto', 'max'], label: '🧠 Quanto sei sotto stress?',
     aiuto: 'Testa e vita fuori dalla palestra: lavoro, casa, pensieri. Pesa sul recupero come una notte storta.',
     options: [
       { text: 'Per niente', value: 100 }, { text: 'Poco', value: 75 },
@@ -56,7 +59,7 @@ export const READINESS_QUESTIONS: OptScale[] = [
     ],
   },
   {
-    key: 'motivation', label: '🔥 Quanta voglia di allenarti hai?',
+    key: 'motivation', breve: 'Voglia di allenarti', brevi: ['nessuna', 'poca', 'media', 'buona', 'max'], label: '🔥 Quanta voglia di allenarti hai?',
     aiuto: 'La voglia, non la forza. Non tocca il Readiness — è spinta, non recupero — ma al coach interessa.',
     options: [
       { text: 'Nessuna', value: 0 }, { text: 'Poca', value: 25 },
