@@ -60,7 +60,7 @@ export function TrainScreen({ onStartWorkout, onStartScheda, onResumeWorkout, on
   apriSeduta?: string | null
 }) {
   const cima = useLiveQuery(inCima, [])
-  const [sezione, setSezione] = usePersistedState<Sezione>('train-sub', 'esercizi')
+  const [sezione, setSezione] = usePersistedState<Sezione>('train-sub', 'storico')
 
   // Chi ti manda qui per una seduta vuole lo storico, non la sezione che avevi
   // aperto l'ultima volta.
