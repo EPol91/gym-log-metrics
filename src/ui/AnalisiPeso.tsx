@@ -124,7 +124,7 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
             return <path key={s.k} d={d} fill="none" stroke={STILE[s.k].col} strokeWidth={STILE[s.k].w} strokeDasharray={STILE[s.k].dash} strokeLinejoin="round" strokeLinecap="round" />
           })}
           {G.veri.filter((r) => haNota(r) && !r.soloGiornata).map((r) => <circle key={'n' + r.date} cx={G.X(r.date)} cy={G.Y(r.weight)} r={2.8} fill={AZZURRO} stroke="var(--surface)" strokeWidth={1} />)}
-          {G.max && <Bandiera x={G.X(G.max.date)} y={G.Y(G.max.v)} testo={`MAX ${virg(G.max.v)}`} col="var(--ap-su)" sopra />}
+          {G.max && <Bandiera x={G.X(G.max.date)} y={G.Y(G.max.v)} testo={`MAX ${virg(G.max.v)}`} col="#c2625b" sopra />}
           {G.min && <Bandiera x={G.X(G.min.date)} y={G.Y(G.min.v)} testo={`MIN ${virg(G.min.v)}`} col="var(--good)" sopra={false} />}
           {m && (
             <>
