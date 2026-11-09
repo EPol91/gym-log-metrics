@@ -198,6 +198,7 @@ function CardFasi({ righe, giorni, oggi }: { righe: WhoopDay[]; giorni: string[]
   const perData = new Map(righe.map((r) => [r.date, r]))
   const scala = Math.max(...con.map((r) => Math.max(aLetto(r), r.sleepNeededMin ?? 0)))
   const richiesto = media((r) => r.sleepNeededMin)
+  const dormito = media((r) => (r.sleepHours != null ? r.sleepHours * 60 : undefined))
   return (
     <div className="card">
       <div className="muted" style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -234,8 +235,8 @@ function CardFasi({ righe, giorni, oggi }: { righe: WhoopDay[]; giorni: string[]
           <span style={{ whiteSpace: 'nowrap' }}><b style={{ display: 'inline-block', width: 2, height: 10, background: 'var(--gold)', marginRight: 5, verticalAlign: -1 }} />Richiesto</span>
         </> : <BarraFasi d={{ sleepLightMin: media((r) => r.sleepLightMin), sleepDeepMin: media((r) => r.sleepDeepMin), sleepRemMin: media((r) => r.sleepRemMin), sleepAwakeMin: media((r) => r.sleepAwakeMin) }} alta={12} />}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--line-soft)', textAlign: 'center' }}>
-        {[...FASI.slice(0, 3).map((f) => ({ v: media((r) => r[f.k]), l: f.nome.toLowerCase(), c: f.colore })), { v: richiesto, l: 'richiesto', c: 'var(--text)' }].map((x) => (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--line-soft)', textAlign: 'center' }}>
+        {[...FASI.slice(0, 3).map((f) => ({ v: media((r) => r[f.k]), l: f.nome.toLowerCase(), c: f.colore })), { v: dormito, l: 'dormito', c: 'var(--gold)' }, { v: richiesto, l: 'richiesto', c: 'var(--text)' }].map((x) => (
           <div key={x.l}>
             <div style={{ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontSize: 19, lineHeight: 1.1, color: x.c === '#3d4fb8' ? '#7d8ce6' : x.c }}>{fmtMin(x.v)}</div>
             <div className="muted" style={{ fontSize: 10.5 }}>{x.l === 'rem' ? 'REM' : x.l}</div>
