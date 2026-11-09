@@ -520,6 +520,9 @@ function VitaliAssenti() {
 
   const conDati = (recenti ?? []).find((d) => d.recovery != null || d.sleepHours != null || d.strain != null)
 
+  if (stato?.rete) {
+    return <p className="muted small" style={{ margin: '8px 0 0' }}>Non riesco a controllare WHOOP: problema di rete, riprova più tardi.</p>
+  }
   if (stato && !stato.collegato) {
     return <p className="muted small" style={{ margin: '8px 0 0' }}>WHOOP non è collegato. Lo colleghi dal Profilo.</p>
   }

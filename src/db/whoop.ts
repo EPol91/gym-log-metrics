@@ -32,14 +32,22 @@ export function connectUrl(): string {
   return `${WORKER}/auth?d=${deviceId()}&r=${encodeURIComponent(ritorno)}`
 }
 
-export interface WhoopStatus { collegato: boolean; aggiornato: string | null }
+export interface WhoopStatus {
+  collegato: boolean
+  aggiornato: string | null
+  /** Il collegamento non si e' potuto controllare: non vuol dire scollegato. */
+  rete?: boolean
+  /** L'ultimo rinnovo fallito. `tenuto: false` = WHOOP l'ha rifiutato e l'accesso e' stato tolto. */
+  ultimoErrore?: { quando: string; status: number; errore: string | null; tenuto: boolean } | null
+}
 
 export async function whoopStatus(): Promise<WhoopStatus> {
   try {
     const r = await fetch(`${WORKER}/stato`, { headers: { 'x-device': deviceId() } })
+    if (!r.ok) return { collegato: false, aggiornato: null, rete: true }
     return await r.json()
   } catch {
-    return { collegato: false, aggiornato: null }
+    return { collegato: false, aggiornato: null, rete: true }
   }
 }
 

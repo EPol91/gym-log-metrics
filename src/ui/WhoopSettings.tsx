@@ -50,10 +50,27 @@ export function WhoopSettings() {
 
   if (stato === null) return <div className="card"><p className="muted small" style={{ margin: 0 }}>Controllo il collegamento…</p></div>
 
+  if (stato.rete) {
+    return (
+      <div className="card">
+        <p className="small" style={{ margin: 0 }}>Non riesco a controllare il collegamento: problema di rete. Non vuol dire che WHOOP sia scollegato.</p>
+        <button className="ghost" style={{ width: '100%', marginTop: 10 }} onClick={() => void aggiornaStato()}>Riprova</button>
+      </div>
+    )
+  }
+
+  const err = stato.ultimoErrore
+  const quandoErr = err ? new Date(err.quando).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
+
   return (
     <div className="card">
       {!stato.collegato ? (
         <>
+          {err && !err.tenuto && (
+            <p className="small" style={{ marginTop: 0, color: '#e0614f' }}>
+              Il {quandoErr} WHOOP ha rifiutato il rinnovo dell’accesso ({err.errore ?? err.status}): va ricollegato.
+            </p>
+          )}
           <p className="small" style={{ marginTop: 0 }}>
             Collega il tuo WHOOP: recupero, sonno, sforzo e allenamenti entrano nell'app e nel
             Check del giorno, senza che tu li riscriva a mano.
@@ -70,6 +87,7 @@ export function WhoopSettings() {
           <div className="row spread" style={{ alignItems: 'center' }}>
             <span className="small">
               <strong style={{ color: 'var(--good)' }}>● collegato</strong>
+              {err?.tenuto && <span className="muted"> · ultimo rinnovo non riuscito {quandoErr} ({err.errore ?? err.status}), si riprova da solo</span>}
             </span>
             <button className="chip" disabled={busy === 'sync'} onClick={() => sincronizza(30)}>
               {busy === 'sync' ? 'aggiorno…' : '↻ Aggiorna'}

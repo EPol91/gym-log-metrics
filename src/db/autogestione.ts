@@ -161,11 +161,15 @@ async function inviaRiepilogo(): Promise<boolean> {
 export async function invia({ forza = false, auto = false } = {}): Promise<Esito> {
   if (!collegato()) return { tipo: 'collega' }
   const at = new Date().toISOString()
+  // «Il Worker non risponde» solo se si era davvero arrivati a chiamarlo.
+  let chiamato = false
   try {
     const { testo, conti } = await preparaBackup()
+    const impronta = await sha1(testo)
+    chiamato = true
     const r = await fetch(`${WORKER}/autogestione/backup?data=${todayLocal()}${forza ? '&forza=1' : ''}`, {
       method: 'POST',
-      headers: { 'x-device': deviceId(), 'content-type': 'application/json', 'x-sha1': await sha1(testo), 'x-conti': JSON.stringify(conti) },
+      headers: { 'x-device': deviceId(), 'content-type': 'application/json', 'x-sha1': impronta, 'x-conti': JSON.stringify(conti) },
       body: testo,
     })
     const j = await r.json().catch(() => ({}))
@@ -188,7 +192,9 @@ export async function invia({ forza = false, auto = false } = {}): Promise<Esito
     registra(invio)
     return { tipo: 'ok', invio }
   } catch (e) {
-    const testo = e instanceof Error && e.message === 'backup non valido' ? 'backup non valido' : 'rete: il Worker non risponde'
+    const testo = chiamato
+      ? 'rete: il Worker non risponde'
+      : e instanceof Error && e.message === 'backup non valido' ? 'backup non valido' : `backup non preparato: ${e instanceof Error ? e.message : String(e)}`
     registra({ at, ok: false, testo, auto })
     return { tipo: 'errore', testo }
   }

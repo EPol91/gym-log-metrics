@@ -48,29 +48,64 @@ async function salva(env, device, t) {
   }))
 }
 
-/** Token valido per un dispositivo, rinnovato se scaduto. Null se non collegato. */
+/** Perche' l'ultimo rinnovo non e' riuscito: niente token, solo lo stato e il codice di WHOOP. */
+async function annotaRinnovo(env, device, dettaglio) {
+  await env.WHOOP.put('err:' + device, JSON.stringify({ quando: new Date().toISOString(), ...dettaglio }), { expirationTtl: 60 * 60 * 24 * 60 })
+}
+
+/**
+ * Token valido per un dispositivo, rinnovato se scaduto.
+ *
+ * L'accesso si cancella SOLO se WHOOP lo rifiuta davvero (invalid_grant): un
+ * errore temporaneo, loro o di rete, lo lascia dov'e' e si riprova al giro dopo.
+ * `temporaneo` dice a chi chiama che non sei scollegato.
+ */
 async function tokenFor(env, device) {
   const raw = await env.WHOOP.get('tok:' + device)
-  if (!raw) return null
+  if (!raw) return { access: null, temporaneo: false }
   const tok = JSON.parse(raw)
   // Margine di un minuto: meglio rinnovare in anticipo che fallire a metà chiamata.
-  if (tok.expiresAt - 60000 > Date.now()) return tok.access
+  if (tok.expiresAt - 60000 > Date.now()) return { access: tok.access, temporaneo: false }
 
-  const res = await fetch(WHOOP_TOKEN, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: tok.refresh,
-      client_id: env.WHOOP_CLIENT_ID,
-      client_secret: env.WHOOP_CLIENT_SECRET,
-      scope: 'offline',
-    }),
-  })
-  if (!res.ok) { await env.WHOOP.delete('tok:' + device); return null }
-  const t = await res.json()
-  await salva(env, device, t)
-  return t.access_token
+  let res
+  try {
+    res = await fetch(WHOOP_TOKEN, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: tok.refresh,
+        client_id: env.WHOOP_CLIENT_ID,
+        client_secret: env.WHOOP_CLIENT_SECRET,
+        scope: 'offline',
+      }),
+    })
+  } catch (e) {
+    await annotaRinnovo(env, device, { status: 0, errore: 'rete verso WHOOP', tenuto: true })
+    return { access: null, temporaneo: true }
+  }
+
+  if (res.ok) {
+    const t = await res.json()
+    await salva(env, device, t)
+    return { access: t.access_token, temporaneo: false }
+  }
+
+  const codice = await res.json().then((j) => j.error ?? null).catch(() => null)
+  if (codice !== 'invalid_grant') {
+    await annotaRinnovo(env, device, { status: res.status, errore: codice, tenuto: true })
+    return { access: null, temporaneo: true }
+  }
+
+  // Rifiutato: se nel frattempo un'altra richiesta l'ha gia' rinnovato, vale quello.
+  const adesso = await env.WHOOP.get('tok:' + device)
+  if (adesso) {
+    const n = JSON.parse(adesso)
+    if (n.refresh !== tok.refresh) return { access: n.access, temporaneo: false }
+  }
+  await annotaRinnovo(env, device, { status: res.status, errore: codice, tenuto: false })
+  await env.WHOOP.delete('tok:' + device)
+  return { access: null, temporaneo: false }
 }
 
 export default {
@@ -133,14 +168,15 @@ export default {
       const device = request.headers.get('x-device') || url.searchParams.get('d')
       if (!device) return json({ collegato: false })
       const raw = await env.WHOOP.get('tok:' + device)
-      return json({ collegato: !!raw, aggiornato: raw ? JSON.parse(raw).updatedAt : null })
+      const err = await env.WHOOP.get('err:' + device)
+      return json({ collegato: !!raw, aggiornato: raw ? JSON.parse(raw).updatedAt : null, ultimoErrore: err ? JSON.parse(err) : null })
     }
 
     // --- Scollegamento ------------------------------------------------------
     if (p === '/scollega') {
       const device = request.headers.get('x-device') || url.searchParams.get('d')
       if (device) {
-        const access = await tokenFor(env, device)
+        const { access } = await tokenFor(env, device)
         // Revoca anche lato WHOOP: cancellare solo qui lascerebbe il consenso attivo.
         if (access) {
           try {
@@ -158,7 +194,8 @@ export default {
     if (p.startsWith('/api/')) {
       const device = request.headers.get('x-device') || url.searchParams.get('d')
       if (!device) return json({ errore: 'dispositivo mancante' }, 400)
-      const access = await tokenFor(env, device)
+      const { access, temporaneo } = await tokenFor(env, device)
+      if (temporaneo) return json({ errore: 'rinnovo non riuscito, si riprova' }, 503)
       if (!access) return json({ errore: 'non collegato' }, 401)
 
       const target = new URL(WHOOP_API + p.slice(4))
