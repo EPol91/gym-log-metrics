@@ -403,11 +403,12 @@ label.fl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 
 .ap-periodi button.on { background: var(--gold); border-color: var(--gold); color: #1a1405; }
 .ap-range { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 .ap-range input { height: 32px; padding: 0 6px; color-scheme: dark; border-radius: 9px; font-size: 12.5px; min-width: 0; }
-.ap-graf { width: 100%; height: auto; display: block; margin-top: 7px; touch-action: manipulation; cursor: pointer; }
+.ap-graf { width: 100%; height: auto; display: block; margin-top: 7px; touch-action: pan-y; cursor: pointer; }
 .ap-graf text { font-family: var(--f-testo); }
 .ap-mobili { display: flex; justify-content: center; gap: 5px; margin-top: 5px; }
 .ap-mobili button { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); font-size: 11.5px; color: var(--muted); }
 .ap-mobili button.on { color: var(--text); background: var(--surface-2); border-color: #45423b; }
+.ap-mobili button.ap-riduci { color: var(--gold); border-color: #4a3e18; background: var(--gold-bg); font-weight: 600; }
 .ap-mobili span { width: 13px; height: 0; border-top-width: 2px; display: inline-block; }
 .ap-dida { font-size: 11.5px; margin: 5px 0 0; line-height: 1.35; min-height: 16px; text-align: center; color: var(--muted); }
 .ap-dida b { color: var(--text); font-weight: 600; }

@@ -1,7 +1,7 @@
-import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { todayISO, updateUser } from '../db/repo'
 import { haNota, testoTag } from '../db/noteCorpo'
-import { inizioPeriodo, mediaMobile, numGiorno, piuGiorni, situazione, type Mobile, type Periodo } from '../metrics/analisiPeso'
+import { finestraPinch, finestraSpostata, inizioPeriodo, isoGiorno, mediaMobile, numGiorno, piuGiorni, situazione, type Mobile, type Periodo } from '../metrics/analisiPeso'
 import { usePersistedState } from '../util/persist'
 import { parseNum } from '../util/validate'
 import { AZZURRO } from './NotaCorpo'
@@ -30,6 +30,7 @@ const STILE: Record<Mobile, { col: string; w: number; dash: string; bordo: strin
 }
 
 const W = 326, H = 172, L = 31, R = 6, T = 8, B = 20
+const RAGGIO_DITO = 14
 
 function Bandiera({ x, y, testo, col, sopra }: { x: number; y: number; testo: string; col: string; sopra: boolean }) {
   const w = 7 + testo.length * 5.4, h = 15
@@ -51,9 +52,88 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
   const [sel, setSel] = useState<string | null>(null)
 
   const primo = rows[0]?.date ?? D
-  const da = per === 'Range' ? range.da : inizioPeriodo(per, D, primo)
-  const a = per === 'Range' ? range.a : D
+  const baseDa = per === 'Range' ? range.da : inizioPeriodo(per, D, primo)
+  const baseA = per === 'Range' ? range.a : D
+
+  // Il pizzico cambia solo il tratto visibile: periodo e data scelti restano quelli.
+  const [zoom, setZoom] = useState<{ da: string; a: string } | null>(null)
+  useEffect(() => setZoom(null), [baseDa, baseA])
+  const da = zoom?.da ?? baseDa
+  const a = zoom?.a ?? baseA
   const giorni = Math.max(0, numGiorno(a) - numGiorno(da))
+
+  const [svg, setSvg] = useState<SVGSVGElement | null>(null)
+  const ora = useRef({ baseDa, baseA, da, a, rows })
+  ora.current = { baseDa, baseA, da, a, rows }
+  const trascinato = useRef(false)
+
+  // Ascoltatori a mano: quelli di React sono passivi e non fermerebbero lo zoom del browser.
+  useEffect(() => {
+    if (!svg) return
+    type Gesto =
+      | { tipo: 'pinch'; partenza: { ini: number; fine: number }; f0: number; d0: number }
+      | { tipo: 'sposta'; partenza: { ini: number; fine: number }; x0: number; y0: number; asse: 'x' | 'y' | null }
+    let g: Gesto | null = null
+
+    const inPixel = (x: number) => { const b = svg.getBoundingClientRect(); return (x - b.left) * W / b.width }
+    const frazione = (x: number) => Math.max(0, Math.min(1, (inPixel(x) - L) / (W - L - R)))
+    const centro = (t: TouchList) => (t[0].clientX + t[1].clientX) / 2
+    const distanza = (t: TouchList) => Math.max(1, Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY))
+    const finestraOra = () => ({ ini: numGiorno(ora.current.da), fine: numGiorno(ora.current.a) })
+    const finestraBase = () => ({ ini: numGiorno(ora.current.baseDa), fine: numGiorno(ora.current.baseA) })
+
+    const applica = (n: { ini: number; fine: number } | null) => {
+      trascinato.current = true
+      if (!n) { setZoom(null); return }
+      const nuovoDa = isoGiorno(n.ini), nuovoA = isoGiorno(n.fine)
+      if (nuovoDa === ora.current.da && nuovoA === ora.current.a) return
+      // Un tratto senza almeno 2 pesate non disegna niente: lì non ci si ferma.
+      if (ora.current.rows.filter((r) => r.date >= nuovoDa && r.date <= nuovoA).length < 2) return
+      setZoom({ da: nuovoDa, a: nuovoA })
+    }
+
+    const inizio = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        g = { tipo: 'pinch', partenza: finestraOra(), f0: frazione(centro(e.touches)), d0: distanza(e.touches) }
+      } else if (e.touches.length === 1) {
+        trascinato.current = false
+        const { da: d, a: f, baseDa: bd, baseA: ba } = ora.current
+        g = d !== bd || f !== ba ? { tipo: 'sposta', partenza: finestraOra(), x0: e.touches[0].clientX, y0: e.touches[0].clientY, asse: null } : null
+      }
+    }
+    const muovi = (e: TouchEvent) => {
+      if (!g) return
+      if (g.tipo === 'pinch') {
+        if (e.touches.length < 2) return
+        if (e.cancelable) e.preventDefault()
+        applica(finestraPinch(finestraBase(), g.partenza, g.f0, frazione(centro(e.touches)), distanza(e.touches) / g.d0))
+        return
+      }
+      const dx = e.touches[0].clientX - g.x0, dy = e.touches[0].clientY - g.y0
+      if (!g.asse) {
+        if (Math.hypot(dx, dy) < 8) return
+        g.asse = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      }
+      if (g.asse === 'y') { g = null; return } // in verticale scorre la pagina
+      if (e.cancelable) e.preventDefault()
+      const ampiezza = g.partenza.fine - g.partenza.ini
+      const b = svg.getBoundingClientRect()
+      applica(finestraSpostata(finestraBase(), g.partenza, -(dx * W / b.width) / (W - L - R) * ampiezza))
+    }
+    const fine = (e: TouchEvent) => { if (e.touches.length < 2) g = null }
+
+    svg.addEventListener('touchstart', inizio, { passive: false })
+    svg.addEventListener('touchmove', muovi, { passive: false })
+    svg.addEventListener('touchend', fine)
+    svg.addEventListener('touchcancel', fine)
+    return () => {
+      svg.removeEventListener('touchstart', inizio)
+      svg.removeEventListener('touchmove', muovi)
+      svg.removeEventListener('touchend', fine)
+      svg.removeEventListener('touchcancel', fine)
+    }
+  }, [svg])
 
   const G = useMemo(() => {
     const veri = rows.filter((r) => r.date >= da && r.date <= a)
@@ -74,11 +154,18 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
   const m = sel ? G.veri.find((r) => r.date === sel) ?? null : null
 
   function tocca(e: MouseEvent<SVGSVGElement>) {
+    if (trascinato.current) { trascinato.current = false; return }
     const box = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX - box.left) * W / box.width
-    let meglio: string | null = null, dist = Infinity
-    for (const r of G.veri) { const d = Math.abs(G.X(r.date) - x); if (d < dist) { dist = d; meglio = r.date } }
-    setSel(sel === meglio ? null : meglio)
+    const piuVicino = (lista: BodyMeasurement[]) => {
+      let meglio: string | null = null, dist = Infinity
+      for (const r of lista) { const d = Math.abs(G.X(r.date) - x); if (d < dist) { dist = d; meglio = r.date } }
+      return { meglio, dist }
+    }
+    // Il dito è largo: un punto azzurro vicino vince sulla pesata più vicina.
+    const nota = piuVicino(G.veri.filter((r) => haNota(r) && !r.soloGiornata))
+    const scelto = nota.meglio && nota.dist <= RAGGIO_DITO ? nota.meglio : piuVicino(G.veri).meglio
+    setSel(sel === scelto ? null : scelto)
   }
 
   const corto = giorni <= 100, tacche = giorni >= 1 && giorni <= 6 ? giorni : 4
@@ -98,7 +185,7 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
       {G.veri.length < 2 ? (
         <p className="ap-dida" style={{ padding: '50px 0' }}>Servono almeno 2 pesate nel periodo.</p>
       ) : (
-        <svg className="ap-graf" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Andamento del peso" onClick={tocca}>
+        <svg className="ap-graf" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Andamento del peso" ref={setSvg} onClick={tocca}>
           {[0, 1, 2, 3].map((i) => {
             const v = G.y0 + (G.y1 - G.y0) * i / 3, y = G.Y(v)
             return (
@@ -140,11 +227,12 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
             <span style={{ borderTopStyle: STILE[k].bordo as 'solid', borderTopColor: accese.includes(k) ? STILE[k].col : 'var(--faint)' }} />MA{k}
           </button>
         ))}
+        {zoom && <button className="ap-riduci" onClick={() => setZoom(null)}>Riduci</button>}
       </div>
       <div className="ap-dida">
         {m ? (
           <>
-            <b>{breve(m.date)} · {virg(m.weight)} kg</b>
+            <b>{breve(m.date)}{m.date.slice(0, 4) !== D.slice(0, 4) ? `.${m.date.slice(2, 4)}` : ''} · {virg(m.weight)} kg</b>
             {MOBILI.filter((k) => accese.includes(k)).map((k) => { const v = mobileDel(k, m.date); return v != null ? ` · MA${k} ${virg(v)}` : '' }).join('')}
             {m.tags?.length ? <span style={{ color: AZZURRO }}> — {testoTag(m.tags)}</span> : null}
             {m.note?.trim() ? <span style={{ color: m.tags?.length ? '#b5afa3' : AZZURRO }}>{m.tags?.length ? ' · ' : ' — '}{m.note}</span> : null}

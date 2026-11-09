@@ -62,6 +62,36 @@ export function inizioPeriodo(per: Exclude<Periodo, 'Range'>, D: string, primo: 
   return d.toISOString().slice(0, 10)
 }
 
+/** Lo zoom non scende sotto una settimana visibile. */
+export const GIORNI_MINIMI_ZOOM = 7
+
+interface Finestra { ini: number; fine: number }
+
+function chiudiFinestra(base: Finestra, ini: number, ampiezza: number): Finestra {
+  const giorni = Math.round(ampiezza)
+  const inizio = Math.max(base.ini, Math.min(base.fine - giorni, Math.round(ini)))
+  return { ini: inizio, fine: inizio + giorni }
+}
+
+/**
+ * Il tratto visibile dopo un pizzico: il giorno sotto le dita all'inizio resta
+ * sotto le dita. `f0` e `f` sono la posizione delle dita da 0 a 1, `rapporto`
+ * è distanza attuale / distanza iniziale. null = si è tornati al periodo intero.
+ */
+export function finestraPinch(base: Finestra, partenza: Finestra, f0: number, f: number, rapporto: number): Finestra | null {
+  const totale = base.fine - base.ini
+  const ampiezza0 = partenza.fine - partenza.ini
+  const ampiezza = Math.max(GIORNI_MINIMI_ZOOM - 1, Math.min(totale, ampiezza0 / rapporto))
+  if (ampiezza >= totale) return null
+  const perno = partenza.ini + f0 * ampiezza0
+  return chiudiFinestra(base, perno - f * ampiezza, ampiezza)
+}
+
+/** Il tratto visibile spostato di `giorni`, senza uscire dal periodo. */
+export function finestraSpostata(base: Finestra, partenza: Finestra, giorni: number): Finestra {
+  return chiudiFinestra(base, partenza.ini + giorni, partenza.fine - partenza.ini)
+}
+
 /** Quante pesate servono nella finestra perché la media mobile valga. */
 export const MINIMO_MOBILE: Record<Mobile, number> = { 7: 3, 14: 5, 30: 10 }
 
