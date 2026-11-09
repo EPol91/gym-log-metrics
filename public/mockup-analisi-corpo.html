@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corpo: analisi del peso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a09; --surface: #141311; --surface-2: #1c1b18; --surface-3: #24221e;
+    --line: #2a2824; --line-soft: #201f1c; --text: #f3f1ec; --muted: #8f8a80; --faint: #5d5951;
+    --gold: #d4af37; --gold-hi: #ead27a; --gold-bg: #231e0e; --good: #5bc27a; --amber: #e0a030; --azzurro: #8e9be0;
+    --f-testo: 'Figtree', system-ui, sans-serif; --f-num: 'Barlow Condensed', sans-serif; --f-tit: 'Playfair Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font-family: var(--f-testo); -webkit-font-smoothing: antialiased; padding: 26px 14px 50px; }
+  h1 { font-family: var(--f-tit); font-weight: 700; margin: 0; }
+  .intro { max-width: 1272px; margin: 0 auto 22px; }
+  .intro .ey { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .intro h1 { font-size: 28px; margin: 6px 0 8px; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 74ch; }
+
+  .telefoni { max-width: 1272px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+  .blocco { width: 404px; max-width: 100%; }
+  .blocco .nome { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px 4px; }
+  .note { list-style: none; padding: 0; margin: 14px 4px 0; display: grid; gap: 7px; }
+  .note li { font-size: 13.5px; color: #c9c4b9; line-height: 1.45; padding-left: 15px; position: relative; }
+  .note li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  /* 384×740 reali: S26 Ultra */
+  .tel { width: 404px; max-width: 100%; border-radius: 40px; border: 10px solid #000; box-shadow: 0 0 0 1px #2e2c28, 0 26px 70px #000c; background: var(--bg); overflow: hidden; }
+  .stato { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; }
+  .utile { height: 704px; position: relative; overflow: hidden; }
+  .contenuto { position: absolute; inset: 0 0 64px; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  .eyebrow { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .num { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .card { background: linear-gradient(180deg, #181714, var(--surface) 42%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #ffffff08; padding: 10px 12px; }
+  .riga { display: flex; align-items: center; gap: 8px; }
+  .spazia { justify-content: space-between; }
+  button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+
+  .sotto { display: flex; gap: 6px; }
+  .sotto span { font-size: 12px; padding: 5px 10px; border-radius: 999px; color: var(--muted); }
+  .sotto span.on { color: var(--gold); background: var(--gold-bg); font-weight: 600; }
+
+  .giorno { display: grid; grid-template-columns: 36px 1fr 36px auto; gap: 6px; }
+  .giorno .fr, .giorno .ora { height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); display: grid; place-items: center; font-size: 16px; color: var(--gold); }
+  .giorno .fr:disabled { color: var(--faint); cursor: default; }
+  .giorno .ora { padding: 0 11px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .giorno label { height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; min-width: 0; }
+  .giorno label .eyebrow { white-space: nowrap; }
+  .giorno .data { display: flex; align-items: center; gap: 4px; color: var(--gold); font-size: 11px; }
+  .giorno input { position: relative; background: none; border: none; color: var(--text); color-scheme: dark; font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; padding: 0; outline: none; width: 85px; text-align: right; }
+  /* Tutta la data apre il calendario, senza l'icona che ruba spazio */
+  .giorno input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; opacity: 0; cursor: pointer; }
+
+  .sett { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: end; margin-top: 3px; }
+  .delta { font-size: 50px; line-height: .98; }
+  .delta small { font-family: var(--f-testo); font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+  .medie { display: grid; grid-template-columns: auto auto; gap: 0 14px; }
+  .medie div { text-align: right; }
+  .medie .v { font-size: 23px; line-height: 1.1; }
+  .medie .s { font-size: 10.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .prov { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 2px 7px; font-weight: 700; white-space: nowrap; }
+
+  .tre { display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 2px; }
+  .tre > * { text-align: center; border-left: 1px solid var(--line-soft); display: block; width: 100%; }
+  .tre > *:first-child { border-left: none; }
+  .tre .v { font-size: 25px; line-height: 1.15; }
+  .tre .v small { font-family: var(--f-testo); font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+  .tre .s { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .matita { color: var(--gold); font-size: 10px; margin-left: 3px; }
+
+  .obiettivo { display: flex; align-items: center; gap: 7px; }
+  .obiettivo input { width: 74px; height: 34px; border: 1px solid #4a3e18; background: var(--surface-2); color: var(--text); border-radius: 10px; font: inherit; font-size: 15px; text-align: center; outline: none; }
+  .btn { height: 34px; border-radius: 10px; padding: 0 12px; font-weight: 700; font-size: 13px; }
+  .btn.pri { background: var(--gold); color: #1a1405; }
+  .btn.gh { border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+  .chip.on { border-color: #4a3e18; background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+  .periodi { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 7px; }
+  .periodi button { height: 28px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .periodi button.on { background: var(--gold); border-color: var(--gold); color: #1a1405; }
+  .range { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .range input { width: 100%; height: 32px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); color-scheme: dark; border-radius: 9px; font: inherit; font-size: 12.5px; padding: 0 6px; }
+  svg.graf { width: 100%; height: auto; display: block; margin-top: 7px; touch-action: manipulation; cursor: pointer; }
+  svg.graf text { font-family: var(--f-testo); }
+  .medieMob { display: flex; justify-content: center; gap: 5px; margin-top: 5px; }
+  .medieMob .chip { font-size: 11.5px; padding: 3px 9px; }
+  .medieMob .chip.on { color: var(--text); background: var(--surface-2); border-color: #45423b; }
+  .segno { width: 13px; height: 0; border-top: 2px solid; display: inline-block; }
+  .dida { font-size: 11.5px; margin-top: 5px; line-height: 1.35; min-height: 16px; text-align: center; color: var(--muted); }
+  .dida b { color: var(--text); font-weight: 600; }
+
+  .tab { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--line-soft); background: #0e0d0bf2; display: flex; padding: 12px 4px 0; }
+  .tab div { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .tab div.on { color: var(--gold); }
+  .tab div.rs { color: #e1251b; font-weight: 700; }
+
+  .logica { max-width: 1272px; margin: 34px auto 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px 30px; }
+  .logica div { font-size: 13.5px; line-height: 1.5; color: #c9c4b9; }
+  .logica b { display: block; color: var(--gold); font-weight: 600; font-size: 12px; letter-spacing: .05em; margin-bottom: 2px; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="ey">Proposta · Salute → Corpo · dati finti</div>
+  <h1>Analisi del peso, in una schermata</h1>
+  <p>Prende la logica di POL IN ONE e sostituisce il riquadro «Peso attuale». Si può usare: frecce, data, periodi, medie mobili, tocco sul grafico, obiettivo.</p>
+</div>
+
+<div class="telefoni">
+  <div class="blocco">
+    <p class="nome">Lunedì, una pesata sola</p>
+    <div class="tel" id="a"></div>
+    <ul class="note">
+      <li>Con meno di 3 pesate il Δ è grigio e porta l’etichetta «provvisorio»: è una pesata contro sette.</li>
+      <li>Tutto entra in 384×740: il titolo «Corpo» sparisce, lo dice già la linguetta. Sotto restano Registra misura, Circonferenze, FFMI e Storico.</li>
+    </ul>
+  </div>
+  <div class="blocco">
+    <p class="nome">Settimana chiusa, punto toccato</p>
+    <div class="tel" id="b"></div>
+    <ul class="note">
+      <li>Con le frecce rivedi la situazione di qualsiasi giorno: numeri e grafico si fermano a quella data.</li>
+      <li>I punti azzurri sono i giorni con nota, come ora: li tocchi e la leggi.</li>
+    </ul>
+  </div>
+  <div class="blocco">
+    <p class="nome">Prima di pesarsi, obiettivo aperto</p>
+    <div class="tel" id="c"></div>
+    <ul class="note">
+      <li>Senza pesata niente numeri inventati: Odierno e Δ giorno restano vuoti, il Δ settimana aspetta.</li>
+      <li>«Da obiettivo» si tocca per cambiarlo. Da vuoto la casella dice «imposta».</li>
+    </ul>
+  </div>
+</div>
+
+<div class="logica">
+  <div><b>Media settimana</b>Lunedì–domenica della data scelta, solo le pesate fino a quella data. La scorsa è sempre la settimana intera prima.</div>
+  <div><b>Δ giorno</b>Contro la pesata precedente, anche se è di giorni prima: sotto c’è la sua data.</div>
+  <div><b>Da obiettivo</b>Ultima pesata meno obiettivo. Colore neutro, perché l’obiettivo può stare sopra o sotto.</div>
+  <div><b>Medie mobili</b>Sui giorni di calendario, con almeno 3 pesate per MA7, 5 per MA14, 10 per MA30; se mancano la linea si interrompe.</div>
+  <div><b>MIN e MAX</b>Sulla prima media accesa nel periodo; a medie spente sulle pesate vere, che restano sempre in filigrana.</div>
+  <div><b>Periodi</b>Finiscono tutti alla data scelta. YTD parte dal 1° gennaio di quell’anno, Range lo scegli tu.</div>
+</div>
+
+<script>
+// Dati finti, sempre uguali: stessa forma di un anno vero, non sono pesate reali.
+const OGGI = '2026-11-09'
+const toD = (s) => new Date(s + 'T00:00:00Z')
+const iso = (d) => d.toISOString().slice(0, 10)
+const piu = (s, n) => iso(new Date(toD(s).getTime() + n * 864e5))
+const diff = (a, b) => Math.round((toD(b) - toD(a)) / 864e5)
+const virg = (n, c = 1) => n.toFixed(c).replace('.', ',')
+const segno = (n, c = 1) => (n > 0 ? '+' : n < 0 ? '−' : '') + virg(Math.abs(n), c)
+const breve = (s) => s.slice(8, 10) + '.' + s.slice(5, 7)
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+const mese = (s) => MESI[+s.slice(5, 7) - 1] + ' ' + s.slice(2, 4)
+
+const PESI = (() => {
+  const nodi = [['2025-01-01', 86], ['2025-06-10', 88.2], ['2025-12-20', 87], ['2026-01-15', 88], ['2026-02-20', 86.2], ['2026-06-20', 93], ['2026-09-25', 88.2], ['2026-11-01', 89.8]]
+  let seme = 91
+  const caso = () => { seme = (seme * 1664525 + 1013904223) % 4294967296; return seme / 4294967296 }
+  const m = new Map()
+  for (let g = '2025-01-01'; g <= '2026-11-01'; g = piu(g, 1)) {
+    let i = 0; while (i < nodi.length - 2 && nodi[i + 1][0] <= g) i++
+    const t = diff(nodi[i][0], g) / diff(nodi[i][0], nodi[i + 1][0])
+    const base = nodi[i][1] + (nodi[i + 1][1] - nodi[i][1]) * t
+    if (caso() > 0.05) m.set(g, Math.round((base + (caso() - 0.5) * 1.3) * 10) / 10)
+  }
+  ;[['02', 89.8], ['03', 90], ['04', 90.2], ['05', 90.1], ['06', 89.9], ['07', 89.7], ['08', 89.1], ['09', 90.6]].forEach(([g, v]) => m.set('2026-11-' + g, v))
+  return m
+})()
+const NOTE = { '2026-11-05': 'Cena fuori · più sale', '2026-10-18': 'Poco sonno', '2026-09-27': 'Ricarica', '2026-08-15': 'Vacanza', '2026-06-20': 'Massimo stagione', '2026-11-08': 'Giorno off' }
+
+function lunedi(s) { return piu(s, -((toD(s).getUTCDay() + 6) % 7)) }
+function inizioPeriodo(S) {
+  if (S.per === '1W') return piu(S.D, -6)
+  if (S.per === 'YTD') return S.D.slice(0, 4) + '-01-01'
+  if (S.per === 'Tutto') return '2025-01-01'
+  if (S.per === 'Range') return S.da
+  const d = toD(S.D); d.setUTCMonth(d.getUTCMonth() - (S.per === '3M' ? 3 : 6)); return iso(d)
+}
+
+const MA_REG = { 7: { min: 3, col: '#d4af37', w: 2.2, dash: '' }, 14: { min: 5, col: '#ead27a', w: 1.5, dash: '5 3' }, 30: { min: 10, col: '#b5afa3', w: 1.5, dash: '1.5 3' } }
+
+function media(dati, g, n) {
+  let s = 0, c = 0
+  for (let i = 0; i < n; i++) { const v = dati.get(piu(g, -i)); if (v != null) { s += v; c++ } }
+  return c >= MA_REG[n].min ? s / c : null
+}
+
+function grafico(S, dati) {
+  const W = 326, H = 172, L = 31, R = 6, T = 8, B = 20
+  const da = inizioPeriodo(S), a = S.per === 'Range' ? S.a : S.D
+  const n = diff(da, a)
+  const giorni = []; for (let i = 0; i <= n; i++) giorni.push(piu(da, i))
+  const veri = giorni.filter((g) => dati.has(g)).map((g) => ({ g, v: dati.get(g) }))
+  if (veri.length < 2) return { svg: '<div class="dida" style="padding:50px 0">Servono almeno 2 pesate nel periodo.</div>', veri, da, a, n }
+  const accese = [7, 14, 30].filter((k) => S.ma[k])
+  const serie = accese.map((k) => ({ k, p: giorni.map((g) => ({ g, v: media(dati, g, k) })) }))
+  const tutti = [...veri.map((x) => x.v), ...serie.flatMap((s) => s.p.filter((x) => x.v != null).map((x) => x.v))]
+  const lo = Math.min(...tutti), hi = Math.max(...tutti), pad = Math.max(0.5, (hi - lo) * 0.2)
+  const y0 = lo - pad, y1 = hi + pad
+  const X = (g) => L + (W - L - R) * (n ? diff(da, g) / n : 0.5)
+  const Y = (v) => T + (H - T - B) * (1 - (v - y0) / (y1 - y0))
+  let o = ''
+  for (let i = 0; i < 4; i++) {
+    const v = y0 + (y1 - y0) * i / 3, y = Y(v)
+    o += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#201f1c"/><text x="${L - 5}" y="${y + 3.5}" text-anchor="end" font-size="10" fill="#8f8a80">${virg(v)}</text>`
+  }
+  // Fino a tre mesi le date: coi mesi due tacche finirebbero sullo stesso nome.
+  const corto = n <= 100, tacche = n >= 1 && n <= 6 ? n : 4
+  for (let i = 0; i <= tacche; i++) {
+    const g = piu(da, Math.round(n * i / tacche)), etich = corto ? breve(g) : mese(g)
+    o += `<text x="${X(g)}" y="${H - 5}" text-anchor="${i === 0 ? 'start' : i === tacche ? 'end' : 'middle'}" font-size="10" fill="#8f8a80">${etich}</text>`
+  }
+  // Le pesate vere in filigrana, le medie sopra
+  o += `<path d="${veri.map((x, i) => (i ? 'L' : 'M') + X(x.g).toFixed(1) + ' ' + Y(x.v).toFixed(1)).join(' ')}" fill="none" stroke="#4b4840" stroke-width="1"/>`
+  if (veri.length <= 31) veri.forEach((x) => { o += `<circle cx="${X(x.g)}" cy="${Y(x.v)}" r="2" fill="#6b675e"/>` })
+  ;[...serie].reverse().forEach((s) => {
+    const r = MA_REG[s.k]; let d = '', su = false
+    s.p.forEach((x) => { if (x.v == null) { su = false; return } d += (su ? 'L' : 'M') + X(x.g).toFixed(1) + ' ' + Y(x.v).toFixed(1); su = true })
+    o += `<path d="${d}" fill="none" stroke="${r.col}" stroke-width="${r.w}" stroke-dasharray="${r.dash}" stroke-linejoin="round" stroke-linecap="round"/>`
+  })
+  veri.forEach((x) => { if (NOTE[x.g]) o += `<circle cx="${X(x.g)}" cy="${Y(x.v)}" r="2.8" fill="#8e9be0" stroke="#141311" stroke-width="1"/>` })
+
+  const base = serie.length ? serie[0].p.filter((x) => x.v != null) : veri
+  if (base.length >= 2) {
+    const mi = base.reduce((m, x) => (x.v < m.v ? x : m)), ma = base.reduce((m, x) => (x.v > m.v ? x : m))
+    const bandiera = (x, testo, col, sopra) => {
+      const w = 7 + testo.length * 5.4, h = 15, px = X(x.g), py = Y(x.v)
+      const bx = Math.max(L, Math.min(W - R - w, px - w / 2)), by = sopra ? Math.max(0, py - h - 7) : Math.min(H - B - h, py + 7)
+      return `<circle cx="${px}" cy="${py}" r="3.2" fill="#141311" stroke="${col}" stroke-width="1.6"/><rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="4" fill="${col}"/><text x="${bx + w / 2}" y="${by + 11}" text-anchor="middle" font-size="10" font-weight="700" fill="#14110a">${testo}</text>`
+    }
+    o += bandiera(ma, 'MAX ' + virg(ma.v), '#e0a030', true) + bandiera(mi, 'MIN ' + virg(mi.v), '#5bc27a', false)
+  }
+  const sel = S.sel && dati.has(S.sel) && S.sel >= da && S.sel <= a ? S.sel : null
+  if (sel) {
+    o += `<line x1="${X(sel)}" x2="${X(sel)}" y1="${T}" y2="${H - B}" stroke="#f3f1ec55"/><circle cx="${X(sel)}" cy="${Y(dati.get(sel))}" r="4" fill="#f3f1ec" stroke="#141311" stroke-width="1.5"/>`
+  }
+  return { svg: `<svg class="graf" data-a="punto" viewBox="0 0 ${W} ${H}" role="img" aria-label="Andamento del peso">${o}</svg>`, veri, sel, da, a, n, L, W, R }
+}
+
+function schermata(S) {
+  const dati = S.senzaOggi ? new Map([...PESI].filter(([g]) => g !== OGGI)) : PESI
+  const lun = lunedi(S.D), dom = piu(lun, 6), lunP = piu(lun, -7), domP = piu(lun, -1)
+  const tra = (a, b) => [...dati].filter(([g]) => g >= a && g <= b).map(([, v]) => v)
+  const cor = tra(lun, S.D), pre = tra(lunP, domP)
+  const avg = (x) => x.reduce((s, v) => s + v, 0) / x.length
+  const mC = cor.length ? avg(cor) : null, mP = pre.length ? avg(pre) : null
+  const d = mC != null && mP != null ? mC - mP : null
+  const prov = d != null && cor.length < 3
+  const colD = d == null ? 'var(--muted)' : prov ? '#a9a498' : d > 0 ? 'var(--amber)' : d < 0 ? 'var(--good)' : 'var(--text)'
+
+  const prima = [...dati.keys()].filter((g) => g <= S.D).sort()
+  const ultima = prima[prima.length - 1]
+  const odierno = dati.get(S.D)
+  const prec = odierno != null ? prima[prima.length - 2] : null
+  const dg = odierno != null && prec ? odierno - dati.get(prec) : null
+  const daObj = S.obj != null && ultima ? dati.get(ultima) - S.obj : null
+  const G = grafico(S, dati)
+  const datoSel = G.sel ? dati.get(G.sel) : null
+  const maSel = G.sel ? [7, 14, 30].filter((k) => S.ma[k]).map((k) => { const v = media(dati, G.sel, k); return v != null ? `MA${k} ${virg(v)}` : '' }).filter(Boolean).join(' · ') : ''
+
+  return `
+  <div class="stato"><span>12:39</span><span>86%</span></div>
+  <div class="utile">
+    <div class="contenuto">
+      <div class="sotto"><span>Vitali</span><span class="on">Corpo</span><span>Abitudini</span><span>Tempo</span></div>
+
+      <div class="giorno">
+        <button class="fr" data-a="ind" aria-label="Giorno prima">‹</button>
+        <label><span class="eyebrow">Situazione al</span><span class="data"><input type="date" data-a="data" value="${S.D}" max="${OGGI}" aria-label="Situazione al">▾</span></label>
+        <button class="fr" data-a="ava" aria-label="Giorno dopo" ${S.D >= OGGI ? 'disabled' : ''}>›</button>
+        <button class="ora" data-a="oggi">Oggi</button>
+      </div>
+
+      <div class="card">
+        <div class="riga spazia"><span class="eyebrow">Δ media vs settimana scorsa</span>${prov ? '<span class="prov">Provvisorio</span>' : ''}</div>
+        <div class="sett">
+          <div class="num delta" style="color:${colD}">${d == null ? '—' : segno(d, 2).replace('.', ',')}${d == null ? '' : '<small>kg</small>'}</div>
+          <div class="medie">
+            <div><div class="num v">${mC == null ? '—' : virg(mC, 2)}</div><div class="s">${breve(lun)}–${breve(dom)}</div><div class="s">${cor.length}/7 gg</div></div>
+            <div><div class="num v" style="color:#c9c4b9">${mP == null ? '—' : virg(mP, 2)}</div><div class="s">${breve(lunP)}–${breve(domP)}</div><div class="s">${pre.length}/7 gg</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card tre">
+        <div><div class="eyebrow">Odierno</div><div class="num v">${odierno != null ? virg(odierno) + '<small>kg</small>' : '—'}</div><div class="s">${odierno != null ? breve(S.D) : ultima ? 'ultima ' + virg(dati.get(ultima)) + ' · ' + breve(ultima) : ''}</div></div>
+        <div><div class="eyebrow">Δ giorno</div><div class="num v" style="color:${dg == null ? 'var(--muted)' : dg > 0 ? 'var(--amber)' : dg < 0 ? 'var(--good)' : 'var(--text)'}">${dg != null ? segno(dg) + '<small>kg</small>' : '—'}</div><div class="s">${prec ? 'vs ' + breve(prec) : 'dopo la pesata'}</div></div>
+        <button data-a="obj"><div class="eyebrow">Da obiettivo<span class="matita">✎&#xFE0E;</span></div><div class="num v">${daObj != null ? segno(daObj) + '<small>kg</small>' : '—'}</div><div class="s">${S.obj != null ? 'obiettivo ' + virg(S.obj) : 'imposta'}</div></button>
+      </div>
+
+      ${S.editObj ? `<div class="card obiettivo"><span class="eyebrow" style="flex:1">Peso obiettivo</span><input inputmode="decimal" data-i="obj" value="${S.obj != null ? virg(S.obj) : ''}" aria-label="Peso obiettivo in kg"><button class="btn pri" data-a="salvaObj">Salva</button><button class="btn gh" data-a="togliObj">Togli</button></div>` : ''}
+
+      <div class="card">
+        <div class="riga spazia"><span class="eyebrow">Andamento</span><span class="riga" style="gap:4px"><span class="chip on">Peso</span><span class="chip">% grasso</span><span class="chip">Circonf.</span></span></div>
+        <div class="periodi">${['1W', '3M', '6M', 'YTD', 'Tutto', 'Range'].map((p) => `<button class="${S.per === p ? 'on' : ''}" data-a="per" data-v="${p}">${p}</button>`).join('')}</div>
+        ${S.per === 'Range' ? `<div class="range"><input type="date" data-a="da" value="${S.da}" max="${S.a}" aria-label="Dal"><input type="date" data-a="al" value="${S.a}" min="${S.da}" max="${OGGI}" aria-label="Al"></div>` : ''}
+        ${G.svg}
+        <div class="medieMob">${[7, 14, 30].map((k) => {
+          const r = MA_REG[k]
+          return `<button class="chip ${S.ma[k] ? 'on' : ''}" data-a="ma" data-v="${k}"><span class="segno" style="border-top-style:${r.dash ? (k === 14 ? 'dashed' : 'dotted') : 'solid'};border-color:${S.ma[k] ? r.col : '#5d5951'}"></span>MA${k}</button>`
+        }).join('')}</div>
+        <div class="dida">${G.sel
+          ? `<b>${breve(G.sel)} · ${virg(datoSel)} kg</b>${maSel ? ' · ' + maSel : ''}${NOTE[G.sel] ? ` — <span style="color:var(--azzurro)">${NOTE[G.sel]}</span>` : ''}`
+          : `<span style="color:var(--azzurro)">●</span> giorno con nota · ${G.n != null ? (G.n <= 31 ? breve(G.da) + ' – ' + breve(G.a) : mese(G.da) + ' – ' + mese(G.a)) + ' · ' + (G.n + 1) + ' gg' : ''}`}</div>
+      </div>
+    </div>
+    <div class="tab"><div>Oggi</div><div>Cibo</div><div>Allena</div><div class="on">Salute</div><div class="rs">RS</div><div>Profilo</div></div>
+  </div>`
+}
+
+function monta(id, iniziale) {
+  const el = document.getElementById(id)
+  const S = { D: OGGI, per: 'YTD', ma: { 7: true, 14: false, 30: false }, sel: null, editObj: false, obj: 89, senzaOggi: false, da: '2026-09-01', a: OGGI, ...iniziale }
+  const disegna = () => { const y = el.querySelector('.contenuto')?.scrollTop; el.innerHTML = schermata(S); if (y) el.querySelector('.contenuto').scrollTop = y }
+  el.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-a]'); if (!t) return
+    const a = t.dataset.a, v = t.dataset.v
+    if (a === 'ind') S.D = piu(S.D, -1)
+    else if (a === 'ava') S.D = piu(S.D, 1)
+    else if (a === 'oggi') S.D = OGGI
+    else if (a === 'per') S.per = v
+    else if (a === 'ma') S.ma[v] = !S.ma[v]
+    else if (a === 'obj') S.editObj = !S.editObj
+    else if (a === 'togliObj') { S.obj = null; S.editObj = false }
+    else if (a === 'salvaObj') { const n = parseFloat(el.querySelector('[data-i=obj]').value.replace(',', '.')); if (n >= 20 && n <= 400) { S.obj = n; S.editObj = false } else return }
+    else if (a === 'punto') {
+      const dati = S.senzaOggi ? new Map([...PESI].filter(([g]) => g !== OGGI)) : PESI
+      const G = grafico(S, dati), box = t.getBoundingClientRect()
+      const x = (e.clientX - box.left) * G.W / box.width
+      let best = null, dist = Infinity
+      G.veri.forEach((p) => { const d = Math.abs(G.L + (G.W - G.L - G.R) * (G.n ? diff(G.da, p.g) / G.n : 0.5) - x); if (d < dist) { dist = d; best = p.g } })
+      S.sel = S.sel === best ? null : best
+    } else return
+    disegna()
+  })
+  el.addEventListener('change', (e) => {
+    const a = e.target.dataset.a, v = e.target.value; if (!v) return
+    if (a === 'data') S.D = v > OGGI ? OGGI : v
+    else if (a === 'da') S.da = v
+    else if (a === 'al') S.a = v
+    else return
+    disegna()
+  })
+  disegna()
+}
+
+monta('a', {})
+monta('b', { D: '2026-11-08', per: '3M', ma: { 7: true, 14: true, 30: false }, sel: '2026-10-18' })
+monta('c', { senzaOggi: true, per: '1W', editObj: true })
+</script>
+</body>
+</html>
