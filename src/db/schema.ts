@@ -91,6 +91,8 @@ export interface User extends BaseRecord {
   cicliChiusiAMano?: ISODate[]
   /** Lavoro e fasce dei pasti. Assente = quelli di partenza (vedi tempo/orari). */
   orari?: OrariUtente
+  /** Il peso a cui vuoi arrivare (Corpo → «da obiettivo»). */
+  pesoObiettivo?: number
   /** Le uscite dall'ufficio piu' tardi del solito, giorno per giorno: «HH:MM». */
   uscite?: Record<ISODate, string>
   /** Chiedere conferma di RS al primo rientro della giornata. */
@@ -325,6 +327,10 @@ export interface BodyMeasurement extends BaseRecord {
   /** nota del giorno: testo libero più tag */
   note?: string
   tags?: TagNota[]
+  /** Pesata arrivata con lo storico importato, non scritta in ETP: l'archivio di Autogestione la salta. */
+  importato?: 'cockpit' | 'pol'
+  /** La nota importata dice solo il tipo di giornata o di seduta: niente punto azzurro sul grafico. */
+  soloGiornata?: boolean
   /**
    * Tag automatici che quel giorno hai tolto (es. «poco sonno» quando WHOOP
    * sbaglia la notte). L'automatico non si salva, si ricalcola: si salva solo

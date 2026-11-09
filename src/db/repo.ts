@@ -429,6 +429,7 @@ export async function updateUser(
     orari?: OrariUtente
     uscite?: Record<string, string>
     tagNote?: string[]
+    pesoObiettivo?: number
   },
 ): Promise<void> {
   // Il cambio di obiettivo settimanale va tracciato: il Consistency giudica ogni settimana

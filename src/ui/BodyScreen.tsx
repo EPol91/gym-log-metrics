@@ -7,9 +7,10 @@ import { deleteWithUndo } from '../db/trash'
 import { computeFfmi } from '../metrics/body'
 import { parseNum } from '../util/validate'
 import { LineChart } from './LineChart'
+import { AnalisiPeso } from './AnalisiPeso'
 import { Info } from './anim'
 import { SceltaTag, ChipTags, ChipAuto, RigaAuto, GuidaMisure, AZZURRO } from './NotaCorpo'
-import { CIRC, haCirc, haNota, correggiMisura, salvaNota, listaTag, testoTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
+import { CIRC, haCirc, haNota, correggiMisura, salvaNota, listaTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
 import type { BodyMeasurement, TagNota } from '../db/schema'
 
 const virgola = (n: number) => String(n).replace('.', ',')
@@ -290,11 +291,8 @@ export function BodyScreen() {
   const [tagNo, setTagNo] = useState<string[]>([])
   const [chart, setChart] = usePersistedState<'weight' | 'bf' | 'circ'>('body-chart', 'weight')
   const [quale, setQuale] = usePersistedState<CircKey>('body-circ', 'waist')
-  const [punto, setPunto] = useState<number | null>(null)
 
   const latest = rows[rows.length - 1]
-  const prev = rows[rows.length - 2]
-  const delta = latest && prev ? +(latest.weight - prev.weight).toFixed(1) : null
   const ffmi = latest?.bodyFat != null && user?.heightCm ? computeFfmi(latest.weight, latest.bodyFat, user.heightCm) : null
   const bfRows = rows.filter((m) => m.bodyFat != null)
   const circRows = rows.filter((m) => m[quale] != null)
@@ -314,69 +312,27 @@ export function BodyScreen() {
     setW(''); setBf(''); setConBf(false)
   }
 
-  const sel = punto != null ? rows[punto] : null
-
   return (
     <div className="col" style={{ gap: 14 }}>
-      <h1>Corpo</h1>
-
-      {/* Peso in evidenza + andamento */}
-      <div className="card">
-        <div className="row spread">
-          <span className="muted small">Peso attuale</span>
-          {delta != null && <span className="small" style={{ color: delta < 0 ? 'var(--good)' : delta > 0 ? '#e0a030' : 'var(--muted)' }}>{delta < 0 ? '▼' : delta > 0 ? '▲' : ''}{Math.abs(delta)} kg vs prec.</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-          <span style={{ fontSize: 34, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{latest ? latest.weight : '—'}</span>
-          <span className="muted small">kg</span>
-          {latest?.bodyFat != null && <span className="muted small" style={{ marginLeft: 8 }}>· BF {latest.bodyFat}%</span>}
-        </div>
-        {rows.length >= 2 && (
+      <AnalisiPeso rows={rows} obiettivo={user?.pesoObiettivo} chart={chart} onChart={setChart} bfPochi={bfRows.length < 2}>
+        {chart === 'bf' && <LineChart points={bfRows.map((m) => ({ label: m.date, value: m.bodyFat as number }))} />}
+        {chart === 'circ' && (
           <>
-            <div className="row spread" style={{ margin: '8px 0 6px' }}>
-              <span className="muted small">Andamento</span>
-              <span className="row" style={{ gap: 4 }}>
-                <button className={chart === 'weight' ? 'chip on' : 'chip'} onClick={() => setChart('weight')}>Peso</button>
-                <button className={chart === 'bf' ? 'chip on' : 'chip'} onClick={() => setChart('bf')} disabled={bfRows.length < 2}>% grasso</button>
-                <button className={chart === 'circ' ? 'chip on' : 'chip'} onClick={() => setChart('circ')}>Circonf.</button>
-              </span>
+            <div className="row wrap" style={{ gap: 4, marginBottom: 6 }}>
+              {CIRC.map((c) => (
+                <button key={c.k} className={quale === c.k ? 'chip on' : 'chip'} style={{ fontSize: 10.5, padding: '2px 8px' }} onClick={() => setQuale(c.k)}>{c.corto}</button>
+              ))}
             </div>
-            {chart === 'weight' && (
-              <>
-                <LineChart points={rows.map((m) => ({ label: m.date, value: m.weight }))}
-                  segnati={rows.map(haNota)} sel={punto} onPunto={(i) => setPunto(punto === i ? null : i)} />
-                {sel ? (
-                  <div style={{ fontSize: 12, marginTop: 4, lineHeight: 1.4 }}>
-                    <b>{fmtData(sel.date)} · {virgola(sel.weight)} kg</b>
-                    {haNota(sel)
-                      ? <> — <span style={{ color: AZZURRO }}>{testoTag(sel.tags)}</span>{sel.note?.trim() ? <span style={{ color: '#b5afa3', fontStyle: 'italic' }}>{sel.tags?.length ? ' · ' : ''}{sel.note}</span> : null}</>
-                      : <span className="muted"> — nessuna nota</span>}
-                  </div>
-                ) : rows.some(haNota) && (
-                  <div className="muted" style={{ fontSize: 11, marginTop: 3 }}><span style={{ color: AZZURRO }}>●</span> giorno con nota: tocca il punto per leggerla</div>
-                )}
-              </>
-            )}
-            {chart === 'bf' && <LineChart points={bfRows.map((m) => ({ label: m.date, value: m.bodyFat as number }))} />}
-            {chart === 'circ' && (
-              <>
-                <div className="row wrap" style={{ gap: 4, marginBottom: 6 }}>
-                  {CIRC.map((c) => (
-                    <button key={c.k} className={quale === c.k ? 'chip on' : 'chip'} style={{ fontSize: 10.5, padding: '2px 8px' }} onClick={() => setQuale(c.k)}>{c.corto}</button>
-                  ))}
-                </div>
-                <LineChart points={circRows.map((m) => ({ label: m.date, value: m[quale] as number }))} vuoto="Servono almeno 2 misure per il grafico." />
-                {circRows.length >= 2 && (
-                  <div className="row spread muted" style={{ fontSize: 11 }}>
-                    <span>{fmtData(circRows[0].date).slice(0, 5)} · {virgola(circRows[0][quale] as number)}</span>
-                    <span>{fmtData(circRows[circRows.length - 1].date).slice(0, 5)} · {virgola(circRows[circRows.length - 1][quale] as number)} cm</span>
-                  </div>
-                )}
-              </>
+            <LineChart points={circRows.map((m) => ({ label: m.date, value: m[quale] as number }))} vuoto="Servono almeno 2 misure per il grafico." />
+            {circRows.length >= 2 && (
+              <div className="row spread muted" style={{ fontSize: 11 }}>
+                <span>{fmtData(circRows[0].date).slice(0, 5)} · {virgola(circRows[0][quale] as number)}</span>
+                <span>{fmtData(circRows[circRows.length - 1].date).slice(0, 5)} · {virgola(circRows[circRows.length - 1][quale] as number)} cm</span>
+              </div>
             )}
           </>
         )}
-      </div>
+      </AnalisiPeso>
 
       {/* Log rapido: peso, e la nota del giorno */}
       <div className="card">

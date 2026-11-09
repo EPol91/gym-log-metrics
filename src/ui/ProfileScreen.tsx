@@ -7,6 +7,7 @@ import { restingHrFromWhoop, lastAutoSync } from '../db/whoop'
 import { AiSettings } from './AiSettings'
 import { BackupSettings } from './BackupSettings'
 import { CsvImport } from './CsvImport'
+import { ImportaStorico } from './ImportaStorico'
 import { GymSettings } from './GymSettings'
 import { SuoniSettings } from './SuoniSettings'
 import { WhoopSettings } from './WhoopSettings'
@@ -134,7 +135,7 @@ type Voce =
   | 'obiettivo' | 'recupero' | 'schede' | 'palestre' | 'cuore' | 'suoni'
   | 'orari' | 'notifiche'
   | 'coach' | 'ai' | 'whoop'
-  | 'backup' | 'csv'
+  | 'backup' | 'csv' | 'storico'
 
 // Le icone delle righe: tratti semplici, nel colore dell'oro.
 const ICONE: Record<Voce, string> = {
@@ -155,6 +156,7 @@ const ICONE: Record<Voce, string> = {
   whoop: 'M11 3h2a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4ZM10 9h4M10 13h4',
   backup: 'M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3ZM4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
   csv: 'M12 15V4M8 8l4-4 4 4M5 14v5h14v-5',
+  storico: 'M4 4v16h16M8 15l3-4 3 2 5-6',
 }
 
 const TITOLI: Record<Voce, string> = {
@@ -162,7 +164,7 @@ const TITOLI: Record<Voce, string> = {
   obiettivo: 'Obiettivo', recupero: 'Recupero predefinito', schede: 'Schede', palestre: 'Palestre', cuore: 'Cuore e zone', suoni: 'Suoni dei timer',
   orari: 'I tuoi orari', notifiche: 'Notifiche',
   coach: 'Righe del Coach', ai: 'AI', whoop: 'WHOOP',
-  backup: 'Backup e invio', csv: 'Importa da Strong / Hevy',
+  backup: 'Backup e invio', csv: 'Importa da Strong / Hevy', storico: 'Importa storico peso',
 }
 
 const GRUPPI: { nome: string; voci: Voce[] }[] = [
@@ -170,7 +172,7 @@ const GRUPPI: { nome: string; voci: Voce[] }[] = [
   { nome: 'Allenamento', voci: ['obiettivo', 'recupero', 'schede', 'palestre', 'cuore', 'suoni'] },
   { nome: 'Giornata', voci: ['orari', 'notifiche'] },
   { nome: 'Coach e collegamenti', voci: ['coach', 'ai', 'whoop'] },
-  { nome: 'Dati', voci: ['backup', 'csv'] },
+  { nome: 'Dati', voci: ['backup', 'csv', 'storico'] },
 ]
 
 function Icona({ voce }: { voce: Voce }) {
@@ -256,6 +258,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
     whoop: { testo: sync ? `sincronizzato ${fmtDataOra(sync).replace(fmtData(todayLocal()) + ' · ', 'oggi ')}` : ultimoWhoop ? `dati fino al ${ggmm(ultimoWhoop)}` : 'da collegare' },
     backup: { testo: backup ? `ultimo ${ggmm(backup.quando)}` : 'mai fatto' },
     csv: { testo: 'CSV' },
+    storico: { testo: 'Da file' },
   }
 
   const contenuto: Record<Voce, () => React.ReactNode> = {
@@ -286,6 +289,7 @@ export function ProfileScreen({ onEditTemplate, onNewTemplate }: { onEditTemplat
     whoop: () => <WhoopSettings />,
     backup: () => <BackupSettings />,
     csv: () => <CsvImport />,
+    storico: () => <ImportaStorico />,
   }
 
   return (
