@@ -13,6 +13,7 @@ import { cicloDi } from '../scores/consistency'
 import { getUser } from '../db/repo'
 import { ultimoBackup } from '../db/backupAuto'
 import { orariDi, fasceDeiPasti, minuti, oraAdesso } from '../tempo/orari'
+import { domenicaDa, haCirc, prossimeCirc } from '../db/noteCorpo'
 
 const U = LOCAL_USER_ID
 const SPENTE = 'gymlog.promemoria.spente'
@@ -21,10 +22,11 @@ const VISTE = 'gymlog.promemoria.viste'
 // una notifica letta nella tendina non deve far sparire la card, e viceversa.
 const VIA = 'gymlog.promemoria.via'
 
-export type Tipo = 'mattino' | 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
+export type Tipo = 'mattino' | 'check' | 'ciclo' | 'recupero' | 'peso' | 'whoop' | 'backup' | 'pasto' | 'uscita'
 
 export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
   { tipo: 'mattino', nome: 'Pesata del mattino', nota: 'Ogni mattina all’ora che scegli, se il peso di oggi non c’è.' },
+  { tipo: 'check', nome: 'Giorno del check', nota: 'La domenica all’ora della pesata: peso a digiuno, foto delle 4 pose e le circonferenze quando toccano. Alle 11:00 di nuovo, se le circonferenze mancano ancora.' },
   { tipo: 'pasto', nome: 'Ora dei pasti', nota: '15′ dopo la fine della fascia, se il pasto non ha l’ora. Solo nei giorni in cui hai segnato del cibo.' },
   { tipo: 'uscita', nome: 'Uscita dall’ufficio', nota: 'Nei giorni di lavoro, all’ora d’uscita dei tuoi orari, se non l’hai già segnata.' },
   { tipo: 'ciclo', nome: 'Ciclo a rischio', nota: 'Alle 9:00 del giorno in cui i giorni che restano non bastano più per le sedute che mancano.' },
@@ -35,7 +37,7 @@ export const PROMEMORIA: { tipo: Tipo; nome: string; nota: string }[] = [
 ]
 
 /** Quelle che il telefono consegna da solo, anche ad app chiusa. */
-export const AD_APP_CHIUSA: Tipo[] = ['mattino', 'pasto', 'uscita', 'ciclo', 'peso', 'whoop', 'backup']
+export const AD_APP_CHIUSA: Tipo[] = ['mattino', 'check', 'pasto', 'uscita', 'ciclo', 'peso', 'whoop', 'backup']
 
 /** L'ora della pesata del mattino: la scegli tu in Promemoria. */
 const ORA_MATTINO = 'gymlog.promemoria.mattino.ora'
@@ -227,7 +229,8 @@ async function tutti(): Promise<Avviso[]> {
   const ultimaPesata = pesate.map((m) => m.date).sort().pop()
   // Quella del mattino, passata l'ora: finche' il peso di oggi non c'e'. Se c'e'
   // lei, quella dei quattro giorni direbbe la stessa cosa due volte.
-  const mattino = attivo('mattino') && ultimaPesata !== oggi && minuti(oraAdesso()) >= minuti(oraPesata())
+  const domenicaDelCheck = attivo('check') && new Date(oggi + 'T12:00:00').getDay() === 0
+  const mattino = attivo('mattino') && !domenicaDelCheck && ultimaPesata !== oggi && minuti(oraAdesso()) >= minuti(oraPesata())
   if (mattino) {
     out.push({ tipo: 'mattino', titolo: 'Registra il peso di oggi', testo: 'Appena sveglio, prima di bere e mangiare.' })
   } else if (!ultimaPesata || Date.parse(oggi) - Date.parse(ultimaPesata) >= 4 * 86_400_000) {
@@ -271,6 +274,10 @@ async function tutti(): Promise<Avviso[]> {
     if (adesso >= minuti(l.uscita) && adesso <= minuti(l.uscitaFinoA ?? l.uscita) + 30) {
       out.push({ tipo: 'uscita', titolo: 'Uscito dall’ufficio?', testo: `Di solito alle ${l.uscita}: se è più tardi, segnalo.` })
     }
+  }
+
+  if (domenicaDelCheck) {
+    out.push({ tipo: 'check', titolo: 'Giorno del check', testo: testoCheck(await cosaDelCheck(oggi)) })
   }
 
   const b = ultimoBackup()
@@ -404,9 +411,69 @@ export async function programmaUscita(): Promise<void> {
   } catch (e) { annotaErrore('uscita', e) }
 }
 
+/** Le pose delle foto, nell'ordine di RS. */
+const POSE = 'frontale, retro, doppio bicipite, laterale'
+const ORA_CIRC = '11:00'
+
+/**
+ * Cosa resta da fare la domenica del check. Le foto non si sanno: stanno
+ * nell'app di RS, quindi si ricordano sempre.
+ */
+export async function cosaDelCheck(domenica: string): Promise<{ peso: boolean; circ: boolean }> {
+  const misure = await db.bodyMeasurements.where('userId').equals(U).toArray()
+  const ultimaPrima = misure.filter((m) => m.date < domenica && haCirc(m)).map((m) => m.date).sort().pop() ?? null
+  const dovute = prossimeCirc(ultimaPrima, domenica) === domenica
+  return {
+    peso: !misure.some((m) => m.date === domenica),
+    circ: dovute && !misure.some((m) => m.date === domenica && haCirc(m)),
+  }
+}
+
+export function testoCheck(c: { peso: boolean; circ: boolean }): string {
+  const voci = [c.peso ? 'peso a digiuno' : '', `foto delle 4 pose (${POSE})`, c.circ ? 'circonferenze' : ''].filter(Boolean)
+  const t = voci.join(', ')
+  return t.charAt(0).toUpperCase() + t.slice(1) + '.'
+}
+
+/** Due domeniche alla volta (questa e la prossima), cosi' arriva anche se l'app resta chiusa una settimana. */
+const ID_CHECK = 7400
+
+/**
+ * La domenica del check: all'ora della pesata la lista di cosa fare, alle 11
+ * di nuovo se le circonferenze dovute mancano. Si ricalcola a ogni pesata e
+ * misura: fatte le circonferenze, quella delle 11 sparisce.
+ */
+export async function programmaCheck(): Promise<void> {
+  const p = plugin()
+  if (!p) return
+  try {
+    await p.cancel({ notifications: [0, 1, 2, 3].map((k) => ({ id: ID_CHECK + k })) })
+    if (!attivo('check')) return
+    const prima = domenicaDa(todayLocal())
+    const adesso = Date.now()
+    const da: DaProgrammare[] = []
+    for (const [n, domenica] of [prima, shiftDate(prima, 7)].entries()) {
+      const c = await cosaDelCheck(domenica)
+      const mattina = new Date(`${domenica}T${oraPesata()}:00`)
+      if (mattina.getTime() > adesso) {
+        da.push({ id: ID_CHECK + n * 2, title: 'Giorno del check', body: testoCheck(c), schedule: { at: mattina, allowWhileIdle: true } })
+      }
+      const undici = new Date(`${domenica}T${ORA_CIRC}:00`)
+      if (c.circ && undici.getTime() > adesso && undici > mattina) {
+        da.push({ id: ID_CHECK + n * 2 + 1, title: 'Circonferenze', body: 'Oggi toccano e non ci sono ancora: segnale in Salute → Corpo.', schedule: { at: undici, allowWhileIdle: true } })
+      }
+    }
+    if (!da.length) return
+    const perm = await p.requestPermissions()
+    if (perm?.display && perm.display !== 'granted') { annotaErrore('check', `permesso ${perm.display}`); return }
+    await p.schedule({ notifications: da })
+  } catch (e) { annotaErrore('check', e) }
+}
+
 /** Tutto quello che il telefono deve consegnare da solo, riprogrammato in un colpo. */
 export async function programmaTutto(): Promise<void> {
   await programmaPesataMattino()
+  await programmaCheck()
   await programmaUscita()
   await programmaAvvisi()
   await programmaPromemoriaPasti()
@@ -482,6 +549,7 @@ export async function programmaPesataMattino(): Promise<void> {
     for (let k = 0; k < GIORNI_MATTINO; k++) {
       const giorno = shiftDate(oggi, k)
       if (k === 0 && pesatoOggi) continue
+      if (attivo('check') && new Date(giorno + 'T12:00:00').getDay() === 0) continue // la dice il check
       const quando = new Date(`${giorno}T${ora}:00`)
       if (quando.getTime() <= adesso) continue
       da.push({

@@ -20,6 +20,7 @@ import { FoglioOrario } from './FoglioOra'
 /** Dove porta ogni avviso: dirlo e basta lascerebbe il lavoro a te. */
 const DOVE: Partial<Record<Tipo, { testo: string; dove: 'food' | 'health' | 'train'; sezione?: string }>> = {
   mattino: { testo: 'Pesati', dove: 'health', sezione: 'corpo' },
+  check: { testo: 'Apri Corpo', dove: 'health', sezione: 'corpo' },
   peso: { testo: 'Pesati', dove: 'health', sezione: 'corpo' },
   whoop: { testo: 'Sincronizza', dove: 'health', sezione: 'vitali' },
   recupero: { testo: 'Allenati', dove: 'train' },

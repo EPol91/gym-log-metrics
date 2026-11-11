@@ -69,6 +69,23 @@ export const CIRC = [
 export type CircKey = typeof CIRC[number]['k']
 
 export const haCirc = (m: BodyMeasurement) => CIRC.some((c) => m[c.k] != null)
+
+// --- Date per le circonferenze: la domenica del check, una sì e una no ---
+const giorno = (iso: string) => new Date(iso + 'T12:00:00')
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const piuGiorni = (s: string, n: number) => { const d = giorno(s); d.setDate(d.getDate() + n); return iso(d) }
+/** La prima domenica da `s` in poi (s compresa). */
+export const domenicaDa = (s: string) => piuGiorni(s, (7 - giorno(s).getDay()) % 7)
+
+/**
+ * Quando toccano le circonferenze. Dalle ultime, due domeniche dopo; se quella
+ * è già passata, la prossima domenica. Mai misurate: la prossima domenica.
+ */
+export function prossimeCirc(ultima: string | null, oggi: string): string {
+  if (!ultima) return domenicaDa(oggi)
+  const due = domenicaDa(piuGiorni(ultima, 13))
+  return due >= oggi ? due : domenicaDa(oggi)
+}
 export const haNota = (m: BodyMeasurement) => !!m.note?.trim() || (m.tags?.length ?? 0) > 0
 
 /** I tuoi tag, nell'ordine tuo. */

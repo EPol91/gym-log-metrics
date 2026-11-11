@@ -10,7 +10,7 @@ import { LineChart } from './LineChart'
 import { AnalisiPeso } from './AnalisiPeso'
 import { Info } from './anim'
 import { SceltaTag, ChipTags, ChipAuto, RigaAuto, GuidaMisure, AZZURRO } from './NotaCorpo'
-import { CIRC, haCirc, haNota, correggiMisura, salvaNota, listaTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
+import { CIRC, haCirc, prossimeCirc, haNota, correggiMisura, salvaNota, listaTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
 import type { BodyMeasurement, TagNota } from '../db/schema'
 
 const virgola = (n: number) => String(n).replace('.', ',')
@@ -21,23 +21,6 @@ const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'lug
 function rigaCirc(m: BodyMeasurement): string {
   const nomi: Record<CircKey, string> = { waist: 'vita', waistNarrow: 'str.', chest: 'petto', arm: 'br.', thigh: 'coscia' }
   return CIRC.filter((c) => m[c.k] != null).map((c) => `${nomi[c.k]} ${virgola(m[c.k] as number)}`).join(' · ')
-}
-
-// --- Date per le circonferenze: la domenica del check, una sì e una no ---
-const giorno = (iso: string) => new Date(iso + 'T12:00:00')
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const piuGiorni = (s: string, n: number) => { const d = giorno(s); d.setDate(d.getDate() + n); return iso(d) }
-/** La prima domenica da `s` in poi (s compresa). */
-const domenicaDa = (s: string) => piuGiorni(s, (7 - giorno(s).getDay()) % 7)
-
-/**
- * Quando toccano le circonferenze. Dalle ultime, due domeniche dopo; se quella
- * è già passata, la prossima domenica. Mai misurate: la prossima domenica.
- */
-function prossimeCirc(ultima: string | null, oggi: string): string {
-  if (!ultima) return domenicaDa(oggi)
-  const due = domenicaDa(piuGiorni(ultima, 13))
-  return due >= oggi ? due : domenicaDa(oggi)
 }
 
 /** Peso, % grasso e, a richiesta, le circonferenze della riga che stai correggendo. */

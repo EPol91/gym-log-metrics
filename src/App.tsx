@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { forseBackupAutomatico } from './db/backupAuto'
 import { programmaTutto } from './util/promemoria'
+import { haCirc } from './db/noteCorpo'
 import { db } from './db/db'
 import { todayLocal } from './util/date'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -83,10 +84,11 @@ function AppScreens() {
     const oggi = todayLocal()
     const pesate = await db.bodyMeasurements.count()
     const pesatoOggi = await db.bodyMeasurements.where('date').equals(oggi).count()
+    const conCirc = await db.bodyMeasurements.filter(haCirc).count()
     const sedute = await db.sessions.filter((s) => !!s.finishedAt).count()
     const whoop = (await db.whoopDays.orderBy('date').last())?.date ?? ''
     const u = await getUser()
-    return JSON.stringify([oggi, pesate, pesatoOggi, sedute, whoop, u?.orari ?? null, u?.uscite?.[oggi] ?? null, u?.cicloSedute, u?.cicloGiorni, u?.cicloInizio])
+    return JSON.stringify([oggi, pesate, pesatoOggi, conCirc, sedute, whoop, u?.orari ?? null, u?.uscite?.[oggi] ?? null, u?.cicloSedute, u?.cicloGiorni, u?.cicloInizio])
   }, [])
   useEffect(() => { if (firmaNotifiche != null) void programmaTutto() }, [firmaNotifiche])
   useEffect(() => {
