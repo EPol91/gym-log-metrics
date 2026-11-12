@@ -78,12 +78,15 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
   )
 }
 
+const GIORNI_SETTIMANA = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab']
+
 /** Riga dello storico: chiusa una linea; un tocco la apre, «modifica» corregge tutto. */
 function MeasureRow({ m, corta, auto }: { m: BodyMeasurement; corta: boolean; auto: TagAuto[] }) {
   const [stato, setStato] = useState<'chiusa' | 'aperta' | 'modifica'>('chiusa')
   if (stato === 'modifica') return <ModificaMisura m={m} onFine={() => setStato('aperta')} />
   const d = fmtData(m.date)
   const data = corta ? d.slice(0, 5) : d.slice(0, 6) + d.slice(8)
+  const gg = GIORNI_SETTIMANA[new Date(m.date + 'T12:00:00').getDay()]
   const nTag = m.tags?.length ?? 0
   const attivi = autoAttivi(auto, m)
 
@@ -104,7 +107,7 @@ function MeasureRow({ m, corta, auto }: { m: BodyMeasurement; corta: boolean; au
   }
   return (
     <div onClick={() => setStato('aperta')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line-soft)', cursor: 'pointer' }}>
-      <span className="muted small" style={{ flex: '0 0 58px', fontVariantNumeric: 'tabular-nums' }}>{data}</span>
+      <span className="muted small" style={{ flex: corta ? '0 0 80px' : '0 0 100px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><span style={{ display: 'inline-block', width: 32 }}>{gg}</span>{data}</span>
       <span style={{ flex: 1 }}>{virgola(m.weight)} kg{m.bodyFat != null ? <span className="muted small"> · {virgola(m.bodyFat)}%</span> : null}</span>
       {attivi.length > 0 && <span className="muted" style={{ fontSize: 11 }}>⚙</span>}
       {haNota(m) && <span style={{ fontSize: 11, color: AZZURRO }}>🏷{nTag ? ' ' + nTag : ''}</span>}
