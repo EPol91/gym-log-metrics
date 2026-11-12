@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fmtData } from '../util/format'
 import { usePersistedState } from '../util/persist'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -8,6 +8,7 @@ import { computeFfmi } from '../metrics/body'
 import { parseNum } from '../util/validate'
 import { LineChart } from './LineChart'
 import { AnalisiPeso } from './AnalisiPeso'
+import { situazione, lunedi, piuGiorni } from '../metrics/analisiPeso'
 import { Info } from './anim'
 import { SceltaTag, ChipTags, ChipAuto, RigaAuto, GuidaMisure, AZZURRO } from './NotaCorpo'
 import { CIRC, haCirc, prossimeCirc, haNota, correggiMisura, salvaNota, listaTag, tagAuto, autoAttivi, whoopPerData, TAG_AUTO, type CircKey, type TagAuto } from '../db/noteCorpo'
@@ -80,8 +81,36 @@ function ModificaMisura({ m, onFine }: { m: BodyMeasurement; onFine: () => void 
 
 const GIORNI_SETTIMANA = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab']
 
+const conSegno = (n: number, c: number) => {
+  const v = Math.abs(n).toFixed(c).replace('.', ',')
+  return Number(n.toFixed(c)) === 0 ? v : (n > 0 ? '+' : '−') + v
+}
+const ROSSO_SU = '#e0614f'
+
+/** Media della settimana, sull'ultima pesata della settimana (di solito la domenica). */
+interface Settimana { media: number; delta: number | null; inCorso: boolean }
+
+/** Δ dalla pesata prima (anche se è di giorni prima) e media della settimana, come in POL IN ONE. */
+function deltaStorico(rows: BodyMeasurement[], oggi: string) {
+  const asc = [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const delta = new Map<string, number>()
+  asc.forEach((m, i) => { if (i > 0) delta.set(m.id, m.weight - asc[i - 1].weight) })
+  const ultimaDellaSett = new Map<string, BodyMeasurement>()
+  for (const m of asc) ultimaDellaSett.set(lunedi(m.date), m)
+  const sett = new Map<string, Settimana>()
+  for (const [lun, m] of ultimaDellaSett) {
+    const s = situazione(asc, m.date)
+    const dom = piuGiorni(lun, 6)
+    if (s.mediaCor != null) sett.set(m.id, { media: s.mediaCor, delta: s.delta, inCorso: m.date < dom && dom >= oggi })
+  }
+  return { delta, sett }
+}
+
 /** Riga dello storico: chiusa una linea; un tocco la apre, «modifica» corregge tutto. */
-function MeasureRow({ m, corta, auto }: { m: BodyMeasurement; corta: boolean; auto: TagAuto[] }) {
+function MeasureRow({ m, corta, auto, delta, sett, colSett }: {
+  m: BodyMeasurement; corta: boolean; auto: TagAuto[]
+  delta?: number; sett?: Settimana; colSett?: boolean
+}) {
   const [stato, setStato] = useState<'chiusa' | 'aperta' | 'modifica'>('chiusa')
   if (stato === 'modifica') return <ModificaMisura m={m} onFine={() => setStato('aperta')} />
   const d = fmtData(m.date)
@@ -106,13 +135,25 @@ function MeasureRow({ m, corta, auto }: { m: BodyMeasurement; corta: boolean; au
     )
   }
   return (
-    <div onClick={() => setStato('aperta')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line-soft)', cursor: 'pointer' }}>
-      <span className="muted small" style={{ flex: corta ? '0 0 80px' : '0 0 100px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><span style={{ display: 'inline-block', width: 32 }}>{gg}</span>{data}</span>
-      <span style={{ flex: 1 }}>{virgola(m.weight)} kg{m.bodyFat != null ? <span className="muted small"> · {virgola(m.bodyFat)}%</span> : null}</span>
-      {attivi.length > 0 && <span className="muted" style={{ fontSize: 11 }}>⚙</span>}
-      {haNota(m) && <span style={{ fontSize: 11, color: AZZURRO }}>🏷{nTag ? ' ' + nTag : ''}</span>}
-      {haCirc(m) && <span style={{ fontSize: 11 }}>📏</span>}
-      <span className="muted small" style={{ flex: 'none' }}>›</span>
+    <div onClick={() => setStato('aperta')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--line-soft)', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+      <span className="muted small" style={{ flex: corta ? '0 0 80px' : '0 0 100px', whiteSpace: 'nowrap' }}><span style={{ display: 'inline-block', width: 32 }}>{gg}</span>{data}</span>
+      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}>{virgola(m.weight)} kg{m.bodyFat != null ? <span className="muted small"> · {virgola(m.bodyFat)}%</span> : null}</span>
+      <span style={{ flex: '0 0 36px', textAlign: 'right', fontSize: 12.5 }}>{delta != null ? conSegno(delta, 1) : ''}</span>
+      {colSett && (
+        <span style={{ flex: '0 0 50px', textAlign: 'right', lineHeight: 1.15 }}>
+          {sett && <>
+            <span style={{ display: 'block', color: 'var(--gold)', fontSize: 12.5, fontWeight: 600 }}>{sett.media.toFixed(2).replace('.', ',')}</span>
+            {sett.delta != null && <span style={{ display: 'block', fontSize: 10.5, color: Number(sett.delta.toFixed(2)) === 0 ? 'var(--muted)' : sett.delta > 0 ? ROSSO_SU : 'var(--good)' }}>{conSegno(sett.delta, 2)}</span>}
+            {sett.inCorso && <span className="muted" style={{ display: 'block', fontSize: 8.5, letterSpacing: '.06em' }}>IN CORSO</span>}
+          </>}
+        </span>
+      )}
+      <span style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 3, minWidth: 14, justifyContent: 'flex-end' }}>
+        {attivi.length > 0 && <span className="muted" style={{ fontSize: 11 }}>⚙</span>}
+        {haNota(m) && <span style={{ fontSize: 11, color: AZZURRO }}>🏷{nTag ? nTag : ''}</span>}
+        {haCirc(m) && <span style={{ fontSize: 11 }}>📏</span>}
+        <span className="muted small">›</span>
+      </span>
     </div>
   )
 }
@@ -123,6 +164,8 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
   const [filtro, setFiltro] = usePersistedState<string>('body-filtro', 'tutte')
   const whoop = useLiveQuery(whoopPerData, []) ?? new Map()
   const autoDi = (m: BodyMeasurement) => tagAuto(whoop.get(m.date))
+  const oggi = todayISO()
+  const ds = useMemo(() => deltaStorico(rows, oggi), [rows, oggi])
   const usati = [...new Set(rows.flatMap((m) => (m.tags ?? []).map((x) => x.t)))]
   const tagScelti = [...lista.filter((t) => usati.includes(t)), ...usati.filter((t) => !lista.includes(t))]
   const ultimoMese = rows.length ? rows[rows.length - 1].date.slice(0, 7) : ''
@@ -165,7 +208,7 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
           </div>
           {filtro !== 'tutte' ? (
             <>
-              {filtrate.map((m) => <MeasureRow key={m.id} m={m} corta={false} auto={autoDi(m)} />)}
+              {filtrate.map((m) => <MeasureRow key={m.id} m={m} corta={false} auto={autoDi(m)} delta={ds.delta.get(m.id)} />)}
               <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
                 {filtrate.length === 0 ? 'Nessun giorno trovato.' : `${filtrate.length} ${filtrate.length === 1 ? 'giorno' : 'giorni'}`}
               </div>
@@ -182,7 +225,7 @@ function Storico({ rows }: { rows: BodyMeasurement[] }) {
                     {righe.length} {righe.length === 1 ? 'pesata' : 'pesate'} · media {virgola(+media.toFixed(1))} {aperto ? '▴' : '▾'}
                   </span>
                 </div>
-                {aperto && righe.map((m) => <MeasureRow key={m.id} m={m} corta auto={autoDi(m)} />)}
+                {aperto && righe.map((m) => <MeasureRow key={m.id} m={m} corta auto={autoDi(m)} delta={ds.delta.get(m.id)} sett={ds.sett.get(m.id)} colSett />)}
               </div>
             )
           })}
