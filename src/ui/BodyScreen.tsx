@@ -148,7 +148,7 @@ function MeasureRow({ m, corta, auto, delta, sett, colSett }: {
           </>}
         </span>
       )}
-      <span style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 3, minWidth: 14, justifyContent: 'flex-end' }}>
+      <span style={{ flex: '0 0 46px', display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
         {attivi.length > 0 && <span className="muted" style={{ fontSize: 11 }}>⚙</span>}
         {haNota(m) && <span style={{ fontSize: 11, color: AZZURRO }}>🏷{nTag ? nTag : ''}</span>}
         {haCirc(m) && <span style={{ fontSize: 11 }}>📏</span>}
