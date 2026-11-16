@@ -247,7 +247,7 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('Smith shoulder press panca 80°', 'spalle', '@A|B · 8-12 · RIR1-2 · rec 150″ · 65 kg entrambe le serie'),
       e('Alzate laterali unilaterali al cavo', 'spalle', '@A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 60-75″ dopo entrambi i lati'),
       e('Overhead cable extension', 'tricipiti', '@A|B · 8-12 · RIR1 · rec 90-120″'),
-      e('Pushdown stabile', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 solo nelle fasi autorizzate · rec 75-90″'),
+      e('Pushdown stabile', 'tricipiti', '@A|B · 10-15 · RIR1 · rec 120″ · 29,5 kg'),
     ],
   },
   {

@@ -266,3 +266,35 @@ export async function portaModifiche08_11(): Promise<number> {
   try { localStorage.setItem(CAMBIO_08_11, nowISO()) } catch { /* riprova alla prossima */ }
   return cambiati
 }
+
+/**
+ * 16.11.2026 (18:06), D2. Il pushdown torna a 29,5 kg, RIR1 fisso e recupero
+ * 120″: la riga 🦠 si cambia solo se e' ancora quella importata, e allora il
+ * recupero dell'esercizio passa a 120″.
+ */
+const CAMBIO_16_11 = 'etp.coach.scheda.16-11-2026'
+const PUSHDOWN_PRIMA = '🦠 D2 · @A|B · 10-15 · RIR1 / RIR0-1 solo nelle fasi autorizzate · rec 75-90″'
+const PUSHDOWN_DOPO = '🦠 D2 · @A|B · 10-15 · RIR1 · rec 120″ · 29,5 kg'
+
+export async function portaModifiche16_11(): Promise<boolean> {
+  try {
+    if (localStorage.getItem(CAMBIO_16_11)) return false
+  } catch { /* senza localStorage si riprova */ }
+
+  let cambiato = false
+  await db.transaction('rw', db.exercises, async () => {
+    for (const ex of await db.exercises.toArray()) {
+      const righe = (ex.settings ?? '').split('\n')
+      if (!righe.some((r) => r.trim() === PUSHDOWN_PRIMA)) continue
+      await db.exercises.update(ex.id, {
+        settings: righe.map((r) => (r.trim() === PUSHDOWN_PRIMA ? PUSHDOWN_DOPO : r)).join('\n'),
+        restSec: 120,
+        updatedAt: nowISO(),
+      })
+      cambiato = true
+    }
+  })
+
+  try { localStorage.setItem(CAMBIO_16_11, nowISO()) } catch { /* riprova alla prossima */ }
+  return cambiato
+}
