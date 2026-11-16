@@ -49,11 +49,20 @@ export function giornataDelPiano(piano: GiornataPianoRs[], nome: string): Giorna
 
 const norm = (s: string) => s.trim().toLowerCase()
 
+/**
+ * Il nome di un pasto e' «Pasto N»: quello che il coach ci attacca dopo il
+ * «·» («Pasto 2 · Gallette e pollo») non si mostra e non conta per abbinare.
+ * Prima un pasto rinominato da lui non trovava piu' il tuo, e ogni riga
+ * risultava «tolta dal coach» anche quando c'era ancora.
+ */
+export const nomePasto = (s: string) => s.split(' · ')[0].trim()
+const stessoPasto = (a: string, b: string) => norm(nomePasto(a)) === norm(nomePasto(b))
+
 export type RigaCoach = GiornataPianoRs['pasti'][number]['righe'][number]
 
 /** Le righe che il coach scrive in quel pasto, oggi. */
-export function pastoDelCoach(g: GiornataPianoRs | undefined, nomePasto: string): RigaCoach[] | undefined {
-  return g?.pasti.find((p) => norm(p.nome) === norm(nomePasto))?.righe
+export function pastoDelCoach(g: GiornataPianoRs | undefined, pasto: string): RigaCoach[] | undefined {
+  return g?.pasti.find((p) => stessoPasto(p.nome, pasto))?.righe
 }
 
 /** La voce del coach dietro una tua riga, come la scrive adesso. */
@@ -160,10 +169,10 @@ function pastiDaRiferimento(m?: DayTemplate): GiornataPianoRs['pasti'] | undefin
 
 function confrontaAlimenti(prima: GiornataPianoRs['pasti'], dopo: GiornataPianoRs['pasti']): CambioAlimento[] {
   const out: CambioAlimento[] = []
-  const nomiPasti = [...new Set([...prima.map((p) => p.nome), ...dopo.map((p) => p.nome)])]
+  const nomiPasti = [...new Set([...prima.map((p) => nomePasto(p.nome)), ...dopo.map((p) => nomePasto(p.nome))])]
   for (const nome of nomiPasti) {
-    const a = prima.find((p) => p.nome === nome)?.righe ?? []
-    const b = dopo.find((p) => p.nome === nome)?.righe ?? []
+    const a = prima.find((p) => stessoPasto(p.nome, nome))?.righe ?? []
+    const b = dopo.find((p) => stessoPasto(p.nome, nome))?.righe ?? []
     const alimenti = [...new Set([...a.map((r) => r.alimento), ...b.map((r) => r.alimento)])]
     for (const al of alimenti) {
       const x = a.find((r) => r.alimento === al)?.g ?? null
@@ -198,6 +207,29 @@ export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string
       const tipo = tipi.find((t) => t.key === g.key)
       // Valgono da oggi: i giorni gia' fatti restano confrontati col piano di allora.
       if (tipo) await db.dayTypes.update(tipo.id, { ...conVersione(tipo, g.targets), manual: true, updatedAt: ts })
+    }
+  })
+}
+
+/**
+ * I nomi dei pasti senza la coda dopo il «·», una volta per tutte: nel piano
+ * del coach salvato sul telefono e nelle tue giornate tipo 🦠 (il «Pasto 4 ·
+ * Panino arabo» di LOW OFF diventa «Pasto 4»). Il diario dei giorni passati non
+ * si tocca. Se e' gia' tutto pulito non scrive niente.
+ */
+export async function pulisciNomiPasti(): Promise<void> {
+  const ts = nowISO()
+  await db.transaction('rw', db.users, db.dayTemplates, async () => {
+    const u = await db.users.get(U)
+    if (u?.rsPiano?.giornate?.some((g) => g.pasti.some((p) => p.nome !== nomePasto(p.nome)))) {
+      const giornate = u.rsPiano.giornate.map((g) => ({ ...g, pasti: g.pasti.map((p) => ({ ...p, nome: nomePasto(p.nome) })) }))
+      await db.users.update(U, { rsPiano: { ...u.rsPiano, giornate }, updatedAt: ts })
+    }
+    const modelli = await db.dayTemplates.where('userId').equals(U).toArray()
+    for (const m of modelli) {
+      if (!m.name.trimStart().startsWith('🦠')) continue
+      if (!m.meals.some((p) => p.name !== nomePasto(p.name))) continue
+      await db.dayTemplates.update(m.id, { meals: m.meals.map((p) => ({ ...p, name: nomePasto(p.name) })), updatedAt: ts })
     }
   })
 }

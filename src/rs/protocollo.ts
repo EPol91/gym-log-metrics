@@ -103,7 +103,7 @@ export const GIORNATE_RS: GiornataRs[] = [
       { nome: 'Pasto 1', righe: [r("Farina d'avena", 80), r("Albume d'uovo", 250), r('Burro di mandorle', 20), r('Mirtilli', 100), r('Sale', 1)] },
       { nome: 'Pasto 2', righe: [r('Proteine isolate Isopure', 40), r('Ananas', 100)] },
       { nome: 'Pasto 3', righe: [r('Riso basmati (crudo)', 80), r('Petto di pollo', 150), r("Olio extravergine d'oliva", 15), r('Zucchine', 150), r('Sale', 1)] },
-      { nome: 'Pasto 4 · Panino arabo', righe: [r('Pane arabo', 80), r("Albume d'uovo", 60), r("Tuorlo d'uovo", 30), r('Manzo', 80), r('Sale', 1)] },
+      { nome: 'Pasto 4', righe: [r('Pane arabo', 80), r("Albume d'uovo", 60), r("Tuorlo d'uovo", 30), r('Manzo', 80), r('Sale', 1)] },
       { nome: 'Pasto 5', righe: [r('Patate bollite', 280), r('Merluzzo', 180), r("Olio extravergine d'oliva", 5), r('Lattuga', 120), r('Sale', 1)] },
     ],
   },

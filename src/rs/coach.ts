@@ -154,7 +154,8 @@ export function traduciPiano(contenuto: unknown, attuale: GiornataPianoRs[] = GI
       // L'acqua non sta nella sua dieta: resta quella del piano in uso.
       acqua: prima?.acqua ?? 5.5,
       pasti: (g.pasti ?? []).map((p) => ({
-        nome: p.nome,
+        // Solo «Pasto N»: il resto del suo nome non si mostra (vedi nomePasto).
+        nome: p.nome.split(' · ')[0].trim(),
         righe: (p.items ?? []).map((it) => ({ alimento: NOMI_DEL_COACH[it.alimento] ?? it.alimento, g: numero(it.qty) })),
       })),
     })
