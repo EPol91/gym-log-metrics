@@ -65,6 +65,11 @@ export function pastoDelCoach(g: GiornataPianoRs | undefined, pasto: string): Ri
   return g?.pasti.find((p) => stessoPasto(p.nome, pasto))?.righe
 }
 
+/** I macro che il coach scrive per quel pasto; undefined se il piano salvato non li ha ancora. */
+export function macroDelPasto(g: GiornataPianoRs | undefined, pasto: string): GiornataPianoRs['pasti'][number]['macro'] {
+  return g?.pasti.find((p) => stessoPasto(p.nome, pasto))?.macro
+}
+
 /** La voce del coach dietro una tua riga, come la scrive adesso. */
 export function rigaDelCoach(g: GiornataPianoRs | undefined, nomePasto: string, nomeOriginale: string): RigaCoach | undefined {
   return pastoDelCoach(g, nomePasto)?.find((r) => norm(r.alimento) === norm(nomeOriginale))

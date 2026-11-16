@@ -126,7 +126,7 @@ const GIORNATE: Record<string, { key: string; nome: string }> = {
 interface GiornoArchivio {
   nome: string
   tot: { KCAL: string | number; CHO: string | number; PRO: string | number; FAT: string | number }
-  pasti: { nome: string; items: { qty: string; alimento: string }[] }[]
+  pasti: { nome: string; items: { qty: string; alimento: string }[]; macro?: { KCAL: string | number; CHO: string | number; PRO: string | number; FAT: string | number } }[]
 }
 
 const numero = (v: string | number): number => (typeof v === 'number' ? v : Number(String(v).replace(',', '.').replace(/[^\d.]/g, '')))
@@ -157,6 +157,7 @@ export function traduciPiano(contenuto: unknown, attuale: GiornataPianoRs[] = GI
         // Solo «Pasto N»: il resto del suo nome non si mostra (vedi nomePasto).
         nome: p.nome.split(' · ')[0].trim(),
         righe: (p.items ?? []).map((it) => ({ alimento: NOMI_DEL_COACH[it.alimento] ?? it.alimento, g: numero(it.qty) })),
+        ...(p.macro ? { macro: { kcal: numero(p.macro.KCAL), carbs: numero(p.macro.CHO), protein: numero(p.macro.PRO), fat: numero(p.macro.FAT) } } : {}),
       })),
     })
   }

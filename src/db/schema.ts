@@ -164,7 +164,12 @@ export interface GiornataPianoRs {
   targets: { kcal: number; protein: number; carbs: number; fat: number }
   /** Litri d'acqua al giorno. */
   acqua: number
-  pasti: { nome: string; righe: { alimento: string; g: number }[] }[]
+  pasti: {
+    nome: string
+    righe: { alimento: string; g: number }[]
+    /** I macro del pasto come li scrive il coach nella sua app (dal 16.11.2026; prima non si salvavano). */
+    macro?: { kcal: number; carbs: number; protein: number; fat: number }
+  }[]
 }
 
 export interface PianoRsSalvato {

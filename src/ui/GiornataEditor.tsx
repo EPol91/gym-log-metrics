@@ -17,7 +17,7 @@ import { getDayTemplate, updateDayTemplateMeals, listFoods, macrosFor, listDayTy
 import { pastoCopiato } from '../util/appuntiPasto'
 import { computeRecipe, macrosForAmount, type RecipeAmount } from '../db/recipes'
 import { FoodChooser } from './FoodChooser'
-import { pianoDi, giornataDelPiano, rigaDelCoach, righeMancanti, type RigaCoach } from '../rs/piano'
+import { pianoDi, giornataDelPiano, rigaDelCoach, righeMancanti, macroDelPasto, type RigaCoach } from '../rs/piano'
 import { getUser } from '../db/repo'
 import { useBloccoScroll, useIndietro } from './useBloccoScroll'
 import type { DayTemplateItem, DayTemplateMeal, Food, Macros, Recipe } from '../db/schema'
@@ -53,6 +53,42 @@ function Macro({ m, grande }: { m: Macros; grande?: boolean }) {
         <span style={{ color: 'var(--fat)' }}>G: {m.fat}</span>
       </span>
     </span>
+  )
+}
+
+/** Oltre questo scarto il numero si colora: sotto, la differenza e' rumore. */
+const SOGLIA_G = 5
+const SOGLIA_KCAL = 50
+
+/**
+ * Il pasto secondo il coach, sotto il tuo: i suoi macro (quelli della sua app)
+ * e lo scarto tuo − suo. Ambra se sei sopra, azzurro se sei sotto.
+ */
+function RigaRs({ rs, tuo }: { rs: Macros; tuo: Macros }) {
+  const voce = (k: keyof Macros, sigla: string, soglia: number) => {
+    const d = Math.round(((tuo[k] ?? 0) - (rs[k] ?? 0)) * 10) / 10
+    const fuori = Math.abs(d) >= soglia
+    const testo = d === 0 ? '0' : (d > 0 ? '+' : '−') + String(Math.abs(d)).replace('.', ',')
+    return (
+      <span key={k} style={{ color: fuori ? (d > 0 ? '#e0a030' : '#6aa8e0') : 'var(--muted)', fontWeight: fuori ? 600 : 400 }}>
+        {sigla}{testo}
+      </span>
+    )
+  }
+  return (
+    <div style={{ marginTop: 3, fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+      <div className="row spread" style={{ alignItems: 'baseline' }}>
+        <span style={{ color: 'var(--rs)', fontWeight: 600 }}>🦠 RS</span>
+        <span className="muted">{rs.kcal} · C: {rs.carbs}, P: {rs.protein}, G: {rs.fat}</span>
+      </div>
+      <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+        <span className="muted">scarto</span>
+        {voce('kcal', '', SOGLIA_KCAL)}
+        {voce('carbs', 'C ', SOGLIA_G)}
+        {voce('protein', 'P ', SOGLIA_G)}
+        {voce('fat', 'G ', SOGLIA_G)}
+      </div>
+    </div>
   )
 }
 
@@ -305,12 +341,14 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
 
       {pasti.map((m, mi) => {
         const tot = m.items.reduce((a, it) => somma(a, macroDi(it, cibi)), VUOTO)
+        const rs = macroDelPasto(g, m.name)
         return (
           <div className="card" key={`${m.name}-${m.order}`} style={{ padding: '10px 12px' }}>
             <div className="row spread" style={{ alignItems: 'baseline' }}>
               <strong style={{ fontSize: 14 }}>{m.name}</strong>
               <Macro m={tot} />
             </div>
+            {rs && <RigaRs rs={rs} tuo={tot} />}
 
             {m.items.map((it, ii) => {
               const nome = nomeDi(it, cibi)
