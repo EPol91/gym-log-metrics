@@ -180,3 +180,89 @@ export async function portaModifiche03_11(): Promise<number> {
   try { localStorage.setItem(CAMBIO_03_11, nowISO()) } catch { /* riprova alla prossima */ }
   return cambiati
 }
+
+/**
+ * 08.11.2026, D2 e D3. Lo shoulder press di D2 passa dai manubri allo Smith:
+ * vale il tuo «Shoulder Press Multipower», con lo storico che ha (dal 13.11).
+ * E le righe 🦠 prendono i carichi che il coach ora scrive nella prescrizione:
+ * incline press 92,5 / 77,5, shoulder press 65, calf press 188. Una riga si
+ * cambia solo se e' ancora quella importata; un esercizio solo se e' ancora
+ * quello importato. Le tue note restano.
+ */
+const CAMBIO_08_11 = 'etp.coach.scheda.08-11-2026'
+
+const RIGHE_08_11: { prima: string; dopo: string }[] = [
+  { prima: '🦠 D2 · @A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 180″', dopo: '🦠 D2 · @A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 180″ · top set 92,5 kg / back-off 77,5 kg' },
+  { prima: '🦠 D3 · @A|B|C · 8-15 · RIR1 · rec 90-120″', dopo: '🦠 D3 · @A|B|C · 8-15 · RIR1 · rec 90-120″ · 188 kg' },
+]
+const SPALLE_PRIMA = '🦠 D2 · @A|B · 8-12 · RIR1-2 · rec 150″'
+const SPALLE_DOPO = '🦠 D2 · @A|B · 8-12 · RIR1-2 · rec 150″ · 65 kg entrambe le serie'
+
+/** Dice cosa ha cambiato: 1 se lo shoulder press e' passato allo Smith. */
+export async function portaModifiche08_11(): Promise<number> {
+  try {
+    if (localStorage.getItem(CAMBIO_08_11)) return 0
+  } catch { /* senza localStorage si riprova: costa due letture */ }
+
+  let cambiati = 0
+  await db.transaction('rw', db.templates, db.exercises, async () => {
+    const schede = await db.templates.where('userId').equals(LOCAL_USER_ID).toArray()
+    const esercizi = await db.exercises.toArray()
+    const trova = (nome: string) => esercizi.find((e) => stesso(e.name, nome) || e.aliases.some((a) => stesso(a, nome)))
+
+    // D2: DB Shoulder Press → Shoulder Press Multipower, stesso posto.
+    const scheda = schede.find((t) => t.name.trimStart().startsWith('🦠') && t.name.match(/\bD[1-5]\b/)?.[0] === 'D2')
+    const vecchio = esercizi.find((e) => stesso(e.name, 'DB Shoulder Press'))
+    const posto = scheda && vecchio ? scheda.items.findIndex((i) => i.exerciseId === vecchio.id) : -1
+    if (scheda && vecchio && posto >= 0) {
+      let nuovo = trova('Shoulder Press Multipower') ?? trova('Smith Shoulder Press')
+      if (!nuovo) {
+        const ts = nowISO()
+        nuovo = { id: newId(), userId: LOCAL_USER_ID, createdAt: ts, updatedAt: ts, name: 'Shoulder Press Multipower', muscle: 'spalle', isCustom: true, aliases: [], restSec: 150 }
+        await db.exercises.add(nuovo)
+        esercizi.push(nuovo)
+      }
+      if (!scheda.items.some((i) => i.exerciseId === nuovo!.id)) {
+        scheda.items = scheda.items.map((i, k) => (k === posto ? { ...i, exerciseId: nuovo!.id } : i))
+        await db.templates.update(scheda.id, { items: scheda.items, updatedAt: nowISO() })
+
+        // La riga del coach passa dal vecchio al nuovo, col carico nuovo se e' ancora quella importata.
+        const tag = '🦠 D2 ·'
+        const righeVecchio = (vecchio.settings ?? '').split('\n')
+        const riga = righeVecchio.find((r) => r.trimStart().startsWith(tag))
+        vecchio.settings = righeVecchio.filter((r) => !r.trimStart().startsWith(tag)).join('\n')
+        await db.exercises.update(vecchio.id, { settings: vecchio.settings, updatedAt: nowISO() })
+        if (riga) {
+          const mie = (nuovo.settings ?? '').split('\n').filter((r) => r.trim() && !r.trimStart().startsWith(tag))
+          nuovo.settings = [...mie, riga.trim() === SPALLE_PRIMA ? SPALLE_DOPO : riga.trim()].join('\n')
+        }
+        const alias = 'Smith shoulder press panca 80°'
+        if (!nuovo.aliases.some((a) => stesso(a, alias))) nuovo.aliases = [...nuovo.aliases, alias]
+        await db.exercises.update(nuovo.id, {
+          settings: nuovo.settings, aliases: nuovo.aliases,
+          ...(nuovo.restSec ? {} : { restSec: 150 }),
+          // Creato al volo il 13.11 era finito in «altro»: e' deltoide anteriore.
+          ...(nuovo.muscle === 'altro' ? { muscle: 'spalle' as MuscleGroup } : {}),
+          updatedAt: nowISO(),
+        })
+        cambiati++
+      }
+    }
+
+    // I carichi nelle righe 🦠 di incline press e calf press.
+    for (const ex of esercizi) {
+      const righe = (ex.settings ?? '').split('\n')
+      let toccato = false
+      const nuove = righe.map((r) => {
+        const x = RIGHE_08_11.find((y) => r.trim() === y.prima)
+        if (!x) return r
+        toccato = true
+        return x.dopo
+      })
+      if (toccato) await db.exercises.update(ex.id, { settings: nuove.join('\n'), updatedAt: nowISO() })
+    }
+  })
+
+  try { localStorage.setItem(CAMBIO_08_11, nowISO()) } catch { /* riprova alla prossima */ }
+  return cambiati
+}

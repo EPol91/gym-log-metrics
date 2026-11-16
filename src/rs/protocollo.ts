@@ -176,20 +176,37 @@ export const RINOMINE: Record<string, string | string[]> = {
   'Cable fly 45°': 'Cable Fly 45°',
   'Seated row presa larga, upper back': 'Seated Row Upper Back',
   'Rear delt fly manubri su panca inclinata': 'DB Rear Delts',
+  // 08.11.2026: lo shoulder press di D2 passa allo Smith, cioe' il tuo Multipower.
+  'Smith shoulder press panca 80°': 'Shoulder Press Multipower',
 }
 
 /**
- * 03.11.2026: il coach cambia sei esercizi in D1, D3, D4 e D5. Le sedute di
- * prima si leggono con la scheda di prima: nome nuovo del coach → nome vecchio.
+ * I cambi di scheda del coach. Una seduta si legge con la scheda in vigore quel
+ * giorno: per ogni cambio successivo, nome nuovo del coach → nome di prima.
+ * - 03.11.2026: sei esercizi nuovi in D1, D3, D4 e D5.
+ * - 08.11.2026: D2, lo shoulder press passa dai manubri allo Smith (il coach
+ *   scrive «dal 16/11», ma lo Smith lo usavi gia' dal 13.11).
  */
-export const CAMBIO_SCHEDA = '2026-11-03'
-export const PRIMA_DEL_CAMBIO: Record<string, string> = {
-  'Bilateral cable high row, busto 45°': 'High row convergente chest-supported',
-  'Chest-supported DB row su panca inclinata 30-40°': 'T-bar row chest-supported',
-  'Horizontal calf press': 'Standing calf raise o calf press',
-  'Cable fly 45°': 'Cable fly',
-  'Seated row presa larga, upper back': 'High row tecnica per upper back',
-  'Rear delt fly manubri su panca inclinata': 'Rear delt row o rear delt machine',
+export const CAMBI_SCHEDA: { dal: string; prima: Record<string, string> }[] = [
+  {
+    dal: '2026-11-03',
+    prima: {
+      'Bilateral cable high row, busto 45°': 'High row convergente chest-supported',
+      'Chest-supported DB row su panca inclinata 30-40°': 'T-bar row chest-supported',
+      'Horizontal calf press': 'Standing calf raise o calf press',
+      'Cable fly 45°': 'Cable fly',
+      'Seated row presa larga, upper back': 'High row tecnica per upper back',
+      'Rear delt fly manubri su panca inclinata': 'Rear delt row o rear delt machine',
+    },
+  },
+  { dal: '2026-11-08', prima: { 'Smith shoulder press panca 80°': 'Shoulder press manubri panca 80°' } },
+]
+
+/** Il nome che il coach dava a quell'esercizio il giorno `data`. */
+export function nomeAl(nome: string, data: string): string {
+  let n = nome
+  for (let i = CAMBI_SCHEDA.length - 1; i >= 0; i--) if (data < CAMBI_SCHEDA[i].dal) n = CAMBI_SCHEDA[i].prima[n] ?? n
+  return n
 }
 
 export interface EsercizioRs {
@@ -225,9 +242,9 @@ export const SEDUTE_RS: SedutaRs[] = [
     prehab: 'Serratus wall slide — 1-2 serie da 8, rec 45-60″. Non conta come volume.',
     esercizi: [
       e('Pectoral machine', 'petto', '@A|B · 10-15 · RIR1-2 · rec 90-120″'),
-      e('Smith incline press 20-30°', 'petto', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 180″'),
+      e('Smith incline press 20-30°', 'petto', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR1-2 · rec 180″ · top set 92,5 kg / back-off 77,5 kg'),
       e('Chest press convergente', 'petto', '@A|B · 8-12 · RIR1-2 · rec 150″'),
-      e('Shoulder press manubri panca 80°', 'spalle', '@A|B · 8-12 · RIR1-2 · rec 150″'),
+      e('Smith shoulder press panca 80°', 'spalle', '@A|B · 8-12 · RIR1-2 · rec 150″ · 65 kg entrambe le serie'),
       e('Alzate laterali unilaterali al cavo', 'spalle', '@A|B|C · 12-20 · RIR2 / RIR1 / RIR0-1 · rec 60-75″ dopo entrambi i lati'),
       e('Overhead cable extension', 'tricipiti', '@A|B · 8-12 · RIR1 · rec 90-120″'),
       e('Pushdown stabile', 'tricipiti', '@A|B · 10-15 · RIR1 / RIR0-1 solo nelle fasi autorizzate · rec 75-90″'),
@@ -243,7 +260,7 @@ export const SEDUTE_RS: SedutaRs[] = [
       e('Romanian deadlift', 'femorali', '@A|B · 6-9 top set / 9-12 back-off · RIR1 / RIR2 · rec 180-210″'),
       e('Hip thrust', 'glutei', '@A|B · 8-12 · RIR1-2 · rec 150″'),
       e('Adductor machine', 'glutei', '@A|B · 10-15 · RIR1 · rec 90″'),
-      e('Horizontal calf press', 'polpacci', '@A|B|C · 8-15 · RIR1 · rec 90-120″'),
+      e('Horizontal calf press', 'polpacci', '@A|B|C · 8-15 · RIR1 · rec 90-120″ · 188 kg'),
     ],
   },
   {

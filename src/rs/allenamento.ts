@@ -10,7 +10,7 @@
 
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
-import { SEDUTE_RS, RINOMINE, CAMBIO_SCHEDA, PRIMA_DEL_CAMBIO } from './protocollo'
+import { SEDUTE_RS, RINOMINE, nomeAl } from './protocollo'
 
 const U = LOCAL_USER_ID
 
@@ -42,9 +42,8 @@ const norm = (s: string) => s.trim().toLowerCase()
  * Una seduta di prima del cambio di scheda si legge con la scheda di allora.
  */
 function previstiDi(s: (typeof SEDUTE_RS)[number], data: string): string[] {
-  const prima = data < CAMBIO_SCHEDA
   return s.esercizi.map((e) => {
-    const nome = prima ? PRIMA_DEL_CAMBIO[e.nome] ?? e.nome : e.nome
+    const nome = nomeAl(e.nome, data)
     const r = RINOMINE[nome]
     return r == null ? nome : Array.isArray(r) ? r[0] : r
   })
