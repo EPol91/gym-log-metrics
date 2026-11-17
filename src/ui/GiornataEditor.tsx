@@ -60,33 +60,60 @@ function Macro({ m, grande }: { m: Macros; grande?: boolean }) {
 const SOGLIA_G = 5
 const SOGLIA_KCAL = 50
 
+/** Le colonne della tabella del pasto: chiave, intestazione, colore, soglia. */
+const COLONNE: { k: keyof Macros; h: string; c: string; soglia: number }[] = [
+  { k: 'kcal', h: 'kcal', c: 'var(--gold)', soglia: SOGLIA_KCAL },
+  { k: 'carbs', h: 'C', c: 'var(--carb)', soglia: SOGLIA_G },
+  { k: 'protein', h: 'P', c: 'var(--prot)', soglia: SOGLIA_G },
+  { k: 'fat', h: 'G', c: 'var(--fat)', soglia: SOGLIA_G },
+]
+
+/** Un decimale con la virgola; le kcal intere. */
+const cifra = (k: keyof Macros, n: number) =>
+  (k === 'kcal' ? String(Math.round(n)) : String(Math.round(n * 10) / 10)).replace('.', ',')
+
 /**
- * Il pasto secondo il coach, sotto il tuo: i suoi macro (quelli della sua app)
- * e lo scarto tuo − suo. Ambra se sei sopra, azzurro se sei sotto.
+ * Il pasto a confronto, in colonna: tu, il coach (i macro della sua app) e lo
+ * scarto tuo − suo, ogni numero sotto quello con cui va confrontato. Lo scarto
+ * e' ambra se sei sopra, azzurro se sei sotto, grigio dentro la soglia.
  */
-function RigaRs({ rs, tuo }: { rs: Macros; tuo: Macros }) {
-  const voce = (k: keyof Macros, sigla: string, soglia: number) => {
-    const d = Math.round(((tuo[k] ?? 0) - (rs[k] ?? 0)) * 10) / 10
-    const fuori = Math.abs(d) >= soglia
-    const testo = d === 0 ? '0' : (d > 0 ? '+' : '−') + String(Math.abs(d)).replace('.', ',')
-    return (
-      <span key={k} style={{ color: fuori ? (d > 0 ? '#e0a030' : '#6aa8e0') : 'var(--muted)', fontWeight: fuori ? 600 : 400 }}>
-        {sigla}{testo}
-      </span>
-    )
+function TabellaPasto({ nome, tuo, rs }: { nome: string; tuo: Macros; rs: Macros }) {
+  const griglia: React.CSSProperties = {
+    display: 'grid', gridTemplateColumns: '1fr 46px 42px 42px 42px', columnGap: 2, alignItems: 'baseline',
   }
+  const val: React.CSSProperties = { textAlign: 'right', fontSize: 15 }
   return (
-    <div style={{ marginTop: 3, fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-      <div className="row spread" style={{ alignItems: 'baseline' }}>
-        <span style={{ color: 'var(--rs)', fontWeight: 600 }}>🦠 RS</span>
-        <span className="muted">{rs.kcal} · C: {rs.carbs}, P: {rs.protein}, G: {rs.fat}</span>
-      </div>
-      <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-        <span className="muted">scarto</span>
-        {voce('kcal', '', SOGLIA_KCAL)}
-        {voce('carbs', 'C ', SOGLIA_G)}
-        {voce('protein', 'P ', SOGLIA_G)}
-        {voce('fat', 'G ', SOGLIA_G)}
+    <div style={{ marginBottom: 6 }}>
+      <strong style={{ fontSize: 14 }}>{nome}</strong>
+      <div style={{ ...griglia, marginTop: 4 }}>
+        <span />
+        {COLONNE.map((x) => (
+          <span key={x.k} style={{ fontSize: 10.5, textAlign: 'right', letterSpacing: '.04em', color: x.c }}>{x.h}</span>
+        ))}
+
+        <span style={{ fontSize: 12 }}>Tu</span>
+        {COLONNE.map((x) => (
+          <span key={x.k} className="num" style={{ ...val, color: x.c }}>{cifra(x.k, tuo[x.k] ?? 0)}</span>
+        ))}
+
+        <span style={{ fontSize: 12, color: 'var(--rs)', fontWeight: 600 }}>🦠 RS</span>
+        {COLONNE.map((x) => (
+          <span key={x.k} className="num muted" style={val}>{cifra(x.k, rs[x.k] ?? 0)}</span>
+        ))}
+
+        <span style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--line)', margin: '3px 0' }} />
+
+        <span className="muted" style={{ fontSize: 12 }}>Scarto</span>
+        {COLONNE.map((x) => {
+          const d = Math.round(((tuo[x.k] ?? 0) - (rs[x.k] ?? 0)) * 10) / 10
+          const fuori = Math.abs(d) >= x.soglia
+          const testo = d === 0 ? '0' : (d > 0 ? '+' : '−') + cifra(x.k, Math.abs(d))
+          return (
+            <span key={x.k} className="num" style={{ ...val, color: fuori ? (d > 0 ? '#e0a030' : '#6aa8e0') : 'var(--muted)' }}>
+              {testo}
+            </span>
+          )
+        })}
       </div>
     </div>
   )
@@ -344,11 +371,14 @@ export function GiornataEditor({ templateId, onClose }: { templateId: string; on
         const rs = macroDelPasto(g, m.name)
         return (
           <div className="card" key={`${m.name}-${m.order}`} style={{ padding: '10px 12px' }}>
-            <div className="row spread" style={{ alignItems: 'baseline' }}>
-              <strong style={{ fontSize: 14 }}>{m.name}</strong>
-              <Macro m={tot} />
-            </div>
-            {rs && <RigaRs rs={rs} tuo={tot} />}
+            {rs ? (
+              <TabellaPasto nome={m.name} tuo={tot} rs={rs} />
+            ) : (
+              <div className="row spread" style={{ alignItems: 'baseline' }}>
+                <strong style={{ fontSize: 14 }}>{m.name}</strong>
+                <Macro m={tot} />
+              </div>
+            )}
 
             {m.items.map((it, ii) => {
               const nome = nomeDi(it, cibi)
