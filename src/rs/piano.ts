@@ -217,6 +217,35 @@ export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string
 }
 
 /**
+ * Quando il piano e' gia' aggiornato ma quello salvato non ha ancora i macro
+ * per pasto (applicato prima che si salvassero), aggiunge solo quelli. Non
+ * tocca obiettivi, versioni, alimenti o diario. Dice se ha scritto qualcosa.
+ */
+export async function completaMacroPasti(nuovo: GiornataPianoRs[]): Promise<boolean> {
+  let scritto = false
+  await db.transaction('rw', db.users, async () => {
+    const u = await db.users.get(U)
+    if (!u?.rsPiano?.giornate?.length) return
+    const giornate = u.rsPiano.giornate.map((g) => {
+      const n = nuovo.find((x) => x.key === g.key)
+      if (!n) return g
+      return {
+        ...g,
+        pasti: g.pasti.map((p) => {
+          if (p.macro) return p
+          const m = n.pasti.find((q) => stessoPasto(q.nome, p.nome))?.macro
+          if (!m) return p
+          scritto = true
+          return { ...p, macro: m }
+        }),
+      }
+    })
+    if (scritto) await db.users.update(U, { rsPiano: { ...u.rsPiano, giornate }, updatedAt: nowISO() })
+  })
+  return scritto
+}
+
+/**
  * I nomi dei pasti senza la coda dopo il «·», una volta per tutte: nel piano
  * del coach salvato sul telefono e nelle tue giornate tipo 🦠 (il «Pasto 4 ·
  * Panino arabo» di LOW OFF diventa «Pasto 4»). Il diario dei giorni passati non

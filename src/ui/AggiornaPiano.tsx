@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser } from '../db/repo'
 import { fmtData, fmtDataOra } from '../util/format'
-import { confrontaPiano, applicaPiano, pianoDi, type ConfrontoGiornata } from '../rs/piano'
+import { confrontaPiano, applicaPiano, completaMacroPasti, pianoDi, type ConfrontoGiornata } from '../rs/piano'
 import {
   statoCollegamento, chiediMailDiAccesso, collegaConLink, scollega, pianoDalCoach, type Collegamento,
 } from '../rs/coach'
@@ -46,7 +46,10 @@ export function AggiornaPiano() {
     setFatto(false)
     const p = await pianoDalCoach(pianoDi(user))
     setLetto(p)
-    setConfronto(await confrontaPiano(p.giornate))
+    const c = await confrontaPiano(p.giornate)
+    // Piano gia' aggiornato: si aggiungono solo i macro per pasto, se mancano.
+    if (!c.some((x) => x.cambiata)) await completaMacroPasti(p.giornate)
+    setConfronto(c)
   })
 
   const salva = () => prova(async () => {
