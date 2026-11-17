@@ -48,6 +48,8 @@ function Bandiera({ x, y, testo, col, sopra }: { x: number; y: number; testo: st
 function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi: string }) {
   const [per, setPer] = usePersistedState<Periodo>('body-periodo', 'YTD')
   const [accese, setAccese] = usePersistedState<Mobile[]>('body-mobili', [7])
+  // I pallini delle note: spenti di partenza, sporcano il grafico. La scelta resta.
+  const [conNote, setConNote] = usePersistedState<boolean>('body-note', false)
   const [range, setRange] = useState({ da: piuGiorni(D, -90), a: D })
   const [sel, setSel] = useState<string | null>(null)
 
@@ -163,7 +165,7 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
       return { meglio, dist }
     }
     // Il dito è largo: un punto azzurro vicino vince sulla pesata più vicina.
-    const nota = piuVicino(G.veri.filter((r) => haNota(r) && !r.soloGiornata))
+    const nota = conNote ? piuVicino(G.veri.filter((r) => haNota(r) && !r.soloGiornata)) : { meglio: null, dist: Infinity }
     const scelto = nota.meglio && nota.dist <= RAGGIO_DITO ? nota.meglio : piuVicino(G.veri).meglio
     setSel(sel === scelto ? null : scelto)
   }
@@ -210,7 +212,7 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
             }
             return <path key={s.k} d={d} fill="none" stroke={STILE[s.k].col} strokeWidth={STILE[s.k].w} strokeDasharray={STILE[s.k].dash} strokeLinejoin="round" strokeLinecap="round" />
           })}
-          {G.veri.filter((r) => haNota(r) && !r.soloGiornata).map((r) => <circle key={'n' + r.date} cx={G.X(r.date)} cy={G.Y(r.weight)} r={2.8} fill={AZZURRO} stroke="var(--surface)" strokeWidth={1} />)}
+          {conNote && G.veri.filter((r) => haNota(r) && !r.soloGiornata).map((r) => <circle key={'n' + r.date} cx={G.X(r.date)} cy={G.Y(r.weight)} r={2.8} fill={AZZURRO} stroke="var(--surface)" strokeWidth={1} />)}
           {G.max && <Bandiera x={G.X(G.max.date)} y={G.Y(G.max.v)} testo={`MAX ${virg(G.max.v)}`} col="#c2625b" sopra />}
           {G.min && <Bandiera x={G.X(G.min.date)} y={G.Y(G.min.v)} testo={`MIN ${virg(G.min.v)}`} col="var(--good)" sopra={false} />}
           {m && (
@@ -227,6 +229,9 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
             <span style={{ borderTopStyle: STILE[k].bordo as 'solid', borderTopColor: accese.includes(k) ? STILE[k].col : 'var(--faint)' }} />MA{k}
           </button>
         ))}
+        <button className={conNote ? 'on' : ''} onClick={() => setConNote(!conNote)}>
+          <i style={{ width: 7, height: 7, borderRadius: '50%', display: 'inline-block', background: conNote ? AZZURRO : 'var(--faint)' }} />Note
+        </button>
         {zoom && <button className="ap-riduci" onClick={() => setZoom(null)}>Riduci</button>}
       </div>
       <div className="ap-dida">
@@ -238,7 +243,7 @@ function Andamento({ rows, D, oggi }: { rows: BodyMeasurement[]; D: string; oggi
             {m.note?.trim() ? <span style={{ color: m.tags?.length ? '#b5afa3' : AZZURRO }}>{m.tags?.length ? ' · ' : ' — '}{m.note}</span> : null}
           </>
         ) : (
-          <><span style={{ color: AZZURRO }}>●</span> giorno con nota · {corto ? `${breve(da)} – ${breve(a)}` : `${mese(da)} – ${mese(a)}`} · {giorni + 1} gg</>
+          <>{conNote && <><span style={{ color: AZZURRO }}>●</span> giorno con nota · </>}{corto ? `${breve(da)} – ${breve(a)}` : `${mese(da)} – ${mese(a)}`} · {giorni + 1} gg</>
         )}
       </div>
     </>
