@@ -78,7 +78,9 @@ async function semina(): Promise<User> {
   await dedupeSeeded()
   await ensureRecipeSeed()
   // import dinamico: targetStorico importa seed, non il contrario all'avvio del modulo
-  await (await import('./targetStorico')).ensureStoricoRs()
+  const storico = await import('./targetStorico')
+  await storico.ensureStoricoRs()
+  await storico.correggiConfiniRs()
 
   return user
 }

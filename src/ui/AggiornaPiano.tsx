@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getUser } from '../db/repo'
 import { fmtData, fmtDataOra } from '../util/format'
+import { todayLocal, shiftDate } from '../util/date'
 import { confrontaPiano, applicaPiano, completaMacroPasti, pianoDi, type ConfrontoGiornata } from '../rs/piano'
 import {
   statoCollegamento, chiediMailDiAccesso, collegaConLink, scollega, pianoDalCoach, type Collegamento,
@@ -32,7 +33,11 @@ export function AggiornaPiano() {
 
   const [letto, setLetto] = useState<{ giornate: GiornataPianoRs[]; pubblicato: string | null } | null>(null)
   const [confronto, setConfronto] = useState<ConfrontoGiornata[] | null>(null)
-  const [fatto, setFatto] = useState(false)
+  // Da quando valgono i macro nuovi: il coach pubblica spesso a giornata
+  // cominciata col piano vecchio, quindi si propone domani.
+  const [daDomani, setDaDomani] = useState(true)
+  const [fatto, setFatto] = useState<string | null>(null)
+  const oggi = todayLocal(), domani = shiftDate(oggi, 1)
 
   useEffect(() => { void statoCollegamento().then(setCollegamento) }, [])
 
@@ -43,7 +48,7 @@ export function AggiornaPiano() {
   }
 
   const leggi = () => prova(async () => {
-    setFatto(false)
+    setFatto(null); setDaDomani(true)
     const p = await pianoDalCoach(pianoDi(user))
     setLetto(p)
     const c = await confrontaPiano(p.giornate)
@@ -54,8 +59,9 @@ export function AggiornaPiano() {
 
   const salva = () => prova(async () => {
     if (!letto) return
-    await applicaPiano(letto.giornate, letto.pubblicato)
-    setFatto(true); setLetto(null); setConfronto(null)
+    const dal = daDomani ? domani : oggi
+    await applicaPiano(letto.giornate, letto.pubblicato, dal)
+    setFatto(dal); setLetto(null); setConfronto(null)
   })
 
   const cambiate = confronto?.filter((c) => c.cambiata) ?? []
@@ -180,16 +186,32 @@ export function AggiornaPiano() {
           ))}
 
           {cambiate.length > 0 && (
-            <button className="primary" style={{ width: '100%', marginTop: 8 }} disabled={occupato} onClick={salva}>
-              Aggiorna {cambiate.length === 1 ? 'la giornata' : `le ${cambiate.length} giornate`}
-            </button>
+            <>
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                <span className="small">I macro nuovi valgono</span>
+                <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <button className={'chip' + (daDomani ? ' on' : '')} disabled={occupato} onClick={() => setDaDomani(true)}>
+                    da domani · {fmtData(domani).slice(0, 5)}
+                  </button>
+                  <button className={'chip' + (!daDomani ? ' on' : '')} disabled={occupato} onClick={() => setDaDomani(false)}>
+                    da oggi · {fmtData(oggi).slice(0, 5)}
+                  </button>
+                </div>
+                <p className="muted small" style={{ margin: '6px 0 0' }}>
+                  Da domani se oggi hai già cominciato col piano di prima: i giorni prima restano col piano di allora.
+                </p>
+              </div>
+              <button className="primary" style={{ width: '100%', marginTop: 8 }} disabled={occupato} onClick={salva}>
+                Aggiorna {cambiate.length === 1 ? 'la giornata' : `le ${cambiate.length} giornate`}
+              </button>
+            </>
           )}
         </div>
       )}
 
       {fatto && (
         <p className="small" style={{ margin: '8px 0 0', color: 'var(--good)' }}>
-          ✓ Piano aggiornato. In Cibo l'obiettivo di quelle giornate è quello nuovo; i tuoi pasti sono com'erano.
+          ✓ Piano aggiornato. In Cibo l'obiettivo di quelle giornate è quello nuovo {fatto === oggi ? 'da oggi' : `dal ${fmtData(fatto)}`}; i tuoi pasti sono com'erano.
         </p>
       )}
     </div>

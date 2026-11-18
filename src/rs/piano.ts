@@ -194,7 +194,7 @@ function confrontaAlimenti(prima: GiornataPianoRs['pasti'], dopo: GiornataPianoR
  * Salva il piano nuovo. Tocca due cose sole: il piano del coach e l'obiettivo di
  * ogni sua giornata in Cibo, che passa ai suoi macro nuovi. Nient'altro.
  */
-export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string | null): Promise<void> {
+export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string | null, dal = todayLocal()): Promise<void> {
   const u = await db.users.get(U)
   // Si parte dal piano in uso: se ne arriva solo una parte, il resto non si perde.
   const base = pianoDi(u).map((g) => ({ ...g }))
@@ -210,8 +210,9 @@ export async function applicaPiano(nuovo: GiornataPianoRs[], pubblicato?: string
     const tipi = await db.dayTypes.where('userId').equals(U).toArray()
     for (const g of nuovo) {
       const tipo = tipi.find((t) => t.key === g.key)
-      // Valgono da oggi: i giorni gia' fatti restano confrontati col piano di allora.
-      if (tipo) await db.dayTypes.update(tipo.id, { ...conVersione(tipo, g.targets), manual: true, updatedAt: ts })
+      // Valgono da `dal` (oggi o domani, lo sceglie Emanuel): i giorni prima restano
+      // confrontati col piano di allora.
+      if (tipo) await db.dayTypes.update(tipo.id, { ...conVersione(tipo, g.targets, dal), manual: true, updatedAt: ts })
     }
   })
 }

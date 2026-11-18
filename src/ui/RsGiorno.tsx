@@ -15,6 +15,7 @@ import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { getUser, upsertNutrition, getNutrition } from '../db/repo'
 import { listDayTypes, applyDayTemplate, logsOfDate } from '../db/diet'
+import { targetsAl } from '../db/targetStorico'
 import { todayLocal } from '../util/date'
 import { fmtData } from '../util/format'
 import { settimanaGiorno, RS_START_DEFAULT } from '../rs/rs'
@@ -124,7 +125,7 @@ export function RsGiorno() {
         </div>
         {scelta && (
           <p className="muted small" style={{ margin: '10px 0 0' }}>
-            {scelta.targets.kcal} kcal — C: {scelta.targets.carbs}, P: {scelta.targets.protein}, G: {scelta.targets.fat}
+            {targetsAl(scelta, giorno).kcal} kcal — C: {targetsAl(scelta, giorno).carbs}, P: {targetsAl(scelta, giorno).protein}, G: {targetsAl(scelta, giorno).fat}
           </p>
         )}
 

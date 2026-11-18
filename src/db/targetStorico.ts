@@ -65,6 +65,41 @@ const STORICO_RS: Record<string, VersioneTarget[]> = {
 }
 
 /**
+ * I piani del coach del 02.11 (18:29) e del 16.11 (14:23 e 18:06) erano stati
+ * applicati dal giorno stesso, ma quei giorni erano gia' cominciati col piano
+ * vecchio: valgono dal giorno dopo (docs/TARGET_COACH_STORICO.md).
+ */
+const tg = (kcal: number, carbs: number, protein: number, fat: number): Targets => ({ kcal, carbs, protein, fat })
+const SPOSTA_RS: { da: string; a: string; targets: Record<string, Targets> }[] = [
+  { da: '2026-11-02', a: '2026-11-03', targets: {
+    rs_low_on: tg(2825, 327, 206, 78), rs_low_off: tg(2558, 256, 207, 78), rs_high_on: tg(3372, 434, 213, 93), rs_high_off: tg(2969, 344, 212, 84),
+  } },
+  { da: '2026-11-16', a: '2026-11-17', targets: {
+    rs_low_on: tg(2832, 325, 204, 81), rs_low_off: tg(2351, 214, 202, 77), rs_high_on: tg(3347, 432, 211, 93), rs_high_off: tg(2798, 305, 209, 84),
+  } },
+]
+
+/**
+ * Una volta sola (18.11.2026): sposta al giorno dopo solo la versione con quella
+ * data e quei macro. Se non c'e' (o e' gia' spostata) non scrive niente.
+ */
+export async function correggiConfiniRs(): Promise<void> {
+  const tipi = await db.dayTypes.where('userId').equals(LOCAL_USER_ID).toArray()
+  for (const tipo of tipi) {
+    const v = tipo.storico
+    if (!v?.length) continue
+    let cambiato = false
+    const storico = v.map((x) => {
+      const s = SPOSTA_RS.find((y) => y.da === x.dal && y.targets[tipo.key] && uguali(y.targets[tipo.key], x.targets))
+      if (!s || v.some((w) => w.dal === s.a)) return x
+      cambiato = true
+      return { ...x, dal: s.a }
+    })
+    if (cambiato) await db.dayTypes.update(tipo.id, { storico, updatedAt: nowISO() })
+  }
+}
+
+/**
  * Una volta sola: le giornate del coach senza storico lo ricevono. Si tiene
  * fino alla versione uguale ai tuoi obiettivi di adesso; se i tuoi non sono
  * nessuna di quelle, valgono da quando li hai cambiati.
