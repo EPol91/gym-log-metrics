@@ -12,7 +12,7 @@ import { todayLocal, shiftDate, etichettaGiorno } from '../util/date'
 import { CAMPI, GRUPPI, DEF, type RsCampo, type RsGruppo } from '../rs/campi'
 import {
   computeRs, conteggio, settimanaGiorno, setRs, resetRs, rsDay, setNotaRs, dettagliRs,
-  notaAutomatica, RS_START_DEFAULT, type RsValore,
+  RS_START_DEFAULT, type RsValore,
 } from '../rs/rs'
 import { passiRs, testoEsclusi, voceConvertita, migliaia, type PassiRs } from '../rs/passiEquivalenti'
 import { importaProtocolloRs, protocolloImportato, type EsitoImport } from '../rs/importa'
@@ -49,7 +49,6 @@ export function RsScreen() {
   const attivo = user?.rsActive ?? true
   const giornata = useLiveQuery(() => computeRs(date), [date])
   const riga = useLiveQuery(() => rsDay(date), [date])
-  const nota = useLiveQuery(() => notaAutomatica(date), [date])
   const dettagli = useLiveQuery(() => dettagliRs(date), [date]) ?? {}
   const passi = useLiveQuery(() => passiRs(date), [date])
 
@@ -151,8 +150,7 @@ export function RsScreen() {
 
       <div className="card" style={{ marginTop: 8 }}>
         <label className="fl">Nota della giornata</label>
-        <p className="small" style={{ margin: 0, lineHeight: 1.55 }}>{nota || '—'}</p>
-        {riga?.nota && <p className="small" style={{ margin: '6px 0 0', lineHeight: 1.55 }}>{riga.nota}</p>}
+        <p className="small" style={{ margin: 0, lineHeight: 1.55 }}>{riga?.nota || '—'}</p>
         <NotaTua date={date} attuale={riga?.nota ?? ''} />
       </div>
     </div>

@@ -20,7 +20,7 @@ import { nomeSorgente } from '../util/passi'
 import { whoopDay } from '../db/whoop'
 import { bestE1rm } from '../metrics/metrics'
 import { CAMPI, type RsCampo } from './campi'
-import { statoDieta, sostituzioni } from './dieta'
+import { statoDieta } from './dieta'
 import { pianoRs, giornataDelPiano } from './piano'
 import { sedutaRs, aderenzaDelCoach } from './allenamento'
 import { passiRs } from './passiEquivalenti'
@@ -281,37 +281,6 @@ export async function resetRs(date: string, campo: RsCampo): Promise<void> {
 export async function setNotaRs(date: string, nota: string): Promise<void> {
   const riga = await assicuraRiga(date)
   await db.rsDays.update(riga.id, { nota, updatedAt: nowISO() })
-}
-
-/**
- * La nota composta dai fatti del giorno. Niente aggettivi e niente sensazioni
- * inventate: solo quello che e' successo davvero, perche' il coach su quella
- * riga ci decide.
- */
-export async function notaAutomatica(date: string): Promise<string> {
-  const g = await computeRs(date)
-  const pezzi: string[] = []
-  if (g.workout.valore) pezzi.push(`${g.workout.valore} completata`)
-  if (g.kcal.valore) {
-    const nutri = await getNutrition(date)
-    const tipo = nutri?.dayType
-      ? (await db.dayTypes.where('userId').equals(U).toArray()).find((d) => d.key === nutri.dayType)
-      : null
-    pezzi.push(tipo ? `${g.kcal.valore} kcal contro ${targetsAl(tipo, date).kcal} previste` : `${g.kcal.valore} kcal`)
-  }
-  if (g.durata_sonno.valore) {
-    const ore = Number(g.durata_sonno.valore)
-    const h = Math.floor(ore), m = Math.round((ore - h) * 60)
-    pezzi.push(`Sonno ${h}h${String(m).padStart(2, '0')}`)
-  }
-  // Le sostituzioni vanno dette: il coach quella cosa la deve vedere, e' un dato
-  // utile e non una macchia. "Riso → patate" spiega meta' dei numeri del giorno.
-  const cambi = await sostituzioni(date)
-  if (cambi.length) pezzi.push(`Sostituito ${cambi.join(', ')}`)
-
-  const w = await whoopDay(date)
-  if (w?.recovery != null) pezzi.push(`recupero ${w.recovery}%`)
-  return pezzi.join('. ') + (pezzi.length ? '.' : '')
 }
 
 /**

@@ -106,7 +106,6 @@ export function testoSettimana(n: number, x: NumeriSettimana): string {
   if (x.aderenza != null) {
     p.push(`Aderenza ${x.aderenza}%${x.precisione != null ? `, precisione ${x.precisione}%` : ''}.`)
   }
-  if (x.sostituzioni.length) p.push(`Sostituzioni: ${x.sostituzioni.join(', ')}.`)
   p.push(x.sedute === 1 ? '1 seduta.' : `${x.sedute} sedute.`)
   if (x.passiMedi != null) p.push(`${x.passiMedi.toLocaleString('it-IT')} passi al giorno.`)
   if (x.sonnoMedio != null) {
