@@ -106,6 +106,16 @@ export interface User extends BaseRecord {
    */
   rsPiano?: PianoRsSalvato
   /**
+   * Gli esercizi del coach abbinati ai tuoi, scelti da te: «D5|rear delt fly
+   * manubri su panca inclinata» → id del tuo esercizio. Solo quello che hai
+   * confermato: un alias messo all'import non vale come scelta.
+   */
+  rsAbbinamenti?: Record<string, string>
+  /** Esercizi che il coach ha tolto e tu tieni nella seduta: «D5|id». */
+  rsTenuti?: string[]
+  /** Prescrizioni del coach che hai scelto di non seguire: «D2|id» → la sua prescrizione di allora. */
+  rsPrescrizioniTenute?: Record<string, string>
+  /**
    * La ciclizzazione dei carboidrati, sette lettere da lunedi' a domenica:
    * L = giornata LOW, H = giornata HIGH. Vive qui e non nel codice perche' il
    * coach la cambia, e cambiarla deve costare dieci secondi.

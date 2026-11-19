@@ -15,6 +15,8 @@ import {
   statoCollegamento, chiediMailDiAccesso, collegaConLink, scollega, pianoDalCoach, type Collegamento,
 } from '../rs/coach'
 import type { GiornataPianoRs } from '../db/schema'
+import { preparaRevisione, prossimaDomanda, type Revisione } from '../rs/schede'
+import { RevisioneSchede } from './RevisioneSchede'
 
 type Tot = ConfrontoGiornata['dopo']
 
@@ -37,6 +39,10 @@ export function AggiornaPiano() {
   // cominciata col piano vecchio, quindi si propone domani.
   const [daDomani, setDaDomani] = useState(true)
   const [fatto, setFatto] = useState<string | null>(null)
+  // Le sedute: cosa c'e' da decidere, se la finestra e' aperta, com'e' finita.
+  const [rev, setRev] = useState<Revisione | null>(null)
+  const [revAperta, setRevAperta] = useState(false)
+  const [sedute, setSedute] = useState<'uguali' | 'da-rivedere' | 'salvate' | null>(null)
   const oggi = todayLocal(), domani = shiftDate(oggi, 1)
 
   useEffect(() => { void statoCollegamento().then(setCollegamento) }, [])
@@ -55,6 +61,12 @@ export function AggiornaPiano() {
     // Piano gia' aggiornato: si aggiungono solo i macro per pasto, se mancano.
     if (!c.some((x) => x.cambiata)) await completaMacroPasti(p.giornate)
     setConfronto(c)
+    // Le sedute: se c'e' qualcosa da decidere si apre subito la finestra.
+    const r = await preparaRevisione(p.schede)
+    setRev(r)
+    const daDecidere = !!r && !!prossimaDomanda(r, [])
+    setSedute(r ? (daDecidere ? 'da-rivedere' : 'uguali') : null)
+    setRevAperta(daDecidere)
   })
 
   const salva = () => prova(async () => {
@@ -148,6 +160,27 @@ export function AggiornaPiano() {
             <p className="small" style={{ margin: 0, color: 'var(--good)' }}>
               ✓ Hai già il piano aggiornato: niente da cambiare.
             </p>
+          )}
+
+          {sedute === 'uguali' && (
+            <p className="small" style={{ margin: '4px 0 0', color: 'var(--good)' }}>✓ Le sedute sono uguali alle sue.</p>
+          )}
+          {sedute === 'salvate' && (
+            <p className="small" style={{ margin: '4px 0 0', color: 'var(--good)' }}>✓ Sedute aggiornate con le tue scelte.</p>
+          )}
+          {sedute === 'da-rivedere' && (
+            <div style={{ borderTop: '1px solid var(--line)', padding: '8px 0', marginTop: 6 }}>
+              <span className="small">Il coach ha cambiato qualcosa nelle sedute: decidi tu cosa tenere.</span>
+              <button style={{ width: '100%', marginTop: 6 }} disabled={occupato} onClick={() => setRevAperta(true)}>
+                Rivedi le sedute
+              </button>
+            </div>
+          )}
+          {rev && revAperta && (
+            <RevisioneSchede rev={rev} onFine={(salvato) => {
+              setRevAperta(false)
+              if (salvato) { setSedute('salvate'); setRev(null) }
+            }} />
           )}
 
           {cambiate.map((c) => (

@@ -131,7 +131,33 @@ interface GiornoArchivio {
 
 const numero = (v: string | number): number => (typeof v === 'number' ? v : Number(String(v).replace(',', '.').replace(/[^\d.]/g, '')))
 
-export interface PianoDalCoach { giornate: GiornataPianoRs[]; pubblicato: string | null }
+export interface PianoDalCoach { giornate: GiornataPianoRs[]; pubblicato: string | null; schede: SedutaCoach[] }
+
+/** Un esercizio come lo scrive il coach nella sua scheda. */
+export interface EsercizioCoach {
+  /** il suo nome, senza la sigla della coppia davanti («2A · …») */
+  nome: string
+  /** la sua prescrizione: «@A|B · 10-15 · RIR1 · rec 120″ · 29,5 kg» */
+  sr: string
+  /** il nome dell'esercizio nel suo catalogo, quando c'e' */
+  catalogo?: string
+}
+export interface SedutaCoach { titolo: string; esercizi: EsercizioCoach[] }
+
+/** Le sue sedute, nell'ordine in cui le scrive. Vuoto se non le trovo. */
+export function traduciSchede(contenuto: unknown): SedutaCoach[] {
+  type G = { titolo?: string; esercizi?: { n?: string; sr?: string; lib_nome?: string }[] }
+  const pilastri = (contenuto as { pilastri?: { tipo?: string; giorni?: G[] }[] })?.pilastri
+  const w = pilastri?.find((p) => p.tipo === 'workout')
+  return (w?.giorni ?? []).map((g) => ({
+    titolo: (g.titolo ?? '').trim(),
+    esercizi: (g.esercizi ?? []).filter((e) => e.n?.trim()).map((e) => ({
+      nome: e.n!.replace(/^\d+[A-Z]\s*·\s*/, '').trim(),
+      sr: (e.sr ?? '').trim(),
+      ...(e.lib_nome?.trim() ? { catalogo: e.lib_nome.trim() } : {}),
+    })),
+  }))
+}
 
 /**
  * Traduce il suo formato nel nostro. Il suo piano ha i totali in testo
@@ -184,5 +210,9 @@ export async function pianoDalCoach(attuale?: GiornataPianoRs[]): Promise<PianoD
   // Quello in uso: «live» se c'e', altrimenti il piu' recente.
   const scelto = righe.find((r) => r.stato === 'live') ?? righe[0]
   if (!scelto) throw new Error('Il coach non ha ancora pubblicato un protocollo per te.')
-  return { giornate: traduciPiano(scelto.content, attuale), pubblicato: scelto.published_at ?? null }
+  return {
+    giornate: traduciPiano(scelto.content, attuale),
+    pubblicato: scelto.published_at ?? null,
+    schede: traduciSchede(scelto.content),
+  }
 }
