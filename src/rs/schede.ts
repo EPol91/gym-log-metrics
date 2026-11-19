@@ -17,6 +17,7 @@
 import { db, newId, nowISO } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { normalizeName } from '../db/catalog'
+import { todayLocal } from '../util/date'
 import { SEDUTE_RS } from './protocollo'
 import type { EsercizioCoach, SedutaCoach } from './coach'
 import type { Exercise, MuscleGroup, TemplateItem } from '../db/schema'
@@ -270,6 +271,18 @@ export async function applicaRevisione(rev: Revisione, scelte: Scelta[]): Promis
     }
 
     for (const [id, p] of note) await db.exercises.update(id, { ...p, updatedAt: ts })
-    await db.users.update(U, { rsAbbinamenti: abbinamenti, rsTenuti: [...tenuti], rsPrescrizioniTenute: prescrizioniTenute, updatedAt: ts })
+
+    // Com'è ogni seduta da oggi: l'aderenza delle prossime si conta su questa,
+    // quella delle sedute già fatte resta sulla scheda di allora.
+    const oggi = todayLocal()
+    const foto: Record<string, { nome: string; ids: string[] }> = {}
+    for (const t of await db.templates.where('userId').equals(U).toArray()) {
+      const codice = t.name.trim().match(/^🦠\s*(D\d+)/)?.[1]
+      if (codice) foto[codice] = { nome: t.name, ids: [...t.items].sort((a, b) => a.order - b.order).map((x) => x.exerciseId) }
+    }
+    const storico = [...(u?.rsSeduteStorico ?? []).filter((x) => x.dal !== oggi), { dal: oggi, sedute: foto }]
+      .sort((a, b) => a.dal.localeCompare(b.dal))
+
+    await db.users.update(U, { rsAbbinamenti: abbinamenti, rsTenuti: [...tenuti], rsPrescrizioniTenute: prescrizioniTenute, rsSeduteStorico: storico, updatedAt: ts })
   })
 }

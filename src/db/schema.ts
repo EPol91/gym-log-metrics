@@ -116,6 +116,13 @@ export interface User extends BaseRecord {
   /** Prescrizioni del coach che hai scelto di non seguire: «D2|id» → la sua prescrizione di allora. */
   rsPrescrizioniTenute?: Record<string, string>
   /**
+   * Com'erano le sedute 🦠 dal giorno di ogni revisione salvata (codice → nome
+   * del template e id degli esercizi, in ordine). L'aderenza di una seduta fatta
+   * da quel giorno in poi si conta su questa versione; le sedute di prima della
+   * prima revisione restano sulla scheda scritta nel codice.
+   */
+  rsSeduteStorico?: { dal: string; sedute: Record<string, { nome: string; ids: string[] }> }[]
+  /**
    * La ciclizzazione dei carboidrati, sette lettere da lunedi' a domenica:
    * L = giornata LOW, H = giornata HIGH. Vive qui e non nel codice perche' il
    * coach la cambia, e cambiarla deve costare dieci secondi.

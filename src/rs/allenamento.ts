@@ -11,6 +11,7 @@
 import { db } from '../db/db'
 import { LOCAL_USER_ID } from '../db/seed'
 import { SEDUTE_RS, RINOMINE, nomeAl } from './protocollo'
+import type { User } from '../db/schema'
 
 const U = LOCAL_USER_ID
 
@@ -33,7 +34,17 @@ export interface SedutaRs {
   serieTotali: number
 }
 
-interface Giornata { codice: string; nome: string; previsti: string[] }
+/** previsti per nome (scheda nel codice) o, dopo una revisione, per id (la tua seduta salvata) */
+interface Giornata { codice: string; nome: string; previsti: string[]; ids?: string[] }
+
+type Storico = NonNullable<User['rsSeduteStorico']>
+
+/** La versione delle sedute valida quel giorno: l'ultima revisione salvata entro quella data. */
+function fotoAl(storico: Storico, data: string): Storico[number] | null {
+  let f: Storico[number] | null = null
+  for (const x of storico) if (x.dal <= data) f = x
+  return f
+}
 
 const norm = (s: string) => s.trim().toLowerCase()
 
@@ -50,8 +61,13 @@ function previstiDi(s: (typeof SEDUTE_RS)[number], data: string): string[] {
 }
 
 /** La giornata scritta nel nome del template da cui e' partita la seduta. */
-function daTemplate(nomeTemplate: string, data: string): Giornata | null {
-  const codice = nomeTemplate.match(/\bD[1-5]\b/)?.[0]
+function daTemplate(nomeTemplate: string, data: string, storico: Storico): Giornata | null {
+  const codice = nomeTemplate.match(/\bD\d+\b/)?.[0]
+  const foto = fotoAl(storico, data)
+  if (foto) {
+    const x = codice ? foto.sedute[codice] : undefined
+    return x && codice ? { codice, nome: x.nome, previsti: [], ids: x.ids } : null
+  }
   const s = SEDUTE_RS.find((x) => x.codice === codice)
   return s ? { codice: s.codice, nome: s.nome, previsti: previstiDi(s, data) } : null
 }
@@ -65,7 +81,17 @@ function daTemplate(nomeTemplate: string, data: string): Giornata | null {
  * sbagliava: bastava un esercizio in comune, e leg extension e squat li fai
  * anche negli allenamenti tuoi. Se manca o avanza qualcosa, la seduta e' tua.
  */
-function impronta(nomiFatti: string[], data: string): Giornata | null {
+function impronta(nomiFatti: string[], idsFatti: string[], data: string, storico: Storico): Giornata | null {
+  const foto = fotoAl(storico, data)
+  if (foto) {
+    const fatti = new Set(idsFatti)
+    if (!fatti.size) return null
+    for (const [codice, x] of Object.entries(foto.sedute)) {
+      const suoi = new Set(x.ids)
+      if (suoi.size === fatti.size && [...suoi].every((id) => fatti.has(id))) return { codice, nome: x.nome, previsti: [], ids: x.ids }
+    }
+    return null
+  }
   const fatti = new Set(nomiFatti.filter(Boolean).map(norm))
   if (!fatti.size) return null
   for (const s of SEDUTE_RS) {
@@ -84,11 +110,22 @@ function impronta(nomiFatti: string[], data: string): Giornata | null {
  * dove la prova manca, e mai prima del giorno in cui il protocollo e' entrato
  * nell'app. Tutto il resto e' tuo.
  */
-function giornataDi(sess: { srcTemplateId?: string | null; date: string }, nomi: string[], nomiTemplate: Map<string, string>, inizioRs: string | null): Giornata | null {
+function giornataDi(sess: { srcTemplateId?: string | null; date: string }, nomi: string[], ids: string[], nomiTemplate: Map<string, string>, inizioRs: string | null, storico: Storico): Giornata | null {
   const tpl = sess.srcTemplateId ? nomiTemplate.get(sess.srcTemplateId) : undefined
-  if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl, sess.date) : null
+  if (tpl != null) return tpl.trimStart().startsWith('🦠') ? daTemplate(tpl, sess.date, storico) : null
   if (!inizioRs || sess.date < inizioRs) return null
-  return impronta(nomi, sess.date)
+  return impronta(nomi, ids, sess.date, storico)
+}
+
+async function storicoSedute(): Promise<Storico> {
+  return (await db.users.get(U))?.rsSeduteStorico ?? []
+}
+
+/** La riga 🦠 di quella seduta («🦠 D2 · …»); senza seduta, la prima che c'è. */
+function rigaPrescrizione(settings: string | undefined, codice: string | null): string | undefined {
+  const righe = (settings ?? '').split('\n').map((r) => r.trimStart()).filter((r) => r.startsWith('🦠'))
+  const r = (codice && righe.find((x) => x.startsWith(`🦠 ${codice} ·`))) || righe[0]
+  return r?.replace(/^🦠\s*/, '')
 }
 
 /** Il nome del template da cui e' partita la seduta: e' come la chiami tu. */
@@ -132,6 +169,7 @@ export async function sedutaRs(date: string): Promise<SedutaRs | null> {
   if (!sessioni.length) return null
 
   const esercizi: EsercizioSeduta[] = []
+  const meta: { id: string; settings?: string }[] = []
   const tuttiEsercizi = await db.exercises.where('userId').equals(U).toArray()
 
   for (const sess of sessioni) {
@@ -144,11 +182,9 @@ export async function sedutaRs(date: string): Promise<SedutaRs | null> {
       const sets = (await db.sets.where('entryId').equals(e.id).toArray())
         .filter((s) => !s.isWarmup)
         .sort((a, b) => a.order - b.order)
-      // La prescrizione sta nelle note dell'esercizio, dove l'ha messa l'import.
-      const riga = (ex.settings ?? '').split('\n').find((r) => r.trimStart().startsWith('🦠'))
+      meta.push({ id: ex.id, settings: ex.settings })
       esercizi.push({
         nome: ex.name,
-        prescrizione: riga?.replace(/^🦠\s*/, ''),
         serie: sets.map((s) => ({ kg: s.weight, reps: s.reps, ...(s.rir != null ? { rir: s.rir } : {}) })),
         previsto: false,
       })
@@ -157,19 +193,33 @@ export async function sedutaRs(date: string): Promise<SedutaRs | null> {
 
   const nomiTpl = await templateNames()
   const inizio = await inizioProtocollo()
+  const storico = await storicoSedute()
   const nomi = esercizi.map((e) => e.nome)
-  const g = sessioni.map((s) => giornataDi(s, nomi, nomiTpl, inizio)).find(Boolean) ?? null
-  if (g) {
+  const ids = meta.map((m) => m.id)
+  const g = sessioni.map((s) => giornataDi(s, nomi, ids, nomiTpl, inizio, storico)).find(Boolean) ?? null
+
+  // La prescrizione sta nelle note dell'esercizio: quella della seduta giusta.
+  esercizi.forEach((e, k) => { e.prescrizione = rigaPrescrizione(meta[k].settings, g?.codice ?? null) })
+
+  let aderenza: number | null = null
+  if (g?.ids) {
+    // Dopo una revisione: la tua seduta salvata, esercizio per esercizio.
+    const previsti = new Set(g.ids)
+    esercizi.forEach((e, k) => { e.previsto = previsti.has(meta[k].id) })
+    const fatti = new Set(meta.filter((m, k) => previsti.has(m.id) && esercizi[k].serie.length > 0).map((m) => m.id))
+    aderenza = previsti.size ? Math.round((fatti.size / previsti.size) * 100) : null
+  } else if (g) {
     const previsti = new Set(g.previsti.map((p) => p.trim().toLowerCase()))
     for (const e of esercizi) e.previsto = previsti.has(e.nome.trim().toLowerCase())
+    const fattiPrevisti = esercizi.filter((e) => e.previsto && e.serie.length > 0).length
+    aderenza = Math.round((fattiPrevisti / g.previsti.length) * 100)
   }
 
-  const fattiPrevisti = esercizi.filter((e) => e.previsto && e.serie.length > 0).length
   return {
     codice: g?.codice ?? null,
     nome: g?.nome ?? null,
     esercizi,
-    aderenzaLogistica: g ? Math.round((fattiPrevisti / g.previsti.length) * 100) : null,
+    aderenzaLogistica: aderenza,
     serieTotali: esercizi.reduce((s, e) => s + e.serie.length, 0),
   }
 }
@@ -220,6 +270,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   const nomiTpl = await templateNames()
   const inizio = await inizioProtocollo()
   const soloCardio = await templateCardio()
+  const storico = await storicoSedute()
 
   const TIPI: Record<string, string> = {
     push: 'Push', pull: 'Pull', legs: 'Legs', upper: 'Upper',
@@ -229,7 +280,7 @@ export async function calendario(da: string, a: string): Promise<GiornoCalendari
   return sessioni.map((s) => {
     const mie = entrate.filter((e) => e.sessionId === s.id)
     const nomi = mie.map((e) => perId.get(e.exerciseId) ?? '')
-    const g = giornataDi(s, nomi, nomiTpl, inizio)
+    const g = giornataDi(s, nomi, mie.map((e) => e.exerciseId), nomiTpl, inizio, storico)
     const ora = (iso: string | null): string | null => {
       if (!iso) return null
       const d = new Date(iso)
