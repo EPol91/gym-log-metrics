@@ -18,8 +18,14 @@ export interface AvvisoRegola {
   dato: string
   nota?: string
   soglia?: string
-  /** cosa farebbe il piano ombra */
+  /** cosa farebbe il piano ombra (testo intero; c'è sempre) */
   ombra?: string
+  /** dal 23.11.2026: cosa farebbero le regole, senza la pausa */
+  azione?: string
+  /** cosa ha fatto RS: «come» / «diverso» (scelta diversa, non errore) / «info» (solo il testo) */
+  rs?: { tipo: 'come' | 'diverso' | 'info'; testo: string } | null
+  /** perché si aspetta: regola, motivo e primo check-in che può correggere (aaaa-mm-gg) */
+  pausa?: { regola: string; motivo: string; dal: string } | null
   /** esercizi fermi: [nome, carico × ripetizioni, esposizioni] */
   righe?: string[][]
   /** passi per RS: [voce, numero], l'ultima è il totale */

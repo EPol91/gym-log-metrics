@@ -95,7 +95,29 @@ function FoglioRegole({ a, onClose }: { a: AvvisiRegole; onClose: () => void }) 
   )
 }
 
-const NUMERO: React.CSSProperties = { fontFamily: 'var(--f-numeri)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }
+/** «L'ombra farebbe» come nel Cockpit: la correzione, cosa ha fatto RS, perché si aspetta.
+ *  RS è il riferimento, non la verità: «diverso» è una scelta diversa, non un errore. */
+function Ombra({ x }: { x: AvvisoRegola }) {
+  const b = x.rs && x.rs.tipo !== 'info' ? (x.rs.tipo === 'come' ? { t: 'COME RS', c: COLORE.ok } : { t: 'DIVERSO DA RS', c: 'var(--gold)' }) : null
+  return (
+    <span style={{ minWidth: 0 }}>
+      <span style={{ fontWeight: 600 }}>{x.azione}</span>
+      {x.rs && (
+        <span style={{ display: 'block', marginTop: 4 }}>
+          {b && <span style={{ fontSize: 8.5, letterSpacing: '.08em', fontWeight: 700, padding: '1px 5px', borderRadius: 5, border: `1px solid ${b.c}`, color: b.c, marginRight: 6, whiteSpace: 'nowrap', verticalAlign: 1 }}>{b.t}</span>}
+          {x.rs.testo}
+        </span>
+      )}
+      {x.pausa && (
+        <span className="muted" style={{ display: 'block', marginTop: 4 }}>
+          In pausa: {x.pausa.motivo} (regola {x.pausa.regola}). Prossima correzione: <b style={{ color: 'var(--text)', fontWeight: 600 }}>{ggmm(x.pausa.dal)}</b>
+        </span>
+      )}
+    </span>
+  )
+}
+
+const NUMERO: React.CSSProperties ={ fontFamily: 'var(--f-numeri)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }
 
 /** Un avviso: titolo e dato; righe e conto sempre; nota, soglia e «l'ombra farebbe» col tocco (aperti se è fuori). */
 function Riga({ x }: { x: AvvisoRegola }) {
@@ -117,7 +139,7 @@ function Riga({ x }: { x: AvvisoRegola }) {
       {dettagli && (
         <div style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '3px 8px', fontSize: 11.5, lineHeight: 1.4, marginTop: 6 }}>
           {x.soglia && <><span className="muted">Soglia</span><span>{x.soglia}</span></>}
-          {x.ombra && <><span className="muted">L'ombra farebbe</span><span>{x.ombra}</span></>}
+          {(x.azione || x.ombra) && <><span className="muted">L'ombra farebbe</span>{x.azione ? <Ombra x={x} /> : <span>{x.ombra}</span>}</>}
         </div>
       )}
       {x.righe && x.righe.length > 0 && (
